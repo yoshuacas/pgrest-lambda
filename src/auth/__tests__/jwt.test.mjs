@@ -1,6 +1,6 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { signAccessToken, signRefreshToken, verifyToken } from '../jwt.mjs';
+import { createJwt } from '../jwt.mjs';
 
 const TEST_SECRET = 'test-secret-key-for-jwt-tests-1234567890';
 
@@ -12,13 +12,15 @@ function decodePayload(token) {
 }
 
 describe('jwt.mjs', () => {
+  let jwt;
+
   beforeEach(() => {
-    process.env.JWT_SECRET = TEST_SECRET;
+    jwt = createJwt({ jwtSecret: TEST_SECRET });
   });
 
   describe('signAccessToken', () => {
     it('produces JWT with correct claims for sub and email', () => {
-      const token = signAccessToken({
+      const token = jwt.signAccessToken({
         sub: 'user-123',
         email: 'test@example.com',
       });
@@ -56,7 +58,7 @@ describe('jwt.mjs', () => {
   describe('signRefreshToken', () => {
     it('produces JWT with sub, role, iss, prt and ~30d expiry', () => {
       const providerToken = 'cognito-refresh-token-abc';
-      const token = signRefreshToken('user-123', providerToken);
+      const token = jwt.signRefreshToken('user-123', providerToken);
 
       assert.equal(typeof token, 'string', 'should return a string');
 
@@ -86,11 +88,11 @@ describe('jwt.mjs', () => {
 
   describe('verifyToken', () => {
     it('returns decoded payload for a valid token', () => {
-      const token = signAccessToken({
+      const token = jwt.signAccessToken({
         sub: 'user-456',
         email: 'verify@example.com',
       });
-      const payload = verifyToken(token);
+      const payload = jwt.verifyToken(token);
 
       assert.equal(payload.sub, 'user-456', 'sub should match');
       assert.equal(
@@ -120,7 +122,7 @@ describe('jwt.mjs', () => {
         '.invalid-sig';
 
       assert.throws(
-        () => verifyToken(expiredToken),
+        () => jwt.verifyToken(expiredToken),
         (err) => {
           assert.notEqual(
             err.message,
@@ -134,15 +136,14 @@ describe('jwt.mjs', () => {
 
     it('throws for token signed with wrong secret', () => {
       // Sign with one secret, verify with another
-      process.env.JWT_SECRET = 'wrong-secret-key';
-      const token = signAccessToken({
+      const wrongJwt = createJwt({ jwtSecret: 'wrong-secret-key' });
+      const token = wrongJwt.signAccessToken({
         sub: 'user-wrong',
         email: 'wrong@example.com',
       });
 
-      process.env.JWT_SECRET = TEST_SECRET;
       assert.throws(
-        () => verifyToken(token),
+        () => jwt.verifyToken(token),
         (err) => {
           assert.notEqual(
             err.message,
@@ -167,7 +168,7 @@ describe('jwt.mjs', () => {
         '.invalid-sig';
 
       assert.throws(
-        () => verifyToken(wrongIssuerToken),
+        () => jwt.verifyToken(wrongIssuerToken),
         (err) => {
           assert.notEqual(
             err.message,
@@ -181,7 +182,7 @@ describe('jwt.mjs', () => {
 
     it('throws for malformed string', () => {
       assert.throws(
-        () => verifyToken('not-a-jwt'),
+        () => jwt.verifyToken('not-a-jwt'),
         (err) => {
           assert.notEqual(
             err.message,

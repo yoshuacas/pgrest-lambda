@@ -1,7 +1,7 @@
 import { describe, it, beforeEach, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
 
-import provider, { _setClient } from '../providers/cognito.mjs';
+import { createCognitoProvider } from '../providers/cognito.mjs';
 import { createProvider } from '../providers/interface.mjs';
 
 // Helper to create a fake Cognito SDK error
@@ -94,9 +94,13 @@ function createMockClient() {
 }
 
 describe('CognitoProvider', () => {
+  let provider;
+  let _setClient;
+
   beforeEach(() => {
-    process.env.REGION_NAME = 'us-east-1';
-    process.env.USER_POOL_CLIENT_ID = 'test-client-id';
+    const result = createCognitoProvider({ region: 'us-east-1', clientId: 'test-client-id' });
+    provider = result.provider;
+    _setClient = result._setClient;
     _setClient(createMockClient());
   });
 
@@ -314,11 +318,9 @@ describe('CognitoProvider', () => {
   });
 
   describe('createProvider', () => {
-    it('throws error for unknown provider name in AUTH_PROVIDER', () => {
-      process.env.AUTH_PROVIDER = 'unknown-provider';
-
-      assert.throws(
-        () => createProvider(),
+    it('throws error for unknown provider name', async () => {
+      await assert.rejects(
+        () => createProvider({ provider: 'unknown-provider' }),
         (err) => {
           assert.ok(
             err.message.includes('unknown-provider'),
@@ -327,8 +329,6 @@ describe('CognitoProvider', () => {
           return true;
         }
       );
-
-      delete process.env.AUTH_PROVIDER;
     });
   });
 });

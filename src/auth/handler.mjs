@@ -1,24 +1,10 @@
 import { createProvider } from './providers/interface.mjs';
-import { signAccessToken, signRefreshToken, verifyToken } from './jwt.mjs';
 import {
   sessionResponse,
   userResponse,
   logoutResponse,
   errorResponse,
 } from './gotrue-response.mjs';
-
-let provider = null;
-
-async function getProvider() {
-  if (!provider) {
-    provider = await createProvider();
-  }
-  return provider;
-}
-
-export function _setProvider(p) {
-  provider = p;
-}
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -48,178 +34,197 @@ function providerErrorResponse(err) {
   return errorResponse(status, code, desc, extra);
 }
 
-export async function handler(event) {
-  const method = event.httpMethod;
+export function createAuthHandler(config, ctx) {
+  const jwt = ctx.jwt;
 
-  if (method === 'OPTIONS') {
-    const { CORS_HEADERS } = await import('../shared/cors.mjs');
-    return { statusCode: 200, headers: { ...CORS_HEADERS } };
+  async function getProvider() {
+    if (!ctx.authProvider) {
+      const result = await createProvider(config.auth);
+      ctx.authProvider = result.provider;
+      ctx.authProviderSetClient = result._setClient;
+    }
+    return ctx.authProvider;
   }
 
-  const path = event.path || '';
-  const match = path.match(/^\/auth\/v1\/(\w+)$/);
-  if (!match) {
-    return errorResponse(404, 'not_found', 'Endpoint not found');
+  function _setProvider(p) {
+    ctx.authProvider = p;
   }
 
-  const action = match[1];
+  async function handler(event) {
+    const method = event.httpMethod;
 
-  switch (action) {
-    case 'signup':
-      return handleSignup(event);
-    case 'token':
-      return handleToken(event);
-    case 'user':
-      return handleGetUser(event);
-    case 'logout':
-      return handleLogout();
-    default:
+    if (method === 'OPTIONS') {
+      const { CORS_HEADERS } = await import('../shared/cors.mjs');
+      return { statusCode: 200, headers: { ...CORS_HEADERS } };
+    }
+
+    const path = event.path || '';
+    const match = path.match(/^\/auth\/v1\/(\w+)$/);
+    if (!match) {
       return errorResponse(404, 'not_found', 'Endpoint not found');
-  }
-}
+    }
 
-async function handleSignup(event) {
-  const body = JSON.parse(event.body || '{}');
-  const { email, password } = body;
+    const action = match[1];
 
-  if (!email) {
-    return errorResponse(400, 'validation_failed', 'Email is required');
-  }
-  if (!password) {
-    return errorResponse(400, 'validation_failed', 'Password is required');
-  }
-  if (!EMAIL_RE.test(email)) {
-    return errorResponse(400, 'validation_failed', 'Invalid email format');
-  }
-
-  try {
-    const prov = await getProvider();
-    const user = await prov.signUp(email, password);
-    const { providerTokens } = await prov.signIn(email, password);
-    const accessToken = signAccessToken({ sub: user.id, email });
-    const refreshToken = signRefreshToken(
-      user.id,
-      providerTokens.refreshToken
-    );
-    return sessionResponse(accessToken, refreshToken, user);
-  } catch (err) {
-    return providerErrorResponse(err);
-  }
-}
-
-async function handleToken(event) {
-  const query = event.queryStringParameters || {};
-  const grantType = query.grant_type;
-
-  if (!grantType || (grantType !== 'password' && grantType !== 'refresh_token')) {
-    return errorResponse(
-      400,
-      'unsupported_grant_type',
-      'Missing or unsupported grant_type'
-    );
+    switch (action) {
+      case 'signup':
+        return handleSignup(event);
+      case 'token':
+        return handleToken(event);
+      case 'user':
+        return handleGetUser(event);
+      case 'logout':
+        return handleLogout();
+      default:
+        return errorResponse(404, 'not_found', 'Endpoint not found');
+    }
   }
 
-  if (grantType === 'password') {
-    return handlePasswordGrant(event);
-  }
-  return handleRefreshGrant(event);
-}
+  async function handleSignup(event) {
+    const body = JSON.parse(event.body || '{}');
+    const { email, password } = body;
 
-async function handlePasswordGrant(event) {
-  const body = JSON.parse(event.body || '{}');
-  const { email, password } = body;
+    if (!email) {
+      return errorResponse(400, 'validation_failed', 'Email is required');
+    }
+    if (!password) {
+      return errorResponse(400, 'validation_failed', 'Password is required');
+    }
+    if (!EMAIL_RE.test(email)) {
+      return errorResponse(400, 'validation_failed', 'Invalid email format');
+    }
 
-  if (!email) {
-    return errorResponse(400, 'validation_failed', 'Email is required');
-  }
-  if (!password) {
-    return errorResponse(400, 'validation_failed', 'Password is required');
-  }
-
-  try {
-    const prov = await getProvider();
-    const { user, providerTokens } = await prov.signIn(email, password);
-    const accessToken = signAccessToken({ sub: user.id, email: user.email });
-    const refreshToken = signRefreshToken(
-      user.id,
-      providerTokens.refreshToken
-    );
-    return sessionResponse(accessToken, refreshToken, user);
-  } catch (err) {
-    return providerErrorResponse(err);
-  }
-}
-
-async function handleRefreshGrant(event) {
-  const body = JSON.parse(event.body || '{}');
-  const { refresh_token } = body;
-
-  if (!refresh_token) {
-    return errorResponse(
-      400,
-      'validation_failed',
-      'Refresh token is required'
-    );
+    try {
+      const prov = await getProvider();
+      const user = await prov.signUp(email, password);
+      const { providerTokens } = await prov.signIn(email, password);
+      const accessToken = jwt.signAccessToken({ sub: user.id, email });
+      const refreshToken = jwt.signRefreshToken(
+        user.id,
+        providerTokens.refreshToken
+      );
+      return sessionResponse(accessToken, refreshToken, user);
+    } catch (err) {
+      return providerErrorResponse(err);
+    }
   }
 
-  let claims;
-  try {
-    claims = verifyToken(refresh_token);
-  } catch {
-    return errorResponse(401, 'invalid_grant', 'Invalid refresh token');
+  async function handleToken(event) {
+    const query = event.queryStringParameters || {};
+    const grantType = query.grant_type;
+
+    if (!grantType || (grantType !== 'password' && grantType !== 'refresh_token')) {
+      return errorResponse(
+        400,
+        'unsupported_grant_type',
+        'Missing or unsupported grant_type'
+      );
+    }
+
+    if (grantType === 'password') {
+      return handlePasswordGrant(event);
+    }
+    return handleRefreshGrant(event);
   }
 
-  try {
-    const prov = await getProvider();
-    const { user, providerTokens } = await prov.refreshToken(claims.prt);
-    const accessToken = signAccessToken({
-      sub: claims.sub,
-      email: user.email,
-    });
-    const newRefreshToken = signRefreshToken(
-      claims.sub,
-      providerTokens.refreshToken
-    );
-    return sessionResponse(accessToken, newRefreshToken, user);
-  } catch {
-    return errorResponse(401, 'invalid_grant', 'Invalid refresh token');
-  }
-}
+  async function handlePasswordGrant(event) {
+    const body = JSON.parse(event.body || '{}');
+    const { email, password } = body;
 
-async function handleGetUser(event) {
-  const authHeader =
-    event.headers?.Authorization || event.headers?.authorization || '';
+    if (!email) {
+      return errorResponse(400, 'validation_failed', 'Email is required');
+    }
+    if (!password) {
+      return errorResponse(400, 'validation_failed', 'Password is required');
+    }
 
-  if (!authHeader.startsWith('Bearer ')) {
-    return errorResponse(
-      401,
-      'not_authenticated',
-      'Missing authorization header'
-    );
+    try {
+      const prov = await getProvider();
+      const { user, providerTokens } = await prov.signIn(email, password);
+      const accessToken = jwt.signAccessToken({ sub: user.id, email: user.email });
+      const refreshToken = jwt.signRefreshToken(
+        user.id,
+        providerTokens.refreshToken
+      );
+      return sessionResponse(accessToken, refreshToken, user);
+    } catch (err) {
+      return providerErrorResponse(err);
+    }
   }
 
-  const token = authHeader.slice(7);
-  let claims;
-  try {
-    claims = verifyToken(token);
-  } catch {
-    return errorResponse(
-      401,
-      'not_authenticated',
-      'Invalid or expired token'
-    );
+  async function handleRefreshGrant(event) {
+    const body = JSON.parse(event.body || '{}');
+    const { refresh_token } = body;
+
+    if (!refresh_token) {
+      return errorResponse(
+        400,
+        'validation_failed',
+        'Refresh token is required'
+      );
+    }
+
+    let claims;
+    try {
+      claims = jwt.verifyToken(refresh_token);
+    } catch {
+      return errorResponse(401, 'invalid_grant', 'Invalid refresh token');
+    }
+
+    try {
+      const prov = await getProvider();
+      const { user, providerTokens } = await prov.refreshToken(claims.prt);
+      const accessToken = jwt.signAccessToken({
+        sub: claims.sub,
+        email: user.email,
+      });
+      const newRefreshToken = jwt.signRefreshToken(
+        claims.sub,
+        providerTokens.refreshToken
+      );
+      return sessionResponse(accessToken, newRefreshToken, user);
+    } catch {
+      return errorResponse(401, 'invalid_grant', 'Invalid refresh token');
+    }
   }
 
-  const user = {
-    id: claims.sub,
-    email: claims.email,
-    app_metadata: { provider: 'email', providers: ['email'] },
-    user_metadata: {},
-    created_at: new Date().toISOString(),
-  };
-  return userResponse(user);
-}
+  async function handleGetUser(event) {
+    const authHeader =
+      event.headers?.Authorization || event.headers?.authorization || '';
 
-function handleLogout() {
-  return logoutResponse();
+    if (!authHeader.startsWith('Bearer ')) {
+      return errorResponse(
+        401,
+        'not_authenticated',
+        'Missing authorization header'
+      );
+    }
+
+    const token = authHeader.slice(7);
+    let claims;
+    try {
+      claims = jwt.verifyToken(token);
+    } catch {
+      return errorResponse(
+        401,
+        'not_authenticated',
+        'Invalid or expired token'
+      );
+    }
+
+    const user = {
+      id: claims.sub,
+      email: claims.email,
+      app_metadata: { provider: 'email', providers: ['email'] },
+      user_metadata: {},
+      created_at: new Date().toISOString(),
+    };
+    return userResponse(user);
+  }
+
+  function handleLogout() {
+    return logoutResponse();
+  }
+
+  return { handler, _setProvider };
 }

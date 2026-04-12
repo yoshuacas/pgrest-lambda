@@ -1,7 +1,7 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
-import { handler } from '../../authorizer/index.mjs';
+import { createAuthorizer } from '../../authorizer/index.mjs';
 
 const TEST_SECRET = 'test-secret-for-authorizer-tests';
 const TEST_METHOD_ARN =
@@ -70,8 +70,10 @@ const EXPIRED_TOKEN = signJwt({
 });
 
 describe('authorizer', () => {
+  let handler;
+
   beforeEach(() => {
-    process.env.JWT_SECRET = TEST_SECRET;
+    handler = createAuthorizer({ jwtSecret: TEST_SECRET }).handler;
   });
 
   it('allows anon apikey only (no Authorization) with role=anon', async () => {

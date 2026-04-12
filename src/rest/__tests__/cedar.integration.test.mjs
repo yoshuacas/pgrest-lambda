@@ -1,13 +1,9 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { _setPool } from '../db.mjs';
-import { handler } from '../handler.mjs';
-import { _resetCache } from '../schema-cache.mjs';
-import {
-  _setPolicies,
-  loadPolicies,
-  refreshPolicies,
-} from '../cedar.mjs';
+import { createDb } from '../db.mjs';
+import { createRestHandler } from '../handler.mjs';
+import { createSchemaCache } from '../schema-cache.mjs';
+import { createCedar } from '../cedar.mjs';
 
 // --- Default Cedar policy text (matches design doc) ---
 
@@ -164,6 +160,18 @@ function createMockPool() {
   return pool;
 }
 
+// Helper: create wired-up instances for each test
+function createTestContext(mockPool) {
+  const db = createDb({});
+  db._setPool(mockPool || createMockPool());
+
+  const schemaCache = createSchemaCache({});
+
+  const cedar = createCedar({ policiesPath: './policies' });
+
+  return { db, schemaCache, cedar };
+}
+
 // Helper to build a Lambda API Gateway proxy event
 
 function makeEvent({
@@ -205,15 +213,20 @@ function findDataQuery(queries, prefix) {
 // ================================================================
 
 describe('Cedar integration — authenticated GET', () => {
+  let handler;
+  let ctx;
+
   beforeEach(() => {
-    _resetCache();
-    _setPool(createMockPool());
-    _setPolicies({ staticPolicies: DEFAULT_POLICIES });
+    ctx = createTestContext();
+    ctx.schemaCache._resetCache();
+    ctx.cedar._setPolicies({ staticPolicies: DEFAULT_POLICIES });
+    handler = createRestHandler(ctx).handler;
   });
 
   it('GET /rest/v1/todos returns only owned rows (backward compat)', async () => {
     const mockPool = createMockPool();
-    _setPool(mockPool);
+    ctx.db._setPool(mockPool);
+    ctx.schemaCache._resetCache();
 
     const event = makeEvent({
       method: 'GET',
@@ -235,7 +248,8 @@ describe('Cedar integration — authenticated GET', () => {
 
   it('service_role GET returns all rows (no authz WHERE)', async () => {
     const mockPool = createMockPool();
-    _setPool(mockPool);
+    ctx.db._setPool(mockPool);
+    ctx.schemaCache._resetCache();
 
     const event = makeEvent({
       method: 'GET',
@@ -277,15 +291,20 @@ describe('Cedar integration — authenticated GET', () => {
 // ================================================================
 
 describe('Cedar integration — INSERT', () => {
+  let handler;
+  let ctx;
+
   beforeEach(() => {
-    _resetCache();
-    _setPool(createMockPool());
-    _setPolicies({ staticPolicies: DEFAULT_POLICIES });
+    ctx = createTestContext();
+    ctx.schemaCache._resetCache();
+    ctx.cedar._setPolicies({ staticPolicies: DEFAULT_POLICIES });
+    handler = createRestHandler(ctx).handler;
   });
 
   it('authenticated INSERT allowed without user_id injection', async () => {
     const mockPool = createMockPool();
-    _setPool(mockPool);
+    ctx.db._setPool(mockPool);
+    ctx.schemaCache._resetCache();
 
     const event = makeEvent({
       method: 'POST',
@@ -316,17 +335,22 @@ describe('Cedar integration — INSERT', () => {
 // ================================================================
 
 describe('Cedar integration — DELETE with forbid', () => {
+  let handler;
+  let ctx;
+
   beforeEach(() => {
-    _resetCache();
-    _setPool(createMockPool());
-    _setPolicies({
+    ctx = createTestContext();
+    ctx.schemaCache._resetCache();
+    ctx.cedar._setPolicies({
       staticPolicies: FORBID_DELETE_ARCHIVED_POLICY,
     });
+    handler = createRestHandler(ctx).handler;
   });
 
   it('DELETE with forbid-archived policy includes NOT condition', async () => {
     const mockPool = createMockPool();
-    _setPool(mockPool);
+    ctx.db._setPool(mockPool);
+    ctx.schemaCache._resetCache();
 
     const event = makeEvent({
       method: 'DELETE',
@@ -353,15 +377,20 @@ describe('Cedar integration — DELETE with forbid', () => {
 // ================================================================
 
 describe('Cedar integration — custom public table', () => {
+  let handler;
+  let ctx;
+
   beforeEach(() => {
-    _resetCache();
-    _setPool(createMockPool());
-    _setPolicies({ staticPolicies: PUBLIC_POSTS_POLICY });
+    ctx = createTestContext();
+    ctx.schemaCache._resetCache();
+    ctx.cedar._setPolicies({ staticPolicies: PUBLIC_POSTS_POLICY });
+    handler = createRestHandler(ctx).handler;
   });
 
   it('anon GET on public_posts with custom policy returns 200', async () => {
     const mockPool = createMockPool();
-    _setPool(mockPool);
+    ctx.db._setPool(mockPool);
+    ctx.schemaCache._resetCache();
 
     const event = makeEvent({
       method: 'GET',
@@ -392,10 +421,14 @@ describe('Cedar integration — custom public table', () => {
 // ================================================================
 
 describe('Cedar integration — default deny', () => {
+  let handler;
+  let ctx;
+
   beforeEach(() => {
-    _resetCache();
-    _setPool(createMockPool());
-    _setPolicies({ staticPolicies: DEFAULT_POLICIES });
+    ctx = createTestContext();
+    ctx.schemaCache._resetCache();
+    ctx.cedar._setPolicies({ staticPolicies: DEFAULT_POLICIES });
+    handler = createRestHandler(ctx).handler;
   });
 
   it('authenticated GET on table with no matching policy returns 403', async () => {
@@ -419,10 +452,14 @@ describe('Cedar integration — default deny', () => {
 // ================================================================
 
 describe('Cedar integration — policy refresh', () => {
+  let handler;
+  let ctx;
+
   beforeEach(() => {
-    _resetCache();
-    _setPool(createMockPool());
-    _setPolicies({ staticPolicies: DEFAULT_POLICIES });
+    ctx = createTestContext();
+    ctx.schemaCache._resetCache();
+    ctx.cedar._setPolicies({ staticPolicies: DEFAULT_POLICIES });
+    handler = createRestHandler(ctx).handler;
   });
 
   it('POST /rest/v1/_refresh reloads Cedar policies', async () => {
@@ -438,8 +475,8 @@ describe('Cedar integration — policy refresh', () => {
       'anon should be denied before policy refresh');
 
     // Trigger refresh (reloads schema + policies from disk)
-    _resetCache();
-    _setPool(createMockPool());
+    ctx.schemaCache._resetCache();
+    ctx.db._setPool(createMockPool());
     const refreshEvent = makeEvent({
       method: 'POST',
       path: '/rest/v1/_refresh',
@@ -449,11 +486,11 @@ describe('Cedar integration — policy refresh', () => {
       '_refresh should return 200');
 
     // Simulate deploying new policies that allow anon on public_posts
-    _setPolicies({ staticPolicies: PUBLIC_POSTS_POLICY });
+    ctx.cedar._setPolicies({ staticPolicies: PUBLIC_POSTS_POLICY });
 
     // Now anon should be allowed on public_posts
-    _resetCache();
-    _setPool(createMockPool());
+    ctx.schemaCache._resetCache();
+    ctx.db._setPool(createMockPool());
     const event2 = makeEvent({
       method: 'GET',
       path: '/rest/v1/public_posts',
@@ -471,15 +508,20 @@ describe('Cedar integration — policy refresh', () => {
 // ================================================================
 
 describe('Cedar integration — combined filters', () => {
+  let handler;
+  let ctx;
+
   beforeEach(() => {
-    _resetCache();
-    _setPool(createMockPool());
-    _setPolicies({ staticPolicies: DEFAULT_POLICIES });
+    ctx = createTestContext();
+    ctx.schemaCache._resetCache();
+    ctx.cedar._setPolicies({ staticPolicies: DEFAULT_POLICIES });
+    handler = createRestHandler(ctx).handler;
   });
 
   it('PostgREST filters combined with Cedar conditions have correct param numbering', async () => {
     const mockPool = createMockPool();
-    _setPool(mockPool);
+    ctx.db._setPool(mockPool);
+    ctx.schemaCache._resetCache();
 
     const event = makeEvent({
       method: 'GET',
@@ -516,15 +558,20 @@ describe('Cedar integration — combined filters', () => {
 // ================================================================
 
 describe('Cedar integration — backward compatibility', () => {
+  let handler;
+  let ctx;
+
   beforeEach(() => {
-    _resetCache();
-    _setPool(createMockPool());
-    _setPolicies({ staticPolicies: DEFAULT_POLICIES });
+    ctx = createTestContext();
+    ctx.schemaCache._resetCache();
+    ctx.cedar._setPolicies({ staticPolicies: DEFAULT_POLICIES });
+    handler = createRestHandler(ctx).handler;
   });
 
   it('same result set as old appendUserId for owned rows', async () => {
     const mockPool = createMockPool();
-    _setPool(mockPool);
+    ctx.db._setPool(mockPool);
+    ctx.schemaCache._resetCache();
 
     const event = makeEvent({
       method: 'GET',
@@ -548,7 +595,8 @@ describe('Cedar integration — backward compatibility', () => {
 
   it('service_role still sees all rows', async () => {
     const mockPool = createMockPool();
-    _setPool(mockPool);
+    ctx.db._setPool(mockPool);
+    ctx.schemaCache._resetCache();
 
     const event = makeEvent({
       method: 'GET',

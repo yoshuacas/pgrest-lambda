@@ -17,14 +17,15 @@
  */
 
 /**
- * Returns an AuthProvider based on AUTH_PROVIDER env var.
- * Default: 'cognito'.
+ * Returns an AuthProvider based on config.
  */
-export function createProvider() {
-  const name = process.env.AUTH_PROVIDER || 'cognito';
+export async function createProvider(config) {
+  const name = config.provider || 'cognito';
   switch (name) {
-    case 'cognito':
-      return import('./cognito.mjs').then(m => m.default);
+    case 'cognito': {
+      const { createCognitoProvider } = await import('./cognito.mjs');
+      return createCognitoProvider(config);
+    }
     default:
       throw new Error(`Unknown auth provider: ${name}`);
   }

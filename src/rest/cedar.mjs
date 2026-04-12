@@ -8,14 +8,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { PostgRESTError } from './errors.mjs';
 
-// --- Module-scoped policy cache ---
-
-let cachedPolicies = null;
-let policiesLoadedAt = 0;
-let cachedPoliciesPath = null;
-const POLICIES_TTL = 300_000; // 5 minutes
-
-// --- Policy loading ---
+// --- Policy loading helpers (stateless) ---
 
 async function loadFromFilesystem(dirPath) {
   try {
@@ -32,12 +25,10 @@ async function loadFromFilesystem(dirPath) {
   }
 }
 
-async function loadFromS3(bucket, prefix) {
+async function loadFromS3(bucket, prefix, region) {
   const { S3Client, ListObjectsV2Command, GetObjectCommand } =
     await import('@aws-sdk/client-s3');
-  const s3 = new S3Client({
-    region: process.env.REGION_NAME,
-  });
+  const s3 = new S3Client({ region });
   const list = await s3.send(new ListObjectsV2Command({
     Bucket: bucket,
     Prefix: prefix,
@@ -51,53 +42,6 @@ async function loadFromS3(bucket, prefix) {
     policyTexts.push(await resp.Body.transformToString());
   }
   return policyTexts.join('\n');
-}
-
-async function loadPolicyText() {
-  const bucket = process.env.POLICIES_BUCKET;
-  const prefix = process.env.POLICIES_PREFIX;
-  if (bucket) {
-    return loadFromS3(bucket, prefix || 'policies/');
-  }
-  const dirPath = process.env.POLICIES_PATH || './policies';
-  return loadFromFilesystem(dirPath);
-}
-
-function currentSourceKey() {
-  const bucket = process.env.POLICIES_BUCKET;
-  if (bucket) {
-    const prefix = process.env.POLICIES_PREFIX || 'policies/';
-    return `s3://${bucket}/${prefix}`;
-  }
-  return process.env.POLICIES_PATH || './policies';
-}
-
-export async function loadPolicies() {
-  const now = Date.now();
-  const sourceKey = currentSourceKey();
-  if (cachedPolicies
-      && (now - policiesLoadedAt) < POLICIES_TTL
-      && sourceKey === cachedPoliciesPath) {
-    return;
-  }
-  const text = await loadPolicyText();
-  cachedPolicies = text ? { staticPolicies: text } : null;
-  cachedPoliciesPath = sourceKey;
-  policiesLoadedAt = now;
-}
-
-export async function refreshPolicies() {
-  cachedPolicies = null;
-  policiesLoadedAt = 0;
-  const text = await loadPolicyText();
-  cachedPolicies = text ? { staticPolicies: text } : null;
-  policiesLoadedAt = Date.now();
-}
-
-export function _setPolicies(policies) {
-  cachedPolicies = policies;
-  policiesLoadedAt = Date.now();
-  cachedPoliciesPath = process.env.POLICIES_PATH || './policies';
 }
 
 // --- PG type to Cedar type mapping ---
@@ -241,23 +185,19 @@ function resolveValue(node) {
   return undefined;
 }
 
-// Returns a SQL condition string, null for TRUE, or 'FALSE'.
 export function translateExpr(expr, values, tableName, schema) {
   if (expr == null) return null;
 
-  // Boolean literal
   if ('Value' in expr) {
     if (expr.Value === true) return null;
     if (expr.Value === false) return 'FALSE';
     return null;
   }
 
-  // Type check: is
   if ('is' in expr) {
     return expr.is.entity_type === 'PgrestLambda::Row' ? null : 'FALSE';
   }
 
-  // Has-attribute
   if ('has' in expr) {
     const attr = expr.has.attr;
     if (schema?.tables?.[tableName]?.columns
@@ -267,7 +207,6 @@ export function translateExpr(expr, values, tableName, schema) {
     return `"${attr}" IS NOT NULL`;
   }
 
-  // AND
   if ('&&' in expr) {
     const left = translateExpr(expr['&&'].left, values, tableName, schema);
     const right = translateExpr(expr['&&'].right, values, tableName, schema);
@@ -278,7 +217,6 @@ export function translateExpr(expr, values, tableName, schema) {
     return `(${left} AND ${right})`;
   }
 
-  // OR (lazy: true OR anything = true)
   if ('||' in expr) {
     const left = translateExpr(expr['||'].left, values, tableName, schema);
     if (left === null) return null;
@@ -290,7 +228,6 @@ export function translateExpr(expr, values, tableName, schema) {
     return `(${left} OR ${right})`;
   }
 
-  // NOT
   if ('!' in expr) {
     const inner = translateExpr(expr['!'].arg, values, tableName, schema);
     if (inner === null) return 'FALSE';
@@ -298,7 +235,6 @@ export function translateExpr(expr, values, tableName, schema) {
     return `NOT (${inner})`;
   }
 
-  // Comparison operators
   const COMP_OPS = {
     '==': '=', '!=': '!=', '>': '>', '>=': '>=', '<': '<', '<=': '<=',
   };
@@ -324,7 +260,6 @@ export function translateExpr(expr, values, tableName, schema) {
     }
   }
 
-  // if-then-else
   if ('if-then-else' in expr) {
     const ite = expr['if-then-else'];
     const ifSql = translateExpr(ite.if, values, tableName, schema);
@@ -337,7 +272,6 @@ export function translateExpr(expr, values, tableName, schema) {
     return `CASE WHEN ${ifSql} THEN ${thenStr} ELSE ${elseStr} END`;
   }
 
-  // Untranslatable expressions
   const UNTRANSLATABLE = [
     'in', 'contains', 'containsAll', 'containsAny',
     'like', 'isEmpty', 'hasTag', 'getTag',
@@ -357,159 +291,215 @@ export function translateExpr(expr, values, tableName, schema) {
   );
 }
 
-// --- Table-level authorization ---
+// --- Factory ---
 
-export function authorize({ principal, action, resource, schema }) {
-  if (!cachedPolicies) {
+export function createCedar(config) {
+  let cachedPolicies = null;
+  let policiesLoadedAt = 0;
+  let cachedPoliciesPath = null;
+  const policiesTtl = config.policiesTtl || 300_000;
+
+  function loadPolicyText() {
+    if (config.policiesBucket) {
+      return loadFromS3(
+        config.policiesBucket,
+        config.policiesPrefix || 'policies/',
+        config.region,
+      );
+    }
+    return loadFromFilesystem(config.policiesPath || './policies');
+  }
+
+  function currentSourceKey() {
+    if (config.policiesBucket) {
+      const prefix = config.policiesPrefix || 'policies/';
+      return `s3://${config.policiesBucket}/${prefix}`;
+    }
+    return config.policiesPath || './policies';
+  }
+
+  async function loadPolicies() {
+    const now = Date.now();
+    const sourceKey = currentSourceKey();
+    if (cachedPolicies
+        && (now - policiesLoadedAt) < policiesTtl
+        && sourceKey === cachedPoliciesPath) {
+      return;
+    }
+    const text = await loadPolicyText();
+    cachedPolicies = text ? { staticPolicies: text } : null;
+    cachedPoliciesPath = sourceKey;
+    policiesLoadedAt = now;
+  }
+
+  async function refreshPolicies() {
+    cachedPolicies = null;
+    policiesLoadedAt = 0;
+    const text = await loadPolicyText();
+    cachedPolicies = text ? { staticPolicies: text } : null;
+    policiesLoadedAt = Date.now();
+  }
+
+  function _setPolicies(policies) {
+    cachedPolicies = policies;
+    policiesLoadedAt = Date.now();
+    cachedPoliciesPath = config.policiesPath || './policies';
+  }
+
+  function authorize({ principal, action, resource, schema }) {
+    if (!cachedPolicies) {
+      throw new PostgRESTError(
+        403, 'PGRST403',
+        `Not authorized to ${action} on '${resource}'`,
+      );
+    }
+
+    const principalUid = buildPrincipalUid(principal.role, principal.userId);
+    const entities = buildEntities(principalUid, principal, schema);
+    const actionUid = { type: 'PgrestLambda::Action', id: action };
+
+    const result = isAuthorized({
+      principal: principalUid,
+      action: actionUid,
+      resource: { type: 'PgrestLambda::Table', id: resource },
+      context: { table: resource },
+      policies: cachedPolicies,
+      entities,
+    });
+
+    if (result.type === 'success' && result.response.decision === 'allow') {
+      return true;
+    }
+
+    const partial = isAuthorizedPartial({
+      principal: principalUid,
+      action: actionUid,
+      resource: null,
+      context: { table: resource },
+      policies: cachedPolicies,
+      entities,
+    });
+
+    if (partial.type === 'residuals') {
+      const resp = partial.response;
+      if (resp.decision === 'allow') return true;
+      if (resp.decision !== 'deny' && resp.nontrivialResiduals.length > 0) {
+        return true;
+      }
+    }
+
     throw new PostgRESTError(
       403, 'PGRST403',
       `Not authorized to ${action} on '${resource}'`,
     );
   }
 
-  const principalUid = buildPrincipalUid(principal.role, principal.userId);
-  const entities = buildEntities(principalUid, principal, schema);
-  const actionUid = { type: 'PgrestLambda::Action', id: action };
-
-  // Concrete check with Table resource
-  const result = isAuthorized({
-    principal: principalUid,
-    action: actionUid,
-    resource: { type: 'PgrestLambda::Table', id: resource },
-    context: { table: resource },
-    policies: cachedPolicies,
-    entities,
-  });
-
-  if (result.type === 'success' && result.response.decision === 'allow') {
-    return true;
-  }
-
-  // Fallback: partial evaluation to check row-level policies
-  const partial = isAuthorizedPartial({
-    principal: principalUid,
-    action: actionUid,
-    resource: null,
-    context: { table: resource },
-    policies: cachedPolicies,
-    entities,
-  });
-
-  if (partial.type === 'residuals') {
-    const resp = partial.response;
-    if (resp.decision === 'allow') return true;
-    if (resp.decision !== 'deny' && resp.nontrivialResiduals.length > 0) {
-      return true;
-    }
-  }
-
-  throw new PostgRESTError(
-    403, 'PGRST403',
-    `Not authorized to ${action} on '${resource}'`,
-  );
-}
-
-// --- Row-level partial evaluation ---
-
-export function buildAuthzFilter({
-  principal, action, context, schema, startParam,
-}) {
-  if (!cachedPolicies) {
-    throw new PostgRESTError(
-      403, 'PGRST403',
-      `Not authorized to ${action} on '${context.table}'`,
-    );
-  }
-
-  const principalUid = buildPrincipalUid(principal.role, principal.userId);
-  const entities = buildEntities(principalUid, principal, schema);
-  const actionUid = { type: 'PgrestLambda::Action', id: action };
-
-  const result = isAuthorizedPartial({
-    principal: principalUid,
-    action: actionUid,
-    resource: null,
-    context: context || {},
-    policies: cachedPolicies,
-    entities,
-  });
-
-  if (result.type === 'failure') {
-    throw new PostgRESTError(
-      403, 'PGRST403',
-      `Not authorized to ${action} on '${context.table}'`,
-    );
-  }
-
-  const response = result.response;
-
-  if (response.decision === 'allow'
-      && response.nontrivialResiduals.length === 0) {
-    return { conditions: [], values: [] };
-  }
-
-  if (response.decision === 'deny') {
-    throw new PostgRESTError(
-      403, 'PGRST403',
-      `Not authorized to ${action} on '${context.table}'`,
-    );
-  }
-
-  // Process residuals — use temp array with offset for param numbering
-  const tempValues = new Array(startParam - 1);
-  const permitConditions = [];
-  const forbidConditions = [];
-  let anyPermitGrantsAccess = false;
-
-  for (const policyId of response.nontrivialResiduals) {
-    const residual = response.residuals[policyId];
-    const effect = residual.effect;
-
-    for (const cond of residual.conditions || []) {
-      if (cond.kind !== 'when') continue;
-      const sql = translateExpr(
-        cond.body, tempValues, context.table, schema,
+  function buildAuthzFilter({
+    principal, action, context, schema, startParam,
+  }) {
+    if (!cachedPolicies) {
+      throw new PostgRESTError(
+        403, 'PGRST403',
+        `Not authorized to ${action} on '${context.table}'`,
       );
-      if (sql === null) {
-        if (effect === 'permit') {
-          return { conditions: [], values: [] };
-        }
-        if (effect === 'forbid') {
-          throw new PostgRESTError(
-            403, 'PGRST403',
-            `Not authorized to ${action} on '${context.table}'`,
-          );
-        }
-      } else if (sql !== 'FALSE') {
-        if (effect === 'permit') {
-          permitConditions.push(sql);
-          anyPermitGrantsAccess = true;
-        } else if (effect === 'forbid') {
-          forbidConditions.push(sql);
+    }
+
+    const principalUid = buildPrincipalUid(principal.role, principal.userId);
+    const entities = buildEntities(principalUid, principal, schema);
+    const actionUid = { type: 'PgrestLambda::Action', id: action };
+
+    const result = isAuthorizedPartial({
+      principal: principalUid,
+      action: actionUid,
+      resource: null,
+      context: context || {},
+      policies: cachedPolicies,
+      entities,
+    });
+
+    if (result.type === 'failure') {
+      throw new PostgRESTError(
+        403, 'PGRST403',
+        `Not authorized to ${action} on '${context.table}'`,
+      );
+    }
+
+    const response = result.response;
+
+    if (response.decision === 'allow'
+        && response.nontrivialResiduals.length === 0) {
+      return { conditions: [], values: [] };
+    }
+
+    if (response.decision === 'deny') {
+      throw new PostgRESTError(
+        403, 'PGRST403',
+        `Not authorized to ${action} on '${context.table}'`,
+      );
+    }
+
+    const tempValues = new Array(startParam - 1);
+    const permitConditions = [];
+    const forbidConditions = [];
+    let anyPermitGrantsAccess = false;
+
+    for (const policyId of response.nontrivialResiduals) {
+      const residual = response.residuals[policyId];
+      const effect = residual.effect;
+
+      for (const cond of residual.conditions || []) {
+        if (cond.kind !== 'when') continue;
+        const sql = translateExpr(
+          cond.body, tempValues, context.table, schema,
+        );
+        if (sql === null) {
+          if (effect === 'permit') {
+            return { conditions: [], values: [] };
+          }
+          if (effect === 'forbid') {
+            throw new PostgRESTError(
+              403, 'PGRST403',
+              `Not authorized to ${action} on '${context.table}'`,
+            );
+          }
+        } else if (sql !== 'FALSE') {
+          if (effect === 'permit') {
+            permitConditions.push(sql);
+            anyPermitGrantsAccess = true;
+          } else if (effect === 'forbid') {
+            forbidConditions.push(sql);
+          }
         }
       }
     }
+
+    if (!anyPermitGrantsAccess && forbidConditions.length === 0) {
+      throw new PostgRESTError(
+        403, 'PGRST403',
+        `Not authorized to ${action} on '${context.table}'`,
+      );
+    }
+
+    const allConditions = [];
+    if (permitConditions.length > 1) {
+      allConditions.push(`(${permitConditions.join(' OR ')})`);
+    } else if (permitConditions.length === 1) {
+      allConditions.push(permitConditions[0]);
+    }
+    for (const fc of forbidConditions) {
+      allConditions.push(`NOT (${fc})`);
+    }
+
+    const authzValues = tempValues.slice(startParam - 1);
+    return { conditions: allConditions, values: authzValues };
   }
 
-  // If no permit grants access, deny
-  if (!anyPermitGrantsAccess && forbidConditions.length === 0) {
-    throw new PostgRESTError(
-      403, 'PGRST403',
-      `Not authorized to ${action} on '${context.table}'`,
-    );
-  }
-
-  // Build combined conditions
-  const allConditions = [];
-  if (permitConditions.length > 1) {
-    allConditions.push(`(${permitConditions.join(' OR ')})`);
-  } else if (permitConditions.length === 1) {
-    allConditions.push(permitConditions[0]);
-  }
-  for (const fc of forbidConditions) {
-    allConditions.push(`NOT (${fc})`);
-  }
-
-  const authzValues = tempValues.slice(startParam - 1);
-  return { conditions: allConditions, values: authzValues };
+  return {
+    loadPolicies,
+    refreshPolicies,
+    _setPolicies,
+    authorize,
+    buildAuthzFilter,
+    generateCedarSchema,
+  };
 }

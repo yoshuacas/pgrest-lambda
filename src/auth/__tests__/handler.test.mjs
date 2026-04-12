@@ -1,7 +1,9 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { handler, _setProvider } from '../handler.mjs';
-import { signAccessToken, signRefreshToken } from '../jwt.mjs';
+import { createAuthHandler } from '../handler.mjs';
+import { createJwt } from '../jwt.mjs';
+
+const TEST_SECRET = 'test-secret-for-handler';
 
 // Mock provider that responds based on email/password values
 function createMockProvider() {
@@ -93,9 +95,19 @@ function parseBody(response) {
 }
 
 describe('handler.mjs', () => {
+  let handler;
+  let _setProvider;
+  let jwt;
+
   beforeEach(() => {
-    process.env.JWT_SECRET = 'test-secret-for-handler';
-    process.env.AUTH_PROVIDER = 'cognito';
+    jwt = createJwt({ jwtSecret: TEST_SECRET });
+    const ctx = { jwt, authProvider: null };
+    const result = createAuthHandler(
+      { auth: { provider: 'cognito' }, jwtSecret: TEST_SECRET },
+      ctx,
+    );
+    handler = result.handler;
+    _setProvider = result._setProvider;
     _setProvider(createMockProvider());
   });
 
@@ -401,7 +413,7 @@ describe('handler.mjs', () => {
 
   describe('POST /auth/v1/token?grant_type=refresh_token', () => {
     it('returns 200 with new session for valid refresh_token', async () => {
-      const validRefreshJwt = signRefreshToken(
+      const validRefreshJwt = jwt.signRefreshToken(
         'test-user-id-123',
         'cognito-refresh-token'
       );
@@ -461,7 +473,7 @@ describe('handler.mjs', () => {
 
   describe('GET /auth/v1/user', () => {
     it('returns 200 with user for valid Bearer token', async () => {
-      const validAccessJwt = signAccessToken({
+      const validAccessJwt = jwt.signAccessToken({
         sub: 'test-user-id-123',
         email: 'test@example.com',
       });

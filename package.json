@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "description": "A serverless REST API for any PostgreSQL database",
   "type": "module",
+  "exports": {
+    ".": "./src/index.mjs"
+  },
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -27,8 +30,6 @@
   },
   "devDependencies": {},
   "scripts": {
-    "test": "node --test 'src/**/*.test.mjs'",
-    "deploy": "sam build && sam deploy --guided",
-    "validate": "sam validate"
+    "test": "node --test 'src/**/*.test.mjs'"
   }
 }

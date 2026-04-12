@@ -1,9 +1,5 @@
 // schema-cache.mjs — pg_catalog introspection + TTL cache
 
-let cache = null;
-let lastRefreshAt = 0;
-const TTL = parseInt(process.env.SCHEMA_CACHE_TTL_MS || '300000');
-
 const COLUMNS_SQL = `
   SELECT c.relname AS table_name,
          a.attname AS column_name,
@@ -61,27 +57,36 @@ async function introspect(pool) {
   return { tables };
 }
 
-export function _resetCache() {
-  cache = null;
-  lastRefreshAt = 0;
-}
+export function createSchemaCache(config) {
+  const ttl = config.schemaCacheTtl || 300000;
+  let cache = null;
+  let lastRefreshAt = 0;
 
-export async function getSchema(pool) {
-  const now = Date.now();
-  if (cache && (now - lastRefreshAt) < TTL) {
+  function _resetCache() {
+    cache = null;
+    lastRefreshAt = 0;
+  }
+
+  async function getSchema(pool) {
+    const now = Date.now();
+    if (cache && (now - lastRefreshAt) < ttl) {
+      return cache;
+    }
+    cache = await introspect(pool);
+    lastRefreshAt = Date.now();
     return cache;
   }
-  cache = await introspect(pool);
-  lastRefreshAt = Date.now();
-  return cache;
+
+  async function refresh(pool) {
+    cache = await introspect(pool);
+    lastRefreshAt = Date.now();
+    return cache;
+  }
+
+  return { getSchema, refresh, _resetCache };
 }
 
-export async function refresh(pool) {
-  cache = await introspect(pool);
-  lastRefreshAt = Date.now();
-  return cache;
-}
-
+// Pure helpers — no state, exported directly
 export function hasTable(schema, table) {
   return Boolean(schema.tables[table]);
 }

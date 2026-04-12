@@ -5,13 +5,16 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   translateExpr,
-  generateCedarSchema,
-  loadPolicies,
-  refreshPolicies,
-  authorize,
-  buildAuthzFilter,
-  _setPolicies,
+  createCedar,
 } from '../cedar.mjs';
+
+// Helper: create a cedar instance with test defaults
+function makeCedar(opts = {}) {
+  return createCedar({
+    policiesPath: opts.policiesPath || './policies',
+    ...opts,
+  });
+}
 
 const schema = {
   tables: {
@@ -487,7 +490,8 @@ describe('generateCedarSchema', () => {
         },
       },
     };
-    const cedarSchema = generateCedarSchema(testSchema);
+    const cedar = makeCedar();
+    const cedarSchema = cedar.generateCedarSchema(testSchema);
     // Walk into the schema to find Row entity attributes
     const ns = cedarSchema['PgrestLambda'] || cedarSchema;
     const rowType = ns.entityTypes?.Row
@@ -514,7 +518,8 @@ describe('generateCedarSchema', () => {
         },
       },
     };
-    const cedarSchema = generateCedarSchema(testSchema);
+    const cedar = makeCedar();
+    const cedarSchema = cedar.generateCedarSchema(testSchema);
     const ns = cedarSchema['PgrestLambda'] || cedarSchema;
     const rowType = ns.entityTypes?.Row
       || ns.entityTypes?.['PgrestLambda::Row'];
@@ -538,7 +543,8 @@ describe('generateCedarSchema', () => {
         },
       },
     };
-    const cedarSchema = generateCedarSchema(testSchema);
+    const cedar = makeCedar();
+    const cedarSchema = cedar.generateCedarSchema(testSchema);
     const ns = cedarSchema['PgrestLambda'] || cedarSchema;
     const rowType = ns.entityTypes?.Row
       || ns.entityTypes?.['PgrestLambda::Row'];
@@ -564,7 +570,8 @@ describe('generateCedarSchema', () => {
         },
       },
     };
-    const cedarSchema = generateCedarSchema(testSchema);
+    const cedar = makeCedar();
+    const cedarSchema = cedar.generateCedarSchema(testSchema);
     const ns = cedarSchema['PgrestLambda'] || cedarSchema;
     const rowType = ns.entityTypes?.Row
       || ns.entityTypes?.['PgrestLambda::Row'];
@@ -592,7 +599,8 @@ describe('generateCedarSchema', () => {
         },
       },
     };
-    const cedarSchema = generateCedarSchema(testSchema);
+    const cedar = makeCedar();
+    const cedarSchema = cedar.generateCedarSchema(testSchema);
     const ns = cedarSchema['PgrestLambda'] || cedarSchema;
     const rowType = ns.entityTypes?.Row
       || ns.entityTypes?.['PgrestLambda::Row'];
@@ -619,7 +627,6 @@ describe('policy loading', () => {
     if (tempDir) {
       await rm(tempDir, { recursive: true, force: true });
     }
-    delete process.env.POLICIES_PATH;
   });
 
   it('loadPolicies loads .cedar files from filesystem', async () => {
@@ -627,18 +634,18 @@ describe('policy loading', () => {
       join(tempDir, 'default.cedar'),
       DEFAULT_POLICIES,
     );
-    process.env.POLICIES_PATH = tempDir;
+    const cedar = makeCedar({ policiesPath: tempDir });
     await assert.doesNotReject(
-      () => loadPolicies(),
+      () => cedar.loadPolicies(),
       'loadPolicies should resolve without error',
     );
   });
 
   it('loadPolicies with no .cedar files denies all (fail closed)', async () => {
-    process.env.POLICIES_PATH = tempDir;
-    await loadPolicies();
+    const cedar = makeCedar({ policiesPath: tempDir });
+    await cedar.loadPolicies();
     assert.throws(
-      () => authorize({
+      () => cedar.authorize({
         principal: {
           role: 'authenticated',
           userId: 'alice',
@@ -658,10 +665,10 @@ describe('policy loading', () => {
       join(tempDir, 'bad.cedar'),
       'this is not valid cedar syntax {{{{',
     );
-    process.env.POLICIES_PATH = tempDir;
-    await loadPolicies();
+    const cedar = makeCedar({ policiesPath: tempDir });
+    await cedar.loadPolicies();
     assert.throws(
-      () => authorize({
+      () => cedar.authorize({
         principal: {
           role: 'authenticated',
           userId: 'alice',
@@ -680,13 +687,13 @@ describe('policy loading', () => {
       join(tempDir, 'default.cedar'),
       DEFAULT_POLICIES,
     );
-    process.env.POLICIES_PATH = tempDir;
-    await loadPolicies();
+    const cedar = makeCedar({ policiesPath: tempDir });
+    await cedar.loadPolicies();
     // Remove the file — if caching works, the second call
     // should succeed without re-reading the filesystem
     await rm(join(tempDir, 'default.cedar'));
     await assert.doesNotReject(
-      () => loadPolicies(),
+      () => cedar.loadPolicies(),
       'second loadPolicies call should use cached policies',
     );
   });
@@ -696,17 +703,17 @@ describe('policy loading', () => {
       join(tempDir, 'default.cedar'),
       DEFAULT_POLICIES,
     );
-    process.env.POLICIES_PATH = tempDir;
-    await loadPolicies();
+    const cedar = makeCedar({ policiesPath: tempDir });
+    await cedar.loadPolicies();
     // Write updated policy that grants anon access to public_posts
     await writeFile(
       join(tempDir, 'default.cedar'),
       PUBLIC_POSTS_POLICY,
     );
-    await refreshPolicies();
+    await cedar.refreshPolicies();
     // After refresh, anon should be allowed on public_posts
     assert.doesNotThrow(
-      () => authorize({
+      () => cedar.authorize({
         principal: { role: 'anon', userId: '', email: '' },
         action: 'select',
         resource: 'public_posts',
@@ -717,9 +724,10 @@ describe('policy loading', () => {
   });
 
   it('_setPolicies replaces compiled policies', () => {
-    _setPolicies({ staticPolicies: PUBLIC_POSTS_POLICY });
+    const cedar = makeCedar();
+    cedar._setPolicies({ staticPolicies: PUBLIC_POSTS_POLICY });
     assert.doesNotThrow(
-      () => authorize({
+      () => cedar.authorize({
         principal: { role: 'anon', userId: '', email: '' },
         action: 'select',
         resource: 'public_posts',
@@ -735,13 +743,16 @@ describe('policy loading', () => {
 // ================================================================
 
 describe('authorize (table-level)', () => {
+  let cedar;
+
   beforeEach(() => {
-    _setPolicies({ staticPolicies: DEFAULT_POLICIES });
+    cedar = makeCedar();
+    cedar._setPolicies({ staticPolicies: DEFAULT_POLICIES });
   });
 
   it('service_role allowed on any table and action', () => {
     assert.doesNotThrow(
-      () => authorize({
+      () => cedar.authorize({
         principal: {
           role: 'service_role',
           userId: '',
@@ -757,7 +768,7 @@ describe('authorize (table-level)', () => {
 
   it('authenticated user allowed to insert', () => {
     assert.doesNotThrow(
-      () => authorize({
+      () => cedar.authorize({
         principal: {
           role: 'authenticated',
           userId: 'alice',
@@ -773,7 +784,7 @@ describe('authorize (table-level)', () => {
 
   it('anon user denied by default policies', () => {
     assert.throws(
-      () => authorize({
+      () => cedar.authorize({
         principal: { role: 'anon', userId: '', email: '' },
         action: 'select',
         resource: 'todos',
@@ -786,9 +797,9 @@ describe('authorize (table-level)', () => {
   });
 
   it('custom policy allows anon select on specific table', () => {
-    _setPolicies({ staticPolicies: PUBLIC_POSTS_POLICY });
+    cedar._setPolicies({ staticPolicies: PUBLIC_POSTS_POLICY });
     assert.doesNotThrow(
-      () => authorize({
+      () => cedar.authorize({
         principal: { role: 'anon', userId: '', email: '' },
         action: 'select',
         resource: 'public_posts',
@@ -804,12 +815,15 @@ describe('authorize (table-level)', () => {
 // ================================================================
 
 describe('buildAuthzFilter (row-level)', () => {
+  let cedar;
+
   beforeEach(() => {
-    _setPolicies({ staticPolicies: DEFAULT_POLICIES });
+    cedar = makeCedar();
+    cedar._setPolicies({ staticPolicies: DEFAULT_POLICIES });
   });
 
   it('default policy for authenticated user produces user_id filter', () => {
-    const result = buildAuthzFilter({
+    const result = cedar.buildAuthzFilter({
       principal: {
         role: 'authenticated',
         userId: 'alice',
@@ -828,7 +842,7 @@ describe('buildAuthzFilter (row-level)', () => {
   });
 
   it('service_role produces no conditions (unconditional access)', () => {
-    const result = buildAuthzFilter({
+    const result = cedar.buildAuthzFilter({
       principal: {
         role: 'service_role',
         userId: '',
@@ -846,10 +860,10 @@ describe('buildAuthzFilter (row-level)', () => {
   });
 
   it('forbid policy produces NOT condition', () => {
-    _setPolicies({
+    cedar._setPolicies({
       staticPolicies: FORBID_DELETE_ARCHIVED_POLICY,
     });
-    const result = buildAuthzFilter({
+    const result = cedar.buildAuthzFilter({
       principal: {
         role: 'authenticated',
         userId: 'alice',
@@ -868,8 +882,8 @@ describe('buildAuthzFilter (row-level)', () => {
   });
 
   it('multiple permit policies combine with OR', () => {
-    _setPolicies({ staticPolicies: TEAM_ACCESS_POLICY });
-    const result = buildAuthzFilter({
+    cedar._setPolicies({ staticPolicies: TEAM_ACCESS_POLICY });
+    const result = cedar.buildAuthzFilter({
       principal: {
         role: 'authenticated',
         userId: 'alice',
@@ -888,7 +902,7 @@ describe('buildAuthzFilter (row-level)', () => {
 
   it('concrete deny throws PGRST403', () => {
     assert.throws(
-      () => buildAuthzFilter({
+      () => cedar.buildAuthzFilter({
         principal: { role: 'anon', userId: '', email: '' },
         action: 'select',
         context: { table: 'todos' },
@@ -901,7 +915,7 @@ describe('buildAuthzFilter (row-level)', () => {
   });
 
   it('startParam offsets parameter numbering correctly', () => {
-    const result = buildAuthzFilter({
+    const result = cedar.buildAuthzFilter({
       principal: {
         role: 'authenticated',
         userId: 'alice',

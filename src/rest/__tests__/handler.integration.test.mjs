@@ -1,9 +1,9 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { _setPool } from '../db.mjs';
-import { handler } from '../handler.mjs';
-import { _resetCache } from '../schema-cache.mjs';
-import { _setPolicies } from '../cedar.mjs';
+import { createDb } from '../db.mjs';
+import { createRestHandler } from '../handler.mjs';
+import { createSchemaCache } from '../schema-cache.mjs';
+import { createCedar } from '../cedar.mjs';
 
 // --- Default Cedar policies ---
 
@@ -135,9 +135,18 @@ function createMockPool() {
   return pool;
 }
 
-// Set the mock pool and policies before any handler calls
-_setPool(createMockPool());
-_setPolicies({ staticPolicies: DEFAULT_POLICIES });
+// Helper: create wired-up instances for each test
+function createTestContext(mockPool) {
+  const db = createDb({});
+  db._setPool(mockPool || createMockPool());
+
+  const schemaCache = createSchemaCache({});
+
+  const cedar = createCedar({ policiesPath: './policies' });
+  cedar._setPolicies({ staticPolicies: DEFAULT_POLICIES });
+
+  return { db, schemaCache, cedar };
+}
 
 // Helper to build a Lambda API Gateway proxy event
 function makeEvent({
@@ -167,10 +176,12 @@ function makeEvent({
 }
 
 describe('handler integration', () => {
+  let handler;
+  let ctx;
+
   beforeEach(() => {
-    _resetCache();
-    _setPool(createMockPool());
-    _setPolicies({ staticPolicies: DEFAULT_POLICIES });
+    ctx = createTestContext();
+    handler = createRestHandler(ctx).handler;
   });
 
   describe('CRUD operations', () => {
@@ -337,9 +348,9 @@ describe('handler integration', () => {
           ] };
         },
       };
-      _setPool(capturingPool);
+      ctx.db._setPool(capturingPool);
       // Need a fresh schema cache for each call
-      _resetCache();
+      ctx.schemaCache._resetCache();
 
       const eventA = makeEvent({
         method: 'GET',
@@ -358,8 +369,8 @@ describe('handler integration', () => {
 
       // Reset and test user B
       queries.length = 0;
-      _resetCache();
-      _setPool(capturingPool);
+      ctx.schemaCache._resetCache();
+      ctx.db._setPool(capturingPool);
 
       const eventB = makeEvent({
         method: 'GET',
@@ -393,7 +404,7 @@ describe('handler integration', () => {
           ] };
         },
       };
-      _setPool(capturingPool);
+      ctx.db._setPool(capturingPool);
 
       const event = makeEvent({
         method: 'GET',
@@ -600,7 +611,8 @@ describe('handler integration', () => {
   describe('service_role bypass', () => {
     it('service_role skips user_id filter in SQL', async () => {
       const mockPool = createMockPool();
-      _setPool(mockPool);
+      ctx.db._setPool(mockPool);
+      ctx.schemaCache._resetCache();
 
       const event = makeEvent({
         method: 'GET',
@@ -628,7 +640,8 @@ describe('handler integration', () => {
   describe('user_id binding', () => {
     it('binds correct user_id for authenticated requests', async () => {
       const mockPool = createMockPool();
-      _setPool(mockPool);
+      ctx.db._setPool(mockPool);
+      ctx.schemaCache._resetCache();
 
       const event = makeEvent({
         method: 'GET',

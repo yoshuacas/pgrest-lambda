@@ -5,17 +5,6 @@ import {
   GetUserCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 
-let client;
-
-function getClient() {
-  if (!client) {
-    client = new CognitoIdentityProviderClient({
-      region: process.env.REGION_NAME,
-    });
-  }
-  return client;
-}
-
 const ERROR_MAP = {
   UsernameExistsException: 'user_already_exists',
   NotAuthorizedException: 'invalid_grant',
@@ -55,104 +44,116 @@ function parseIdToken(idToken) {
   }
 }
 
-/** @type {import('./interface.mjs').AuthProvider} */
-const provider = {
-  async signUp(email, password) {
-    try {
-      const result = await getClient().send(new SignUpCommand({
-        ClientId: process.env.USER_POOL_CLIENT_ID,
-        Username: email,
-        Password: password,
-      }));
-      return {
-        id: result.UserSub,
-        email,
-        app_metadata: { provider: 'email', providers: ['email'] },
-        user_metadata: {},
-        created_at: new Date().toISOString(),
-      };
-    } catch (err) {
-      return mapError(err);
-    }
-  },
+export function createCognitoProvider(config) {
+  let client;
 
-  async signIn(email, password) {
-    try {
-      const result = await getClient().send(new InitiateAuthCommand({
-        AuthFlow: 'USER_PASSWORD_AUTH',
-        ClientId: process.env.USER_POOL_CLIENT_ID,
-        AuthParameters: {
-          USERNAME: email,
-          PASSWORD: password,
-        },
-      }));
-      const auth = result.AuthenticationResult;
-      const user = parseIdToken(auth.IdToken);
-      return {
-        user,
-        providerTokens: {
-          accessToken: auth.AccessToken,
-          refreshToken: auth.RefreshToken,
-          idToken: auth.IdToken,
-        },
-      };
-    } catch (err) {
-      return mapError(err);
+  function getClient() {
+    if (!client) {
+      client = new CognitoIdentityProviderClient({
+        region: config.region,
+      });
     }
-  },
+    return client;
+  }
 
-  async refreshToken(providerRefreshToken) {
-    try {
-      const result = await getClient().send(new InitiateAuthCommand({
-        AuthFlow: 'REFRESH_TOKEN_AUTH',
-        ClientId: process.env.USER_POOL_CLIENT_ID,
-        AuthParameters: {
-          REFRESH_TOKEN: providerRefreshToken,
-        },
-      }));
-      const auth = result.AuthenticationResult;
-      const user = parseIdToken(auth.IdToken);
-      return {
-        user,
-        providerTokens: {
-          accessToken: auth.AccessToken,
-          refreshToken: providerRefreshToken,
-          idToken: auth.IdToken,
-        },
-      };
-    } catch (err) {
-      return mapError(err);
-    }
-  },
+  function _setClient(c) {
+    client = c;
+  }
 
-  async getUser(providerAccessToken) {
-    try {
-      const result = await getClient().send(new GetUserCommand({
-        AccessToken: providerAccessToken,
-      }));
-      const attrs = {};
-      for (const attr of result.UserAttributes || []) {
-        attrs[attr.Name] = attr.Value;
+  const provider = {
+    async signUp(email, password) {
+      try {
+        const result = await getClient().send(new SignUpCommand({
+          ClientId: config.clientId,
+          Username: email,
+          Password: password,
+        }));
+        return {
+          id: result.UserSub,
+          email,
+          app_metadata: { provider: 'email', providers: ['email'] },
+          user_metadata: {},
+          created_at: new Date().toISOString(),
+        };
+      } catch (err) {
+        return mapError(err);
       }
-      return {
-        id: attrs.sub || result.Username,
-        email: attrs.email || '',
-        app_metadata: { provider: 'email', providers: ['email'] },
-        user_metadata: {},
-        created_at: new Date().toISOString(),
-      };
-    } catch (err) {
-      return mapError(err);
-    }
-  },
+    },
 
-  async signOut() {
-    // No-op: JWTs expire naturally
-  },
-};
+    async signIn(email, password) {
+      try {
+        const result = await getClient().send(new InitiateAuthCommand({
+          AuthFlow: 'USER_PASSWORD_AUTH',
+          ClientId: config.clientId,
+          AuthParameters: {
+            USERNAME: email,
+            PASSWORD: password,
+          },
+        }));
+        const auth = result.AuthenticationResult;
+        const user = parseIdToken(auth.IdToken);
+        return {
+          user,
+          providerTokens: {
+            accessToken: auth.AccessToken,
+            refreshToken: auth.RefreshToken,
+            idToken: auth.IdToken,
+          },
+        };
+      } catch (err) {
+        return mapError(err);
+      }
+    },
 
-export default provider;
+    async refreshToken(providerRefreshToken) {
+      try {
+        const result = await getClient().send(new InitiateAuthCommand({
+          AuthFlow: 'REFRESH_TOKEN_AUTH',
+          ClientId: config.clientId,
+          AuthParameters: {
+            REFRESH_TOKEN: providerRefreshToken,
+          },
+        }));
+        const auth = result.AuthenticationResult;
+        const user = parseIdToken(auth.IdToken);
+        return {
+          user,
+          providerTokens: {
+            accessToken: auth.AccessToken,
+            refreshToken: providerRefreshToken,
+            idToken: auth.IdToken,
+          },
+        };
+      } catch (err) {
+        return mapError(err);
+      }
+    },
 
-export function _setClient(c) {
-  client = c;
+    async getUser(providerAccessToken) {
+      try {
+        const result = await getClient().send(new GetUserCommand({
+          AccessToken: providerAccessToken,
+        }));
+        const attrs = {};
+        for (const attr of result.UserAttributes || []) {
+          attrs[attr.Name] = attr.Value;
+        }
+        return {
+          id: attrs.sub || result.Username,
+          email: attrs.email || '',
+          app_metadata: { provider: 'email', providers: ['email'] },
+          user_metadata: {},
+          created_at: new Date().toISOString(),
+        };
+      } catch (err) {
+        return mapError(err);
+      }
+    },
+
+    async signOut() {
+      // No-op: JWTs expire naturally
+    },
+  };
+
+  return { provider, _setClient };
 }

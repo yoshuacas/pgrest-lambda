@@ -1,7 +1,7 @@
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import jwt from 'jsonwebtoken';
-import { handler } from '../index.mjs';
+import { createAuthorizer } from '../index.mjs';
 
 const SECRET = 'test-secret-key-for-unit-tests';
 const METHOD_ARN =
@@ -19,19 +19,10 @@ function signJwt(payload, secret = SECRET) {
 }
 
 describe('authorizer', () => {
-  let origSecret;
+  let handler;
 
   beforeEach(() => {
-    origSecret = process.env.JWT_SECRET;
-    process.env.JWT_SECRET = SECRET;
-  });
-
-  afterEach(() => {
-    if (origSecret !== undefined) {
-      process.env.JWT_SECRET = origSecret;
-    } else {
-      delete process.env.JWT_SECRET;
-    }
+    handler = createAuthorizer({ jwtSecret: SECRET }).handler;
   });
 
   it('allows with role anon and empty userId for valid apikey, no bearer', async () => {
@@ -85,13 +76,13 @@ describe('authorizer', () => {
     );
   });
 
-  it('throws Unauthorized when JWT_SECRET env var is missing (fail-closed)', async () => {
-    delete process.env.JWT_SECRET;
+  it('throws Unauthorized when jwtSecret is not configured (fail-closed)', async () => {
+    const noSecretHandler = createAuthorizer({ jwtSecret: undefined }).handler;
     const apikey = signJwt({ role: 'anon' });
     await assert.rejects(
-      () => handler(makeEvent({ apikey })),
+      () => noSecretHandler(makeEvent({ apikey })),
       (err) => err === 'Unauthorized',
-      'should throw Unauthorized when JWT_SECRET is missing',
+      'should throw Unauthorized when jwtSecret is missing',
     );
   });
 

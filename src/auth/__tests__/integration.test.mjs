@@ -1,8 +1,9 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
-import { handler as authHandler, _setProvider } from '../handler.mjs';
-import { handler as authorizer } from '../../authorizer/index.mjs';
+import { createAuthHandler } from '../handler.mjs';
+import { createJwt } from '../jwt.mjs';
+import { createAuthorizer } from '../../authorizer/index.mjs';
 
 const TEST_SECRET = 'integration-test-secret-key-1234';
 
@@ -132,12 +133,22 @@ const SERVICE_ROLE_KEY = signJwt({
 });
 
 describe('integration tests', () => {
+  let authHandler;
+  let _setProvider;
+  let authorizer;
+
   beforeEach(() => {
-    process.env.JWT_SECRET = TEST_SECRET;
-    process.env.AUTH_PROVIDER = 'cognito';
-    process.env.REGION_NAME = 'us-east-1';
-    process.env.USER_POOL_CLIENT_ID = 'test-client-id';
+    const jwt = createJwt({ jwtSecret: TEST_SECRET });
+    const ctx = { jwt, authProvider: null };
+    const authResult = createAuthHandler(
+      { auth: { provider: 'cognito' }, jwtSecret: TEST_SECRET },
+      ctx,
+    );
+    authHandler = authResult.handler;
+    _setProvider = authResult._setProvider;
     _setProvider(createMockProvider());
+
+    authorizer = createAuthorizer({ jwtSecret: TEST_SECRET }).handler;
   });
 
   it('full signup flow: signup returns tokens, then GET /user returns same user', async () => {
