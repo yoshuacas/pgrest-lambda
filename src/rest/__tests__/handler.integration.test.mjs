@@ -3,6 +3,35 @@ import assert from 'node:assert/strict';
 import { _setPool } from '../db.mjs';
 import { handler } from '../handler.mjs';
 import { _resetCache } from '../schema-cache.mjs';
+import { _setPolicies } from '../cedar.mjs';
+
+// --- Default Cedar policies ---
+
+const DEFAULT_POLICIES = `
+permit(
+    principal is PgrestLambda::User,
+    action in [
+        PgrestLambda::Action::"select",
+        PgrestLambda::Action::"update",
+        PgrestLambda::Action::"delete"
+    ],
+    resource is PgrestLambda::Row
+) when {
+    resource has user_id && resource.user_id == principal
+};
+
+permit(
+    principal is PgrestLambda::User,
+    action == PgrestLambda::Action::"insert",
+    resource is PgrestLambda::Table
+);
+
+permit(
+    principal is PgrestLambda::ServiceRole,
+    action,
+    resource
+);
+`;
 
 // --- Mock data for schema introspection ---
 
@@ -106,8 +135,9 @@ function createMockPool() {
   return pool;
 }
 
-// Set the mock pool before any handler calls
+// Set the mock pool and policies before any handler calls
 _setPool(createMockPool());
+_setPolicies({ staticPolicies: DEFAULT_POLICIES });
 
 // Helper to build a Lambda API Gateway proxy event
 function makeEvent({
@@ -140,6 +170,7 @@ describe('handler integration', () => {
   beforeEach(() => {
     _resetCache();
     _setPool(createMockPool());
+    _setPolicies({ staticPolicies: DEFAULT_POLICIES });
   });
 
   describe('CRUD operations', () => {

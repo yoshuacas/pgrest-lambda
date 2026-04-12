@@ -1,7 +1,7 @@
 // handler.mjs — REST API Lambda entry point
 
 import { getPool } from './db.mjs';
-import { getSchema, refresh, hasColumn } from './schema-cache.mjs';
+import { getSchema, refresh } from './schema-cache.mjs';
 import { PostgRESTError, mapPgError } from './errors.mjs';
 import { parseQuery } from './query-parser.mjs';
 import {
@@ -10,6 +10,9 @@ import {
 import { success, error } from './response.mjs';
 import { route } from './router.mjs';
 import { generateSpec } from './openapi.mjs';
+import {
+  authorize, buildAuthzFilter, loadPolicies, refreshPolicies,
+} from './cedar.mjs';
 
 function parsePrefer(raw) {
   const prefer = {};
@@ -56,6 +59,7 @@ export async function handler(event) {
     const authorizer = event.requestContext?.authorizer || {};
     const userId = authorizer.userId || authorizer.claims?.sub || '';
     const role = authorizer.role || 'anon';
+    const email = authorizer.email || '';
     const headers = lowercaseHeaders(event.headers);
 
     let body = null;
@@ -87,6 +91,7 @@ export async function handler(event) {
         throw new PostgRESTError(405, 'PGRST000', 'Method not allowed on _refresh');
       }
       const newSchema = await refresh(pool);
+      await refreshPolicies();
       const apiUrl =
         `https://${headers['host'] || 'localhost'}/rest/v1`;
       return success(200, generateSpec(newSchema, apiUrl));
@@ -95,17 +100,27 @@ export async function handler(event) {
     const table = routeInfo.table;
     const parsed = parseQuery(params, method);
 
+    await loadPolicies();
+
+    const principal = { role, userId, email };
+
     let rows;
     let count;
 
     switch (method) {
       case 'GET': {
-        const q = buildSelect(table, parsed, schema, userId, role);
+        // Two-pass: build without authz to count params, then with authz
+        const preview = buildSelect(table, parsed, schema);
+        const authz = buildAuthzFilter({
+          principal, action: 'select', context: { table }, schema,
+          startParam: preview.values.length + 1,
+        });
+        const q = buildSelect(table, parsed, schema, authz);
         const result = await pool.query(q.text, q.values);
         rows = result.rows;
 
         if (prefer.count === 'exact') {
-          const cq = buildCount(table, parsed, schema, userId, role);
+          const cq = buildCount(table, parsed, schema, authz);
           const cr = await pool.query(cq.text, cq.values);
           count = parseInt(cr.rows[0].count, 10);
         }
@@ -120,11 +135,15 @@ export async function handler(event) {
           );
         }
 
+        authorize({
+          principal, action: 'insert', resource: table, schema,
+        });
+
         const q =
           parsed.onConflict
             && prefer.resolution === 'merge-duplicates'
-            ? buildInsert(table, body, schema, userId, parsed)
-            : buildInsert(table, body, schema, userId,
+            ? buildInsert(table, body, schema, parsed)
+            : buildInsert(table, body, schema,
               { ...parsed, onConflict: null });
 
         const result = await pool.query(q.text, q.values);
@@ -139,14 +158,28 @@ export async function handler(event) {
             'Missing or invalid request body',
           );
         }
-        const q = buildUpdate(table, body, parsed, schema, userId, role);
+        const preview = buildUpdate(table, body, parsed, schema);
+        const authz = buildAuthzFilter({
+          principal, action: 'update', context: { table }, schema,
+          startParam: preview.values.length + 1,
+        });
+        const q = buildUpdate(
+          table, body, parsed, schema, authz,
+        );
         const result = await pool.query(q.text, q.values);
         rows = result.rows;
         break;
       }
 
       case 'DELETE': {
-        const q = buildDelete(table, parsed, schema, userId, role);
+        const preview = buildDelete(table, parsed, schema);
+        const authz = buildAuthzFilter({
+          principal, action: 'delete', context: { table }, schema,
+          startParam: preview.values.length + 1,
+        });
+        const q = buildDelete(
+          table, parsed, schema, authz,
+        );
         const result = await pool.query(q.text, q.values);
         rows = result.rows;
         break;

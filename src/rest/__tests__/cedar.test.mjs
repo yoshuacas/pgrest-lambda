@@ -1,0 +1,924 @@
+import { describe, it, beforeEach, afterEach } from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtemp, writeFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import {
+  translateExpr,
+  generateCedarSchema,
+  loadPolicies,
+  refreshPolicies,
+  authorize,
+  buildAuthzFilter,
+  _setPolicies,
+} from '../cedar.mjs';
+
+const schema = {
+  tables: {
+    todos: {
+      columns: {
+        id: { type: 'text', nullable: false, defaultValue: null },
+        user_id: { type: 'text', nullable: false, defaultValue: null },
+        title: { type: 'text', nullable: true, defaultValue: null },
+        status: { type: 'text', nullable: true, defaultValue: null },
+        level: { type: 'integer', nullable: true, defaultValue: null },
+        team_id: { type: 'text', nullable: true, defaultValue: null },
+        created_at: { type: 'timestamp with time zone', nullable: false, defaultValue: 'now()' },
+      },
+      primaryKey: ['id'],
+    },
+    categories: {
+      columns: {
+        id: { type: 'text', nullable: false, defaultValue: null },
+        name: { type: 'text', nullable: false, defaultValue: null },
+      },
+      primaryKey: ['id'],
+    },
+    public_posts: {
+      columns: {
+        id: { type: 'text', nullable: false, defaultValue: null },
+        title: { type: 'text', nullable: true, defaultValue: null },
+        body: { type: 'text', nullable: true, defaultValue: null },
+      },
+      primaryKey: ['id'],
+    },
+  },
+};
+
+// --- Default Cedar policy text (matches design doc) ---
+
+const DEFAULT_POLICIES = `
+permit(
+    principal is PgrestLambda::User,
+    action in [
+        PgrestLambda::Action::"select",
+        PgrestLambda::Action::"update",
+        PgrestLambda::Action::"delete"
+    ],
+    resource is PgrestLambda::Row
+) when {
+    resource has user_id && resource.user_id == principal
+};
+
+permit(
+    principal is PgrestLambda::User,
+    action == PgrestLambda::Action::"insert",
+    resource is PgrestLambda::Table
+);
+
+permit(
+    principal is PgrestLambda::ServiceRole,
+    action,
+    resource
+);
+`;
+
+const PUBLIC_POSTS_POLICY = `${DEFAULT_POLICIES}
+
+permit(
+    principal,
+    action == PgrestLambda::Action::"select",
+    resource is PgrestLambda::Row
+) when {
+    context.table == "public_posts"
+};
+`;
+
+const FORBID_DELETE_ARCHIVED_POLICY = `${DEFAULT_POLICIES}
+
+forbid(
+    principal,
+    action == PgrestLambda::Action::"delete",
+    resource is PgrestLambda::Row
+) when {
+    resource has status && resource.status == "archived"
+};
+`;
+
+const TEAM_ACCESS_POLICY = `${DEFAULT_POLICIES}
+
+permit(
+    principal is PgrestLambda::User,
+    action in [
+        PgrestLambda::Action::"select",
+        PgrestLambda::Action::"update"
+    ],
+    resource is PgrestLambda::Row
+) when {
+    resource has team_id &&
+    resource.team_id == principal.team_id
+};
+`;
+
+// --- Helper: build a resource attribute access expr ---
+
+function attrAccess(attr) {
+  return { '.': { left: { Var: 'resource' }, attr } };
+}
+
+function eqExpr(attr, value) {
+  return { '==': { left: attrAccess(attr), right: { Value: value } } };
+}
+
+// ================================================================
+// translateExpr — residual-to-SQL translation
+// ================================================================
+
+describe('translateExpr', () => {
+  it('equality comparison translates to "col" = $N', () => {
+    const expr = eqExpr('user_id', 'alice');
+    const values = [];
+    const sql = translateExpr(expr, values, 'todos', schema);
+    assert.equal(sql, '"user_id" = $1');
+    assert.deepEqual(values, ['alice']);
+  });
+
+  it('inequality comparison translates to "col" != $N', () => {
+    const expr = {
+      '!=': {
+        left: attrAccess('status'),
+        right: { Value: 'archived' },
+      },
+    };
+    const values = [];
+    const sql = translateExpr(expr, values, 'todos', schema);
+    assert.equal(sql, '"status" != $1');
+    assert.deepEqual(values, ['archived']);
+  });
+
+  it('greater-than comparison translates to "col" > $N', () => {
+    const expr = {
+      '>': {
+        left: attrAccess('level'),
+        right: { Value: 5 },
+      },
+    };
+    const values = [];
+    const sql = translateExpr(expr, values, 'todos', schema);
+    assert.equal(sql, '"level" > $1');
+    assert.deepEqual(values, [5]);
+  });
+
+  it('greater-or-equal translates to "col" >= $N', () => {
+    const expr = {
+      '>=': {
+        left: attrAccess('level'),
+        right: { Value: 10 },
+      },
+    };
+    const values = [];
+    const sql = translateExpr(expr, values, 'todos', schema);
+    assert.equal(sql, '"level" >= $1');
+    assert.deepEqual(values, [10]);
+  });
+
+  it('less-than translates to "col" < $N', () => {
+    const expr = {
+      '<': {
+        left: attrAccess('level'),
+        right: { Value: 3 },
+      },
+    };
+    const values = [];
+    const sql = translateExpr(expr, values, 'todos', schema);
+    assert.equal(sql, '"level" < $1');
+    assert.deepEqual(values, [3]);
+  });
+
+  it('less-or-equal translates to "col" <= $N', () => {
+    const expr = {
+      '<=': {
+        left: attrAccess('level'),
+        right: { Value: 7 },
+      },
+    };
+    const values = [];
+    const sql = translateExpr(expr, values, 'todos', schema);
+    assert.equal(sql, '"level" <= $1');
+    assert.deepEqual(values, [7]);
+  });
+
+  it('AND conjunction translates to (left AND right)', () => {
+    const expr = {
+      '&&': {
+        left: eqExpr('user_id', 'alice'),
+        right: {
+          '>': {
+            left: attrAccess('level'),
+            right: { Value: 5 },
+          },
+        },
+      },
+    };
+    const values = [];
+    const sql = translateExpr(expr, values, 'todos', schema);
+    assert.equal(sql, '("user_id" = $1 AND "level" > $2)');
+    assert.deepEqual(values, ['alice', 5]);
+  });
+
+  it('OR disjunction translates to (left OR right)', () => {
+    const expr = {
+      '||': {
+        left: eqExpr('user_id', 'alice'),
+        right: eqExpr('status', 'active'),
+      },
+    };
+    const values = [];
+    const sql = translateExpr(expr, values, 'todos', schema);
+    assert.equal(sql, '("user_id" = $1 OR "status" = $2)');
+    assert.deepEqual(values, ['alice', 'active']);
+  });
+
+  it('NOT negation translates to NOT (expr)', () => {
+    const expr = {
+      '!': {
+        arg: eqExpr('status', 'archived'),
+      },
+    };
+    const values = [];
+    const sql = translateExpr(expr, values, 'todos', schema);
+    assert.equal(sql, 'NOT ("status" = $1)');
+    assert.deepEqual(values, ['archived']);
+  });
+
+  it('has-attribute translates to "col" IS NOT NULL', () => {
+    const expr = {
+      has: { left: { Var: 'resource' }, attr: 'user_id' },
+    };
+    const values = [];
+    const sql = translateExpr(expr, values, 'todos', schema);
+    assert.equal(sql, '"user_id" IS NOT NULL');
+    assert.deepEqual(values, []);
+  });
+
+  it('CPE noise collapse: true AND condition reduces to condition', () => {
+    const expr = {
+      '&&': {
+        left: { Value: true },
+        right: eqExpr('user_id', 'alice'),
+      },
+    };
+    const values = [];
+    const sql = translateExpr(expr, values, 'todos', schema);
+    assert.equal(sql, '"user_id" = $1',
+      'true AND condition should collapse to just the condition');
+    assert.deepEqual(values, ['alice']);
+  });
+
+  it('CPE noise collapse: nested true chains reduce to condition', () => {
+    const expr = {
+      '&&': {
+        left: { Value: true },
+        right: {
+          '&&': {
+            left: { Value: true },
+            right: eqExpr('user_id', 'alice'),
+          },
+        },
+      },
+    };
+    const values = [];
+    const sql = translateExpr(expr, values, 'todos', schema);
+    assert.equal(sql, '"user_id" = $1',
+      'nested true chains should collapse to the final condition');
+    assert.deepEqual(values, ['alice']);
+  });
+
+  it('CPE noise collapse: condition AND true reduces to condition', () => {
+    const expr = {
+      '&&': {
+        left: eqExpr('user_id', 'alice'),
+        right: { Value: true },
+      },
+    };
+    const values = [];
+    const sql = translateExpr(expr, values, 'todos', schema);
+    assert.equal(sql, '"user_id" = $1',
+      'condition AND true should collapse to just the condition');
+    assert.deepEqual(values, ['alice']);
+  });
+
+  it('CPE noise collapse: true OR X reduces to true', () => {
+    const expr = {
+      '||': {
+        left: { Value: true },
+        right: eqExpr('user_id', 'alice'),
+      },
+    };
+    const values = [];
+    const sql = translateExpr(expr, values, 'todos', schema);
+    // true OR anything is unconditionally true — no SQL filter
+    assert.equal(sql, null,
+      'true OR X should return null (unconditional allow)');
+    assert.deepEqual(values, []);
+  });
+
+  it('entity UID value extraction: extracts id from __entity', () => {
+    const expr = {
+      '==': {
+        left: attrAccess('user_id'),
+        right: {
+          Value: {
+            __entity: { type: 'PgrestLambda::User', id: 'abc-123' },
+          },
+        },
+      },
+    };
+    const values = [];
+    const sql = translateExpr(expr, values, 'todos', schema);
+    assert.equal(sql, '"user_id" = $1');
+    assert.deepEqual(values, ['abc-123']);
+  });
+
+  it('type check (is Row) collapses to true', () => {
+    const expr = {
+      is: {
+        left: { Var: 'resource' },
+        entity_type: 'PgrestLambda::Row',
+      },
+    };
+    const values = [];
+    const sql = translateExpr(expr, values, 'todos', schema);
+    assert.equal(sql, null,
+      'is Row should collapse to true (no SQL emitted)');
+  });
+
+  it('type check (non-Row) collapses to false', () => {
+    const expr = {
+      is: {
+        left: { Var: 'resource' },
+        entity_type: 'PgrestLambda::Table',
+      },
+    };
+    const values = [];
+    const sql = translateExpr(expr, values, 'todos', schema);
+    assert.equal(sql, 'FALSE',
+      'is non-Row type check should evaluate to FALSE');
+  });
+
+  it('unknown marker treated as resource for attribute access', () => {
+    const expr = {
+      '==': {
+        left: {
+          '.': {
+            left: { unknown: [{ Value: 'resource' }] },
+            attr: 'user_id',
+          },
+        },
+        right: { Value: 'alice' },
+      },
+    };
+    const values = [];
+    const sql = translateExpr(expr, values, 'todos', schema);
+    assert.equal(sql, '"user_id" = $1',
+      'unknown marker should be treated the same as Var: resource');
+    assert.deepEqual(values, ['alice']);
+  });
+
+  it('untranslatable expression (in) throws PGRST000', () => {
+    const expr = {
+      in: {
+        left: { Var: 'resource' },
+        right: {
+          Value: {
+            __entity: { type: 'PgrestLambda::Table', id: 'todos' },
+          },
+        },
+      },
+    };
+    const values = [];
+    assert.throws(
+      () => translateExpr(expr, values, 'todos', schema),
+      (err) => err.code === 'PGRST000'
+        && err.message.includes('untranslatable'),
+      'in expression should throw PGRST000',
+    );
+  });
+
+  it('untranslatable expression (contains) throws PGRST000', () => {
+    const expr = {
+      contains: {
+        left: attrAccess('status'),
+        right: { Value: 'active' },
+      },
+    };
+    const values = [];
+    assert.throws(
+      () => translateExpr(expr, values, 'todos', schema),
+      (err) => err.code === 'PGRST000'
+        && err.message.includes('untranslatable'),
+      'contains expression should throw PGRST000',
+    );
+  });
+
+  it('untranslatable expression (like) throws PGRST000', () => {
+    const expr = {
+      like: {
+        left: attrAccess('title'),
+        right: { Value: '*test*' },
+      },
+    };
+    const values = [];
+    assert.throws(
+      () => translateExpr(expr, values, 'todos', schema),
+      (err) => err.code === 'PGRST000'
+        && err.message.includes('untranslatable'),
+      'like expression should throw PGRST000',
+    );
+  });
+
+  it('parameter numbering respects startParam', () => {
+    const expr = eqExpr('user_id', 'alice');
+    // Pre-populate values to simulate startParam=5
+    const values = ['_', '_', '_', '_'];
+    const sql = translateExpr(expr, values, 'todos', schema);
+    assert.ok(sql.includes('$5'),
+      'placeholder should be $5 when 4 values already exist');
+    assert.ok(!sql.includes('$1'),
+      'should not use $1 when startParam offset is 5');
+    assert.equal(values[4], 'alice');
+  });
+
+  it('if-then-else translates to CASE WHEN', () => {
+    const expr = {
+      'if-then-else': {
+        if: eqExpr('status', 'active'),
+        then: { Value: true },
+        else: { Value: false },
+      },
+    };
+    const values = [];
+    const sql = translateExpr(expr, values, 'todos', schema);
+    assert.ok(sql.includes('CASE WHEN'),
+      'should produce CASE WHEN');
+    assert.ok(sql.includes('"status"'),
+      'should reference the status column');
+    assert.ok(sql.includes('THEN TRUE'),
+      'should include THEN TRUE');
+    assert.ok(sql.includes('ELSE FALSE'),
+      'should include ELSE FALSE');
+    assert.ok(sql.includes('END'),
+      'should include END');
+  });
+
+  it('Value false translates to FALSE', () => {
+    const expr = { Value: false };
+    const values = [];
+    const sql = translateExpr(expr, values, 'todos', schema);
+    assert.equal(sql, 'FALSE');
+  });
+});
+
+// ================================================================
+// generateCedarSchema — PG-to-Cedar type mapping
+// ================================================================
+
+describe('generateCedarSchema', () => {
+  it('maps text/varchar/uuid PG types to Cedar String', () => {
+    const testSchema = {
+      tables: {
+        test: {
+          columns: {
+            col_text: { type: 'text', nullable: true, defaultValue: null },
+            col_varchar: { type: 'varchar', nullable: true, defaultValue: null },
+            col_uuid: { type: 'uuid', nullable: true, defaultValue: null },
+          },
+          primaryKey: ['col_text'],
+        },
+      },
+    };
+    const cedarSchema = generateCedarSchema(testSchema);
+    // Walk into the schema to find Row entity attributes
+    const ns = cedarSchema['PgrestLambda'] || cedarSchema;
+    const rowType = ns.entityTypes?.Row
+      || ns.entityTypes?.['PgrestLambda::Row'];
+    const attrs = rowType?.shape?.attributes || {};
+    for (const colName of ['col_text', 'col_varchar', 'col_uuid']) {
+      assert.ok(attrs[colName],
+        `Row entity should have ${colName} attribute`);
+      assert.equal(attrs[colName].type, 'String',
+        `${colName} should map to Cedar String`);
+    }
+  });
+
+  it('maps integer/smallint/bigint PG types to Cedar Long', () => {
+    const testSchema = {
+      tables: {
+        test: {
+          columns: {
+            col_int: { type: 'integer', nullable: true, defaultValue: null },
+            col_small: { type: 'smallint', nullable: true, defaultValue: null },
+            col_big: { type: 'bigint', nullable: true, defaultValue: null },
+          },
+          primaryKey: ['col_int'],
+        },
+      },
+    };
+    const cedarSchema = generateCedarSchema(testSchema);
+    const ns = cedarSchema['PgrestLambda'] || cedarSchema;
+    const rowType = ns.entityTypes?.Row
+      || ns.entityTypes?.['PgrestLambda::Row'];
+    const attrs = rowType?.shape?.attributes || {};
+    for (const colName of ['col_int', 'col_small', 'col_big']) {
+      assert.ok(attrs[colName],
+        `Row entity should have ${colName} attribute`);
+      assert.equal(attrs[colName].type, 'Long',
+        `${colName} should map to Cedar Long`);
+    }
+  });
+
+  it('maps boolean PG type to Cedar Boolean', () => {
+    const testSchema = {
+      tables: {
+        test: {
+          columns: {
+            is_active: { type: 'boolean', nullable: true, defaultValue: null },
+          },
+          primaryKey: ['is_active'],
+        },
+      },
+    };
+    const cedarSchema = generateCedarSchema(testSchema);
+    const ns = cedarSchema['PgrestLambda'] || cedarSchema;
+    const rowType = ns.entityTypes?.Row
+      || ns.entityTypes?.['PgrestLambda::Row'];
+    const attrs = rowType?.shape?.attributes || {};
+    assert.ok(attrs.is_active,
+      'Row entity should have is_active attribute');
+    assert.equal(attrs.is_active.type, 'Boolean',
+      'boolean column should map to Cedar Boolean');
+  });
+
+  it('defaults unknown PG types to Cedar String', () => {
+    const testSchema = {
+      tables: {
+        test: {
+          columns: {
+            created_at: {
+              type: 'timestamp with time zone',
+              nullable: false,
+              defaultValue: 'now()',
+            },
+          },
+          primaryKey: ['created_at'],
+        },
+      },
+    };
+    const cedarSchema = generateCedarSchema(testSchema);
+    const ns = cedarSchema['PgrestLambda'] || cedarSchema;
+    const rowType = ns.entityTypes?.Row
+      || ns.entityTypes?.['PgrestLambda::Row'];
+    const attrs = rowType?.shape?.attributes || {};
+    assert.ok(attrs.created_at,
+      'Row entity should have created_at attribute');
+    assert.equal(attrs.created_at.type, 'String',
+      'unknown PG types should default to Cedar String');
+  });
+
+  it('union of all table columns in Row entity', () => {
+    const testSchema = {
+      tables: {
+        table_a: {
+          columns: {
+            col_x: { type: 'text', nullable: true, defaultValue: null },
+          },
+          primaryKey: ['col_x'],
+        },
+        table_b: {
+          columns: {
+            col_y: { type: 'integer', nullable: true, defaultValue: null },
+          },
+          primaryKey: ['col_y'],
+        },
+      },
+    };
+    const cedarSchema = generateCedarSchema(testSchema);
+    const ns = cedarSchema['PgrestLambda'] || cedarSchema;
+    const rowType = ns.entityTypes?.Row
+      || ns.entityTypes?.['PgrestLambda::Row'];
+    const attrs = rowType?.shape?.attributes || {};
+    assert.ok(attrs.col_x,
+      'Row entity should include col_x from table_a');
+    assert.ok(attrs.col_y,
+      'Row entity should include col_y from table_b');
+  });
+});
+
+// ================================================================
+// Policy loading
+// ================================================================
+
+describe('policy loading', () => {
+  let tempDir;
+
+  beforeEach(async () => {
+    tempDir = await mkdtemp(join(tmpdir(), 'cedar-test-'));
+  });
+
+  afterEach(async () => {
+    if (tempDir) {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+    delete process.env.POLICIES_PATH;
+  });
+
+  it('loadPolicies loads .cedar files from filesystem', async () => {
+    await writeFile(
+      join(tempDir, 'default.cedar'),
+      DEFAULT_POLICIES,
+    );
+    process.env.POLICIES_PATH = tempDir;
+    await assert.doesNotReject(
+      () => loadPolicies(),
+      'loadPolicies should resolve without error',
+    );
+  });
+
+  it('loadPolicies with no .cedar files denies all (fail closed)', async () => {
+    process.env.POLICIES_PATH = tempDir;
+    await loadPolicies();
+    assert.throws(
+      () => authorize({
+        principal: {
+          role: 'authenticated',
+          userId: 'alice',
+          email: 'alice@test.com',
+        },
+        action: 'select',
+        resource: 'todos',
+        schema,
+      }),
+      (err) => err.code === 'PGRST403',
+      'authorize should deny when no policies are loaded',
+    );
+  });
+
+  it('loadPolicies with syntax error denies all (fail closed)', async () => {
+    await writeFile(
+      join(tempDir, 'bad.cedar'),
+      'this is not valid cedar syntax {{{{',
+    );
+    process.env.POLICIES_PATH = tempDir;
+    await loadPolicies();
+    assert.throws(
+      () => authorize({
+        principal: {
+          role: 'authenticated',
+          userId: 'alice',
+          email: 'alice@test.com',
+        },
+        action: 'select',
+        resource: 'todos',
+        schema,
+      }),
+      'authorize should deny when policies have syntax errors',
+    );
+  });
+
+  it('policy caching returns cached within TTL', async () => {
+    await writeFile(
+      join(tempDir, 'default.cedar'),
+      DEFAULT_POLICIES,
+    );
+    process.env.POLICIES_PATH = tempDir;
+    await loadPolicies();
+    // Remove the file — if caching works, the second call
+    // should succeed without re-reading the filesystem
+    await rm(join(tempDir, 'default.cedar'));
+    await assert.doesNotReject(
+      () => loadPolicies(),
+      'second loadPolicies call should use cached policies',
+    );
+  });
+
+  it('refreshPolicies bypasses TTL cache', async () => {
+    await writeFile(
+      join(tempDir, 'default.cedar'),
+      DEFAULT_POLICIES,
+    );
+    process.env.POLICIES_PATH = tempDir;
+    await loadPolicies();
+    // Write updated policy that grants anon access to public_posts
+    await writeFile(
+      join(tempDir, 'default.cedar'),
+      PUBLIC_POSTS_POLICY,
+    );
+    await refreshPolicies();
+    // After refresh, anon should be allowed on public_posts
+    assert.doesNotThrow(
+      () => authorize({
+        principal: { role: 'anon', userId: '', email: '' },
+        action: 'select',
+        resource: 'public_posts',
+        schema,
+      }),
+      'refreshPolicies should reload and apply new policies',
+    );
+  });
+
+  it('_setPolicies replaces compiled policies', () => {
+    _setPolicies({ staticPolicies: PUBLIC_POSTS_POLICY });
+    assert.doesNotThrow(
+      () => authorize({
+        principal: { role: 'anon', userId: '', email: '' },
+        action: 'select',
+        resource: 'public_posts',
+        schema,
+      }),
+      '_setPolicies should allow overriding policies for testing',
+    );
+  });
+});
+
+// ================================================================
+// authorize (table-level)
+// ================================================================
+
+describe('authorize (table-level)', () => {
+  beforeEach(() => {
+    _setPolicies({ staticPolicies: DEFAULT_POLICIES });
+  });
+
+  it('service_role allowed on any table and action', () => {
+    assert.doesNotThrow(
+      () => authorize({
+        principal: {
+          role: 'service_role',
+          userId: '',
+          email: '',
+        },
+        action: 'select',
+        resource: 'todos',
+        schema,
+      }),
+      'service_role should be allowed on any table',
+    );
+  });
+
+  it('authenticated user allowed to insert', () => {
+    assert.doesNotThrow(
+      () => authorize({
+        principal: {
+          role: 'authenticated',
+          userId: 'alice',
+          email: 'alice@test.com',
+        },
+        action: 'insert',
+        resource: 'todos',
+        schema,
+      }),
+      'authenticated users should be allowed to insert',
+    );
+  });
+
+  it('anon user denied by default policies', () => {
+    assert.throws(
+      () => authorize({
+        principal: { role: 'anon', userId: '', email: '' },
+        action: 'select',
+        resource: 'todos',
+        schema,
+      }),
+      (err) => err.code === 'PGRST403'
+        && err.message.includes("Not authorized to select on 'todos'"),
+      'anon should be denied with PGRST403',
+    );
+  });
+
+  it('custom policy allows anon select on specific table', () => {
+    _setPolicies({ staticPolicies: PUBLIC_POSTS_POLICY });
+    assert.doesNotThrow(
+      () => authorize({
+        principal: { role: 'anon', userId: '', email: '' },
+        action: 'select',
+        resource: 'public_posts',
+        schema,
+      }),
+      'custom policy should allow anon select on public_posts',
+    );
+  });
+});
+
+// ================================================================
+// buildAuthzFilter (row-level)
+// ================================================================
+
+describe('buildAuthzFilter (row-level)', () => {
+  beforeEach(() => {
+    _setPolicies({ staticPolicies: DEFAULT_POLICIES });
+  });
+
+  it('default policy for authenticated user produces user_id filter', () => {
+    const result = buildAuthzFilter({
+      principal: {
+        role: 'authenticated',
+        userId: 'alice',
+        email: 'alice@test.com',
+      },
+      action: 'select',
+      context: { table: 'todos' },
+      schema,
+      startParam: 1,
+    });
+    const joined = result.conditions.join(' ');
+    assert.ok(joined.includes('"user_id"'),
+      'conditions should reference user_id column');
+    assert.ok(result.values.includes('alice'),
+      'values should include the user ID "alice"');
+  });
+
+  it('service_role produces no conditions (unconditional access)', () => {
+    const result = buildAuthzFilter({
+      principal: {
+        role: 'service_role',
+        userId: '',
+        email: '',
+      },
+      action: 'select',
+      context: { table: 'todos' },
+      schema,
+      startParam: 1,
+    });
+    assert.deepEqual(result.conditions, [],
+      'service_role should have no conditions');
+    assert.deepEqual(result.values, [],
+      'service_role should have no values');
+  });
+
+  it('forbid policy produces NOT condition', () => {
+    _setPolicies({
+      staticPolicies: FORBID_DELETE_ARCHIVED_POLICY,
+    });
+    const result = buildAuthzFilter({
+      principal: {
+        role: 'authenticated',
+        userId: 'alice',
+        email: 'alice@test.com',
+      },
+      action: 'delete',
+      context: { table: 'todos' },
+      schema,
+      startParam: 1,
+    });
+    const joined = result.conditions.join(' ');
+    assert.ok(joined.includes('NOT'),
+      'forbid policy should produce NOT condition');
+    assert.ok(result.values.includes('archived'),
+      'values should include "archived"');
+  });
+
+  it('multiple permit policies combine with OR', () => {
+    _setPolicies({ staticPolicies: TEAM_ACCESS_POLICY });
+    const result = buildAuthzFilter({
+      principal: {
+        role: 'authenticated',
+        userId: 'alice',
+        email: 'alice@test.com',
+        team_id: 'team-1',
+      },
+      action: 'select',
+      context: { table: 'todos' },
+      schema,
+      startParam: 1,
+    });
+    const joined = result.conditions.join(' ');
+    assert.ok(joined.includes('OR'),
+      'multiple permit policies should combine with OR');
+  });
+
+  it('concrete deny throws PGRST403', () => {
+    assert.throws(
+      () => buildAuthzFilter({
+        principal: { role: 'anon', userId: '', email: '' },
+        action: 'select',
+        context: { table: 'todos' },
+        schema,
+        startParam: 1,
+      }),
+      (err) => err.code === 'PGRST403',
+      'anon with no matching permit should throw PGRST403',
+    );
+  });
+
+  it('startParam offsets parameter numbering correctly', () => {
+    const result = buildAuthzFilter({
+      principal: {
+        role: 'authenticated',
+        userId: 'alice',
+        email: 'alice@test.com',
+      },
+      action: 'select',
+      context: { table: 'todos' },
+      schema,
+      startParam: 5,
+    });
+    const joined = result.conditions.join(' ');
+    assert.ok(!joined.includes('$1'),
+      'should not contain $1 when startParam is 5');
+    const paramMatch = joined.match(/\$(\d+)/);
+    assert.ok(paramMatch,
+      'should contain parameter placeholders');
+    assert.ok(parseInt(paramMatch[1], 10) >= 5,
+      'parameter numbers should start at 5 or higher');
+  });
+});

@@ -41,7 +41,7 @@ describe('sql-builder', () => {
         offset: 0,
         onConflict: null,
       };
-      const { text, values } = buildSelect('todos', parsed, schema, 'user1');
+      const { text, values } = buildSelect('todos', parsed, schema);
       assert.ok(text.includes('"id"'), 'SQL should reference "id" quoted');
       assert.ok(text.includes('$'), 'SQL should use parameterized values');
       assert.ok(values.includes('abc'), 'values should include abc');
@@ -56,7 +56,7 @@ describe('sql-builder', () => {
         offset: 0,
         onConflict: null,
       };
-      const { text } = buildSelect('todos', parsed, schema, 'user1');
+      const { text } = buildSelect('todos', parsed, schema);
       assert.ok(text.includes('"id"'), 'SQL should include "id"');
       assert.ok(text.includes('"title"'), 'SQL should include "title"');
       assert.ok(!text.includes('"status"'),
@@ -72,7 +72,7 @@ describe('sql-builder', () => {
         offset: 0,
         onConflict: null,
       };
-      const { text } = buildSelect('todos', parsed, schema, 'user1');
+      const { text } = buildSelect('todos', parsed, schema);
       assert.ok(text.includes('ORDER BY'),
         'SQL should include ORDER BY');
       assert.ok(text.includes('"created_at"'),
@@ -90,43 +90,11 @@ describe('sql-builder', () => {
         offset: 10,
         onConflict: null,
       };
-      const { text, values } = buildSelect('todos', parsed, schema, 'user1');
+      const { text, values } = buildSelect('todos', parsed, schema);
       assert.ok(text.includes('LIMIT'),
         'SQL should include LIMIT');
       assert.ok(text.includes('OFFSET'),
         'SQL should include OFFSET');
-    });
-
-    it('appends user_id filter on table with user_id column', () => {
-      const parsed = {
-        select: ['*'],
-        filters: [],
-        order: [],
-        limit: null,
-        offset: 0,
-        onConflict: null,
-      };
-      const { text, values } = buildSelect('todos', parsed, schema, 'user1');
-      assert.ok(text.includes('"user_id"'),
-        'SQL should include user_id filter');
-      assert.ok(values.includes('user1'),
-        'values should include the authenticated user ID');
-    });
-
-    it('does NOT include user_id filter on table without user_id', () => {
-      const parsed = {
-        select: ['*'],
-        filters: [],
-        order: [],
-        limit: null,
-        offset: 0,
-        onConflict: null,
-      };
-      const { text, values } = buildSelect('categories', parsed, schema, 'user1');
-      assert.ok(!text.includes('user_id'),
-        'SQL should not include user_id for table without user_id column');
-      assert.ok(!values.includes('user1'),
-        'values should not include user ID');
     });
 
     it('throws PGRST204 for unknown column in filter', () => {
@@ -139,10 +107,47 @@ describe('sql-builder', () => {
         onConflict: null,
       };
       assert.throws(
-        () => buildSelect('todos', parsed, schema, 'user1'),
+        () => buildSelect('todos', parsed, schema),
         (err) => err.code === 'PGRST204',
         'should throw PGRST204 for unknown column'
       );
+    });
+
+    it('appends authzConditions to WHERE clause', () => {
+      const parsed = {
+        select: ['*'],
+        filters: [{ column: 'status', operator: 'eq', value: 'active', negate: false }],
+        order: [],
+        limit: null,
+        offset: 0,
+        onConflict: null,
+      };
+      const authz = {
+        conditions: ['"user_id" = $2'],
+        values: ['alice'],
+      };
+      const { text, values } = buildSelect('todos', parsed, schema, authz);
+      assert.ok(text.includes('"status"'),
+        'SQL should include filter column');
+      assert.ok(text.includes('"user_id" = $2'),
+        'SQL should include authz condition');
+      assert.deepEqual(values, ['active', 'alice']);
+    });
+
+    it('works unchanged with no authzConditions', () => {
+      const parsed = {
+        select: ['*'],
+        filters: [{ column: 'status', operator: 'eq', value: 'active', negate: false }],
+        order: [],
+        limit: null,
+        offset: 0,
+        onConflict: null,
+      };
+      const { text, values } = buildSelect('todos', parsed, schema);
+      assert.ok(text.includes('"status"'),
+        'SQL should include filter column');
+      assert.deepEqual(values, ['active'],
+        'values should only contain filter values, no authz values');
     });
   });
 
@@ -157,7 +162,7 @@ describe('sql-builder', () => {
         offset: 0,
         onConflict: null,
       };
-      const { text, values } = buildInsert('todos', body, schema, 'user1', parsed);
+      const { text, values } = buildInsert('todos', body, schema, parsed);
       assert.ok(text.includes('INSERT INTO'),
         'SQL should contain INSERT INTO');
       assert.ok(text.includes('"todos"'),
@@ -178,46 +183,11 @@ describe('sql-builder', () => {
         offset: 0,
         onConflict: null,
       };
-      const { text, values } = buildInsert('todos', body, schema, 'user1', parsed);
+      const { text, values } = buildInsert('todos', body, schema, parsed);
       // Should have at least 2 parameter groups
       const dollarMatches = text.match(/\$/g);
-      assert.ok(dollarMatches && dollarMatches.length >= 4,
+      assert.ok(dollarMatches && dollarMatches.length >= 2,
         'SQL should have multiple parameter placeholders for bulk insert');
-    });
-
-    it('forces user_id to authenticated user, overriding body', () => {
-      const body = { title: 'Buy milk', user_id: 'attacker' };
-      const parsed = {
-        select: ['*'],
-        filters: [],
-        order: [],
-        limit: null,
-        offset: 0,
-        onConflict: null,
-      };
-      const { text, values } = buildInsert('todos', body, schema, 'user1', parsed);
-      // The value for user_id should be 'user1', not 'attacker'
-      assert.ok(text.includes('"user_id"'),
-        'SQL should include user_id column');
-      assert.ok(values.includes('user1'),
-        'values should include authenticated user ID');
-      assert.ok(!values.includes('attacker'),
-        'values should NOT include attacker user_id');
-    });
-
-    it('does not inject user_id on table without user_id column', () => {
-      const body = { name: 'Work' };
-      const parsed = {
-        select: ['*'],
-        filters: [],
-        order: [],
-        limit: null,
-        offset: 0,
-        onConflict: null,
-      };
-      const { text } = buildInsert('categories', body, schema, 'user1', parsed);
-      assert.ok(!text.includes('user_id'),
-        'SQL should not include user_id for categories');
     });
 
     it('throws PGRST204 for body with unknown column', () => {
@@ -231,7 +201,7 @@ describe('sql-builder', () => {
         onConflict: null,
       };
       assert.throws(
-        () => buildInsert('todos', body, schema, 'user1', parsed),
+        () => buildInsert('todos', body, schema, parsed),
         (err) => err.code === 'PGRST204',
         'should throw PGRST204 for unknown column in body'
       );
@@ -249,7 +219,7 @@ describe('sql-builder', () => {
         offset: 0,
         onConflict: 'id',
       };
-      const { text } = buildInsert('todos', body, schema, 'user1', parsed);
+      const { text } = buildInsert('todos', body, schema, parsed);
       assert.ok(text.includes('ON CONFLICT'),
         'SQL should contain ON CONFLICT');
       assert.ok(text.includes('"id"'),
@@ -260,7 +230,7 @@ describe('sql-builder', () => {
   });
 
   describe('buildInsert (upsert edge cases)', () => {
-    it('produces DO NOTHING when all columns are in on_conflict or user_id', () => {
+    it('produces DO NOTHING when all columns are in on_conflict', () => {
       const body = { id: 'abc' };
       const parsed = {
         select: ['*'],
@@ -270,7 +240,7 @@ describe('sql-builder', () => {
         offset: 0,
         onConflict: 'id',
       };
-      const { text } = buildInsert('todos', body, schema, 'user1', parsed);
+      const { text } = buildInsert('todos', body, schema, parsed);
       assert.ok(text.includes('ON CONFLICT'),
         'SQL should contain ON CONFLICT');
       assert.ok(text.includes('DO NOTHING'),
@@ -291,7 +261,7 @@ describe('sql-builder', () => {
         onConflict: null,
       };
       assert.throws(
-        () => buildSelect('todos', parsed, schema, 'user1'),
+        () => buildSelect('todos', parsed, schema),
         (err) => err.code === 'PGRST100',
         'should throw PGRST100 for invalid IS value',
       );
@@ -308,7 +278,7 @@ describe('sql-builder', () => {
           onConflict: null,
         };
         assert.doesNotThrow(
-          () => buildSelect('todos', parsed, schema, 'user1'),
+          () => buildSelect('todos', parsed, schema),
           `should not throw for IS ${value}`,
         );
       }
@@ -326,7 +296,7 @@ describe('sql-builder', () => {
         offset: 0,
         onConflict: null,
       };
-      const { text } = buildUpdate('todos', body, parsed, schema, 'user1');
+      const { text } = buildUpdate('todos', body, parsed, schema);
       assert.ok(text.includes('UPDATE'),
         'SQL should contain UPDATE');
       assert.ok(text.includes('"todos"'),
@@ -337,7 +307,7 @@ describe('sql-builder', () => {
         'SQL should contain WHERE');
     });
 
-    it('throws PGRST106 when no filters on table with user_id', () => {
+    it('throws PGRST106 when no filters', () => {
       const body = { title: 'Updated title' };
       const parsed = {
         select: ['*'],
@@ -348,13 +318,13 @@ describe('sql-builder', () => {
         onConflict: null,
       };
       assert.throws(
-        () => buildUpdate('todos', body, parsed, schema, 'user1'),
+        () => buildUpdate('todos', body, parsed, schema),
         (err) => err.code === 'PGRST106',
         'should throw PGRST106 for UPDATE without filters'
       );
     });
 
-    it('includes user_id in WHERE on table with user_id', () => {
+    it('appends authzConditions to WHERE clause', () => {
       const body = { title: 'Updated' };
       const parsed = {
         select: ['*'],
@@ -364,11 +334,17 @@ describe('sql-builder', () => {
         offset: 0,
         onConflict: null,
       };
-      const { text, values } = buildUpdate('todos', body, parsed, schema, 'user1');
-      assert.ok(text.includes('"user_id"'),
-        'SQL should include user_id in WHERE');
-      assert.ok(values.includes('user1'),
-        'values should include authenticated user ID');
+      const authz = {
+        conditions: ['"user_id" = $3'],
+        values: ['alice'],
+      };
+      const { text, values } = buildUpdate(
+        'todos', body, parsed, schema, authz,
+      );
+      assert.ok(text.includes('"user_id" = $3'),
+        'SQL should include authz condition');
+      assert.ok(values.includes('alice'),
+        'values should include authz value');
     });
   });
 
@@ -382,7 +358,7 @@ describe('sql-builder', () => {
         offset: 0,
         onConflict: null,
       };
-      const { text } = buildDelete('todos', parsed, schema, 'user1');
+      const { text } = buildDelete('todos', parsed, schema);
       assert.ok(text.includes('DELETE FROM'),
         'SQL should contain DELETE FROM');
       assert.ok(text.includes('"todos"'),
@@ -391,7 +367,7 @@ describe('sql-builder', () => {
         'SQL should contain WHERE');
     });
 
-    it('throws PGRST106 when no filters on table with user_id', () => {
+    it('throws PGRST106 when no filters', () => {
       const parsed = {
         select: ['*'],
         filters: [],
@@ -401,13 +377,13 @@ describe('sql-builder', () => {
         onConflict: null,
       };
       assert.throws(
-        () => buildDelete('todos', parsed, schema, 'user1'),
+        () => buildDelete('todos', parsed, schema),
         (err) => err.code === 'PGRST106',
         'should throw PGRST106 for DELETE without filters'
       );
     });
 
-    it('includes user_id in WHERE on table with user_id', () => {
+    it('appends authzConditions to WHERE clause', () => {
       const parsed = {
         select: ['*'],
         filters: [{ column: 'id', operator: 'eq', value: 'abc', negate: false }],
@@ -416,11 +392,17 @@ describe('sql-builder', () => {
         offset: 0,
         onConflict: null,
       };
-      const { text, values } = buildDelete('todos', parsed, schema, 'user1');
-      assert.ok(text.includes('"user_id"'),
-        'SQL should include user_id in WHERE');
-      assert.ok(values.includes('user1'),
-        'values should include authenticated user ID');
+      const authz = {
+        conditions: ['"user_id" = $2'],
+        values: ['alice'],
+      };
+      const { text, values } = buildDelete(
+        'todos', parsed, schema, authz,
+      );
+      assert.ok(text.includes('"user_id" = $2'),
+        'SQL should include authz condition');
+      assert.ok(values.includes('alice'),
+        'values should include authz value');
     });
   });
 
@@ -434,13 +416,34 @@ describe('sql-builder', () => {
         offset: 0,
         onConflict: null,
       };
-      const { text, values } = buildCount('todos', parsed, schema, 'user1');
+      const { text, values } = buildCount('todos', parsed, schema);
       assert.ok(text.includes('COUNT(*)'),
         'SQL should contain COUNT(*)');
       assert.ok(text.includes('WHERE'),
         'SQL should contain WHERE');
       assert.ok(values.includes('active'),
         'values should include filter value');
+    });
+
+    it('appends authzConditions to WHERE clause', () => {
+      const parsed = {
+        select: ['*'],
+        filters: [{ column: 'status', operator: 'eq', value: 'active', negate: false }],
+        order: [],
+        limit: null,
+        offset: 0,
+        onConflict: null,
+      };
+      const authz = {
+        conditions: ['"user_id" = $2'],
+        values: ['alice'],
+      };
+      const { text, values } = buildCount(
+        'todos', parsed, schema, authz,
+      );
+      assert.ok(text.includes('"user_id" = $2'),
+        'SQL should include authz condition');
+      assert.deepEqual(values, ['active', 'alice']);
     });
   });
 
@@ -454,7 +457,7 @@ describe('sql-builder', () => {
         offset: 0,
         onConflict: null,
       };
-      const { text } = buildSelect('todos', parsed, schema, 'user1');
+      const { text } = buildSelect('todos', parsed, schema);
       assert.ok(text.includes('"todos"'),
         'table name should be double-quoted');
       assert.ok(text.includes('"id"'),

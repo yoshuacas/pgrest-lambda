@@ -26,10 +26,18 @@ Parameters:
   RegionName:
     Type: String
     Default: us-east-1
+  PolicyBucket:
+    Type: String
+    Default: ''
+    Description: >
+      S3 bucket for Cedar policy files. When set, policies are
+      loaded from s3://<bucket>/policies/*.cedar instead of the
+      local filesystem. Leave empty for filesystem-based loading.
 
 Conditions:
   IsDsql: !Equals [!Ref DatabaseMode, dsql]
   IsStandard: !Equals [!Ref DatabaseMode, standard]
+  HasPolicyBucket: !Not [!Equals [!Ref PolicyBucket, '']]
 
 Globals:
   Function:
@@ -134,6 +142,18 @@ Resources:
           USER_POOL_ID: !Ref UserPool
           USER_POOL_CLIENT_ID: !Ref UserPoolClient
           AUTH_PROVIDER: cognito
+          POLICIES_BUCKET: !If
+            - HasPolicyBucket
+            - !Ref PolicyBucket
+            - !Ref 'AWS::NoValue'
+          POLICIES_PREFIX: !If
+            - HasPolicyBucket
+            - policies/
+            - !Ref 'AWS::NoValue'
+          POLICIES_PATH: !If
+            - HasPolicyBucket
+            - !Ref 'AWS::NoValue'
+            - ./policies
       Policies:
         - !If
           - IsDsql
@@ -142,6 +162,18 @@ Resources:
               - Effect: Allow
                 Action: [dsql:DbConnect, dsql:DbConnectAdmin]
                 Resource: '*'
+          - !Ref 'AWS::NoValue'
+        - !If
+          - HasPolicyBucket
+          - Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub 'arn:aws:s3:::${PolicyBucket}'
+                  - !Sub 'arn:aws:s3:::${PolicyBucket}/*'
           - !Ref 'AWS::NoValue'
       Events:
         RestProxy:

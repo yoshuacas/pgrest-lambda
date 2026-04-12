@@ -77,14 +77,6 @@ function buildFilterConditions(filters, schema, table, values) {
   return conditions;
 }
 
-function appendUserId(conditions, schema, table, userId, role, values) {
-  if (role === 'service_role') return;
-  if (hasColumn(schema, table, 'user_id') && userId) {
-    values.push(userId);
-    conditions.push(`"user_id" = $${values.length}`);
-  }
-}
-
 function whereClause(conditions) {
   return conditions.length > 0
     ? ` WHERE ${conditions.join(' AND ')}`
@@ -117,7 +109,7 @@ function limitOffsetClause(limit, offset, values) {
   return sql;
 }
 
-export function buildSelect(table, parsed, schema, userId, role) {
+export function buildSelect(table, parsed, schema, authzConditions) {
   const values = [];
   const cols = resolveSelectCols(parsed.select, schema, table);
   const colList = cols.map((c) => `"${c}"`).join(', ');
@@ -125,7 +117,12 @@ export function buildSelect(table, parsed, schema, userId, role) {
   const conds = buildFilterConditions(
     parsed.filters, schema, table, values,
   );
-  appendUserId(conds, schema, table, userId, role, values);
+  if (authzConditions?.conditions?.length > 0) {
+    for (const cond of authzConditions.conditions) {
+      conds.push(cond);
+    }
+    values.push(...authzConditions.values);
+  }
 
   let sql = `SELECT ${colList} FROM "${table}"`;
   sql += whereClause(conds);
@@ -135,32 +132,23 @@ export function buildSelect(table, parsed, schema, userId, role) {
   return { text: sql, values };
 }
 
-export function buildInsert(table, body, schema, userId, parsed) {
+export function buildInsert(table, body, schema, parsed) {
   const rows = Array.isArray(body) ? body : [body];
-  const tableHasUserId = hasColumn(schema, table, 'user_id');
 
   const colSet = new Set();
   for (const row of rows) {
     for (const key of Object.keys(row)) {
-      if (key === 'user_id' && tableHasUserId) continue;
       validateCol(schema, table, key);
       colSet.add(key);
     }
   }
 
   const columns = [...colSet];
-  if (tableHasUserId) {
-    columns.push('user_id');
-  }
 
   const values = [];
   const tuples = rows.map((row) => {
     const placeholders = columns.map((col) => {
-      if (col === 'user_id' && tableHasUserId) {
-        values.push(userId);
-      } else {
-        values.push(row[col] !== undefined ? row[col] : null);
-      }
+      values.push(row[col] !== undefined ? row[col] : null);
       return `$${values.length}`;
     });
     return `(${placeholders.join(', ')})`;
@@ -176,7 +164,7 @@ export function buildInsert(table, body, schema, userId, parsed) {
       .join(', ');
     const pk = schema.tables[table]?.primaryKey || [];
     const updateCols = columns.filter(
-      (c) => !pk.includes(c) && c !== 'user_id',
+      (c) => !pk.includes(c),
     );
     if (updateCols.length > 0) {
       const sets = updateCols
@@ -192,7 +180,7 @@ export function buildInsert(table, body, schema, userId, parsed) {
   return { text: sql, values };
 }
 
-export function buildUpdate(table, body, parsed, schema, userId, role) {
+export function buildUpdate(table, body, parsed, schema, authzConditions) {
   if (parsed.filters.length === 0) {
     throw new PostgRESTError(
       400, 'PGRST106',
@@ -211,7 +199,12 @@ export function buildUpdate(table, body, parsed, schema, userId, role) {
   const conds = buildFilterConditions(
     parsed.filters, schema, table, values,
   );
-  appendUserId(conds, schema, table, userId, role, values);
+  if (authzConditions?.conditions?.length > 0) {
+    for (const cond of authzConditions.conditions) {
+      conds.push(cond);
+    }
+    values.push(...authzConditions.values);
+  }
 
   let sql = `UPDATE "${table}" SET ${setClauses.join(', ')}`;
   sql += whereClause(conds);
@@ -220,7 +213,7 @@ export function buildUpdate(table, body, parsed, schema, userId, role) {
   return { text: sql, values };
 }
 
-export function buildDelete(table, parsed, schema, userId, role) {
+export function buildDelete(table, parsed, schema, authzConditions) {
   if (parsed.filters.length === 0) {
     throw new PostgRESTError(
       400, 'PGRST106',
@@ -232,7 +225,12 @@ export function buildDelete(table, parsed, schema, userId, role) {
   const conds = buildFilterConditions(
     parsed.filters, schema, table, values,
   );
-  appendUserId(conds, schema, table, userId, role, values);
+  if (authzConditions?.conditions?.length > 0) {
+    for (const cond of authzConditions.conditions) {
+      conds.push(cond);
+    }
+    values.push(...authzConditions.values);
+  }
 
   let sql = `DELETE FROM "${table}"`;
   sql += whereClause(conds);
@@ -241,12 +239,17 @@ export function buildDelete(table, parsed, schema, userId, role) {
   return { text: sql, values };
 }
 
-export function buildCount(table, parsed, schema, userId, role) {
+export function buildCount(table, parsed, schema, authzConditions) {
   const values = [];
   const conds = buildFilterConditions(
     parsed.filters, schema, table, values,
   );
-  appendUserId(conds, schema, table, userId, role, values);
+  if (authzConditions?.conditions?.length > 0) {
+    for (const cond of authzConditions.conditions) {
+      conds.push(cond);
+    }
+    values.push(...authzConditions.values);
+  }
 
   let sql = `SELECT COUNT(*) FROM "${table}"`;
   sql += whereClause(conds);

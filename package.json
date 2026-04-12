@@ -21,6 +21,7 @@
   "dependencies": {
     "@aws-sdk/dsql-signer": "^3.0.0",
     "@aws-sdk/client-cognito-identity-provider": "^3.0.0",
+    "@cedar-policy/cedar-wasm": "^4.9.1",
     "jsonwebtoken": "^9.0.0",
     "pg": "^8.13.0"
   },
