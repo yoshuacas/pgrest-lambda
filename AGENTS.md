@@ -254,6 +254,104 @@ Policies are evaluated via Cedar partial evaluation and translated to SQL WHERE 
 
 pgrest-lambda discovers the schema automatically. No migration files, no schema definitions, no code generation. Add a table to your database and it appears as an API endpoint within 5 minutes (or immediately via `POST /rest/v1/_refresh`).
 
+## Discovering and using the generated API
+
+Once pgrest-lambda is deployed, the API is fully described by the OpenAPI spec. Fetch it to understand what's available.
+
+### Fetch the OpenAPI spec
+
+```
+GET /rest/v1/
+```
+
+Returns an OpenAPI 3.0.3 JSON document listing every table, column, type, and operation. Use this as your primary reference for the API surface. The spec is auto-generated from the database schema — no manual maintenance.
+
+Example response structure:
+```json
+{
+  "openapi": "3.0.3",
+  "info": { "title": "pgrest-lambda API" },
+  "paths": {
+    "/todos": {
+      "get": { "parameters": [...], "responses": {...} },
+      "post": { "requestBody": {...} },
+      "patch": {...},
+      "delete": {...}
+    },
+    "/users": {...}
+  },
+  "components": {
+    "schemas": {
+      "todos": {
+        "properties": {
+          "id": { "type": "integer" },
+          "title": { "type": "string" },
+          "done": { "type": "boolean" },
+          "user_id": { "type": "string", "format": "uuid" }
+        }
+      }
+    }
+  }
+}
+```
+
+### Recommended agent workflow
+
+1. **Fetch the spec first**: `GET /rest/v1/` to discover tables and columns
+2. **Use the spec to generate client code**: the spec has everything needed to build queries
+3. **Query syntax**: PostgREST-compatible operators on query string
+   - Filter: `?column=operator.value` (e.g., `?status=eq.active`, `?age=gt.18`)
+   - Select: `?select=col1,col2`
+   - Order: `?order=col.desc`
+   - Paginate: `?limit=20&offset=40`
+4. **Auth**: pass `apikey` header on every request, plus `Authorization: Bearer <token>` for authenticated users
+5. **Mutate**: POST (insert), PATCH (update with filters), DELETE (with filters)
+6. **Refresh**: if you create new tables, call `POST /rest/v1/_refresh` to update the schema cache
+
+### Interactive docs (for humans)
+
+When `docs` is enabled (default), `GET /rest/v1/_docs` serves an interactive API reference powered by Scalar. This is useful for human developers exploring the API in a browser. Agents should use the JSON spec at `/rest/v1/` instead.
+
+To disable the docs page:
+```javascript
+createPgrest({ docs: false })
+```
+Or set `PGREST_DOCS=false` in the environment. The OpenAPI spec at `/rest/v1/` is always available regardless.
+
+### Query examples for common operations
+
+```bash
+# List all todos
+GET /rest/v1/todos
+
+# Filter by status
+GET /rest/v1/todos?status=eq.active
+
+# Select specific columns, ordered, paginated
+GET /rest/v1/todos?select=id,title,done&order=created_at.desc&limit=10
+
+# Insert a row
+POST /rest/v1/todos
+Body: {"title": "New task", "done": false}
+
+# Update matching rows
+PATCH /rest/v1/todos?id=eq.5
+Body: {"done": true}
+
+# Delete matching rows
+DELETE /rest/v1/todos?id=eq.5
+
+# Get exact count
+GET /rest/v1/todos?limit=10
+Header: Prefer: count=exact
+Response header: Content-Range: 0-9/42
+
+# Upsert
+POST /rest/v1/todos?on_conflict=id
+Header: Prefer: resolution=merge-duplicates
+Body: {"id": 5, "title": "Updated", "done": true}
+```
+
 ## End-to-end integration checklist
 
 1. Create PostgreSQL database with tables in `public` schema

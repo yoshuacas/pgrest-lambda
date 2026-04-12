@@ -106,6 +106,7 @@ The factory resolves config in order: explicit values, then environment variable
 | `policies` | `POLICIES_PATH` | `./policies` |
 | `policiesBucket` | `POLICIES_BUCKET` | — |
 | `schemaCacheTtl` | `SCHEMA_CACHE_TTL_MS` | `300000` (5 min) |
+| `docs` | `PGREST_DOCS` | `true` |
 
 If you only set environment variables, `createPgrest()` with no arguments works.
 
@@ -131,6 +132,26 @@ API Gateway (REST)
   |
   +-- Authorizer  -->  JWT validation (apikey + bearer dual-layer)
 ```
+
+## API Documentation
+
+pgrest-lambda serves interactive API documentation at `GET /rest/v1/_docs`, powered by [Scalar](https://scalar.com). The docs page loads from CDN and fetches the auto-generated OpenAPI spec — no build step, no extra dependencies.
+
+The OpenAPI 3.0 spec itself is at `GET /rest/v1/` and includes all tables, columns, types, and operations discovered from your database.
+
+To disable the docs page (e.g., in production):
+
+```javascript
+createPgrest({ docs: false, ... })
+```
+
+Or via environment variable:
+
+```
+PGREST_DOCS=false
+```
+
+The OpenAPI spec at `/rest/v1/` remains available regardless of this setting.
 
 ## Cedar Authorization
 
