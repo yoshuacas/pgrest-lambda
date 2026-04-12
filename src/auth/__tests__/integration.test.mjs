@@ -122,12 +122,12 @@ function parseBody(response) {
 // Pre-build anon and service_role keys
 const ANON_KEY = signJwt({
   role: 'anon',
-  iss: 'boa',
+  iss: 'pgrest-lambda',
   exp: Math.floor(Date.now() / 1000) + 3600,
 });
 const SERVICE_ROLE_KEY = signJwt({
   role: 'service_role',
-  iss: 'boa',
+  iss: 'pgrest-lambda',
   exp: Math.floor(Date.now() / 1000) + 3600,
 });
 
@@ -338,7 +338,7 @@ describe('integration tests', () => {
       email: 'integ@example.com',
       role: 'authenticated',
       aud: 'authenticated',
-      iss: 'boa',
+      iss: 'pgrest-lambda',
       exp: Math.floor(Date.now() / 1000) + 3600,
     });
 
@@ -388,26 +388,24 @@ describe('integration tests', () => {
     );
   });
 
-  it('expired token flow: authorizer with valid apikey + expired token returns Deny', async () => {
+  it('expired token flow: authorizer with valid apikey + expired token throws Unauthorized', async () => {
     const expiredToken = signJwt({
       sub: 'user-expired',
       email: 'expired@example.com',
       role: 'authenticated',
-      iss: 'boa',
+      iss: 'pgrest-lambda',
       exp: Math.floor(Date.now() / 1000) - 3600,
     });
 
-    const result = await authorizer(
-      makeAuthEvent({
-        apikey: ANON_KEY,
-        authorization: `Bearer ${expiredToken}`,
-      })
-    );
-
-    assert.equal(
-      result.policyDocument.Statement[0].Effect,
-      'Deny',
-      'authorizer should Deny expired token'
+    await assert.rejects(
+      () => authorizer(
+        makeAuthEvent({
+          apikey: ANON_KEY,
+          authorization: `Bearer ${expiredToken}`,
+        })
+      ),
+      (err) => err === 'Unauthorized',
+      'authorizer should throw Unauthorized for expired token'
     );
   });
 });

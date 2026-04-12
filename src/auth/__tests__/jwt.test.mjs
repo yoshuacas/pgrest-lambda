@@ -42,7 +42,7 @@ describe('jwt.mjs', () => {
         'authenticated',
         'aud should be authenticated'
       );
-      assert.equal(payload.iss, 'boa', 'issuer should be boa');
+      assert.equal(payload.iss, 'pgrest-lambda', 'issuer should be pgrest-lambda');
 
       // ~1h expiry: exp - iat should be approximately 3600
       const diff = payload.exp - payload.iat;
@@ -67,7 +67,7 @@ describe('jwt.mjs', () => {
         'authenticated',
         'role should be authenticated'
       );
-      assert.equal(payload.iss, 'boa', 'issuer should be boa');
+      assert.equal(payload.iss, 'pgrest-lambda', 'issuer should be pgrest-lambda');
       assert.equal(
         payload.prt,
         providerToken,
@@ -103,7 +103,7 @@ describe('jwt.mjs', () => {
         'authenticated',
         'role should be authenticated'
       );
-      assert.equal(payload.iss, 'boa', 'issuer should be boa');
+      assert.equal(payload.iss, 'pgrest-lambda', 'issuer should be pgrest-lambda');
     });
 
     it('throws for an expired token', () => {

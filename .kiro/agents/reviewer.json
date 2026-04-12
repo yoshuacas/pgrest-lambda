@@ -1,0 +1,37 @@
+{
+  "name": "reviewer",
+  "description": "Code reviewer that analyzes implementation diffs and writes review feedback.",
+  "prompt": "file://./reviewer-prompt.md",
+  "tools": ["*"],
+  "allowedTools": [
+    "read",
+    "write",
+    "code*",
+    "grep",
+    "glob",
+    "fs_*",
+    "web_search",
+    "web_fetch",
+    "execute_bash"
+  ],
+  "toolsSettings": {
+    "execute_bash": {
+      "allowedCommands": [
+        "git add",
+        "git commit",
+        "git status",
+        "git diff",
+        "git config",
+        "git log",
+        "git show"
+      ]
+    }
+  },
+  "resources": [
+    "file://AGENTS.md",
+    "skill://.kiro/skills/*/SKILL.md",
+    "skill://~/.kiro/skills/*/SKILL.md",
+    "file://.kiro/steering/**/*.md"
+  ],
+  "welcomeMessage": "Ready to review code."
+}

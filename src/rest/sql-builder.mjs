@@ -49,9 +49,15 @@ function buildFilterConditions(filters, schema, table, values) {
   for (const f of filters) {
     validateCol(schema, table, f.column);
     if (f.operator === 'is') {
-      const keyword = f.value.toUpperCase();
+      const keyword = f.value.toLowerCase();
+      if (!['null', 'true', 'false', 'unknown'].includes(keyword)) {
+        throw new PostgRESTError(
+          400, 'PGRST100',
+          `IS operator only supports null, true, false, unknown (got '${f.value}')`,
+        );
+      }
       const not = f.negate ? ' NOT' : '';
-      conditions.push(`"${f.column}" IS${not} ${keyword}`);
+      conditions.push(`"${f.column}" IS${not} ${keyword.toUpperCase()}`);
     } else if (f.operator === 'in') {
       const placeholders = f.value.map((v) => {
         values.push(v);

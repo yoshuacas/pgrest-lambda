@@ -585,9 +585,11 @@ describe('handler integration', () => {
         q => q.text.trimStart().startsWith('SELECT') && !q.text.includes('pg_catalog')
       );
       assert.ok(selectQuery, 'should have captured a SELECT query');
+      const whereIdx = selectQuery.text.indexOf('WHERE');
+      const whereClause = whereIdx >= 0 ? selectQuery.text.slice(whereIdx) : '';
       assert.ok(
-        !selectQuery.text.includes('user_id'),
-        'SQL should NOT include user_id filter for service_role'
+        !whereClause.includes('user_id'),
+        'WHERE clause should NOT include user_id filter for service_role'
       );
     });
   });

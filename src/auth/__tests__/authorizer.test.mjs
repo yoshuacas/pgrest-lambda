@@ -45,12 +45,12 @@ function makeAuthEvent({ apikey, authorization } = {}) {
 // Pre-built keys for tests
 const ANON_KEY = signJwt({
   role: 'anon',
-  iss: 'boa',
+  iss: 'pgrest-lambda',
   exp: Math.floor(Date.now() / 1000) + 3600,
 });
 const SERVICE_ROLE_KEY = signJwt({
   role: 'service_role',
-  iss: 'boa',
+  iss: 'pgrest-lambda',
   exp: Math.floor(Date.now() / 1000) + 3600,
 });
 const USER_TOKEN = signJwt({
@@ -58,14 +58,14 @@ const USER_TOKEN = signJwt({
   email: 'user@example.com',
   role: 'authenticated',
   aud: 'authenticated',
-  iss: 'boa',
+  iss: 'pgrest-lambda',
   exp: Math.floor(Date.now() / 1000) + 3600,
 });
 const EXPIRED_TOKEN = signJwt({
   sub: 'user-expired',
   email: 'expired@example.com',
   role: 'authenticated',
-  iss: 'boa',
+  iss: 'pgrest-lambda',
   exp: Math.floor(Date.now() / 1000) - 3600,
 });
 
@@ -205,7 +205,7 @@ describe('authorizer', () => {
   it('throws Unauthorized when apikey is signed with wrong secret', async () => {
     const wrongSecretKey = signJwt({
       role: 'anon',
-      iss: 'boa',
+      iss: 'pgrest-lambda',
       exp: Math.floor(Date.now() / 1000) + 3600,
     }, 'completely-different-secret');
     const event = makeAuthEvent({ apikey: wrongSecretKey });
@@ -243,7 +243,7 @@ describe('authorizer', () => {
   it('throws Unauthorized when apikey has role=authenticated (forged key)', async () => {
     const forgedKey = signJwt({
       role: 'authenticated',
-      iss: 'boa',
+      iss: 'pgrest-lambda',
       exp: Math.floor(Date.now() / 1000) + 3600,
     });
     const event = makeAuthEvent({ apikey: forgedKey });

@@ -15,7 +15,7 @@ function makeEvent({ apikey, authorization } = {}) {
 }
 
 function signJwt(payload, secret = SECRET) {
-  return jwt.sign(payload, secret, { issuer: 'boa' });
+  return jwt.sign(payload, secret, { issuer: 'pgrest-lambda' });
 }
 
 describe('authorizer', () => {
@@ -64,53 +64,51 @@ describe('authorizer', () => {
     assert.equal(result.context.email, 'user@example.com');
   });
 
-  it('denies for invalid apikey JWT', async () => {
-    const result = await handler(
-      makeEvent({ apikey: 'not-a-valid-jwt' }),
-    );
-    assert.equal(
-      result.policyDocument.Statement[0].Effect, 'Deny',
-      'should return Deny policy for invalid apikey',
+  it('throws Unauthorized for invalid apikey JWT', async () => {
+    await assert.rejects(
+      () => handler(makeEvent({ apikey: 'not-a-valid-jwt' })),
+      (err) => err === 'Unauthorized',
+      'should throw Unauthorized for invalid apikey',
     );
   });
 
-  it('denies for expired apikey JWT', async () => {
+  it('throws Unauthorized for expired apikey JWT', async () => {
     const apikey = jwt.sign(
       { role: 'anon', exp: Math.floor(Date.now() / 1000) - 60 },
       SECRET,
-      { issuer: 'boa' },
+      { issuer: 'pgrest-lambda' },
     );
-    const result = await handler(makeEvent({ apikey }));
-    assert.equal(
-      result.policyDocument.Statement[0].Effect, 'Deny',
-      'should return Deny policy for expired apikey',
+    await assert.rejects(
+      () => handler(makeEvent({ apikey })),
+      (err) => err === 'Unauthorized',
+      'should throw Unauthorized for expired apikey',
     );
   });
 
-  it('denies when JWT_SECRET env var is missing (fail-closed)', async () => {
+  it('throws Unauthorized when JWT_SECRET env var is missing (fail-closed)', async () => {
     delete process.env.JWT_SECRET;
     const apikey = signJwt({ role: 'anon' });
-    const result = await handler(makeEvent({ apikey }));
-    assert.equal(
-      result.policyDocument.Statement[0].Effect, 'Deny',
-      'should return Deny when JWT_SECRET is missing',
+    await assert.rejects(
+      () => handler(makeEvent({ apikey })),
+      (err) => err === 'Unauthorized',
+      'should throw Unauthorized when JWT_SECRET is missing',
     );
   });
 
-  it('denies when apikey is missing', async () => {
-    const result = await handler(makeEvent({}));
-    assert.equal(
-      result.policyDocument.Statement[0].Effect, 'Deny',
-      'should return Deny when no apikey header',
+  it('throws Unauthorized when apikey is missing', async () => {
+    await assert.rejects(
+      () => handler(makeEvent({})),
+      (err) => err === 'Unauthorized',
+      'should throw Unauthorized when no apikey header',
     );
   });
 
-  it('denies for apikey with invalid role', async () => {
+  it('throws Unauthorized for apikey with invalid role', async () => {
     const apikey = signJwt({ role: 'admin' });
-    const result = await handler(makeEvent({ apikey }));
-    assert.equal(
-      result.policyDocument.Statement[0].Effect, 'Deny',
-      'should return Deny for invalid role',
+    await assert.rejects(
+      () => handler(makeEvent({ apikey })),
+      (err) => err === 'Unauthorized',
+      'should throw Unauthorized for invalid role',
     );
   });
 });

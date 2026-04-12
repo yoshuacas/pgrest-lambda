@@ -1,11 +1,10 @@
 import jwt from 'jsonwebtoken';
 
 const ISSUER = 'pgrest-lambda';
-const SECRET = process.env.JWT_SECRET;
 
 export async function handler(event) {
   try {
-    const secret = SECRET;
+    const secret = process.env.JWT_SECRET;
     const apikey = event.headers?.apikey
       || event.headers?.Apikey || '';
     const authHeader = event.headers?.Authorization
