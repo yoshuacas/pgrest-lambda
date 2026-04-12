@@ -1,0 +1,547 @@
+// helpers.mjs — Shared test schema, seed data, event builders, and test suite
+//
+// Used by both postgres.test.mjs and dsql.test.mjs to run the same
+// tests against different database backends.
+
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import jwt from 'jsonwebtoken';
+
+export const JWT_SECRET = 'integration-test-secret';
+
+export const SCHEMA_SQL = `
+  DROP TABLE IF EXISTS comments CASCADE;
+  DROP TABLE IF EXISTS tasks CASCADE;
+  DROP TABLE IF EXISTS projects CASCADE;
+  DROP TABLE IF EXISTS todos CASCADE;
+  DROP TABLE IF EXISTS categories CASCADE;
+  DROP TABLE IF EXISTS public_notes CASCADE;
+
+  CREATE TABLE todos (
+    id SERIAL PRIMARY KEY,
+    user_id TEXT,
+    title TEXT NOT NULL,
+    done BOOLEAN DEFAULT false,
+    created_at TIMESTAMPTZ DEFAULT now()
+  );
+
+  CREATE TABLE categories (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE
+  );
+
+  CREATE TABLE public_notes (
+    id SERIAL PRIMARY KEY,
+    content TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now()
+  );
+`;
+
+export const SEED_SQL = `
+  TRUNCATE todos, categories, public_notes RESTART IDENTITY CASCADE;
+
+  INSERT INTO todos (user_id, title, done) VALUES
+    ('user-aaa', 'Buy groceries', false),
+    ('user-aaa', 'Walk the dog', true),
+    ('user-bbb', 'Write tests', false),
+    ('user-bbb', 'Deploy app', false);
+
+  INSERT INTO categories (name) VALUES ('work'), ('personal'), ('urgent');
+
+  INSERT INTO public_notes (content) VALUES
+    ('Welcome to the app'),
+    ('Read the docs');
+`;
+
+export const DROP_SQL = `
+  DROP TABLE IF EXISTS comments CASCADE;
+  DROP TABLE IF EXISTS tasks CASCADE;
+  DROP TABLE IF EXISTS projects CASCADE;
+  DROP TABLE IF EXISTS todos CASCADE;
+  DROP TABLE IF EXISTS categories CASCADE;
+  DROP TABLE IF EXISTS public_notes CASCADE;
+`;
+
+export function makeEvent({
+  method = 'GET',
+  path = '/rest/v1/todos',
+  query = {},
+  headers = {},
+  body = null,
+  role = 'service_role',
+  userId = '',
+  email = '',
+} = {}) {
+  return {
+    httpMethod: method,
+    path,
+    queryStringParameters: Object.keys(query).length ? query : null,
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: body ? JSON.stringify(body) : null,
+    requestContext: {
+      authorizer: { role, userId, email },
+    },
+  };
+}
+
+export function makeUserEvent(opts = {}) {
+  return makeEvent({
+    role: 'authenticated',
+    userId: 'user-aaa',
+    email: 'aaa@test.com',
+    ...opts,
+  });
+}
+
+/**
+ * Registers the shared integration test suite against a pgrest instance.
+ * Call this inside a describe() block after setting up the database and pgrest.
+ *
+ * @param {() => object} getPgrest — returns the createPgrest() result
+ * @param {() => object} getPool — returns the raw database pool for setup queries
+ */
+export function sharedTests(getPgrest, getPool) {
+
+  describe('schema introspection', () => {
+    it('OpenAPI spec lists all tables', async () => {
+      const res = await getPgrest().rest(makeEvent({ path: '/rest/v1/' }));
+      assert.equal(res.statusCode, 200);
+      const spec = JSON.parse(res.body);
+      assert.equal(spec.openapi, '3.0.3');
+      assert.ok(spec.paths['/todos']);
+      assert.ok(spec.paths['/categories']);
+      assert.ok(spec.paths['/public_notes']);
+    });
+
+    it('schema refresh picks up new tables', async () => {
+      await getPool().query('CREATE TABLE IF NOT EXISTS temp_test (id SERIAL PRIMARY KEY, val TEXT)');
+      const res = await getPgrest().rest(makeEvent({ method: 'POST', path: '/rest/v1/_refresh' }));
+      assert.equal(res.statusCode, 200);
+      const spec = JSON.parse(res.body);
+      assert.ok(spec.paths['/temp_test']);
+      await getPool().query('DROP TABLE IF EXISTS temp_test');
+    });
+  });
+
+  describe('SELECT', () => {
+    it('returns all rows from a table', async () => {
+      const res = await getPgrest().rest(makeEvent({ path: '/rest/v1/categories' }));
+      assert.equal(res.statusCode, 200);
+      assert.equal(JSON.parse(res.body).length, 3);
+    });
+
+    it('select specific columns', async () => {
+      const res = await getPgrest().rest(makeEvent({
+        path: '/rest/v1/todos',
+        query: { select: 'id,title' },
+      }));
+      const rows = JSON.parse(res.body);
+      assert.ok(rows.length > 0);
+      assert.ok('id' in rows[0]);
+      assert.ok(!('done' in rows[0]));
+    });
+
+    it('filter with eq', async () => {
+      const res = await getPgrest().rest(makeEvent({
+        path: '/rest/v1/todos',
+        query: { done: 'eq.true' },
+      }));
+      const rows = JSON.parse(res.body);
+      assert.ok(rows.length > 0);
+      for (const row of rows) assert.equal(row.done, true);
+    });
+
+    it('filter with neq', async () => {
+      const res = await getPgrest().rest(makeEvent({
+        path: '/rest/v1/categories',
+        query: { name: 'neq.work' },
+      }));
+      for (const row of JSON.parse(res.body)) assert.notEqual(row.name, 'work');
+    });
+
+    it('filter with gt', async () => {
+      const res = await getPgrest().rest(makeEvent({
+        path: '/rest/v1/todos',
+        query: { id: 'gt.1', select: 'id' },
+      }));
+      for (const row of JSON.parse(res.body)) assert.ok(row.id > 1);
+    });
+
+    it('filter with in', async () => {
+      const res = await getPgrest().rest(makeEvent({
+        path: '/rest/v1/categories',
+        query: { name: 'in.(work,urgent)' },
+      }));
+      assert.equal(JSON.parse(res.body).length, 2);
+    });
+
+    it('filter with like', async () => {
+      const res = await getPgrest().rest(makeEvent({
+        path: '/rest/v1/todos',
+        query: { title: 'like.*dog*' },
+      }));
+      const rows = JSON.parse(res.body);
+      assert.equal(rows.length, 1);
+      assert.ok(rows[0].title.includes('dog'));
+    });
+
+    it('filter with ilike', async () => {
+      const res = await getPgrest().rest(makeEvent({
+        path: '/rest/v1/todos',
+        query: { title: 'ilike.*DOG*' },
+      }));
+      assert.equal(JSON.parse(res.body).length, 1);
+    });
+
+    it('filter with is.null', async () => {
+      const res = await getPgrest().rest(makeEvent({
+        path: '/rest/v1/todos',
+        query: { user_id: 'is.null' },
+      }));
+      assert.equal(JSON.parse(res.body).length, 0);
+    });
+
+    it('filter with not.eq', async () => {
+      const res = await getPgrest().rest(makeEvent({
+        path: '/rest/v1/categories',
+        query: { name: 'not.eq.work' },
+      }));
+      assert.equal(JSON.parse(res.body).length, 2);
+    });
+
+    it('order ascending', async () => {
+      const res = await getPgrest().rest(makeEvent({
+        path: '/rest/v1/categories',
+        query: { order: 'name.asc' },
+      }));
+      const names = JSON.parse(res.body).map(r => r.name);
+      assert.deepStrictEqual(names, [...names].sort());
+    });
+
+    it('order descending', async () => {
+      const res = await getPgrest().rest(makeEvent({
+        path: '/rest/v1/categories',
+        query: { order: 'name.desc' },
+      }));
+      const names = JSON.parse(res.body).map(r => r.name);
+      assert.deepStrictEqual(names, [...names].sort().reverse());
+    });
+
+    it('limit and offset', async () => {
+      const res = await getPgrest().rest(makeEvent({
+        path: '/rest/v1/todos',
+        query: { order: 'id.asc', limit: '2', offset: '1' },
+      }));
+      const rows = JSON.parse(res.body);
+      assert.equal(rows.length, 2);
+      assert.equal(rows[0].id, 2);
+    });
+
+    it('exact count in Content-Range', async () => {
+      const res = await getPgrest().rest(makeEvent({
+        path: '/rest/v1/todos',
+        query: { limit: '2' },
+        headers: { Prefer: 'count=exact' },
+      }));
+      assert.match(res.headers['Content-Range'], /\/4$/);
+    });
+
+    it('single object mode', async () => {
+      const res = await getPgrest().rest(makeEvent({
+        path: '/rest/v1/categories',
+        query: { name: 'eq.work' },
+        headers: { Accept: 'application/vnd.pgrst.object+json' },
+      }));
+      assert.equal(res.statusCode, 200);
+      const body = JSON.parse(res.body);
+      assert.ok(!Array.isArray(body));
+      assert.equal(body.name, 'work');
+    });
+
+    it('single object mode with 0 rows returns 406', async () => {
+      const res = await getPgrest().rest(makeEvent({
+        path: '/rest/v1/categories',
+        query: { name: 'eq.nonexistent' },
+        headers: { Accept: 'application/vnd.pgrst.object+json' },
+      }));
+      assert.equal(res.statusCode, 406);
+    });
+
+    it('empty result returns empty array', async () => {
+      const res = await getPgrest().rest(makeEvent({
+        path: '/rest/v1/public_notes',
+        query: { content: 'eq.nothing' },
+      }));
+      assert.deepStrictEqual(JSON.parse(res.body), []);
+    });
+
+    it('nonexistent table returns 404', async () => {
+      const res = await getPgrest().rest(makeEvent({ path: '/rest/v1/nonexistent' }));
+      assert.equal(res.statusCode, 404);
+    });
+
+    it('nonexistent column returns 400', async () => {
+      const res = await getPgrest().rest(makeEvent({
+        path: '/rest/v1/todos',
+        query: { badcol: 'eq.x' },
+      }));
+      assert.equal(res.statusCode, 400);
+    });
+  });
+
+  describe('INSERT', () => {
+    it('inserts a single row', async () => {
+      const res = await getPgrest().rest(makeEvent({
+        method: 'POST',
+        path: '/rest/v1/categories',
+        body: { name: 'health' },
+        headers: { Prefer: 'return=representation' },
+      }));
+      assert.equal(res.statusCode, 201);
+      assert.equal(JSON.parse(res.body)[0].name, 'health');
+    });
+
+    it('inserts multiple rows', async () => {
+      const res = await getPgrest().rest(makeEvent({
+        method: 'POST',
+        path: '/rest/v1/categories',
+        body: [{ name: 'fitness' }, { name: 'travel' }],
+        headers: { Prefer: 'return=representation' },
+      }));
+      assert.equal(res.statusCode, 201);
+      assert.equal(JSON.parse(res.body).length, 2);
+    });
+
+    it('201 with empty body without return=representation', async () => {
+      const res = await getPgrest().rest(makeEvent({
+        method: 'POST',
+        path: '/rest/v1/categories',
+        body: { name: 'temp' },
+      }));
+      assert.equal(res.statusCode, 201);
+    });
+
+    it('unique constraint violation returns 409', async () => {
+      const res = await getPgrest().rest(makeEvent({
+        method: 'POST',
+        path: '/rest/v1/categories',
+        body: { name: 'work' },
+      }));
+      assert.equal(res.statusCode, 409);
+    });
+
+    it('inserted row is visible in subsequent read', async () => {
+      await getPgrest().rest(makeEvent({
+        method: 'POST',
+        path: '/rest/v1/public_notes',
+        body: { content: 'freshly inserted' },
+      }));
+      const res = await getPgrest().rest(makeEvent({
+        path: '/rest/v1/public_notes',
+        query: { content: 'eq.freshly inserted' },
+      }));
+      assert.equal(JSON.parse(res.body).length, 1);
+    });
+  });
+
+  describe('UPDATE', () => {
+    it('updates matching rows', async () => {
+      const res = await getPgrest().rest(makeEvent({
+        method: 'PATCH',
+        path: '/rest/v1/todos',
+        query: { title: 'eq.Buy groceries' },
+        body: { done: true },
+        headers: { Prefer: 'return=representation' },
+      }));
+      assert.equal(JSON.parse(res.body)[0].done, true);
+    });
+
+    it('update is persisted', async () => {
+      await getPgrest().rest(makeEvent({
+        method: 'PATCH',
+        path: '/rest/v1/todos',
+        query: { title: 'eq.Buy groceries' },
+        body: { done: true },
+      }));
+      const res = await getPgrest().rest(makeEvent({
+        path: '/rest/v1/todos',
+        query: { title: 'eq.Buy groceries' },
+      }));
+      assert.equal(JSON.parse(res.body)[0].done, true);
+    });
+
+    it('204 without return=representation', async () => {
+      const res = await getPgrest().rest(makeEvent({
+        method: 'PATCH',
+        path: '/rest/v1/todos',
+        query: { title: 'eq.Walk the dog' },
+        body: { done: false },
+      }));
+      assert.equal(res.statusCode, 204);
+    });
+
+    it('update without filters returns 400', async () => {
+      const res = await getPgrest().rest(makeEvent({
+        method: 'PATCH',
+        path: '/rest/v1/todos',
+        body: { done: true },
+      }));
+      assert.equal(res.statusCode, 400);
+    });
+  });
+
+  describe('DELETE', () => {
+    it('deletes matching rows', async () => {
+      const res = await getPgrest().rest(makeEvent({
+        method: 'DELETE',
+        path: '/rest/v1/categories',
+        query: { name: 'eq.urgent' },
+        headers: { Prefer: 'return=representation' },
+      }));
+      assert.equal(JSON.parse(res.body)[0].name, 'urgent');
+    });
+
+    it('delete is persisted', async () => {
+      await getPgrest().rest(makeEvent({
+        method: 'DELETE',
+        path: '/rest/v1/categories',
+        query: { name: 'eq.urgent' },
+      }));
+      const res = await getPgrest().rest(makeEvent({
+        path: '/rest/v1/categories',
+        query: { name: 'eq.urgent' },
+      }));
+      assert.deepStrictEqual(JSON.parse(res.body), []);
+    });
+
+    it('delete without filters returns 400', async () => {
+      const res = await getPgrest().rest(makeEvent({
+        method: 'DELETE',
+        path: '/rest/v1/todos',
+      }));
+      assert.equal(res.statusCode, 400);
+    });
+  });
+
+  describe('Cedar authorization', () => {
+    it('service_role sees all rows', async () => {
+      const res = await getPgrest().rest(makeEvent({ role: 'service_role' }));
+      assert.equal(JSON.parse(res.body).length, 4);
+    });
+
+    it('authenticated user sees only their own rows', async () => {
+      const res = await getPgrest().rest(makeUserEvent());
+      const rows = JSON.parse(res.body);
+      assert.equal(rows.length, 2);
+      for (const row of rows) assert.equal(row.user_id, 'user-aaa');
+    });
+
+    it('different user sees different rows', async () => {
+      const res = await getPgrest().rest(makeEvent({
+        role: 'authenticated', userId: 'user-bbb', email: 'bbb@test.com',
+      }));
+      const rows = JSON.parse(res.body);
+      assert.equal(rows.length, 2);
+      for (const row of rows) assert.equal(row.user_id, 'user-bbb');
+    });
+
+    it('anon user is denied on tables with user_id', async () => {
+      const res = await getPgrest().rest(makeEvent({ role: 'anon', userId: '' }));
+      assert.equal(res.statusCode, 403);
+    });
+
+    it('authenticated user can insert', async () => {
+      const res = await getPgrest().rest(makeUserEvent({
+        method: 'POST',
+        body: { user_id: 'user-aaa', title: 'Cedar insert', done: false },
+        headers: { Prefer: 'return=representation' },
+      }));
+      assert.equal(res.statusCode, 201);
+    });
+
+    it('authenticated user cannot update another users rows', async () => {
+      const res = await getPgrest().rest(makeUserEvent({
+        method: 'PATCH',
+        query: { title: 'eq.Write tests' },
+        body: { done: true },
+        headers: { Prefer: 'return=representation' },
+      }));
+      assert.equal(JSON.parse(res.body).length, 0);
+    });
+
+    it('authenticated user cannot delete another users rows', async () => {
+      const res = await getPgrest().rest(makeUserEvent({
+        method: 'DELETE',
+        query: { title: 'eq.Write tests' },
+        headers: { Prefer: 'return=representation' },
+      }));
+      assert.equal(JSON.parse(res.body).length, 0);
+      const check = await getPool().query("SELECT 1 FROM todos WHERE title = 'Write tests'");
+      assert.equal(check.rows.length, 1);
+    });
+
+    it('service_role on table without user_id returns all rows', async () => {
+      const res = await getPgrest().rest(makeEvent({
+        path: '/rest/v1/categories', role: 'service_role',
+      }));
+      assert.equal(JSON.parse(res.body).length, 3);
+    });
+  });
+
+  describe('authorizer', () => {
+    const methodArn = 'arn:aws:execute-api:us-east-1:123:abc/prod/GET/rest/v1/todos';
+
+    it('allows valid anon apikey', async () => {
+      const key = jwt.sign({ role: 'anon' }, JWT_SECRET, { issuer: 'pgrest-lambda' });
+      const result = await getPgrest().authorizer({ headers: { apikey: key }, methodArn });
+      assert.equal(result.context.role, 'anon');
+    });
+
+    it('allows service_role apikey', async () => {
+      const key = jwt.sign({ role: 'service_role' }, JWT_SECRET, { issuer: 'pgrest-lambda' });
+      const result = await getPgrest().authorizer({ headers: { apikey: key }, methodArn });
+      assert.equal(result.context.role, 'service_role');
+    });
+
+    it('extracts user identity from bearer token', async () => {
+      const apikey = jwt.sign({ role: 'anon' }, JWT_SECRET, { issuer: 'pgrest-lambda' });
+      const bearer = jwt.sign(
+        { role: 'authenticated', sub: 'user-123', email: 'u@test.com' },
+        JWT_SECRET, { issuer: 'pgrest-lambda' },
+      );
+      const result = await getPgrest().authorizer({
+        headers: { apikey, Authorization: `Bearer ${bearer}` }, methodArn,
+      });
+      assert.equal(result.context.userId, 'user-123');
+    });
+
+    it('rejects missing apikey', async () => {
+      await assert.rejects(
+        () => getPgrest().authorizer({ headers: {}, methodArn }),
+        (err) => err === 'Unauthorized',
+      );
+    });
+
+    it('rejects expired bearer', async () => {
+      const apikey = jwt.sign({ role: 'anon' }, JWT_SECRET, { issuer: 'pgrest-lambda' });
+      const expired = jwt.sign(
+        { role: 'authenticated', sub: 'u', exp: Math.floor(Date.now() / 1000) - 3600 },
+        JWT_SECRET, { issuer: 'pgrest-lambda' },
+      );
+      await assert.rejects(
+        () => getPgrest().authorizer({
+          headers: { apikey, Authorization: `Bearer ${expired}` }, methodArn,
+        }),
+        (err) => err === 'Unauthorized',
+      );
+    });
+  });
+
+  describe('CORS', () => {
+    it('OPTIONS returns 200 with CORS headers', async () => {
+      const res = await getPgrest().rest(makeEvent({ method: 'OPTIONS' }));
+      assert.equal(res.statusCode, 200);
+      assert.ok(res.headers['Access-Control-Allow-Origin']);
+    });
+  });
+}
