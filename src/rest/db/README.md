@@ -131,7 +131,7 @@ Aurora DSQL is PostgreSQL-compatible but has restrictions on DDL. When creating 
 | Multi-statement queries | Supported | Not supported — execute one statement at a time |
 | TRUNCATE ... RESTART IDENTITY | Supported | Not supported — use `DELETE FROM` instead |
 | Sequences | Full support | Limited — only via identity columns |
-| Foreign keys | Full support | Supported |
+| Foreign keys | Full support | Not supported |
 | Unique constraints | Full support | Supported |
 | CHECK constraints | Full support | Supported |
 
