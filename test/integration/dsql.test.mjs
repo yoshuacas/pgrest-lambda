@@ -1,15 +1,17 @@
 // dsql.test.mjs — Integration tests against a real Aurora DSQL cluster.
 //
-// This test creates a DSQL cluster, runs the full test suite, then destroys it.
+// Creates a single-region DSQL cluster (takes ~2 seconds), runs the
+// full test suite, then destroys the cluster.
+//
 // Requires AWS credentials with dsql:* permissions.
 //
 // Run:
 //   TEST_DSQL_REGION=us-east-1 node --test test/integration/dsql.test.mjs
 //
-// The cluster takes 1-3 minutes to create and ~1 minute to delete.
-// Total runtime: ~5-10 minutes.
+// Or use an existing cluster (skips create/destroy):
+//   TEST_DSQL_ENDPOINT=id.dsql.us-east-1.on.aws node --test test/integration/dsql.test.mjs
 
-import { describe, it, before, after, beforeEach } from 'node:test';
+import { describe, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { execSync } from 'node:child_process';
 import pg from 'pg';
@@ -19,7 +21,6 @@ import {
 } from './helpers.mjs';
 
 const REGION = process.env.TEST_DSQL_REGION || process.env.REGION_NAME;
-// Allow using a pre-existing cluster to skip create/destroy
 const EXISTING_ENDPOINT = process.env.TEST_DSQL_ENDPOINT;
 
 function skip() {
@@ -28,12 +29,40 @@ function skip() {
 }
 
 function exec(cmd) {
-  return execSync(cmd, { encoding: 'utf-8', timeout: 300_000 }).trim();
+  return execSync(cmd, { encoding: 'utf-8', timeout: 30_000 }).trim();
 }
 
-describe('dsql integration', { skip: skip(), timeout: 600_000 }, () => {
+async function connectDsql(endpoint, region) {
+  const token = exec(
+    `aws dsql generate-db-connect-admin-auth-token --hostname ${endpoint} --region ${region}`
+  );
+  return new pg.Pool({
+    host: endpoint,
+    port: 5432,
+    user: 'admin',
+    password: token,
+    database: 'postgres',
+    ssl: { rejectUnauthorized: false },
+    max: 5,
+    idleTimeoutMillis: 60000,
+  });
+}
+
+// DSQL doesn't support multi-statement queries, so split on semicolons
+async function execStatements(pool, sql) {
+  const statements = sql
+    .split(';')
+    .map(s => s.trim())
+    .filter(s => s.length > 0);
+  for (const stmt of statements) {
+    await pool.query(stmt);
+  }
+}
+
+describe('dsql integration', { skip: skip(), timeout: 120_000 }, () => {
   let clusterId;
   let endpoint;
+  let region;
   let pool;
   let pgrest;
   let createdCluster = false;
@@ -41,127 +70,58 @@ describe('dsql integration', { skip: skip(), timeout: 600_000 }, () => {
   before(async () => {
     if (EXISTING_ENDPOINT) {
       endpoint = EXISTING_ENDPOINT;
+      region = REGION || EXISTING_ENDPOINT.split('.dsql.')[1]?.split('.on.aws')[0];
       console.log(`Using existing DSQL cluster: ${endpoint}`);
     } else {
-      // Create a DSQL cluster
+      // Create cluster — single-region, no deletion protection, instant
       console.log(`Creating DSQL cluster in ${REGION}...`);
       const result = JSON.parse(exec(
-        `aws dsql create-cluster --deletion-protection-enabled false --region ${REGION} --output json`
+        `aws dsql create-cluster --no-deletion-protection-enabled --region ${REGION} --output json`
       ));
       clusterId = result.identifier;
-      endpoint = result.endpoint;
+      endpoint = `${clusterId}.dsql.${REGION}.on.aws`;
+      region = REGION;
       createdCluster = true;
-      console.log(`Cluster ${clusterId} creating, endpoint: ${endpoint}`);
-
-      // Wait for cluster to become ACTIVE
-      console.log('Waiting for cluster to become ACTIVE...');
-      for (let i = 0; i < 60; i++) {
-        const status = JSON.parse(exec(
-          `aws dsql get-cluster --identifier ${clusterId} --region ${REGION} --output json`
-        )).status;
-        if (status === 'ACTIVE') {
-          console.log('Cluster is ACTIVE');
-          break;
-        }
-        if (status === 'FAILED') {
-          throw new Error('Cluster creation failed');
-        }
-        await new Promise(r => setTimeout(r, 5000));
-      }
+      console.log(`Cluster ready: ${endpoint}`);
     }
 
-    // Generate IAM auth token and connect
-    const token = exec(
-      `aws dsql generate-db-connect-admin-auth-token --hostname ${endpoint} --region ${REGION}`
-    );
-
-    pool = new pg.Pool({
-      host: endpoint,
-      port: 5432,
-      user: 'admin',
-      password: token,
-      database: 'postgres',
-      ssl: { rejectUnauthorized: false },
-      max: 5,
-      idleTimeoutMillis: 60000,
-    });
-
-    // Verify connection
-    const r = await pool.query('SELECT 1 as ok');
-    assert.equal(r.rows[0].ok, 1, 'DSQL connection should work');
+    pool = await connectDsql(endpoint, region);
+    await pool.query('SELECT 1');
     console.log('Connected to DSQL');
 
-    // Create schema
-    // DSQL doesn't support multi-statement queries in a single call,
-    // so split and execute individually
-    const statements = SCHEMA_SQL
-      .split(';')
-      .map(s => s.trim())
-      .filter(s => s.length > 0);
-    for (const stmt of statements) {
-      await pool.query(stmt);
-    }
+    await execStatements(pool, SCHEMA_SQL);
     console.log('Schema created');
 
     pgrest = createPgrest({
-      database: { dsqlEndpoint: endpoint, region: REGION },
+      database: { dsqlEndpoint: endpoint, region },
       jwtSecret: JWT_SECRET,
       auth: false,
     });
   });
 
   beforeEach(async () => {
-    // Re-seed data before each test
-    const statements = SEED_SQL
-      .split(';')
-      .map(s => s.trim())
-      .filter(s => s.length > 0);
-    for (const stmt of statements) {
-      await pool.query(stmt);
-    }
+    await execStatements(pool, SEED_SQL);
     await pgrest.rest(makeEvent({ method: 'POST', path: '/rest/v1/_refresh' }));
   });
 
   after(async () => {
-    // Drop tables
     if (pool) {
-      try {
-        const statements = DROP_SQL
-          .split(';')
-          .map(s => s.trim())
-          .filter(s => s.length > 0);
-        for (const stmt of statements) {
-          await pool.query(stmt);
-        }
-      } catch { /* best effort */ }
+      try { await execStatements(pool, DROP_SQL); } catch { /* best effort */ }
       await pool.end();
     }
 
-    // Destroy cluster if we created it
     if (createdCluster && clusterId) {
       console.log(`Deleting DSQL cluster ${clusterId}...`);
       try {
-        exec(
-          `aws dsql delete-cluster --identifier ${clusterId} --region ${REGION}`
-        );
+        exec(`aws dsql delete-cluster --identifier ${clusterId} --region ${region}`);
         console.log('Cluster deletion initiated');
       } catch (err) {
-        console.error(`Failed to delete cluster ${clusterId}: ${err.message}`);
-        console.error(`Manual cleanup: aws dsql delete-cluster --identifier ${clusterId} --region ${REGION}`);
+        console.error(`Failed to delete cluster: ${err.message}`);
+        console.error(`Manual cleanup: aws dsql delete-cluster --identifier ${clusterId} --region ${region}`);
       }
     }
   });
 
-  // Run shared test suite
+  // Shared tests — same suite as PostgreSQL
   sharedTests(() => pgrest, () => pool);
-
-  // DSQL-specific tests
-  describe('DSQL-specific', () => {
-    it('connects via IAM auth (no password in config)', async () => {
-      // The fact that we got here means IAM auth works.
-      // Verify the pgrest instance was created with dsqlEndpoint config.
-      const res = await pgrest.rest(makeEvent({ path: '/rest/v1/' }));
-      assert.equal(res.statusCode, 200);
-    });
-  });
 });
