@@ -2,142 +2,184 @@
 
 A serverless REST API for any PostgreSQL database.
 
-Deploys as a single AWS Lambda function behind API Gateway. Introspects your PostgreSQL schema and serves PostgREST-compatible CRUD endpoints with GoTrue-compatible auth — no code generation, no framework lock-in.
+Introspects your PostgreSQL schema and serves PostgREST-compatible CRUD endpoints with built-in auth. Works as an npm library in your own project or as a standalone deployment.
 
 ## Features
 
 - **PostgREST-compatible query syntax** — filtering, ordering, pagination, upserts, exact counts
 - **GoTrue-compatible auth** — signup, signin, token refresh, user profile (`@supabase/supabase-js` works as a client)
+- **Cedar authorization** — policy-as-code row-level filtering via partial evaluation, translated to SQL WHERE clauses
 - **OpenAPI 3.0 auto-generation** — hit `GET /rest/v1/` for the full spec
 - **Multiple database backends** — Aurora DSQL (IAM auth), Aurora Serverless v2, RDS PostgreSQL, or any PostgreSQL
-- **Lambda authorizer** — JWT-based with apikey + bearer token dual-layer auth
-- **Row-level user isolation** — automatic `user_id` filtering on tables that have the column
-- **Zero code generation** — your schema is your API
+- **Library-first** — use as an npm package in your own Lambda, or deploy standalone
+
+## Usage
+
+### As a library
+
+```bash
+npm install pgrest-lambda
+```
+
+```javascript
+import { createPgrest } from 'pgrest-lambda';
+
+const pgrest = createPgrest({
+  database: {
+    host: 'your-db-host.amazonaws.com',
+    port: 5432,
+    user: 'postgres',
+    password: 'secret',
+    database: 'mydb',
+  },
+  jwtSecret: process.env.JWT_SECRET,
+  auth: {
+    provider: 'cognito',
+    region: 'us-east-1',
+    clientId: process.env.USER_POOL_CLIENT_ID,
+  },
+  policies: './policies',
+});
+
+// Three Lambda handlers, one config
+export const handler    = pgrest.handler;     // combined: routes /auth/v1/* and /rest/v1/*
+export const authorizer = pgrest.authorizer;  // API Gateway Lambda authorizer
+```
+
+pgrest-lambda gives you handler functions. How you deploy them (CDK, SAM, Terraform, SST) is up to you.
+
+### Override auth
+
+Bring your own auth handler:
+
+```javascript
+const pgrest = createPgrest({
+  database: { connectionString: process.env.DATABASE_URL },
+  jwtSecret: process.env.JWT_SECRET,
+  auth: myCustomAuthHandler,  // any (event) => response function
+});
+```
+
+### Disable auth
+
+REST-only mode when you handle auth elsewhere:
+
+```javascript
+const pgrest = createPgrest({
+  database: { connectionString: process.env.DATABASE_URL },
+  jwtSecret: process.env.JWT_SECRET,
+  auth: false,
+});
+// pgrest.auth is null, pgrest.handler routes everything to REST
+```
+
+### DSQL mode
+
+```javascript
+const pgrest = createPgrest({
+  database: {
+    dsqlEndpoint: 'your-cluster.dsql.us-east-1.on.aws',
+    region: 'us-east-1',
+  },
+  jwtSecret: process.env.JWT_SECRET,
+});
+```
+
+### Config resolution
+
+The factory resolves config in order: explicit values, then environment variables, then defaults.
+
+| Config key | Env var fallback | Default |
+|---|---|---|
+| `database.dsqlEndpoint` | `DSQL_ENDPOINT` | — |
+| `database.connectionString` | `DATABASE_URL` | — |
+| `database.host` | `PG_HOST` | `localhost` |
+| `database.port` | `PG_PORT` | `5432` |
+| `database.user` | `PG_USER` | `postgres` |
+| `database.password` | `PG_PASSWORD` | `''` |
+| `database.database` | `PG_DATABASE` | `postgres` |
+| `database.ssl` | `PG_SSL` | `false` |
+| `jwtSecret` | `JWT_SECRET` | — |
+| `auth.provider` | `AUTH_PROVIDER` | `cognito` |
+| `auth.region` | `REGION_NAME` | — |
+| `auth.clientId` | `USER_POOL_CLIENT_ID` | — |
+| `policies` | `POLICIES_PATH` | `./policies` |
+| `policiesBucket` | `POLICIES_BUCKET` | — |
+| `schemaCacheTtl` | `SCHEMA_CACHE_TTL_MS` | `300000` (5 min) |
+
+If you only set environment variables, `createPgrest()` with no arguments works.
 
 ## Architecture
 
 ```
 Client (supabase-js, fetch, curl)
-  │
-  ▼
+  |
+  v
 API Gateway (REST)
-  │
-  ├── /auth/v1/*  →  Auth Handler (GoTrue-compatible)
-  │                    ├── signup, token, user, logout
-  │                    └── Cognito provider (swappable)
-  │
-  └── /rest/v1/*  →  REST Handler (PostgREST-compatible)
-       │               ├── schema introspection
-       │               ├── query parsing
-       │               ├── SQL building (parameterized)
-       │               └── OpenAPI generation
-       │
-       ▼
-  PostgreSQL (DSQL / Aurora Sv2 / RDS / any)
+  |
+  +-- /auth/v1/*  -->  Auth Handler (GoTrue-compatible)
+  |                      +-- signup, token, user, logout
+  |                      +-- Cognito provider (swappable)
+  |
+  +-- /rest/v1/*  -->  REST Handler (PostgREST-compatible)
+  |    |                 +-- schema introspection
+  |    |                 +-- query parsing + SQL building
+  |    |                 +-- Cedar authorization (partial eval -> SQL WHERE)
+  |    |                 +-- OpenAPI generation
+  |    v
+  |  PostgreSQL (DSQL / Aurora / RDS / any)
+  |
+  +-- Authorizer  -->  JWT validation (apikey + bearer dual-layer)
 ```
 
-## Quick Start
+## Cedar Authorization
 
-### Prerequisites
+pgrest-lambda uses Cedar policies for access control. Policies are evaluated via partial evaluation and translated into SQL WHERE clauses before the query runs — the database only returns authorized rows.
 
-- AWS CLI configured
-- AWS SAM CLI installed
-- A PostgreSQL database (Aurora DSQL, Aurora Serverless v2, RDS, or any accessible PostgreSQL)
+Default policies in `policies/default.cedar`:
 
-### 1. Clone and install
+```cedar
+// Authenticated users can read/update/delete their own rows
+permit(
+    principal is PgrestLambda::User,
+    action in [Action::"select", Action::"update", Action::"delete"],
+    resource is PgrestLambda::Row
+) when {
+    resource has user_id && resource.user_id == principal
+};
 
-```bash
-git clone https://github.com/yoshuacas/pgrest-lambda.git
-cd pgrest-lambda
-npm install
-```
-
-### 2. Create JWT secret
-
-```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-# Store it in SSM Parameter Store:
-aws ssm put-parameter \
-  --name /pgrest/jwt-secret \
-  --value "YOUR_SECRET_HERE" \
-  --type SecureString
-```
-
-### 3. Deploy
-
-**With Aurora DSQL:**
-```bash
-sam build && sam deploy --guided \
-  --parameter-overrides \
-    DatabaseMode=dsql \
-    DsqlEndpoint=YOUR_CLUSTER.dsql.us-east-1.on.aws
-```
-
-**With standard PostgreSQL (Aurora Sv2, RDS, or any):**
-```bash
-sam build && sam deploy --guided \
-  --parameter-overrides \
-    DatabaseMode=standard \
-    DatabaseUrl=postgresql://user:pass@host:5432/dbname
-```
-
-### 4. Use it
-
-```javascript
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  'https://YOUR_API_ID.execute-api.us-east-1.amazonaws.com/v1',
-  'YOUR_ANON_KEY'
+// Authenticated users can insert into any table
+permit(
+    principal is PgrestLambda::User,
+    action == Action::"insert",
+    resource is PgrestLambda::Table
 );
 
-// Sign up
-const { data: auth } = await supabase.auth.signUp({
-  email: 'user@example.com',
-  password: 'Password123',
-});
-
-// Query data
-const { data: todos } = await supabase
-  .from('todos')
-  .select('*')
-  .order('created_at', { ascending: false });
-
-// Insert
-const { data: todo } = await supabase
-  .from('todos')
-  .insert({ title: 'Ship it', done: false })
-  .select();
+// Service role bypasses all authorization
+permit(principal is PgrestLambda::ServiceRole, action, resource);
 ```
 
-## Configuration
+Write custom policies by adding `.cedar` files to the `policies/` directory:
 
-### Environment Variables
+```cedar
+// Admins see all rows
+permit(
+    principal is PgrestLambda::User,
+    action == Action::"select",
+    resource
+) when {
+    principal.role == "admin"
+};
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `DSQL_ENDPOINT` | If DSQL mode | Aurora DSQL cluster endpoint |
-| `DATABASE_URL` | If standard mode | PostgreSQL connection string |
-| `PG_HOST`, `PG_PORT`, `PG_USER`, `PG_PASSWORD`, `PG_DATABASE` | Alternative to DATABASE_URL | Individual connection parameters |
-| `PG_SSL` | No | Set to `"true"` to enable SSL for standard connections |
-| `REGION_NAME` | Yes | AWS region (do not use `AWS_REGION` — it's reserved) |
-| `JWT_SECRET` | Yes | Secret for signing/verifying JWTs |
-| `USER_POOL_ID` | Yes | Cognito User Pool ID |
-| `USER_POOL_CLIENT_ID` | Yes | Cognito User Pool Client ID |
-| `AUTH_PROVIDER` | No | Auth backend (default: `cognito`) |
-| `SCHEMA_CACHE_TTL_MS` | No | Schema cache TTL in ms (default: `300000` / 5 min) |
-
-### Database Modes
-
-**DSQL mode** (`DSQL_ENDPOINT` is set):
-- Uses IAM authentication — no passwords stored
-- Tokens auto-refresh every 10 minutes
-- Best for: Aurora DSQL clusters
-
-**Standard mode** (`DATABASE_URL` or `PG_*` vars):
-- Uses connection string or individual parameters
-- Pool persists across Lambda invocations
-- Best for: Aurora Serverless v2, RDS PostgreSQL, self-hosted PostgreSQL
+// Public tables readable by anyone
+permit(
+    principal,
+    action == Action::"select",
+    resource is PgrestLambda::Row
+) when {
+    context.table == "public_posts"
+};
+```
 
 ## API Reference
 
@@ -146,8 +188,8 @@ const { data: todo } = await supabase
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/rest/v1/` | OpenAPI 3.0 spec |
-| `POST` | `/rest/v1/_refresh` | Refresh schema cache |
-| `GET` | `/rest/v1/:table` | Read rows (with filters) |
+| `POST` | `/rest/v1/_refresh` | Refresh schema cache + policies |
+| `GET` | `/rest/v1/:table` | Read rows |
 | `POST` | `/rest/v1/:table` | Insert rows |
 | `PATCH` | `/rest/v1/:table` | Update rows (filters required) |
 | `DELETE` | `/rest/v1/:table` | Delete rows (filters required) |
@@ -168,10 +210,8 @@ const { data: todo } = await supabase
 |----------|---------|-----|
 | `eq` | `name=eq.John` | `name = 'John'` |
 | `neq` | `status=neq.done` | `status != 'done'` |
-| `gt` | `age=gt.21` | `age > 21` |
-| `gte` | `age=gte.21` | `age >= 21` |
-| `lt` | `price=lt.100` | `price < 100` |
-| `lte` | `price=lte.100` | `price <= 100` |
+| `gt` / `gte` | `age=gt.21` | `age > 21` |
+| `lt` / `lte` | `price=lt.100` | `price < 100` |
 | `like` | `name=like.*john*` | `name LIKE '%john%'` |
 | `ilike` | `name=ilike.*john*` | `name ILIKE '%john%'` |
 | `in` | `id=in.(1,2,3)` | `id IN (1, 2, 3)` |
@@ -182,11 +222,11 @@ const { data: todo } = await supabase
 
 | Header | Description |
 |--------|-------------|
-| `Prefer: return=representation` | Return the modified rows |
-| `Prefer: count=exact` | Include exact count in Content-Range |
-| `Accept: application/vnd.pgrst.object+json` | Return single object instead of array |
 | `apikey` | API key JWT (anon or service_role) |
 | `Authorization: Bearer <token>` | User access token |
+| `Prefer: return=representation` | Return modified rows |
+| `Prefer: count=exact` | Include exact count in Content-Range |
+| `Accept: application/vnd.pgrst.object+json` | Return single object |
 
 ### Auth Endpoints (`/auth/v1/`)
 
@@ -195,32 +235,41 @@ const { data: todo } = await supabase
 | `POST` | `/auth/v1/signup` | Register new user |
 | `POST` | `/auth/v1/token?grant_type=password` | Sign in |
 | `POST` | `/auth/v1/token?grant_type=refresh_token` | Refresh token |
-| `GET` | `/auth/v1/user` | Get current user profile |
+| `GET` | `/auth/v1/user` | Get current user |
 | `POST` | `/auth/v1/logout` | Sign out (204) |
 
-## How It Works
+## Client Example
 
-1. **Schema introspection** — On first request (and every 5 minutes), queries `pg_catalog` to discover all tables, columns, types, and primary keys in the `public` schema.
+```javascript
+import { createClient } from '@supabase/supabase-js';
 
-2. **Request routing** — Incoming requests are routed by path: `/auth/v1/*` goes to the auth handler, `/rest/v1/:table` goes to the REST handler.
+const supabase = createClient(
+  'https://YOUR_API_URL/v1',
+  'YOUR_ANON_KEY'
+);
 
-3. **Query building** — PostgREST-style query parameters are parsed and converted to parameterized SQL. All user input is parameterized — no string interpolation.
+// Sign up
+await supabase.auth.signUp({
+  email: 'user@example.com',
+  password: 'Password123',
+});
 
-4. **User isolation** — If a table has a `user_id` column, queries are automatically filtered to the authenticated user. `service_role` bypasses this.
+// Query
+const { data } = await supabase
+  .from('todos')
+  .select('*')
+  .order('created_at', { ascending: false });
 
-5. **Auth flow** — GoTrue-compatible endpoints wrap Amazon Cognito (swappable). The auth handler issues its own JWTs that the Lambda authorizer validates.
+// Insert
+await supabase
+  .from('todos')
+  .insert({ title: 'Ship it', done: false })
+  .select();
+```
 
-## Comparison with PostgREST
+## Deploy Examples
 
-| | PostgREST | pgrest-lambda |
-|---|-----------|---------------|
-| Runtime | Standalone Haskell binary | AWS Lambda (Node.js) |
-| Scaling | Manual / container | Automatic (serverless) |
-| Cost at zero traffic | Server running 24/7 | $0 |
-| Auth | External (bring your own) | Built-in GoTrue-compatible |
-| Database | Any PostgreSQL | Any PostgreSQL |
-| Client library | Any HTTP client | `@supabase/supabase-js` works |
-| Deploy | Docker / binary | `sam deploy` |
+Deployment examples for SAM, CDK, and Terraform are in `docs/deploy/`.
 
 ## License
 
