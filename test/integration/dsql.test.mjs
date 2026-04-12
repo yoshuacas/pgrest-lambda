@@ -116,6 +116,10 @@ describe('dsql integration', { skip: skip(), timeout: 120_000 }, () => {
   });
 
   after(async () => {
+    // End pgrest's internal pool first
+    if (pgrest?._db) {
+      try { const p = await pgrest._db.getPool(); await p.end(); } catch { /* ok */ }
+    }
     if (pool) {
       try { await execStatements(pool, DROP_SQL); } catch { /* best effort */ }
       await pool.end();
