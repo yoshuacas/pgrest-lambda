@@ -1,0 +1,175 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  pgrest-lambda — A serverless REST API for any PostgreSQL database.
+  Deploys API Gateway + Lambda with GoTrue-compatible auth on Cognito.
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: pgrest
+  DatabaseMode:
+    Type: String
+    Default: dsql
+    AllowedValues: [dsql, standard]
+    Description: >
+      "dsql" uses Aurora DSQL with IAM auth.
+      "standard" uses DATABASE_URL or PG_* env vars.
+  DsqlEndpoint:
+    Type: String
+    Default: ''
+    Description: Aurora DSQL cluster endpoint (required if DatabaseMode=dsql)
+  DatabaseUrl:
+    Type: String
+    Default: ''
+    Description: PostgreSQL connection string (required if DatabaseMode=standard)
+  RegionName:
+    Type: String
+    Default: us-east-1
+
+Conditions:
+  IsDsql: !Equals [!Ref DatabaseMode, dsql]
+  IsStandard: !Equals [!Ref DatabaseMode, standard]
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Timeout: 30
+    MemorySize: 256
+    Environment:
+      Variables:
+        REGION_NAME: !Ref RegionName
+        JWT_SECRET: !Sub '{{resolve:ssm:/${ProjectName}/jwt-secret}}'
+
+Resources:
+  # ── Auth ──────────────────────────────────────────────────
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub '${ProjectName}-users'
+      AutoVerifiedAttributes: [email]
+      UsernameAttributes: [email]
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Required: true
+          Mutable: true
+      LambdaConfig:
+        PreSignUp: !GetAtt PreSignUpFunction.Arn
+
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub '${ProjectName}-web'
+      UserPoolId: !Ref UserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_PASSWORD_AUTH
+      PreventUserExistenceErrors: ENABLED
+
+  PreSignUpFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/presignup.handler
+      CodeUri: .
+      MemorySize: 128
+      Timeout: 5
+
+  PreSignUpPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref PreSignUpFunction
+      Principal: cognito-idp.amazonaws.com
+      SourceArn: !GetAtt UserPool.Arn
+
+  # ── API Gateway ───────────────────────────────────────────
+  Api:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub '${ProjectName}-api'
+      StageName: v1
+      Cors:
+        AllowOrigin: "'*'"
+        AllowHeaders: "'Content-Type,Authorization,Prefer,Accept,apikey,X-Client-Info'"
+        AllowMethods: "'GET,POST,PUT,PATCH,DELETE,OPTIONS'"
+      Auth:
+        DefaultAuthorizer: PgrestAuthorizer
+        Authorizers:
+          PgrestAuthorizer:
+            FunctionArn: !GetAtt AuthorizerFunction.Arn
+            FunctionPayloadType: REQUEST
+            Identity:
+              Headers: [Authorization]
+              ReauthorizeEvery: 300
+
+  # ── Authorizer Lambda ────────────────────────────────────
+  AuthorizerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/authorizer/index.handler
+      CodeUri: .
+      MemorySize: 128
+      Timeout: 5
+
+  # ── Main API Lambda ──────────────────────────────────────
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/index.handler
+      CodeUri: .
+      Environment:
+        Variables:
+          DSQL_ENDPOINT: !If [IsDsql, !Ref DsqlEndpoint, !Ref 'AWS::NoValue']
+          DATABASE_URL: !If [IsStandard, !Ref DatabaseUrl, !Ref 'AWS::NoValue']
+          USER_POOL_ID: !Ref UserPool
+          USER_POOL_CLIENT_ID: !Ref UserPoolClient
+          AUTH_PROVIDER: cognito
+      Policies:
+        - !If
+          - IsDsql
+          - Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: [dsql:DbConnect, dsql:DbConnectAdmin]
+                Resource: '*'
+          - !Ref 'AWS::NoValue'
+      Events:
+        RestProxy:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /{proxy+}
+            Method: ANY
+        RestRoot:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /
+            Method: ANY
+        AuthProxy:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /auth/v1/{proxy+}
+            Method: ANY
+            Auth:
+              Authorizer: NONE
+
+Outputs:
+  ApiUrl:
+    Description: API Gateway endpoint URL
+    Value: !Sub 'https://${Api}.execute-api.${AWS::Region}.amazonaws.com/v1'
+  UserPoolId:
+    Value: !Ref UserPool
+  UserPoolClientId:
+    Value: !Ref UserPoolClient
