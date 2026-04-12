@@ -82,12 +82,23 @@ describe('dsql integration', { skip: skip(), timeout: 120_000 }, () => {
       endpoint = `${clusterId}.dsql.${REGION}.on.aws`;
       region = REGION;
       createdCluster = true;
-      console.log(`Cluster ready: ${endpoint}`);
+      console.log(`Cluster created: ${endpoint}`);
     }
 
-    pool = await connectDsql(endpoint, region);
-    await pool.query('SELECT 1');
-    console.log('Connected to DSQL');
+    // Wait for the cluster to accept connections
+    console.log('Waiting for cluster to accept connections...');
+    for (let attempt = 0; attempt < 30; attempt++) {
+      try {
+        pool = await connectDsql(endpoint, region);
+        await pool.query('SELECT 1');
+        console.log('Connected to DSQL');
+        break;
+      } catch {
+        if (pool) { await pool.end().catch(() => {}); pool = null; }
+        if (attempt === 29) throw new Error('DSQL cluster not ready after 30 attempts');
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    }
 
     await execStatements(pool, SCHEMA_SQL);
     console.log('Schema created');
