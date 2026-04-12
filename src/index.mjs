@@ -69,6 +69,8 @@ function resolveConfig(config) {
     policiesPrefix: config.policiesPrefix || process.env.POLICIES_PREFIX || 'policies/',
     schemaCacheTtl: config.schemaCacheTtl
       || parseInt(process.env.SCHEMA_CACHE_TTL_MS || '300000', 10),
+    docs: config.docs !== undefined ? config.docs
+      : process.env.PGREST_DOCS !== 'false',
   };
 }
 
@@ -99,6 +101,7 @@ export function createPgrest(config = {}) {
   ctx.schemaCache = schemaCache;
   ctx.cedar = cedar;
   ctx.jwt = jwt;
+  ctx.docs = resolved.docs;
 
   // Create handlers
   const rest = createRestHandler(ctx);

@@ -83,6 +83,23 @@ function translateRequest(req, body) {
 
 const server = http.createServer(async (req, res) => {
   const body = await readBody(req);
+  const { path } = parseUrl(req.url);
+
+  // Docs and OpenAPI spec served without auth for browser access
+  if (path === '/rest/v1/_docs' || path === '/rest/v1/' || path === '/rest/v1') {
+    const event = translateRequest(req, body);
+    event.requestContext.authorizer = { role: 'service_role', userId: '', email: '' };
+    try {
+      const result = await pgrest.rest(event);
+      res.writeHead(result.statusCode, result.headers || {});
+      res.end(result.body || '');
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
   const event = translateRequest(req, body);
 
   try {

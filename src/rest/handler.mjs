@@ -59,7 +59,7 @@ function docsHtml(specUrl) {
 }
 
 export function createRestHandler(ctx) {
-  const { db, schemaCache, cedar } = ctx;
+  const { db, schemaCache, cedar, docs } = ctx;
 
   async function handler(event) {
     try {
@@ -100,6 +100,9 @@ export function createRestHandler(ctx) {
       }
 
       if (routeInfo.type === 'docs') {
+        if (!docs) {
+          throw new PostgRESTError(404, 'PGRST205', 'Docs are disabled');
+        }
         const proto = headers['x-forwarded-proto'] || 'https';
         const specUrl = `${proto}://${headers['host'] || 'localhost'}/rest/v1/`;
         return {
