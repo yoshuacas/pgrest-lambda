@@ -41,7 +41,7 @@ async function readBody(req) {
 
 function translateRequest(req, body) {
   const { path, query } = parseUrl(req.url);
-  const headers = {};
+  const headers = { 'x-forwarded-proto': 'http' };
   for (const [k, v] of Object.entries(req.headers)) {
     headers[k] = v;
   }

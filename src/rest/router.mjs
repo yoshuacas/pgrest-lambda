@@ -14,6 +14,10 @@ export function route(path, schema) {
     return { type: 'refresh' };
   }
 
+  if (remaining === '/_docs') {
+    return { type: 'docs' };
+  }
+
   const tableName = remaining.replace(/^\//, '').replace(/\/.*$/, '');
 
   if (!tableName || !hasTable(schema, tableName)) {

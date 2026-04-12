@@ -43,6 +43,21 @@ function contentRange(rowCount, totalCount) {
     : `*/*`;
 }
 
+function docsHtml(specUrl) {
+  return `<!doctype html>
+<html>
+<head>
+  <title>API Reference</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+</head>
+<body>
+  <script id="api-reference" data-url="${specUrl}"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
+</body>
+</html>`;
+}
+
 export function createRestHandler(ctx) {
   const { db, schemaCache, cedar } = ctx;
 
@@ -82,6 +97,16 @@ export function createRestHandler(ctx) {
         const apiUrl =
           `https://${headers['host'] || 'localhost'}/rest/v1`;
         return success(200, generateSpec(schema, apiUrl));
+      }
+
+      if (routeInfo.type === 'docs') {
+        const proto = headers['x-forwarded-proto'] || 'https';
+        const specUrl = `${proto}://${headers['host'] || 'localhost'}/rest/v1/`;
+        return {
+          statusCode: 200,
+          headers: { 'Content-Type': 'text/html' },
+          body: docsHtml(specUrl),
+        };
       }
 
       if (routeInfo.type === 'refresh') {
