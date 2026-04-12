@@ -29,7 +29,7 @@ const PK_SQL = `
      AND n.nspname = 'public'
    ORDER BY c.relname, a.attnum`;
 
-async function introspect(pool) {
+async function pgIntrospect(pool) {
   const [colResult, pkResult] = await Promise.all([
     pool.query(COLUMNS_SQL),
     pool.query(PK_SQL),
@@ -59,6 +59,7 @@ async function introspect(pool) {
 
 export function createSchemaCache(config) {
   const ttl = config.schemaCacheTtl || 300000;
+  const introspect = config.introspect || pgIntrospect;
   let cache = null;
   let lastRefreshAt = 0;
 

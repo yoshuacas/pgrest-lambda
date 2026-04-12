@@ -1,6 +1,6 @@
 // pgrest-lambda — A serverless REST API for any PostgreSQL database.
 
-import { createDb } from './rest/db.mjs';
+import { createDb } from './rest/db/index.mjs';
 import { createSchemaCache } from './rest/schema-cache.mjs';
 import { createCedar } from './rest/cedar.mjs';
 import { createRestHandler } from './rest/handler.mjs';
@@ -87,6 +87,7 @@ export function createPgrest(config = {}) {
   const db = createDb(resolved.database);
   const schemaCache = createSchemaCache({
     schemaCacheTtl: resolved.schemaCacheTtl,
+    introspect: db.introspect || null,
   });
   const cedar = createCedar({
     policiesPath: resolved.policiesPath,

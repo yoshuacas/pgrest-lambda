@@ -1,6 +1,6 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { createDb } from '../db.mjs';
+import { createDb } from '../db/index.mjs';
 import { createRestHandler } from '../handler.mjs';
 import { createSchemaCache } from '../schema-cache.mjs';
 import { createCedar } from '../cedar.mjs';
