@@ -1,0 +1,6 @@
+{
+  "prompt": "docs/design/prompts/auth-layer.md",
+  "designs": [
+    "docs/design/auth-layer.md"
+  ]
+}

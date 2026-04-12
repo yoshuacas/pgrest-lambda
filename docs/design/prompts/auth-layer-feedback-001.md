@@ -1,0 +1,3 @@
+This is a response to the code review in docs/code-review/auth-layer.md.
+
+All review findings have been addressed in commit 851df94. Correctness fixes (PATCH null body, weak_password extra field, router trailing slash), test improvements (9 new tests, mock pool query capture, flat authorizer context), sustainability (shared CORS module), and documentation updates (authorizer contract, rule 3 rationale). Feature is complete.

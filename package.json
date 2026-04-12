@@ -24,12 +24,9 @@
     "jsonwebtoken": "^9.0.0",
     "pg": "^8.13.0"
   },
-  "devDependencies": {
-    "vitest": "^3.0.0"
-  },
+  "devDependencies": {},
   "scripts": {
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "test": "node --test 'src/**/*.test.mjs'",
     "deploy": "sam build && sam deploy --guided",
     "validate": "sam validate"
   }
