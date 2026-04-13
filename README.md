@@ -6,7 +6,7 @@ Introspects your PostgreSQL schema and serves PostgREST-compatible CRUD endpoint
 
 ## Features
 
-- **PostgREST-compatible query syntax** — filtering, ordering, pagination, upserts, exact counts
+- **PostgREST-compatible query syntax** — filtering, ordering, pagination, upserts, exact counts, resource embedding (joins)
 - **GoTrue-compatible auth** — signup, signin, token refresh, user profile (`@supabase/supabase-js` works as a client)
 - **Cedar authorization** — policy-as-code row-level filtering via partial evaluation, translated to SQL WHERE clauses
 - **OpenAPI 3.0 auto-generation** — hit `GET /rest/v1/` for the full spec
@@ -219,11 +219,93 @@ permit(
 
 | Parameter | Example | Description |
 |-----------|---------|-------------|
-| `select` | `select=id,name,email` | Columns to return |
+| `select` | `select=id,name,email` | Columns to return (supports embedding) |
 | `order` | `order=created_at.desc` | Sort order |
 | `limit` | `limit=10` | Max rows |
 | `offset` | `offset=20` | Skip rows |
 | `on_conflict` | `on_conflict=id` | Upsert conflict column |
+
+### Resource Embedding (Joins)
+
+Fetch related data from multiple tables in a single request. pgrest-lambda detects foreign key relationships automatically and generates correlated subqueries.
+
+```javascript
+// Many-to-one: order belongs to a customer
+const { data } = await supabase
+  .from('orders')
+  .select('id, amount, customers(name, email)')
+
+// Returns: [{ id: 1, amount: 99.50, customers: { name: "Alice", email: "alice@ex.com" } }]
+```
+
+```javascript
+// One-to-many: customer has many orders
+const { data } = await supabase
+  .from('customers')
+  .select('id, name, orders(id, amount)')
+
+// Returns: [{ id: 1, name: "Alice", orders: [{ id: 10, amount: 50 }, { id: 11, amount: 75 }] }]
+```
+
+```javascript
+// Nested: orders → line items → products
+const { data } = await supabase
+  .from('orders')
+  .select('id, items(id, quantity, products(name, price))')
+```
+
+```javascript
+// Aliased embed: rename the embedded key in the response
+const { data } = await supabase
+  .from('orders')
+  .select('id, buyer:customers(name)')
+
+// Returns: [{ id: 1, buyer: { name: "Alice" } }]
+```
+
+```javascript
+// Disambiguation: two FKs to the same table
+const { data } = await supabase
+  .from('orders')
+  .select('id, billing:addresses!billing_address_id(*), shipping:addresses!shipping_address_id(*)')
+```
+
+```javascript
+// Inner join: only parents with matching children
+const { data } = await supabase
+  .from('customers')
+  .select('id, name, orders!inner(id)')
+// Only returns customers who have at least one order
+```
+
+**URL syntax:**
+
+| Pattern | Meaning |
+|---------|---------|
+| `select=*,customers(*)` | Embed all columns from related table |
+| `select=id,customers(name,email)` | Embed specific columns |
+| `select=id,buyer:customers(name)` | Alias the embed key |
+| `select=*,addresses!billing_address_id(*)` | Disambiguate when multiple FKs exist |
+| `select=*,orders!inner(*)` | Inner join — exclude parents without children |
+| `select=id,items(id,products(name))` | Nested embedding (2+ levels) |
+
+**Relationship detection:**
+
+**Relationship detection:**
+
+On standard PostgreSQL, relationships are detected automatically from foreign key constraints — no configuration needed.
+
+On Aurora DSQL (which doesn't support `REFERENCES`), relationships are inferred from a column naming convention. Name your FK columns as `{singular_table}_id` and pgrest-lambda figures out the rest:
+
+| Column name | Target table found |
+|---|---|
+| `customer_id` | `customers` |
+| `category_id` | `categories` |
+| `address_id` | `addresses` |
+| `status_id` | `statuses` |
+| `company_id` | `companies` |
+
+The convention requires: the target table exists in the `public` schema, and it has a primary key that matches. If no match is found, no relationship is created (no error).
 
 ### Filter Operators
 
@@ -275,11 +357,17 @@ await supabase.auth.signUp({
   password: 'Password123',
 });
 
-// Query
+// Query with embedding — fetch todos with their project info
 const { data } = await supabase
   .from('todos')
-  .select('*')
+  .select('id, title, done, projects(name)')
   .order('created_at', { ascending: false });
+
+// Flat query
+const { data: todos } = await supabase
+  .from('todos')
+  .select('*')
+  .eq('done', false);
 
 // Insert
 await supabase

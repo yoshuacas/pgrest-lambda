@@ -211,34 +211,71 @@ function renumberConditions(conditions, startParam) {
   );
 }
 
+function buildSingleCondition(f, schema, table, values) {
+  validateCol(schema, table, f.column);
+  if (f.operator === 'is') {
+    const keyword = f.value.toLowerCase();
+    if (!['null', 'true', 'false', 'unknown'].includes(keyword)) {
+      throw new PostgRESTError(
+        400, 'PGRST100',
+        `IS operator only supports null, true, false, unknown (got '${f.value}')`,
+      );
+    }
+    const not = f.negate ? ' NOT' : '';
+    return `"${f.column}" IS${not} ${keyword.toUpperCase()}`;
+  } else if (f.operator === 'in') {
+    const placeholders = f.value.map((v) => {
+      values.push(v);
+      return `$${values.length}`;
+    });
+    const not = f.negate ? 'NOT ' : '';
+    return `"${f.column}" ${not}IN (${placeholders.join(', ')})`;
+  } else {
+    values.push(f.value);
+    const base = OP_SQL[f.operator];
+    const op = f.negate ? NEGATE_OP[base] : base;
+    return `"${f.column}" ${op} $${values.length}`;
+  }
+}
+
+const MAX_NESTING_DEPTH = 10;
+
+function buildLogicalCondition(
+    group, schema, table, values, depth = 0) {
+  if (depth > MAX_NESTING_DEPTH) {
+    throw new PostgRESTError(400, 'PGRST100',
+      'Logical operator nesting exceeds maximum '
+      + `depth of ${MAX_NESTING_DEPTH}`);
+  }
+
+  const parts = [];
+  for (const cond of group.conditions) {
+    if (cond.type === 'logicalGroup') {
+      parts.push(buildLogicalCondition(
+        cond, schema, table, values, depth + 1));
+    } else {
+      parts.push(
+        buildSingleCondition(cond, schema, table, values));
+    }
+  }
+
+  const joiner =
+    group.logicalOp === 'or' ? ' OR ' : ' AND ';
+  const inner = parts.join(joiner);
+  const wrapped = `(${inner})`;
+
+  return group.negate ? `NOT ${wrapped}` : wrapped;
+}
+
 function buildFilterConditions(filters, schema, table, values) {
   const conditions = [];
   for (const f of filters) {
-    validateCol(schema, table, f.column);
-    if (f.operator === 'is') {
-      const keyword = f.value.toLowerCase();
-      if (!['null', 'true', 'false', 'unknown'].includes(keyword)) {
-        throw new PostgRESTError(
-          400, 'PGRST100',
-          `IS operator only supports null, true, false, unknown (got '${f.value}')`,
-        );
-      }
-      const not = f.negate ? ' NOT' : '';
-      conditions.push(`"${f.column}" IS${not} ${keyword.toUpperCase()}`);
-    } else if (f.operator === 'in') {
-      const placeholders = f.value.map((v) => {
-        values.push(v);
-        return `$${values.length}`;
-      });
-      const not = f.negate ? 'NOT ' : '';
+    if (f.type === 'logicalGroup') {
       conditions.push(
-        `"${f.column}" ${not}IN (${placeholders.join(', ')})`,
-      );
+        buildLogicalCondition(f, schema, table, values));
     } else {
-      values.push(f.value);
-      const base = OP_SQL[f.operator];
-      const op = f.negate ? NEGATE_OP[base] : base;
-      conditions.push(`"${f.column}" ${op} $${values.length}`);
+      conditions.push(
+        buildSingleCondition(f, schema, table, values));
     }
   }
   return conditions;
@@ -501,3 +538,5 @@ export function buildCount(table, parsed, schema, authzConditions) {
 
   return { text: sql, values };
 }
+
+export { buildFilterConditions as _buildFilterConditions };

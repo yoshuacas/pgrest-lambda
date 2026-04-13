@@ -109,6 +109,8 @@ export function createRestHandler(ctx) {
       }
 
       const params = event.queryStringParameters || {};
+      const multiValueParams =
+        event.multiValueQueryStringParameters || null;
       const prefer = parsePrefer(headers['prefer']);
       const accept = headers['accept'] || '';
 
@@ -148,7 +150,7 @@ export function createRestHandler(ctx) {
       }
 
       const table = routeInfo.table;
-      const parsed = parseQuery(params, method);
+      const parsed = parseQuery(params, method, multiValueParams);
       const hasEmbeds = parsed.select.some(
         n => n.type === 'embed');
 
