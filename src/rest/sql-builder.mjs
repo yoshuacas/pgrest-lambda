@@ -411,15 +411,23 @@ export function buildSelect(table, parsed, schema, authzConditions) {
 export function buildInsert(table, body, schema, parsed) {
   const rows = Array.isArray(body) ? body : [body];
 
-  const colSet = new Set();
-  for (const row of rows) {
-    for (const key of Object.keys(row)) {
-      validateCol(schema, table, key);
-      colSet.add(key);
-    }
-  }
+  let columns;
 
-  const columns = [...colSet];
+  if (parsed.columns && parsed.columns.length > 0) {
+    for (const col of parsed.columns) {
+      validateCol(schema, table, col);
+    }
+    columns = parsed.columns;
+  } else {
+    const colSet = new Set();
+    for (const row of rows) {
+      for (const key of Object.keys(row)) {
+        validateCol(schema, table, key);
+        colSet.add(key);
+      }
+    }
+    columns = [...colSet];
+  }
 
   const values = [];
   const tuples = rows.map((row) => {

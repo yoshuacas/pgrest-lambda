@@ -316,7 +316,10 @@ export function createRestHandler(ctx) {
       }
 
       if (method === 'POST') {
-        return success(201, returnRep ? rows : null, {});
+        if (returnRep) {
+          return success(201, rows, { singleObject });
+        }
+        return success(201, null, {});
       }
 
       if (returnRep) {

@@ -3,7 +3,7 @@
 import { PostgRESTError } from './errors.mjs';
 
 const RESERVED_PARAMS = new Set([
-  'select', 'order', 'limit', 'offset', 'on_conflict',
+  'select', 'order', 'limit', 'offset', 'on_conflict', 'columns',
 ]);
 
 const VALID_OPERATORS = new Set([
@@ -183,7 +183,11 @@ export function parseQuery(params, method, multiValueParams) {
 
   const onConflict = params.on_conflict || null;
 
-  return { select, filters, order, limit, offset, onConflict };
+  const columns = params.columns
+    ? params.columns.split(',').map(c => c.trim().replace(/^"|"$/g, ''))
+    : null;
+
+  return { select, filters, order, limit, offset, onConflict, columns };
 }
 
 function parseFilter(column, raw) {
