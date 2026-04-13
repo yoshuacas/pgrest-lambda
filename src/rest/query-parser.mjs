@@ -12,12 +12,119 @@ const VALID_OPERATORS = new Set([
 
 const VALID_IS_VALUES = new Set(['null', 'true', 'false', 'unknown']);
 
+export function parseSelectList(input) {
+  const nodes = [];
+  let i = 0;
+  const len = input.length;
+
+  while (i < len) {
+    // Skip leading whitespace
+    while (i < len && input[i] === ' ') i++;
+    if (i >= len) break;
+
+    // Scan token up to ',' or '(' at depth 0
+    let tokenStart = i;
+    let depth = 0;
+    let parenStart = -1;
+
+    while (i < len) {
+      const ch = input[i];
+      if (depth === 0 && ch === ',') break;
+      if (ch === '(') {
+        if (depth === 0) parenStart = i;
+        depth++;
+      } else if (ch === ')') {
+        if (depth === 0) {
+          throw new PostgRESTError(400, 'PGRST100',
+            'Unbalanced parentheses in select parameter');
+        }
+        depth--;
+        if (depth === 0) {
+          i++; // move past closing ')'
+          break;
+        }
+      }
+      i++;
+    }
+
+    if (depth > 0) {
+      throw new PostgRESTError(400, 'PGRST100',
+        'Unbalanced parentheses in select parameter');
+    }
+
+    if (parenStart === -1) {
+      // Plain column token
+      const name = input.slice(tokenStart, i).trim();
+      if (name) {
+        nodes.push({ type: 'column', name });
+      }
+    } else {
+      // Embed token: text before '(' is the embed descriptor
+      const embedToken = input.slice(tokenStart, parenStart).trim();
+      const innerContent = input.slice(parenStart + 1, i - 1);
+      const childNodes = parseSelectList(innerContent);
+      const embed = parseEmbedToken(embedToken);
+      if (childNodes.length === 0) {
+        throw new PostgRESTError(400, 'PGRST100',
+          `Empty select list in embed '${embed.name}'`);
+      }
+      nodes.push({
+        type: 'embed',
+        name: embed.name,
+        alias: embed.alias,
+        hint: embed.hint,
+        inner: embed.inner,
+        select: childNodes,
+      });
+    }
+
+    // Skip comma separator
+    if (i < len && input[i] === ',') i++;
+  }
+
+  return nodes;
+}
+
+function parseEmbedToken(token) {
+  let alias = null;
+  let remainder = token;
+
+  const colonIdx = remainder.indexOf(':');
+  if (colonIdx !== -1) {
+    alias = remainder.slice(0, colonIdx).trim();
+    remainder = remainder.slice(colonIdx + 1).trim();
+  }
+
+  if (alias) {
+    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(alias)) {
+      throw new PostgRESTError(400, 'PGRST100',
+        `'${alias}' is not a valid identifier for an alias`);
+    }
+  }
+
+  const parts = remainder.split('!');
+  const name = parts[0].trim();
+  let hint = null;
+  let inner = false;
+
+  for (let j = 1; j < parts.length; j++) {
+    const seg = parts[j].trim();
+    if (seg === 'inner') {
+      inner = true;
+    } else {
+      hint = seg;
+    }
+  }
+
+  return { name, alias, hint, inner };
+}
+
 export function parseQuery(params, method) {
   params = params || {};
 
   const select = params.select
-    ? params.select.split(',')
-    : ['*'];
+    ? parseSelectList(params.select)
+    : [{ type: 'column', name: '*' }];
 
   const filters = [];
   for (const [key, rawValue] of Object.entries(params)) {

@@ -13,7 +13,7 @@ Resource embedding is the #1 gap for supabase-js wire
 compatibility. Without it, any `.select()` call that
 includes related tables fails with a column-not-found error.
 
-The implementation adds ~350 lines across five existing
+The implementation adds ~410 lines across five existing
 files. No new files, no new npm dependencies.
 
 ## Current CX / Concepts
@@ -263,10 +263,37 @@ WHERE "orders"."customer_id" IS NOT NULL
    matches zero, return PGRST200. If ambiguity remains
    after the hint, return PGRST201.
 
+8. **Alias identifiers must be safe SQL identifiers.**
+   Embed aliases (e.g., `buyer` in `buyer:customers(name)`)
+   and column aliases (e.g., `fullName` in
+   `fullName:full_name`) must match `[a-zA-Z_][a-zA-Z0-9_]*`.
+   Reject with PGRST100 if an alias contains any other
+   characters. This prevents SQL injection via
+   `json_build_object('${alias}', ...)` and `AS "${alias}"`
+   where a crafted alias with quotes could break out of
+   the string/identifier context. Do not escape — reject
+   early. This matches PostgREST's validation behavior.
+
+9. **Parentheses must be balanced.** After parsing the
+   `select` parameter, the parser verifies that all
+   parentheses are closed. Unclosed `(` throws PGRST100
+   with message `"Unbalanced parentheses in select
+   parameter"`. Unexpected `)` at depth 0 also throws
+   PGRST100.
+
+10. **Empty embed select lists are rejected.** An embed
+    with no columns (e.g., `customers()`) throws PGRST100
+    with message `"Empty select list in embed
+    'customers'"`. PostgreSQL's `json_build_object()`
+    requires at least one key-value pair.
+
 ### Error Messages
 
 | Scenario | HTTP | Code | Message |
 |----------|------|------|---------|
+| Invalid alias | 400 | PGRST100 | "'{alias}' is not a valid identifier for an alias" |
+| Unbalanced parentheses | 400 | PGRST100 | "Unbalanced parentheses in select parameter" |
+| Empty embed select | 400 | PGRST100 | "Empty select list in embed '{embed}'" |
 | No relationship found | 400 | PGRST200 | Could not find a relationship between '{parent}' and '{embed}' in the schema cache |
 | Ambiguous relationship | 300 | PGRST201 | Could not embed because more than one relationship was found for '{parent}' and '{embed}' |
 | Column not found in embed | 400 | PGRST204 | Column '{col}' does not exist in '{table}' |
@@ -407,12 +434,45 @@ embed containing a nested embed. Leading/trailing spaces
 on tokens are trimmed, since supabase-js may send
 `select=id, customers(name)` with spaces after commas.
 
+**Parenthesis balancing:** The parser tracks a depth
+counter during scanning. After `parseSelectList`
+completes, the scanner verifies:
+
+- If depth > 0 at end of input (unclosed `(`), throw
+  PGRST100: `"Unbalanced parentheses in select
+  parameter"`.
+- If a `)` is encountered at depth 0 (unexpected close),
+  throw PGRST100: `"Unbalanced parentheses in select
+  parameter"`.
+
+This catches inputs like `select=id,customers(name`
+(missing close) and `select=id,customers(name))`
+(extra close) that would otherwise silently produce
+wrong parse results.
+
 The alias/hint/inner parsing on the embed token follows
 this grammar:
 
 ```
 embed_token := [alias ":"] table_name ["!" hint] ["!inner"]
 ```
+
+**Alias validation:** After extracting the alias (if
+present), `parseEmbedToken` validates it against the
+pattern `^[a-zA-Z_][a-zA-Z0-9_]*$`. If the alias
+contains any other characters (quotes, spaces,
+parentheses, SQL operators, etc.), throw PGRST100:
+`"'${alias}' is not a valid identifier for an alias"`.
+This prevents SQL injection through
+`json_build_object('${alias}', ...)` and
+`AS "${alias}"` paths. The same validation applies
+to column aliases parsed elsewhere (e.g.,
+`fullName:full_name`).
+
+**Empty embed rejection:** After recursively parsing
+the content inside parentheses, if the resulting
+`select` array is empty, throw PGRST100:
+`"Empty select list in embed '${name}'"`.
 
 Examples:
 - `customers` -> name=customers, alias=null, hint=null,
@@ -423,6 +483,8 @@ Examples:
   hint=billing_address_id
 - `buyer:addresses!billing_fk!inner` -> name=addresses,
   alias=buyer, hint=billing_fk, inner=true
+- `x'injection:customers` -> PGRST100 (invalid alias)
+- `x"injection:customers` -> PGRST100 (invalid alias)
 
 ### FK Introspection Query
 
@@ -483,8 +545,16 @@ from column naming conventions. For each table A and each
 column ending in `_id`:
 
 1. Extract the base name: `customer_id` -> `customer`
-2. Look for a table matching `base` or `base + 's'`:
-   `customer` or `customers`
+2. Build a candidate list of possible table names and
+   return the first match found in the schema:
+   - `base` (exact: `customer`)
+   - `base + 's'` (regular plural: `customers`)
+   - `base + 'es'` (for bases ending in s, x, z, sh,
+     ch: `address` -> `addresses`)
+   - replace trailing `y` with `ies` (for bases ending
+     in consonant + y: `category` -> `categories`)
+   These 4 patterns cover the vast majority of English
+   table names without adding a dependency.
 3. If a matching table B exists and has a primary key,
    check that B's PK column count is 1 (single-column PK)
 4. Create a relationship:
@@ -642,7 +712,7 @@ column expressions and embed subquery expressions:
 ```javascript
 function buildSelectExpressions(
     selectNodes, table, schema, relationships, values,
-    authzFilters
+    perTableAuthz
 ) {
   const expressions = [];
   for (const node of selectNodes) {
@@ -663,7 +733,7 @@ function buildSelectExpressions(
       const alias = node.alias || node.name;
       const subquery = buildEmbedSubquery(
         node, rel, table, schema, relationships,
-        values, authzFilters);
+        values, perTableAuthz);
       expressions.push(`${subquery} AS "${alias}"`);
     }
   }
@@ -676,21 +746,25 @@ function buildSelectExpressions(
 ```javascript
 function buildManyToOneSubquery(
     embedNode, rel, parentTable, schema,
-    relationships, values, authzFilters
+    relationships, values, perTableAuthz
 ) {
   const childTable = rel.toTable;
   const childCols = buildJsonBuildObject(
     embedNode.select, childTable, schema,
-    relationships, values, authzFilters);
+    relationships, values, perTableAuthz);
   const joinCond = rel.fromColumns.map((fc, i) =>
     `"${childTable}"."${rel.toColumns[i]}" = `
     + `"${parentTable}"."${fc}"`
   ).join(' AND ');
 
   let where = joinCond;
-  const childAuthz = authzFilters?.[childTable];
+  const childAuthz = perTableAuthz?.[childTable];
   if (childAuthz?.conditions?.length > 0) {
-    where += ' AND ' + childAuthz.conditions.join(' AND ');
+    // Renumber authz $N params to match current
+    // position in the shared values array
+    const renumbered = renumberConditions(
+      childAuthz.conditions, values.length + 1);
+    where += ' AND ' + renumbered.join(' AND ');
     values.push(...childAuthz.values);
   }
 
@@ -704,21 +778,23 @@ function buildManyToOneSubquery(
 ```javascript
 function buildOneToManySubquery(
     embedNode, rel, parentTable, schema,
-    relationships, values, authzFilters
+    relationships, values, perTableAuthz
 ) {
   const childTable = rel.fromTable;
   const childCols = buildJsonBuildObject(
     embedNode.select, childTable, schema,
-    relationships, values, authzFilters);
+    relationships, values, perTableAuthz);
   const joinCond = rel.fromColumns.map((fc, i) =>
     `"${childTable}"."${fc}" = `
     + `"${parentTable}"."${rel.toColumns[i]}"`
   ).join(' AND ');
 
   let where = joinCond;
-  const childAuthz = authzFilters?.[childTable];
+  const childAuthz = perTableAuthz?.[childTable];
   if (childAuthz?.conditions?.length > 0) {
-    where += ' AND ' + childAuthz.conditions.join(' AND ');
+    const renumbered = renumberConditions(
+      childAuthz.conditions, values.length + 1);
+    where += ' AND ' + renumbered.join(' AND ');
     values.push(...childAuthz.values);
   }
 
@@ -734,7 +810,7 @@ list recursively:
 ```javascript
 function buildJsonBuildObject(
     selectNodes, table, schema, relationships, values,
-    authzFilters
+    perTableAuthz
 ) {
   const pairs = [];
   for (const node of selectNodes) {
@@ -756,7 +832,7 @@ function buildJsonBuildObject(
       const alias = node.alias || node.name;
       const subquery = buildEmbedSubquery(
         node, rel, table, schema, relationships,
-        values, authzFilters);
+        values, perTableAuthz);
       pairs.push(`'${alias}', ${subquery}`);
     }
   }
@@ -766,6 +842,53 @@ function buildJsonBuildObject(
 
 This recursion handles nested embeds naturally: a
 `json_build_object` pair can be another correlated subquery.
+
+### Parameter Numbering: Single-Pass `$N` Assignment
+
+A critical design constraint: all `$N` parameter
+references must match their position in the shared
+`values` array. The sql-builder achieves this with a
+**single-pass** approach:
+
+1. The handler builds a `perTableAuthz` map **before**
+   calling `buildSelect`. Each entry contains
+   `{ conditions: [...], values: [...] }` with
+   placeholder `$N` numbers (e.g., `$1`, `$2`).
+
+2. `buildSelect` receives the complete `perTableAuthz`
+   map and a single shared `values` array. As it
+   builds the query (filters, parent authz, embed
+   subqueries with child authz), it pushes values
+   into the array and **renumbers** the `$N`
+   placeholders in authz conditions to match the
+   current array position.
+
+3. The `renumberConditions(conditions, startParam)`
+   helper replaces `$1`, `$2`, etc. in condition
+   strings with `$startParam`, `$startParam+1`, etc.:
+
+   ```javascript
+   function renumberConditions(conditions, startParam) {
+     let paramIdx = 0;
+     return conditions.map(cond =>
+       cond.replace(/\$\d+/g, () => {
+         paramIdx++;
+         return `$${startParam + paramIdx - 1}`;
+       })
+     );
+   }
+   ```
+
+4. The parent authz conditions are renumbered the
+   same way when injected into the parent WHERE
+   clause.
+
+This eliminates the **double-call pattern** where
+`buildSelect` was called once without authz to count
+parameters, then again with authz. The double-call
+caused `$N` mismatches because child authz values
+were pushed into the array at different points in
+the two calls, shifting all parameter positions.
 
 ### Inner Join SQL Generation
 
@@ -816,33 +939,114 @@ for backward compatibility.
 1. **Detect embeds**: After `parseQuery()`, check if the
    select tree contains any embed nodes.
 
-2. **Build authz per table**: For each unique table
-   referenced in the select tree (parent + all embedded
-   tables), build Cedar authz filters:
+2. **Build all authz upfront**: Build Cedar authz
+   filters for ALL tables (parent + embeds) **before**
+   calling `buildSelect`. The handler does not need to
+   know `$N` positions — it passes `startParam: 1` for
+   every table's authz. The sql-builder renumbers them.
+
    ```javascript
-   const authzFilters = {};
    const tables = collectTables(parsed.select, table);
+   const perTableAuthz = {};
    for (const t of tables) {
-     authzFilters[t] = cedar.buildAuthzFilter({
+     perTableAuthz[t] = cedar.buildAuthzFilter({
        principal, action: 'select',
        context: { table: t }, schema,
-       startParam: nextParam,
+       startParam: 1,  // renumbered by sql-builder
      });
-     nextParam += authzFilters[t].values.length;
    }
    ```
 
-3. **Pass to sql-builder**: The authz filters map is
-   passed to `buildSelect()` which distributes conditions
-   to the correct subquery scope.
+   The handler extracts parent authz for `buildCount`:
+   ```javascript
+   const parentAuthz = perTableAuthz[table];
+   ```
 
-4. **return=representation with embeds**: For POST, PATCH,
-   DELETE with `Prefer: return=representation` and embeds
-   in the select, execute the mutation first (INSERT,
-   UPDATE, DELETE with RETURNING *), then re-SELECT the
-   returned rows with embedding subqueries. Use the
-   primary key values from the mutation result to filter
-   the re-SELECT.
+3. **Single `buildSelect` call**: Pass the complete
+   `perTableAuthz` map to `buildSelect()`. The
+   sql-builder distributes conditions to the correct
+   scopes (parent WHERE and child subquery WHEREs)
+   and renumbers `$N` parameters as it builds the
+   query. No preview call needed.
+
+   ```javascript
+   const q = buildSelect(
+     table, parsed, schema, perTableAuthz);
+   ```
+
+4. **`buildCount` receives parent authz**: The parent
+   authz variable is hoisted above both the embed and
+   non-embed branches. `buildCount` receives the parent
+   table's authz directly — it does not need embed authz
+   because the count query has no subqueries:
+
+   ```javascript
+   if (prefer.count === 'exact') {
+     const cq = buildCount(
+       table, parsed, schema, parentAuthz);
+     // ...
+   }
+   ```
+
+   Previously, the `authz` variable fell out of scope
+   after the embed refactor, causing `buildCount` to
+   run without Cedar filters and leaking row-count
+   information.
+
+5. **Extract `buildPerTableAuthz` helper**: The
+   per-table authz construction loop is extracted into
+   a shared helper used by both the GET path and the
+   return=representation re-SELECT path:
+
+   ```javascript
+   function buildPerTableAuthz(
+       tables, cedar, principal, schema
+   ) {
+     const perTableAuthz = {};
+     for (const t of tables) {
+       perTableAuthz[t] = cedar.buildAuthzFilter({
+         principal, action: 'select',
+         context: { table: t }, schema,
+         startParam: 1,
+       });
+     }
+     return perTableAuthz;
+   }
+   ```
+
+6. **return=representation with embeds**: For POST,
+   PATCH, DELETE with `Prefer: return=representation`
+   and embeds in the select, execute the mutation first
+   (INSERT, UPDATE, DELETE with RETURNING *), then
+   re-SELECT the mutated rows with embedding subqueries.
+
+   **Composite PK support:** Build filters matching
+   ALL PK columns, not just the first. For each PK
+   column, create an `in` filter with the values from
+   the mutation result:
+
+   ```javascript
+   const pk = schema.tables[table]?.primaryKey;
+   if (pk && pk.length > 0) {
+     const filters = pk.map(col => ({
+       column: col,
+       operator: 'in',
+       value: rows.map(r => String(r[col])),
+       negate: false,
+     }));
+     const reSelectParsed = {
+       ...parsed, filters, order: [], limit: null,
+       offset: 0,
+     };
+     // ... build authz and re-SELECT
+   }
+   ```
+
+   The per-column IN approach is correct because PK
+   uniqueness guarantees that the cross product of
+   individual column matches equals the exact set of
+   mutated rows. Previously, only `pk[0]` was used,
+   which returned extra rows for composite PKs.
 
 ### Error Codes Addition
 
@@ -862,10 +1066,10 @@ for discoverability, add comments documenting them.
 
 | File | Action | Lines | Description |
 |------|--------|-------|-------------|
-| `src/rest/query-parser.mjs` | Modify | ~80 added | Replace comma-split with parenthesis-aware parser; produce select tree |
-| `src/rest/schema-cache.mjs` | Modify | ~60 added | FK_SQL query, convention fallback, relationships in cache |
-| `src/rest/sql-builder.mjs` | Modify | ~150 added | Correlated subqueries for embeds, json_build_object/json_agg, inner join conditions, table-qualified columns |
-| `src/rest/handler.mjs` | Modify | ~60 added | Resolve relationships, build per-table authz, return=representation re-SELECT |
+| `src/rest/query-parser.mjs` | Modify | ~100 added | Parenthesis-aware parser, select tree, alias validation (`[a-zA-Z_][a-zA-Z0-9_]*`), paren balancing, empty embed rejection |
+| `src/rest/schema-cache.mjs` | Modify | ~70 added | FK_SQL query, convention fallback with expanded pluralization (s, es, ies), relationships in cache |
+| `src/rest/sql-builder.mjs` | Modify | ~170 added | Correlated subqueries, json_build_object/json_agg, inner join conditions, table-qualified columns, `perTableAuthz` map with single-pass `$N` renumbering via `renumberConditions` |
+| `src/rest/handler.mjs` | Modify | ~70 added | `buildPerTableAuthz` helper, single `buildSelect` call (no preview), hoisted parent authz for `buildCount`, composite PK re-SELECT |
 | `src/rest/errors.mjs` | Modify | ~5 added | Document PGRST200, PGRST201 error codes |
 
 **Files that do NOT change:**
@@ -923,12 +1127,33 @@ for discoverability, add comments documenting them.
 - `select=id, customers(name, email)` -> same result as
   `select=id,customers(name,email)` (spaces trimmed)
 
+**Alias validation:**
+- `select=id,buyer:customers(name)` -> valid alias
+  `buyer`, parses successfully
+- `select=id,x'injection:customers(name)` -> PGRST100
+  (single quote in alias)
+- `select=id,x"injection:customers(name)` -> PGRST100
+  (double quote in alias)
+- `select=id,x injection:customers(name)` -> PGRST100
+  (space in alias)
+- `select=id,_valid_alias:customers(name)` -> valid
+  (underscores and leading underscore allowed)
+
+**Parenthesis balancing:**
+- `select=id,customers(name` -> PGRST100 (unclosed
+  paren)
+- `select=id,customers(name))` -> PGRST100 (extra
+  close paren at depth 0)
+- `select=id,items(id,products(name)` -> PGRST100
+  (nested unclosed paren)
+
+**Empty embed:**
+- `select=id,customers()` -> PGRST100 (empty select
+  list in embed)
+
 **Edge cases:**
 - `select=id,customers(name,addresses(city,zip))`
   -> 3-level nesting
-- Empty embed: `select=id,customers()` -> embed with
-  empty select list (should error or default to `*`;
-  follow PostgREST behavior of erroring)
 
 ### Unit Tests: schema-cache.mjs
 
@@ -948,6 +1173,18 @@ for discoverability, add comments documenting them.
 - Column `id` (no prefix) -> skip
 - Fallback only runs when FK query returns zero
   relationships
+
+**Convention fallback — expanded pluralization:**
+- `category_id` on `items` table, `categories` table
+  exists -> infer relationship (y -> ies pattern)
+- `company_id` on `employees` table, `companies` table
+  exists -> infer relationship (y -> ies pattern)
+- `address_id` on `orders` table, `addresses` table
+  exists -> infer relationship (add es pattern)
+- `status_id` on `tasks` table, `statuses` table
+  exists -> infer relationship (add es pattern)
+- `bus_id` with no `bus`, `buss`, `buses`, or `busies`
+  table -> no relationship (no false match)
 
 **Cache integration:**
 - Relationships are included in cached schema
@@ -1016,9 +1253,20 @@ for discoverability, add comments documenting them.
 
 **Authz integration:**
 - Authz conditions for child table are injected into
-  the child subquery's WHERE clause
+  the child subquery's WHERE clause, not the parent's
 - Authz conditions for parent table remain in the
   parent WHERE clause
+
+**Authz parameter numbering correctness:**
+- Given: `select=id,customers(name)&amount=gt.50` with
+  parent authz `"user_id" = $1` (value: `'alice'`) and
+  child authz `"active" = $1` (value: `true`)
+- When `buildSelect` is called with `perTableAuthz`
+- Then: for every `$N` in the SQL text, `values[N-1]`
+  equals the expected value for that condition. The
+  filter value `50`, parent authz value `'alice'`, and
+  child authz value `true` all have correct `$N`
+  references.
 
 **No embeds — backward compatible:**
 - `select=id,name` -> generates same SQL as before
@@ -1046,6 +1294,29 @@ Setup: create `customers`, `orders`, `items`, `products`,
 - Disambiguation: two FKs to addresses, use !hint
 - Error: unknown embed -> PGRST200
 - Error: ambiguous embed without hint -> PGRST201
+- DELETE with return=representation: DELETE an order
+  with `Prefer: return=representation` and
+  `select=id,customers(name)` -> response contains
+  the deleted row with embedded customer data
+- Order + limit + offset with embeds:
+  `select=id,customers(name)&order=amount.desc&limit=2`
+  -> 2 rows returned, ordered by amount descending,
+  each with correct embedded customer
+- Composite PK re-SELECT: Given a table with composite
+  PK `(order_id, product_id)`, INSERT with
+  `Prefer: return=representation` and embeds -> response
+  contains exactly the inserted rows, not extra rows
+  that share only the first PK column
+
+**Authz with embeds (requires Cedar policy fixtures):**
+- Embed authz filters applied correctly: given Cedar
+  policies restricting both parent and child tables,
+  querying with embeds and filters returns only
+  authorized parent rows with only authorized child
+  rows in embeds
+- Count with authz and embeds: `Prefer: count=exact`
+  with embeds returns count matching only rows the
+  user is authorized to see, not the total table count
 
 ### Integration Tests: DSQL with Convention Fallback
 
@@ -1116,44 +1387,61 @@ assert(data[0].shipping !== undefined);
 1. Rewrite `parseQuery()` select parsing in
    `query-parser.mjs` to produce a select tree instead
    of a flat string array.
-2. Ensure backward compatibility: when no parentheses
+2. Add alias validation: reject aliases not matching
+   `[a-zA-Z_][a-zA-Z0-9_]*` with PGRST100.
+3. Add parenthesis balancing: reject unclosed `(` and
+   unexpected `)` at depth 0 with PGRST100.
+4. Add empty embed rejection: `customers()` throws
+   PGRST100.
+5. Ensure backward compatibility: when no parentheses
    are present, the select tree contains only column
    nodes, and downstream code works unchanged.
-3. Unit tests for all parsing cases.
+6. Unit tests for all parsing cases including alias
+   validation, paren balancing, and empty embeds.
 
 ### Phase 2: Relationship Discovery
 
-4. Add `FK_SQL` to `schema-cache.mjs` and include it in
+7. Add `FK_SQL` to `schema-cache.mjs` and include it in
    `pgIntrospect()`.
-5. Implement convention-based fallback in `pgIntrospect()`.
-6. Add `relationships` field to cache structure.
-7. Export `getRelationships()` helper.
-8. Unit tests for FK introspection and convention fallback.
+8. Implement convention-based fallback in
+   `pgIntrospect()` with expanded pluralization
+   candidates (exact, +s, +es, y->ies).
+9. Add `relationships` field to cache structure.
+10. Export `getRelationships()` helper.
+11. Unit tests for FK introspection, convention fallback,
+    and expanded pluralization patterns.
 
 ### Phase 3: SQL Generation
 
-9. Add `buildEmbedSubquery()`,
-   `buildManyToOneSubquery()`,
-   `buildOneToManySubquery()`, and
-   `buildJsonBuildObject()` to `sql-builder.mjs`.
-10. Modify `buildSelectExpressions()` to walk the select
+12. Add `buildEmbedSubquery()`,
+    `buildManyToOneSubquery()`,
+    `buildOneToManySubquery()`, and
+    `buildJsonBuildObject()` to `sql-builder.mjs`.
+13. Add `renumberConditions()` helper for single-pass
+    `$N` parameter numbering with `perTableAuthz` map.
+14. Modify `buildSelectExpressions()` to walk the select
     tree and produce subqueries for embed nodes.
-11. Add inner join condition collection and injection
+15. Add inner join condition collection and injection
     into parent WHERE.
-12. Table-qualify parent columns when embeds are present.
-13. Unit tests for generated SQL.
+16. Table-qualify parent columns when embeds are present.
+17. Unit tests for generated SQL including authz
+    parameter numbering correctness.
 
 ### Phase 4: Handler Integration
 
-14. Add relationship resolution to `handler.mjs`.
-15. Build Cedar authz filters per embedded table.
-16. Pass authz filters map and relationships to
-    `buildSelect()`.
-17. Implement return=representation re-SELECT for
-    mutations with embeds.
-18. Add PGRST200 and PGRST201 error documentation to
+18. Extract `buildPerTableAuthz` helper in `handler.mjs`.
+19. Replace double-call `buildSelect` pattern with single
+    call using `perTableAuthz` map.
+20. Hoist parent authz so `buildCount` receives it
+    in both embed and non-embed paths.
+21. Fix composite PK re-SELECT to filter on all PK
+    columns.
+22. Implement return=representation re-SELECT for
+    mutations with embeds (including DELETE).
+23. Add PGRST200 and PGRST201 error documentation to
     `errors.mjs`.
-19. Integration tests against PostgreSQL.
+24. Integration tests against PostgreSQL including authz,
+    composite PK, DELETE, and order+limit+offset.
 
 ### Phase 5: DSQL Validation
 

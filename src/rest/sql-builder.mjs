@@ -35,13 +35,180 @@ function validateCol(schema, table, column) {
 }
 
 function resolveSelectCols(selectList, schema, table) {
-  if (selectList.length === 1 && selectList[0] === '*') {
+  // Support both old string format and new node format
+  const cols = selectList
+    .filter(s => typeof s === 'string' || s.type === 'column')
+    .map(s => typeof s === 'string' ? s : s.name);
+  if (cols.length === 1 && cols[0] === '*') {
     return Object.keys(schema.tables[table].columns);
   }
-  for (const col of selectList) {
+  for (const col of cols) {
     validateCol(schema, table, col);
   }
-  return selectList;
+  return cols;
+}
+
+// --- Resource embedding helpers ---
+
+function resolveRelationship(schema, parentTable, embedName, hint) {
+  const rels = (schema.relationships || []).filter(r =>
+    (r.fromTable === parentTable && r.toTable === embedName)
+    || (r.toTable === parentTable && r.fromTable === embedName)
+  );
+
+  if (rels.length === 0) {
+    throw new PostgRESTError(400, 'PGRST200',
+      `Could not find a relationship between `
+      + `'${parentTable}' and '${embedName}' `
+      + `in the schema cache`);
+  }
+
+  if (hint) {
+    const hinted = rels.filter(r =>
+      r.constraint === hint
+      || r.fromColumns.includes(hint)
+      || r.toColumns.includes(hint)
+    );
+    if (hinted.length === 0) {
+      throw new PostgRESTError(400, 'PGRST200',
+        `Could not find a relationship between `
+        + `'${parentTable}' and '${embedName}' `
+        + `in the schema cache`);
+    }
+    if (hinted.length > 1) {
+      throw ambiguousError(parentTable, embedName, hinted);
+    }
+    return hinted[0];
+  }
+
+  if (rels.length > 1) {
+    throw ambiguousError(parentTable, embedName, rels);
+  }
+
+  return rels[0];
+}
+
+function ambiguousError(parentTable, embedName, rels) {
+  const details = rels.map(r => {
+    const cardinality =
+      r.fromTable === parentTable
+        ? 'many-to-one' : 'one-to-many';
+    return {
+      cardinality,
+      embedding: `${parentTable} with ${embedName}`,
+      relationship: `${r.constraint || '(convention)'} `
+        + `using ${r.fromTable}(${r.fromColumns.join(',')})`
+        + ` and ${r.toTable}(${r.toColumns.join(',')})`,
+    };
+  });
+  const hint = `Try changing '${embedName}' to one of the `
+    + `following: ${rels.map(r =>
+        `'${embedName}!${r.constraint || r.fromColumns[0]}'`
+      ).join(', ')}. Find the desired relationship in the `
+    + `'details' key.`;
+  return new PostgRESTError(300, 'PGRST201',
+    `Could not embed because more than one relationship `
+    + `was found for '${parentTable}' and '${embedName}'`,
+    details, hint);
+}
+
+function buildEmbedSubquery(
+    node, rel, parentTable, schema, values, authzFilters
+) {
+  if (rel.fromTable === parentTable) {
+    return buildManyToOneSubquery(
+      node, rel, parentTable, schema, values, authzFilters);
+  } else {
+    return buildOneToManySubquery(
+      node, rel, parentTable, schema, values, authzFilters);
+  }
+}
+
+function buildManyToOneSubquery(
+    node, rel, parentTable, schema, values, authzFilters
+) {
+  const childTable = rel.toTable;
+  const childCols = buildJsonBuildObject(
+    node.select, childTable, schema, values, authzFilters);
+  const joinCond = rel.fromColumns.map((fc, i) =>
+    `"${childTable}"."${rel.toColumns[i]}" = `
+    + `"${parentTable}"."${fc}"`
+  ).join(' AND ');
+
+  let where = joinCond;
+  const childAuthz = authzFilters?.[childTable];
+  if (childAuthz?.conditions?.length > 0) {
+    const renumbered = renumberConditions(
+      childAuthz.conditions, values.length + 1);
+    where += ' AND ' + renumbered.join(' AND ');
+    values.push(...childAuthz.values);
+  }
+
+  return `(SELECT json_build_object(${childCols})`
+    + ` FROM "${childTable}" WHERE ${where})`;
+}
+
+function buildOneToManySubquery(
+    node, rel, parentTable, schema, values, authzFilters
+) {
+  const childTable = rel.fromTable;
+  const childCols = buildJsonBuildObject(
+    node.select, childTable, schema, values, authzFilters);
+  const joinCond = rel.fromColumns.map((fc, i) =>
+    `"${childTable}"."${fc}" = `
+    + `"${parentTable}"."${rel.toColumns[i]}"`
+  ).join(' AND ');
+
+  let where = joinCond;
+  const childAuthz = authzFilters?.[childTable];
+  if (childAuthz?.conditions?.length > 0) {
+    const renumbered = renumberConditions(
+      childAuthz.conditions, values.length + 1);
+    where += ' AND ' + renumbered.join(' AND ');
+    values.push(...childAuthz.values);
+  }
+
+  return `COALESCE((SELECT json_agg(json_build_object(`
+    + `${childCols})) FROM "${childTable}" WHERE ${where})`
+    + `, '[]'::json)`;
+}
+
+function buildJsonBuildObject(
+    selectNodes, table, schema, values, authzFilters
+) {
+  const pairs = [];
+  for (const node of selectNodes) {
+    if (node.type === 'column') {
+      if (node.name === '*') {
+        for (const c of Object.keys(
+            schema.tables[table].columns)) {
+          pairs.push(`'${c}', "${table}"."${c}"`);
+        }
+      } else {
+        validateCol(schema, table, node.name);
+        pairs.push(
+          `'${node.name}', "${table}"."${node.name}"`);
+      }
+    } else if (node.type === 'embed') {
+      const rel = resolveRelationship(
+        schema, table, node.name, node.hint);
+      const alias = node.alias || node.name;
+      const subquery = buildEmbedSubquery(
+        node, rel, table, schema, values, authzFilters);
+      pairs.push(`'${alias}', ${subquery}`);
+    }
+  }
+  return pairs.join(', ');
+}
+
+function renumberConditions(conditions, startParam) {
+  let paramIdx = 0;
+  return conditions.map(cond =>
+    cond.replace(/\$\d+/g, () => {
+      paramIdx++;
+      return `$${startParam + paramIdx - 1}`;
+    })
+  );
 }
 
 function buildFilterConditions(filters, schema, table, values) {
@@ -111,17 +278,89 @@ function limitOffsetClause(limit, offset, values) {
 
 export function buildSelect(table, parsed, schema, authzConditions) {
   const values = [];
-  const cols = resolveSelectCols(parsed.select, schema, table);
-  const colList = cols.map((c) => `"${c}"`).join(', ');
+  const hasEmbeds = parsed.select.some(
+    n => n.type === 'embed');
 
+  let colList;
+  const innerJoinConds = [];
+
+  if (hasEmbeds) {
+    // Build select expressions from tree
+    const expressions = [];
+    for (const node of parsed.select) {
+      if (node.type === 'column') {
+        if (node.name === '*') {
+          for (const c of Object.keys(
+              schema.tables[table].columns)) {
+            expressions.push(`"${table}"."${c}"`);
+          }
+        } else {
+          validateCol(schema, table, node.name);
+          expressions.push(`"${table}"."${node.name}"`);
+        }
+      } else if (node.type === 'embed') {
+        const rel = resolveRelationship(
+          schema, table, node.name, node.hint);
+        const alias = node.alias || node.name;
+        const subquery = buildEmbedSubquery(
+          node, rel, table, schema, values,
+          authzConditions?.embeds);
+        expressions.push(`${subquery} AS "${alias}"`);
+
+        // Inner join conditions
+        if (node.inner) {
+          if (rel.fromTable === table) {
+            // Many-to-one inner: FK column IS NOT NULL
+            innerJoinConds.push(
+              rel.fromColumns.map(fc =>
+                `"${table}"."${fc}" IS NOT NULL`
+              ).join(' AND '));
+          } else {
+            // One-to-many inner: EXISTS subquery
+            const existsCond = rel.fromColumns.map((fc, i) =>
+              `"${rel.fromTable}"."${fc}" = `
+              + `"${table}"."${rel.toColumns[i]}"`
+            ).join(' AND ');
+            innerJoinConds.push(
+              `EXISTS (SELECT 1 FROM "${rel.fromTable}"`
+              + ` WHERE ${existsCond})`);
+          }
+        }
+      }
+    }
+    colList = expressions.join(', ');
+  } else {
+    // Flat select — backward compatible path
+    const cols = parsed.select.map(n =>
+      typeof n === 'string' ? n : n.name);
+    if (cols.length === 1 && cols[0] === '*') {
+      colList = Object.keys(schema.tables[table].columns)
+        .map(c => `"${c}"`).join(', ');
+    } else {
+      for (const c of cols) validateCol(schema, table, c);
+      colList = cols.map(c => `"${c}"`).join(', ');
+    }
+  }
+
+  // Build WHERE conditions
   const conds = buildFilterConditions(
-    parsed.filters, schema, table, values,
-  );
-  if (authzConditions?.conditions?.length > 0) {
-    for (const cond of authzConditions.conditions) {
+    parsed.filters, schema, table, values);
+
+  // Add inner join conditions
+  for (const ijc of innerJoinConds) {
+    conds.push(ijc);
+  }
+
+  // Add parent authz conditions
+  const parentAuthz = authzConditions?.parent
+    || authzConditions;
+  if (parentAuthz?.conditions?.length > 0) {
+    const renumbered = renumberConditions(
+      parentAuthz.conditions, values.length + 1);
+    for (const cond of renumbered) {
       conds.push(cond);
     }
-    values.push(...authzConditions.values);
+    values.push(...parentAuthz.values);
   }
 
   let sql = `SELECT ${colList} FROM "${table}"`;
@@ -200,7 +439,9 @@ export function buildUpdate(table, body, parsed, schema, authzConditions) {
     parsed.filters, schema, table, values,
   );
   if (authzConditions?.conditions?.length > 0) {
-    for (const cond of authzConditions.conditions) {
+    const renumbered = renumberConditions(
+      authzConditions.conditions, values.length + 1);
+    for (const cond of renumbered) {
       conds.push(cond);
     }
     values.push(...authzConditions.values);
@@ -226,7 +467,9 @@ export function buildDelete(table, parsed, schema, authzConditions) {
     parsed.filters, schema, table, values,
   );
   if (authzConditions?.conditions?.length > 0) {
-    for (const cond of authzConditions.conditions) {
+    const renumbered = renumberConditions(
+      authzConditions.conditions, values.length + 1);
+    for (const cond of renumbered) {
       conds.push(cond);
     }
     values.push(...authzConditions.values);
@@ -245,7 +488,9 @@ export function buildCount(table, parsed, schema, authzConditions) {
     parsed.filters, schema, table, values,
   );
   if (authzConditions?.conditions?.length > 0) {
-    for (const cond of authzConditions.conditions) {
+    const renumbered = renumberConditions(
+      authzConditions.conditions, values.length + 1);
+    for (const cond of renumbered) {
       conds.push(cond);
     }
     values.push(...authzConditions.values);

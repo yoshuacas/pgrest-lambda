@@ -1,25 +1,29 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseQuery } from '../query-parser.mjs';
+import { parseQuery, parseSelectList } from '../query-parser.mjs';
 
 describe('query-parser', () => {
   describe('select parsing', () => {
-    it('parses ?select=id,title into [id, title]', () => {
+    it('parses ?select=id,title into column nodes', () => {
       const result = parseQuery({ select: 'id,title' }, 'GET');
-      assert.deepStrictEqual(result.select, ['id', 'title'],
-        'select should be [id, title]');
+      assert.deepStrictEqual(result.select, [
+        { type: 'column', name: 'id' },
+        { type: 'column', name: 'title' },
+      ], 'select should be column nodes for id and title');
     });
 
-    it('parses ?select=* into [*]', () => {
+    it('parses ?select=* into wildcard column node', () => {
       const result = parseQuery({ select: '*' }, 'GET');
-      assert.deepStrictEqual(result.select, ['*'],
-        'select should be [*]');
+      assert.deepStrictEqual(result.select, [
+        { type: 'column', name: '*' },
+      ], 'select should be wildcard column node');
     });
 
-    it('defaults to [*] when no select param', () => {
+    it('defaults to wildcard column node when no select param', () => {
       const result = parseQuery({}, 'GET');
-      assert.deepStrictEqual(result.select, ['*'],
-        'select should default to [*]');
+      assert.deepStrictEqual(result.select, [
+        { type: 'column', name: '*' },
+      ], 'select should default to wildcard column node');
     });
   });
 
@@ -227,6 +231,242 @@ describe('query-parser', () => {
       const result = parseQuery({ on_conflict: 'id' }, 'POST');
       assert.equal(result.onConflict, 'id',
         'onConflict should be id');
+    });
+  });
+});
+
+describe('parseSelectList', () => {
+  it('flat columns: id,amount', () => {
+    assert.deepStrictEqual(parseSelectList('id,amount'), [
+      { type: 'column', name: 'id' },
+      { type: 'column', name: 'amount' },
+    ]);
+  });
+
+  it('wildcard: *', () => {
+    assert.deepStrictEqual(parseSelectList('*'), [
+      { type: 'column', name: '*' },
+    ]);
+  });
+
+  it('column + embed: id,customers(name)', () => {
+    const result = parseSelectList('id,customers(name)');
+    assert.equal(result.length, 2);
+    assert.deepStrictEqual(result[0], { type: 'column', name: 'id' });
+    assert.equal(result[1].type, 'embed');
+    assert.equal(result[1].name, 'customers');
+    assert.equal(result[1].alias, null);
+    assert.equal(result[1].hint, null);
+    assert.equal(result[1].inner, false);
+    assert.deepStrictEqual(result[1].select, [
+      { type: 'column', name: 'name' },
+    ]);
+  });
+
+  it('embed with two child columns: id,customers(name,email)', () => {
+    const result = parseSelectList('id,customers(name,email)');
+    assert.equal(result[1].type, 'embed');
+    assert.equal(result[1].name, 'customers');
+    assert.deepStrictEqual(result[1].select, [
+      { type: 'column', name: 'name' },
+      { type: 'column', name: 'email' },
+    ]);
+  });
+
+  it('wildcard parent + wildcard child: *,customers(*)', () => {
+    const result = parseSelectList('*,customers(*)');
+    assert.equal(result.length, 2);
+    assert.deepStrictEqual(result[0], { type: 'column', name: '*' });
+    assert.equal(result[1].type, 'embed');
+    assert.equal(result[1].name, 'customers');
+    assert.deepStrictEqual(result[1].select, [
+      { type: 'column', name: '*' },
+    ]);
+  });
+
+  it('aliased embed: id,buyer:customers(name)', () => {
+    const result = parseSelectList('id,buyer:customers(name)');
+    assert.equal(result[1].type, 'embed');
+    assert.equal(result[1].name, 'customers');
+    assert.equal(result[1].alias, 'buyer');
+  });
+
+  it('hint: *,addresses!billing_address_id(*)', () => {
+    const result = parseSelectList('*,addresses!billing_address_id(*)');
+    assert.equal(result[1].type, 'embed');
+    assert.equal(result[1].name, 'addresses');
+    assert.equal(result[1].hint, 'billing_address_id');
+    assert.equal(result[1].inner, false);
+  });
+
+  it('inner: id,orders!inner(id)', () => {
+    const result = parseSelectList('id,orders!inner(id)');
+    assert.equal(result[1].type, 'embed');
+    assert.equal(result[1].name, 'orders');
+    assert.equal(result[1].inner, true);
+    assert.equal(result[1].hint, null);
+  });
+
+  it('hint + inner: id,addresses!billing_fk!inner(*)', () => {
+    const result = parseSelectList('id,addresses!billing_fk!inner(*)');
+    assert.equal(result[1].type, 'embed');
+    assert.equal(result[1].name, 'addresses');
+    assert.equal(result[1].hint, 'billing_fk');
+    assert.equal(result[1].inner, true);
+  });
+
+  it('nested embed: id,items(id,products(name))', () => {
+    const result = parseSelectList('id,items(id,products(name))');
+    assert.equal(result.length, 2);
+    assert.deepStrictEqual(result[0], { type: 'column', name: 'id' });
+    const items = result[1];
+    assert.equal(items.type, 'embed');
+    assert.equal(items.name, 'items');
+    assert.equal(items.select.length, 2);
+    assert.deepStrictEqual(items.select[0],
+      { type: 'column', name: 'id' });
+    const products = items.select[1];
+    assert.equal(products.type, 'embed');
+    assert.equal(products.name, 'products');
+    assert.deepStrictEqual(products.select, [
+      { type: 'column', name: 'name' },
+    ]);
+  });
+
+  it('spaces trimmed: id, customers(name, email)', () => {
+    const result = parseSelectList('id, customers(name, email)');
+    assert.equal(result.length, 2);
+    assert.deepStrictEqual(result[0], { type: 'column', name: 'id' });
+    assert.equal(result[1].name, 'customers');
+    assert.deepStrictEqual(result[1].select, [
+      { type: 'column', name: 'name' },
+      { type: 'column', name: 'email' },
+    ]);
+  });
+
+  it('intermixed columns and embeds', () => {
+    const result = parseSelectList(
+      'id,customers(name),amount,items(id)');
+    assert.equal(result.length, 4);
+    assert.equal(result[0].type, 'column');
+    assert.equal(result[0].name, 'id');
+    assert.equal(result[1].type, 'embed');
+    assert.equal(result[1].name, 'customers');
+    assert.equal(result[2].type, 'column');
+    assert.equal(result[2].name, 'amount');
+    assert.equal(result[3].type, 'embed');
+    assert.equal(result[3].name, 'items');
+  });
+
+  it('parseQuery default: no select param returns wildcard node',
+    () => {
+      const result = parseQuery({}, 'GET');
+      assert.deepStrictEqual(result.select, [
+        { type: 'column', name: '*' },
+      ]);
+    });
+
+  it('parseQuery backward compat: select=id,name returns column nodes',
+    () => {
+      const result = parseQuery({ select: 'id,name' }, 'GET');
+      assert.deepStrictEqual(result.select, [
+        { type: 'column', name: 'id' },
+        { type: 'column', name: 'name' },
+      ]);
+    });
+});
+
+describe('select validation', () => {
+  describe('alias validation', () => {
+    it('rejects alias with single quote', () => {
+      assert.throws(
+        () => parseSelectList("id,x'injection:customers(name)"),
+        (err) => err.code === 'PGRST100'
+          && err.message.includes('not a valid identifier'),
+        'single quote in alias should throw PGRST100',
+      );
+    });
+
+    it('rejects alias with double quote', () => {
+      assert.throws(
+        () => parseSelectList('id,x"injection:customers(name)'),
+        (err) => err.code === 'PGRST100'
+          && err.message.includes('not a valid identifier'),
+        'double quote in alias should throw PGRST100',
+      );
+    });
+
+    it('rejects alias with space', () => {
+      assert.throws(
+        () => parseSelectList('id,x injection:customers(name)'),
+        (err) => err.code === 'PGRST100'
+          && err.message.includes('not a valid identifier'),
+        'space in alias should throw PGRST100',
+      );
+    });
+
+    it('rejects alias with leading digit', () => {
+      assert.throws(
+        () => parseSelectList('id,123bad:customers(name)'),
+        (err) => err.code === 'PGRST100'
+          && err.message.includes('not a valid identifier'),
+        'leading digit in alias should throw PGRST100',
+      );
+    });
+
+    it('accepts valid alias with underscores', () => {
+      const result = parseSelectList(
+        'id,_valid_alias:customers(name)');
+      assert.equal(result[1].type, 'embed');
+      assert.equal(result[1].alias, '_valid_alias');
+      assert.equal(result[1].name, 'customers');
+    });
+
+    it('accepts normal alias', () => {
+      const result = parseSelectList('id,buyer:customers(name)');
+      assert.equal(result[1].type, 'embed');
+      assert.equal(result[1].alias, 'buyer');
+      assert.equal(result[1].name, 'customers');
+    });
+  });
+
+  describe('parenthesis balancing', () => {
+    it('throws on unclosed paren', () => {
+      assert.throws(
+        () => parseSelectList('id,customers(name'),
+        (err) => err.code === 'PGRST100'
+          && err.message.includes('Unbalanced parentheses'),
+        'unclosed paren should throw PGRST100',
+      );
+    });
+
+    it('throws on extra closing paren', () => {
+      assert.throws(
+        () => parseSelectList('id,customers(name))'),
+        (err) => err.code === 'PGRST100'
+          && err.message.includes('Unbalanced parentheses'),
+        'extra closing paren should throw PGRST100',
+      );
+    });
+
+    it('throws on nested unclosed paren', () => {
+      assert.throws(
+        () => parseSelectList('id,items(id,products(name)'),
+        (err) => err.code === 'PGRST100'
+          && err.message.includes('Unbalanced parentheses'),
+        'nested unclosed paren should throw PGRST100',
+      );
+    });
+  });
+
+  describe('empty embed select', () => {
+    it('throws on empty embed select list', () => {
+      assert.throws(
+        () => parseSelectList('id,customers()'),
+        (err) => err.code === 'PGRST100'
+          && err.message.includes('Empty select list'),
+        'empty embed select should throw PGRST100',
+      );
     });
   });
 });
