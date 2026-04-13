@@ -9,6 +9,7 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
 ## Unreleased
 
 ### Added
+- **Logical operators** -- `or` and `and` query parameter keys for PostgREST-compatible boolean logic in WHERE clauses. Supports `not.or`, `not.and`, nested groups up to 10 levels, negated conditions inside groups, `in`/`is`/`like`/`ilike` operators inside groups, and duplicate keys via `multiValueQueryStringParameters`. Wire-compatible with supabase-js `.or()` method.
 - **Resource embedding** — fetch related data from multiple tables in a single request using PostgREST-compatible nested select syntax: `?select=*,customers(name,email)`. Supports many-to-one (embedded as object), one-to-many (embedded as array), nested embedding (2+ levels), aliased embeds, `!inner` joins, and `!hint` disambiguation. Uses correlated subqueries with `json_build_object`/`json_agg` for single-query execution.
 - **Convention-based relationship detection** for Aurora DSQL and databases without foreign key constraints. Infers relationships from column naming: `customer_id` → `customers`, `category_id` → `categories`, `address_id` → `addresses`. Handles `-s`, `-es`, and `-ies` plural patterns.
 - **Foreign key introspection** from `pg_catalog` on standard PostgreSQL. Relationships are cached alongside table/column metadata with the same TTL.

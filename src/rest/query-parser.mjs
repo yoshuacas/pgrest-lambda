@@ -12,6 +12,10 @@ const VALID_OPERATORS = new Set([
 
 const VALID_IS_VALUES = new Set(['null', 'true', 'false', 'unknown']);
 
+const LOGICAL_OPS = new Set(['or', 'and']);
+
+const MAX_NESTING_DEPTH = 10;
+
 export function parseSelectList(input) {
   const nodes = [];
   let i = 0;
@@ -119,7 +123,7 @@ function parseEmbedToken(token) {
   return { name, alias, hint, inner };
 }
 
-export function parseQuery(params, method) {
+export function parseQuery(params, method, multiValueParams) {
   params = params || {};
 
   const select = params.select
@@ -127,9 +131,49 @@ export function parseQuery(params, method) {
     : [{ type: 'column', name: '*' }];
 
   const filters = [];
+  const processedKeys = new Set();
+
+  if (multiValueParams) {
+    for (const key of ['or', 'and', 'not.or', 'not.and']) {
+      const values = multiValueParams[key];
+      if (Array.isArray(values) && values.length > 1) {
+        let logicalOp, negate = false;
+        if (LOGICAL_OPS.has(key)) {
+          logicalOp = key;
+        } else {
+          logicalOp = key.slice(4);
+          negate = true;
+        }
+        for (const val of values) {
+          filters.push(parseLogicalGroup(logicalOp, negate, val));
+        }
+        processedKeys.add(key);
+      }
+    }
+  }
+
   for (const [key, rawValue] of Object.entries(params)) {
     if (RESERVED_PARAMS.has(key)) continue;
-    filters.push(parseFilter(key, rawValue));
+    if (processedKeys.has(key)) continue;
+
+    let logicalOp = null;
+    let negate = false;
+
+    if (LOGICAL_OPS.has(key)) {
+      logicalOp = key;
+    } else if (key.startsWith('not.')) {
+      const rest = key.slice(4);
+      if (LOGICAL_OPS.has(rest)) {
+        logicalOp = rest;
+        negate = true;
+      }
+    }
+
+    if (logicalOp) {
+      filters.push(parseLogicalGroup(logicalOp, negate, rawValue));
+    } else {
+      filters.push(parseFilter(key, rawValue));
+    }
   }
 
   const order = params.order ? parseOrder(params.order) : [];
@@ -144,7 +188,7 @@ export function parseQuery(params, method) {
 
 function parseFilter(column, raw) {
   if (raw === 'not_null') {
-    return { column, operator: 'is', value: 'null', negate: true };
+    return { type: 'filter', column, operator: 'is', value: 'null', negate: true };
   }
 
   const dotIdx = raw.indexOf('.');
@@ -197,7 +241,84 @@ function parseFilter(column, raw) {
     value = value.replaceAll('*', '%');
   }
 
-  return { column, operator, value, negate };
+  return { type: 'filter', column, operator, value, negate };
+}
+
+function splitConditions(str) {
+  const conditions = [];
+  let start = 0;
+  let depth = 0;
+
+  for (let i = 0; i < str.length; i++) {
+    if (str[i] === '(') depth++;
+    else if (str[i] === ')') {
+      depth--;
+      if (depth < 0) {
+        throw new PostgRESTError(400, 'PGRST100',
+          'Unbalanced parentheses in logical operator value');
+      }
+    } else if (str[i] === ',' && depth === 0) {
+      conditions.push(str.slice(start, i));
+      start = i + 1;
+    }
+  }
+
+  if (depth !== 0) {
+    throw new PostgRESTError(400, 'PGRST100',
+      'Unbalanced parentheses in logical operator value');
+  }
+
+  const last = str.slice(start);
+  if (last) conditions.push(last);
+
+  return conditions;
+}
+
+function parseCondition(str, depth) {
+  const nestedMatch = str.match(/^(not\.)?(or|and)\((.*)?\)$/);
+  if (nestedMatch) {
+    const negate = !!nestedMatch[1];
+    const op = nestedMatch[2];
+    const inner = nestedMatch[3];
+    if (!inner) {
+      throw new PostgRESTError(400, 'PGRST100',
+        `Empty condition list in '${op}' operator`);
+    }
+    return parseLogicalGroup(op, negate, inner, depth + 1);
+  }
+
+  const dotIdx = str.indexOf('.');
+  if (dotIdx === -1) {
+    throw new PostgRESTError(400, 'PGRST100',
+      `"${str}" is not a valid filter condition`);
+  }
+
+  const column = str.slice(0, dotIdx);
+  const remainder = str.slice(dotIdx + 1);
+
+  return parseFilter(column, remainder);
+}
+
+function parseLogicalGroup(op, negate, raw, depth = 0) {
+  if (depth > MAX_NESTING_DEPTH) {
+    throw new PostgRESTError(400, 'PGRST100',
+      'Logical operator nesting exceeds maximum '
+      + `depth of ${MAX_NESTING_DEPTH}`);
+  }
+
+  if (raw.startsWith('(') && raw.endsWith(')')) {
+    raw = raw.slice(1, -1);
+  }
+
+  if (!raw) {
+    throw new PostgRESTError(400, 'PGRST100',
+      `Empty condition list in '${op}' operator`);
+  }
+
+  const parts = splitConditions(raw);
+  const conditions = parts.map(c => parseCondition(c, depth));
+
+  return { type: 'logicalGroup', logicalOp: op, negate, conditions };
 }
 
 function parseOrder(raw) {

@@ -73,11 +73,13 @@ export function makeEvent({
   role = 'service_role',
   userId = '',
   email = '',
+  multiValueQuery = null,
 } = {}) {
   return {
     httpMethod: method,
     path,
     queryStringParameters: Object.keys(query).length ? query : null,
+    multiValueQueryStringParameters: multiValueQuery,
     headers: { 'Content-Type': 'application/json', ...headers },
     body: body ? JSON.stringify(body) : null,
     requestContext: {
