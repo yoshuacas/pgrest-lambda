@@ -58,6 +58,30 @@ function docsHtml(specUrl) {
 </html>`;
 }
 
+function collectTables(selectNodes, parentTable) {
+  const tables = new Set([parentTable]);
+  for (const node of selectNodes) {
+    if (node.type === 'embed') {
+      tables.add(node.name);
+      const nested = collectTables(node.select, node.name);
+      for (const t of nested) tables.add(t);
+    }
+  }
+  return tables;
+}
+
+function buildPerTableAuthz(tables, cedar, principal, schema) {
+  const perTableAuthz = {};
+  for (const t of tables) {
+    perTableAuthz[t] = cedar.buildAuthzFilter({
+      principal, action: 'select',
+      context: { table: t }, schema,
+      startParam: 1, // renumbered by sql-builder
+    });
+  }
+  return perTableAuthz;
+}
+
 export function createRestHandler(ctx) {
   const { db, schemaCache, cedar, docs } = ctx;
 
@@ -125,6 +149,8 @@ export function createRestHandler(ctx) {
 
       const table = routeInfo.table;
       const parsed = parseQuery(params, method);
+      const hasEmbeds = parsed.select.some(
+        n => n.type === 'embed');
 
       await cedar.loadPolicies();
 
@@ -133,19 +159,42 @@ export function createRestHandler(ctx) {
       let rows;
       let count;
 
+      let parentAuthz = null;
+
       switch (method) {
         case 'GET': {
-          const preview = buildSelect(table, parsed, schema);
-          const authz = cedar.buildAuthzFilter({
-            principal, action: 'select', context: { table }, schema,
-            startParam: preview.values.length + 1,
-          });
-          const q = buildSelect(table, parsed, schema, authz);
-          const result = await pool.query(q.text, q.values);
-          rows = result.rows;
+          if (hasEmbeds) {
+            const tables = collectTables(parsed.select, table);
+            const perTableAuthz = buildPerTableAuthz(
+              tables, cedar, principal, schema);
+            parentAuthz = perTableAuthz[table] || null;
+            const authzFilters = {
+              parent: parentAuthz,
+              embeds: Object.fromEntries(
+                [...tables]
+                  .filter(t => t !== table)
+                  .map(t => [t, perTableAuthz[t]])
+              ),
+            };
+            const q = buildSelect(
+              table, parsed, schema, authzFilters);
+            const result = await pool.query(q.text, q.values);
+            rows = result.rows;
+          } else {
+            parentAuthz = cedar.buildAuthzFilter({
+              principal, action: 'select',
+              context: { table }, schema,
+              startParam: 1, // renumbered by buildSelect
+            });
+            const q = buildSelect(
+              table, parsed, schema, parentAuthz);
+            const result = await pool.query(q.text, q.values);
+            rows = result.rows;
+          }
 
           if (prefer.count === 'exact') {
-            const cq = buildCount(table, parsed, schema, authz);
+            const cq = buildCount(
+              table, parsed, schema, parentAuthz);
             const cr = await pool.query(cq.text, cq.values);
             count = parseInt(cr.rows[0].count, 10);
           }
@@ -219,6 +268,43 @@ export function createRestHandler(ctx) {
       const singleObject =
         accept.includes('application/vnd.pgrst.object+json');
       const returnRep = prefer.return === 'representation';
+
+      // Re-SELECT mutations with embeds for return=representation
+      if (method !== 'GET' && returnRep && hasEmbeds
+          && rows && rows.length > 0) {
+        const pk = schema.tables[table]?.primaryKey;
+        if (pk && pk.length > 0) {
+          const filters = pk.map(col => ({
+            column: col,
+            operator: 'in',
+            value: rows.map(r => String(r[col])),
+            negate: false,
+          }));
+          const reSelectParsed = {
+            ...parsed,
+            filters,
+            order: [],
+            limit: null,
+            offset: 0,
+          };
+          const embTables = collectTables(parsed.select, table);
+          const perTableAuthz = buildPerTableAuthz(
+            embTables, cedar, principal, schema);
+          const authzFilters = {
+            parent: perTableAuthz[table] || null,
+            embeds: Object.fromEntries(
+              [...embTables]
+                .filter(t => t !== table)
+                .map(t => [t, perTableAuthz[t]])
+            ),
+          };
+          const reQ = buildSelect(
+            table, reSelectParsed, schema, authzFilters);
+          const reResult = await pool.query(
+            reQ.text, reQ.values);
+          rows = reResult.rows;
+        }
+      }
 
       if (method === 'GET') {
         return success(200, rows, {
