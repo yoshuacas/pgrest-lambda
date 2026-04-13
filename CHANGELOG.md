@@ -8,6 +8,10 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
 
 ## Unreleased
 
+### Fixed
+- **Bulk insert with `columns` query parameter** -- supabase-js sends `?columns=col1,col2,...` on array inserts. pgrest-lambda now recognizes `columns` as a reserved parameter instead of misinterpreting it as a filter. The column list controls which columns are populated from the JSON body.
+- **`Prefer: return=representation` on POST** -- insert with `.select()` or `.select().single()` now returns the created row(s) instead of null. Also passes `singleObject` mode through for `.single()` responses.
+
 ### Added
 - **Logical operators** -- `or` and `and` query parameter keys for PostgREST-compatible boolean logic in WHERE clauses. Supports `not.or`, `not.and`, nested groups up to 10 levels, negated conditions inside groups, `in`/`is`/`like`/`ilike` operators inside groups, and duplicate keys via `multiValueQueryStringParameters`. Wire-compatible with supabase-js `.or()` method.
 - **Resource embedding** — fetch related data from multiple tables in a single request using PostgREST-compatible nested select syntax: `?select=*,customers(name,email)`. Supports many-to-one (embedded as object), one-to-many (embedded as array), nested embedding (2+ levels), aliased embeds, `!inner` joins, and `!hint` disambiguation. Uses correlated subqueries with `json_build_object`/`json_agg` for single-query execution.
