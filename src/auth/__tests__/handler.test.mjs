@@ -583,4 +583,49 @@ describe('handler.mjs', () => {
       );
     });
   });
+
+  describe('getOpenApiPaths', () => {
+    it('returns paths for all auth endpoints', () => {
+      const ctx = { jwt: createJwt({ jwtSecret: TEST_SECRET }), authProvider: null };
+      const result = createAuthHandler(
+        { auth: { provider: 'cognito' }, jwtSecret: TEST_SECRET },
+        ctx,
+      );
+
+      const contribution = result.getOpenApiPaths('https://api.example.com/rest/v1');
+      assert.ok(contribution.paths, 'should have paths');
+      assert.ok(contribution.paths['/signup'], 'should have /signup');
+      assert.ok(contribution.paths['/token?grant_type=password'], 'should have /token password');
+      assert.ok(contribution.paths['/token?grant_type=refresh_token'], 'should have /token refresh');
+      assert.ok(contribution.paths['/user'], 'should have /user');
+      assert.ok(contribution.paths['/logout'], 'should have /logout');
+    });
+
+    it('returns auth schemas', () => {
+      const ctx = { jwt: createJwt({ jwtSecret: TEST_SECRET }), authProvider: null };
+      const result = createAuthHandler(
+        { auth: { provider: 'cognito' }, jwtSecret: TEST_SECRET },
+        ctx,
+      );
+
+      const contribution = result.getOpenApiPaths('https://api.example.com/rest/v1');
+      assert.ok(contribution.schemas, 'should have schemas');
+      assert.ok(contribution.schemas.AuthSession, 'should have AuthSession');
+      assert.ok(contribution.schemas.AuthUser, 'should have AuthUser');
+      assert.ok(contribution.schemas.AuthError, 'should have AuthError');
+    });
+
+    it('derives auth URL from base URL', () => {
+      const ctx = { jwt: createJwt({ jwtSecret: TEST_SECRET }), authProvider: null };
+      const result = createAuthHandler(
+        { auth: { provider: 'cognito' }, jwtSecret: TEST_SECRET },
+        ctx,
+      );
+
+      const contribution = result.getOpenApiPaths('https://api.example.com/rest/v1');
+      const signupPath = contribution.paths['/signup'];
+      assert.ok(signupPath.servers, 'should have servers override');
+      assert.equal(signupPath.servers[0].url, 'https://api.example.com/auth/v1');
+    });
+  });
 });

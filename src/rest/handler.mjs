@@ -82,7 +82,13 @@ function buildPerTableAuthz(tables, cedar, principal, schema) {
   return perTableAuthz;
 }
 
-export function createRestHandler(ctx) {
+function resolveContributions(contributions, apiUrl) {
+  return contributions.map(c =>
+    typeof c === 'function' ? c(apiUrl) : c
+  );
+}
+
+export function createRestHandler(ctx, contributions = []) {
   const { db, schemaCache, cedar, docs } = ctx;
 
   async function handler(event) {
@@ -122,7 +128,8 @@ export function createRestHandler(ctx) {
       if (routeInfo.type === 'openapi') {
         const apiUrl =
           `https://${headers['host'] || 'localhost'}/rest/v1`;
-        return success(200, generateSpec(schema, apiUrl));
+        const resolved = resolveContributions(contributions, apiUrl);
+        return success(200, generateSpec(schema, apiUrl, resolved));
       }
 
       if (routeInfo.type === 'docs') {
@@ -146,7 +153,8 @@ export function createRestHandler(ctx) {
         await cedar.refreshPolicies();
         const apiUrl =
           `https://${headers['host'] || 'localhost'}/rest/v1`;
-        return success(200, generateSpec(newSchema, apiUrl));
+        const resolved = resolveContributions(contributions, apiUrl);
+        return success(200, generateSpec(newSchema, apiUrl, resolved));
       }
 
       const table = routeInfo.table;

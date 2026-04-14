@@ -71,6 +71,7 @@ function resolveConfig(config) {
       || parseInt(process.env.SCHEMA_CACHE_TTL_MS || '300000', 10),
     docs: config.docs !== undefined ? config.docs
       : process.env.PGREST_DOCS !== 'false',
+    contributions: config.contributions || [],
   };
 }
 
@@ -104,9 +105,7 @@ export function createPgrest(config = {}) {
   ctx.jwt = jwt;
   ctx.docs = resolved.docs;
 
-  // Create handlers
-  const rest = createRestHandler(ctx);
-
+  // Create auth handler first (needed for OpenAPI contributions)
   let auth = null;
   if (resolved.auth === false) {
     auth = null;
@@ -115,6 +114,15 @@ export function createPgrest(config = {}) {
   } else {
     auth = createAuthHandler(resolved, ctx);
   }
+
+  // Collect OpenAPI contributions from internal handlers + external config
+  const contributions = [...resolved.contributions];
+  if (auth?.getOpenApiPaths) {
+    contributions.push(auth.getOpenApiPaths);
+  }
+
+  // Create rest handler with contributions
+  const rest = createRestHandler(ctx, contributions);
 
   const authorizer = createAuthorizer({ jwtSecret: resolved.jwtSecret });
 

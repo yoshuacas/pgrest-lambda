@@ -103,4 +103,56 @@ describe('openapi', () => {
     assert.ok(errorSchema,
       'should have a PostgREST error schema with code, message, details, hint');
   });
+
+  describe('contributions', () => {
+    it('does not include auth paths without contributions', () => {
+      const spec = generateSpec(mockSchema, 'https://api.example.com/rest/v1');
+      assert.ok(!spec.paths['/signup'], 'should not have /signup');
+      assert.ok(!spec.components.schemas.AuthSession, 'should not have AuthSession');
+    });
+
+    it('merges contribution paths into spec', () => {
+      const contribution = {
+        paths: {
+          '/custom': {
+            get: { summary: 'Custom endpoint', responses: { 200: { description: 'OK' } } },
+          },
+        },
+      };
+      const spec = generateSpec(mockSchema, 'https://api.example.com/rest/v1', [contribution]);
+      assert.ok(spec.paths['/custom'], 'should include contributed path');
+      assert.equal(spec.paths['/custom'].get.summary, 'Custom endpoint');
+    });
+
+    it('merges contribution schemas into components', () => {
+      const contribution = {
+        paths: {},
+        schemas: {
+          CustomType: { type: 'object', properties: { id: { type: 'string' } } },
+        },
+      };
+      const spec = generateSpec(mockSchema, 'https://api.example.com/rest/v1', [contribution]);
+      assert.ok(spec.components.schemas.CustomType, 'should include contributed schema');
+    });
+
+    it('merges multiple contributions in order', () => {
+      const c1 = { paths: { '/a': { get: { summary: 'A' } } } };
+      const c2 = { paths: { '/b': { get: { summary: 'B' } } } };
+      const spec = generateSpec(mockSchema, 'https://api.example.com/rest/v1', [c1, c2]);
+      assert.ok(spec.paths['/a'], 'should have /a from first contribution');
+      assert.ok(spec.paths['/b'], 'should have /b from second contribution');
+    });
+
+    it('preserves table paths alongside contributions', () => {
+      const contribution = {
+        paths: { '/signup': { post: { summary: 'Sign up' } } },
+        schemas: { AuthSession: { type: 'object' } },
+      };
+      const spec = generateSpec(mockSchema, 'https://api.example.com/rest/v1', [contribution]);
+      assert.ok(spec.paths['/todos'], 'should still have /todos');
+      assert.ok(spec.paths['/signup'], 'should have contributed /signup');
+      assert.ok(spec.components.schemas.todos, 'should still have todos schema');
+      assert.ok(spec.components.schemas.AuthSession, 'should have contributed AuthSession');
+    });
+  });
 });

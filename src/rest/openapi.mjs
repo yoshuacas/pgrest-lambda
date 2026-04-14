@@ -202,124 +202,7 @@ function buildTablePaths(tableName, schemaRef) {
   };
 }
 
-function buildAuthPaths(authUrl) {
-  const server = [{ url: authUrl }];
-  const sessionRef = '#/components/schemas/AuthSession';
-  const userRef = '#/components/schemas/AuthUser';
-  const errorRef = '#/components/schemas/AuthError';
-  const tag = 'Auth';
-
-  return {
-    '/signup': {
-      servers: server,
-      post: {
-        tags: [tag],
-        summary: 'Sign up',
-        description: 'Create a new user account with email and password.',
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['email', 'password'],
-                properties: {
-                  email: { type: 'string', format: 'email' },
-                  password: { type: 'string', minLength: 8 },
-                },
-              },
-            },
-          },
-        },
-        responses: {
-          200: { description: 'Account created', content: { 'application/json': { schema: { $ref: sessionRef } } } },
-          400: { description: 'Validation error or user exists', content: { 'application/json': { schema: { $ref: errorRef } } } },
-        },
-        security: [],
-      },
-    },
-    '/token?grant_type=password': {
-      servers: server,
-      post: {
-        tags: [tag],
-        summary: 'Sign in',
-        description: 'Authenticate with email and password.',
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['email', 'password'],
-                properties: {
-                  email: { type: 'string', format: 'email' },
-                  password: { type: 'string' },
-                },
-              },
-            },
-          },
-        },
-        responses: {
-          200: { description: 'Authenticated', content: { 'application/json': { schema: { $ref: sessionRef } } } },
-          400: { description: 'Invalid credentials', content: { 'application/json': { schema: { $ref: errorRef } } } },
-        },
-        security: [],
-      },
-    },
-    '/token?grant_type=refresh_token': {
-      servers: server,
-      post: {
-        tags: [tag],
-        summary: 'Refresh token',
-        description: 'Get a new access token using a refresh token.',
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['refresh_token'],
-                properties: {
-                  refresh_token: { type: 'string' },
-                },
-              },
-            },
-          },
-        },
-        responses: {
-          200: { description: 'Token refreshed', content: { 'application/json': { schema: { $ref: sessionRef } } } },
-          401: { description: 'Invalid refresh token', content: { 'application/json': { schema: { $ref: errorRef } } } },
-        },
-        security: [],
-      },
-    },
-    '/user': {
-      servers: server,
-      get: {
-        tags: [tag],
-        summary: 'Get current user',
-        description: 'Retrieve the authenticated user profile.',
-        responses: {
-          200: { description: 'User profile', content: { 'application/json': { schema: { $ref: userRef } } } },
-          401: { description: 'Not authenticated', content: { 'application/json': { schema: { $ref: errorRef } } } },
-        },
-      },
-    },
-    '/logout': {
-      servers: server,
-      post: {
-        tags: [tag],
-        summary: 'Sign out',
-        description: 'Invalidate the current session.',
-        responses: {
-          204: { description: 'Signed out' },
-        },
-      },
-    },
-  };
-}
-
-export function generateSpec(schema, apiUrl) {
+export function generateSpec(schema, apiUrl, contributions = []) {
   const paths = {};
   const schemas = {};
 
@@ -336,10 +219,15 @@ export function generateSpec(schema, apiUrl) {
     }
   }
 
-  // Auth endpoints
-  const authUrl = apiUrl.replace(/\/rest\/v1\/?$/, '/auth/v1');
-  const authPaths = buildAuthPaths(authUrl);
-  Object.assign(paths, authPaths);
+  // Merge contributions from auth, storage, functions, etc.
+  for (const contribution of contributions) {
+    if (contribution.paths) {
+      Object.assign(paths, contribution.paths);
+    }
+    if (contribution.schemas) {
+      Object.assign(schemas, contribution.schemas);
+    }
+  }
 
   schemas.PostgRESTError = {
     type: 'object',
@@ -348,36 +236,6 @@ export function generateSpec(schema, apiUrl) {
       message: { type: 'string' },
       details: { type: 'string' },
       hint: { type: 'string' },
-    },
-  };
-
-  schemas.AuthSession = {
-    type: 'object',
-    properties: {
-      access_token: { type: 'string' },
-      token_type: { type: 'string', example: 'bearer' },
-      expires_in: { type: 'integer', example: 3600 },
-      refresh_token: { type: 'string' },
-      user: { $ref: '#/components/schemas/AuthUser' },
-    },
-  };
-
-  schemas.AuthUser = {
-    type: 'object',
-    properties: {
-      id: { type: 'string', format: 'uuid' },
-      email: { type: 'string', format: 'email' },
-      app_metadata: { type: 'object' },
-      user_metadata: { type: 'object' },
-      created_at: { type: 'string', format: 'date-time' },
-    },
-  };
-
-  schemas.AuthError = {
-    type: 'object',
-    properties: {
-      error: { type: 'string' },
-      error_description: { type: 'string' },
     },
   };
 

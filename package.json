@@ -4,7 +4,8 @@
   "description": "A serverless REST API for any PostgreSQL database",
   "type": "module",
   "exports": {
-    ".": "./src/index.mjs"
+    ".": "./src/index.mjs",
+    "./contribution": "./src/rest/openapi-contribution.mjs"
   },
   "license": "MIT",
   "repository": {
