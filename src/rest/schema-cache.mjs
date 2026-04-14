@@ -13,6 +13,7 @@ const COLUMNS_SQL = `
       ON d.adrelid = c.oid AND d.adnum = a.attnum
    WHERE n.nspname = 'public'
      AND c.relkind IN ('r', 'p')
+     AND c.relname NOT LIKE '\_%'
      AND a.attnum > 0
      AND NOT a.attisdropped
    ORDER BY c.relname, a.attnum`;
@@ -27,6 +28,7 @@ const PK_SQL = `
       ON a.attrelid = c.oid AND a.attnum = ANY(con.conkey)
    WHERE con.contype = 'p'
      AND n.nspname = 'public'
+     AND c.relname NOT LIKE '\_%'
    ORDER BY c.relname, a.attnum`;
 
 const FK_SQL = `
