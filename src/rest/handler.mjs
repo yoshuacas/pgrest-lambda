@@ -88,6 +88,11 @@ function resolveContributions(contributions, apiUrl) {
   );
 }
 
+function resolveApiUrl(ctx, headers) {
+  if (ctx.apiBaseUrl) return ctx.apiBaseUrl;
+  return `https://${headers['host'] || 'localhost'}/rest/v1`;
+}
+
 export function createRestHandler(ctx, contributions = []) {
   const { db, schemaCache, cedar, docs } = ctx;
 
@@ -126,8 +131,7 @@ export function createRestHandler(ctx, contributions = []) {
       const routeInfo = route(path, schema);
 
       if (routeInfo.type === 'openapi') {
-        const apiUrl =
-          `https://${headers['host'] || 'localhost'}/rest/v1`;
+        const apiUrl = resolveApiUrl(ctx, headers);
         const resolved = resolveContributions(contributions, apiUrl);
         return success(200, generateSpec(schema, apiUrl, resolved));
       }
@@ -136,8 +140,7 @@ export function createRestHandler(ctx, contributions = []) {
         if (!docs) {
           throw new PostgRESTError(404, 'PGRST205', 'Docs are disabled');
         }
-        const proto = headers['x-forwarded-proto'] || 'https';
-        const specUrl = `${proto}://${headers['host'] || 'localhost'}/rest/v1/`;
+        const specUrl = resolveApiUrl(ctx, headers) + '/';
         return {
           statusCode: 200,
           headers: { 'Content-Type': 'text/html' },
@@ -151,8 +154,7 @@ export function createRestHandler(ctx, contributions = []) {
         }
         const newSchema = await schemaCache.refresh(pool);
         await cedar.refreshPolicies();
-        const apiUrl =
-          `https://${headers['host'] || 'localhost'}/rest/v1`;
+        const apiUrl = resolveApiUrl(ctx, headers);
         const resolved = resolveContributions(contributions, apiUrl);
         return success(200, generateSpec(newSchema, apiUrl, resolved));
       }

@@ -71,6 +71,7 @@ function resolveConfig(config) {
       || parseInt(process.env.SCHEMA_CACHE_TTL_MS || '300000', 10),
     docs: config.docs !== undefined ? config.docs
       : process.env.PGREST_DOCS !== 'false',
+    apiBaseUrl: config.apiBaseUrl || process.env.API_BASE_URL || null,
     contributions: config.contributions || [],
   };
 }
@@ -104,6 +105,7 @@ export function createPgrest(config = {}) {
   ctx.cedar = cedar;
   ctx.jwt = jwt;
   ctx.docs = resolved.docs;
+  ctx.apiBaseUrl = resolved.apiBaseUrl;
 
   // Create auth handler first (needed for OpenAPI contributions)
   let auth = null;
