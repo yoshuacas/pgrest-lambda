@@ -1,19 +1,19 @@
 # pgrest-lambda vs PostgREST: Gap Analysis
 
-**Date:** 2026-04-12
+**Date:** 2026-04-15
 **Scope:** Feature-by-feature comparison of pgrest-lambda against PostgREST v12
 
 ---
 
 ## Executive Summary
 
-pgrest-lambda covers the basic CRUD surface of PostgREST: reads with filtering, inserts (single and bulk), updates, and deletes. It handles 10 of 28+ filter operators, basic column selection, ordering, and limit/offset pagination. Beyond that, there are significant gaps in resource embedding (joins), RPC, response format negotiation, advanced filtering, and the `Prefer` header system that PostgREST clients depend on.
+pgrest-lambda covers the basic CRUD surface of PostgREST: reads with filtering, inserts (single and bulk), updates, and deletes. It handles 13 of 31 filter/logical operators, column selection with resource embedding (foreign key joins), ordering, and limit/offset pagination. Resource embedding supports many-to-one, one-to-many, inner joins, nested embedding, and FK disambiguation. Logical operators (`or`, `and`) support arbitrary nesting up to 10 levels. Remaining gaps include RPC, response format negotiation, advanced operators, and parts of the `Prefer` header system.
 
 The gaps are organized into three tiers:
 
 | Tier | Description | Count |
 |------|-------------|-------|
-| **P0 — Breaking for supabase-js** | Features supabase-js calls that will fail or return wrong results | 7 |
+| **P0 — Breaking for supabase-js** | Features supabase-js calls that will fail or return wrong results | 5 |
 | **P1 — Important for parity** | Commonly used PostgREST features not yet covered | 8 |
 | **P2 — Nice to have** | Advanced or niche PostgREST features | 9 |
 
@@ -42,6 +42,8 @@ The gaps are organized into three tiers:
 | Error codes (PGRST format) | Done | Structured JSON errors |
 | JWT auth (external) | Done | Via Cognito + Lambda authorizer |
 | Bulk update/delete prevention | Done | Requires at least one filter |
+| Resource embedding (FK joins) | Done | Many-to-one, one-to-many, `!inner`, nested, `!fk_name` disambiguation |
+| Logical operators `or` / `and` | Done | Nested up to 10 levels, negation via `not.or`/`not.and` |
 
 ---
 
@@ -49,50 +51,7 @@ The gaps are organized into three tiers:
 
 These features are called by `@supabase/supabase-js` in normal usage. Missing them causes client-side errors or silently wrong results.
 
-### 1. Resource Embedding (Foreign Key Joins)
-
-**PostgREST:** Tables related by foreign keys can be fetched in a single request using nested `select`:
-```
-GET /rest/v1/orders?select=id,amount,customers(name,email)
-```
-Returns orders with customer objects embedded inline. Supports many-to-one, one-to-many, many-to-many, and computed relationships. Also supports `!inner` joins, disambiguation with `!fk_name`, and nested embedding.
-
-**supabase-js usage:**
-```js
-const { data } = await supabase
-  .from('orders')
-  .select('id, amount, customers(name, email)')
-```
-
-**pgrest-lambda:** Not implemented. The `select` parameter is split on commas but parenthetical expressions are not parsed. Requests with embedded selects silently drop the join or error.
-
-**Impact:** Any supabase-js query using `.select()` with related tables fails. This is extremely common in real applications.
-
----
-
-### 2. Logical Operators: `or` and `and`
-
-**PostgREST:** Complex filter logic via URL params:
-```
-GET /rest/v1/people?or=(age.lt.18,age.gt.65)
-GET /rest/v1/people?and=(salary.gte.100000,or(dept.eq.eng,dept.eq.product))
-```
-
-**supabase-js usage:**
-```js
-const { data } = await supabase
-  .from('people')
-  .select()
-  .or('age.lt.18,age.gt.65')
-```
-
-**pgrest-lambda:** Not implemented. The query parser treats every filter parameter as a column name and joins everything with AND. The `or(...)` and `and(...)` syntax is not recognized.
-
-**Impact:** Any supabase-js query using `.or()` fails.
-
----
-
-### 3. Column Renaming (Aliases) in Select
+### 1. Column Renaming (Aliases) in Select
 
 **PostgREST:**
 ```
@@ -112,7 +71,7 @@ const { data } = await supabase
 
 ---
 
-### 4. RPC / Stored Procedure Calls
+### 2. RPC / Stored Procedure Calls
 
 **PostgREST:** Functions exposed at `/rpc/{function_name}`:
 ```
@@ -133,7 +92,7 @@ const { data } = await supabase.rpc('get_top_customers', { min_orders: 10 })
 
 ---
 
-### 5. `Prefer: return=minimal` and `Prefer: return=headers-only`
+### 3. `Prefer: return=minimal` and `Prefer: return=headers-only`
 
 **PostgREST:** Three return modes for mutations:
 - `return=minimal` — no body (204), default for PATCH/DELETE
@@ -154,7 +113,7 @@ await supabase.from('items').insert({ name: 'test' }).select()
 
 ---
 
-### 6. Type Casting in Select
+### 4. Type Casting in Select
 
 **PostgREST:**
 ```
@@ -172,7 +131,7 @@ const { data } = await supabase.from('people').select('name, salary::text')
 
 ---
 
-### 7. Filtering on Embedded Resources
+### 5. Filtering on Embedded Resources
 
 **PostgREST:**
 ```
@@ -187,7 +146,7 @@ const { data } = await supabase
   .eq('films.year', 2000)
 ```
 
-**pgrest-lambda:** Not implemented (depends on resource embedding).
+**pgrest-lambda:** Not implemented. Resource embedding now works, but dot-notation filters on embedded tables (e.g., `films.year=gt.2000`) are not parsed.
 
 **Impact:** Fails for any query that filters on joined tables.
 
@@ -394,12 +353,12 @@ Auto-groups by non-aggregated columns. Disabled by default (`db-aggregates-enabl
 | `nxr` | Yes | No | P2 |
 | `nxl` | Yes | No | P2 |
 | `adj` | Yes | No | P2 |
-| `and` (logical) | Yes | No | P0 |
-| `or` (logical) | Yes | No | P0 |
+| `and` (logical) | Yes | Yes | |
+| `or` (logical) | Yes | Yes | |
 | `any` modifier | Yes | No | P2 |
 | `all` modifier | Yes | No | P2 |
 
-**Coverage: 11/31 operators (35%)**
+**Coverage: 13/31 operators (42%)**
 
 ---
 
@@ -432,11 +391,11 @@ Auto-groups by non-aggregated columns. Disabled by default (`db-aggregates-enabl
 | Feature Area | PostgREST | pgrest-lambda | Coverage |
 |---|---|---|---|
 | HTTP Methods | GET, HEAD, POST, PATCH, PUT, DELETE, OPTIONS | GET, POST, PATCH, DELETE, OPTIONS | 5/7 |
-| Filter Operators | 31 | 11 | 35% |
+| Filter Operators | 31 | 13 | 42% |
 | Prefer Headers | 15 | 4 | 27% |
-| Select Features | columns, aliases, casts, JSON ops, embeds, spread | columns only | ~15% |
+| Select Features | columns, aliases, casts, JSON ops, embeds, spread | columns, embeds | ~30% |
 | Response Formats | JSON, CSV, GeoJSON, plans, custom | JSON only | 1/5+ |
-| Resource Embedding | Full (M2O, O2M, M2M, computed, inner, spread) | None | 0% |
+| Resource Embedding | Full (M2O, O2M, M2M, computed, inner, spread) | M2O, O2M, inner, nested, FK disambiguation | ~70% |
 | RPC | Full (POST, GET, named params, table-valued) | None | 0% |
 | Schema Switching | Multi-schema with profile headers | public only | 0% |
 | Aggregates | count, sum, avg, min, max | None | 0% |
@@ -448,12 +407,12 @@ Auto-groups by non-aggregated columns. Disabled by default (`db-aggregates-enabl
 
 If the goal is supabase-js wire compatibility, this is the priority order:
 
-1. **Resource embedding** — most used supabase-js feature after basic CRUD
-2. **Logical operators (`or`, `and`)** — required for non-trivial queries
+1. ~~**Resource embedding**~~ — Done
+2. ~~**Logical operators (`or`, `and`)**~~ — Done
 3. **RPC endpoint** — `.rpc()` is heavily used
 4. **Select aliases and type casting** — breaks `.select()` with aliases
-5. **Full-text search operators** — common in search UIs
-6. **Embedded resource filtering** — required once embedding works
+5. **Embedded resource filtering** — required now that embedding works
+6. **Full-text search operators** — common in search UIs
 7. **Range/containment operators** — needed for array/JSONB-heavy schemas
 8. **HEAD method + Range pagination** — standard HTTP compliance
 9. **Prefer header expansion** — `missing=default`, `count=planned`, `resolution=ignore-duplicates`
