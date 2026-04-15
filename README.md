@@ -105,7 +105,7 @@ The factory resolves config in order: explicit values, then environment variable
 | `auth.clientId` | `USER_POOL_CLIENT_ID` | — |
 | `policies` | `POLICIES_PATH` | `./policies` |
 | `policiesBucket` | `POLICIES_BUCKET` | — |
-| `schemaCacheTtl` | `SCHEMA_CACHE_TTL_MS` | `300000` (5 min) |
+| `schemaCacheTtl` | `SCHEMA_CACHE_TTL_MS` | `30000` (30 sec) |
 | `docs` | `PGREST_DOCS` | `true` |
 
 If you only set environment variables, `createPgrest()` with no arguments works.

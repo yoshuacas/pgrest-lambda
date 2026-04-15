@@ -162,7 +162,7 @@ async function pgIntrospect(pool) {
 }
 
 export function createSchemaCache(config) {
-  const ttl = config.schemaCacheTtl || 300000;
+  const ttl = config.schemaCacheTtl || 30000;
   const introspect = config.introspect || pgIntrospect;
   let cache = null;
   let lastRefreshAt = 0;

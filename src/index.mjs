@@ -68,7 +68,7 @@ function resolveConfig(config) {
     policiesBucket: config.policiesBucket || process.env.POLICIES_BUCKET || null,
     policiesPrefix: config.policiesPrefix || process.env.POLICIES_PREFIX || 'policies/',
     schemaCacheTtl: config.schemaCacheTtl
-      || parseInt(process.env.SCHEMA_CACHE_TTL_MS || '300000', 10),
+      || parseInt(process.env.SCHEMA_CACHE_TTL_MS || '30000', 10),
     docs: config.docs !== undefined ? config.docs
       : process.env.PGREST_DOCS !== 'false',
     apiBaseUrl: config.apiBaseUrl || process.env.API_BASE_URL || null,
