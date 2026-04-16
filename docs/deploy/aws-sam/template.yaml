@@ -20,10 +20,15 @@ Parameters:
   RegionName:
     Type: String
     Default: us-east-1
+  AuthProvider:
+    Type: String
+    Default: gotrue
+    AllowedValues: [gotrue, cognito]
 
 Conditions:
   IsDsql: !Equals [!Ref DatabaseMode, dsql]
   IsStandard: !Equals [!Ref DatabaseMode, standard]
+  IsCognito: !Equals [!Ref AuthProvider, cognito]
 
 Globals:
   Function:
@@ -37,6 +42,7 @@ Globals:
 
 Resources:
   UserPool:
+    Condition: IsCognito
     Type: AWS::Cognito::UserPool
     Properties:
       UserPoolName: !Sub '${ProjectName}-users'
@@ -58,6 +64,7 @@ Resources:
         PreSignUp: !GetAtt PreSignUpFunction.Arn
 
   UserPoolClient:
+    Condition: IsCognito
     Type: AWS::Cognito::UserPoolClient
     Properties:
       ClientName: !Sub '${ProjectName}-web'
@@ -70,6 +77,7 @@ Resources:
       PreventUserExistenceErrors: ENABLED
 
   PreSignUpFunction:
+    Condition: IsCognito
     Type: AWS::Serverless::Function
     Properties:
       Handler: lambda.presignup
@@ -78,6 +86,7 @@ Resources:
       Timeout: 5
 
   PreSignUpPermission:
+    Condition: IsCognito
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:InvokeFunction
@@ -121,9 +130,11 @@ Resources:
         Variables:
           DSQL_ENDPOINT: !If [IsDsql, !Ref DsqlEndpoint, !Ref 'AWS::NoValue']
           DATABASE_URL: !If [IsStandard, !Ref DatabaseUrl, !Ref 'AWS::NoValue']
-          USER_POOL_ID: !Ref UserPool
-          USER_POOL_CLIENT_ID: !Ref UserPoolClient
-          AUTH_PROVIDER: cognito
+          USER_POOL_ID: !If
+            [IsCognito, !Ref UserPool, !Ref 'AWS::NoValue']
+          USER_POOL_CLIENT_ID: !If
+            [IsCognito, !Ref UserPoolClient, !Ref 'AWS::NoValue']
+          AUTH_PROVIDER: !Ref AuthProvider
           POLICIES_PATH: ./policies
       Policies:
         - !If
@@ -161,6 +172,8 @@ Outputs:
     Description: API Gateway endpoint URL
     Value: !Sub 'https://${Api}.execute-api.${AWS::Region}.amazonaws.com/v1'
   UserPoolId:
+    Condition: IsCognito
     Value: !Ref UserPool
   UserPoolClientId:
+    Condition: IsCognito
     Value: !Ref UserPoolClient

@@ -8,6 +8,18 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
 
 ## Unreleased
 
+### Added
+- **GoTrue-native auth provider as default** — users and refresh tokens stored directly in PostgreSQL (DSQL-compatible)
+- **Password validation** with configurable policy (min 8 chars, uppercase, lowercase, numbers)
+- **Refresh token rotation** with family revocation
+- `expires_at` field in session responses for supabase-js v2.39+ compatibility
+- Auth endpoints in dev server (`dev.mjs`)
+
+### Changed
+- Default auth provider changed from `cognito` to `gotrue`
+- SAM template: Cognito resources now conditional on `AuthProvider=cognito` parameter
+- Dev server routes auth requests through combined handler
+
 ### Fixed
 - **Bulk insert with `columns` query parameter** -- supabase-js sends `?columns=col1,col2,...` on array inserts. pgrest-lambda now recognizes `columns` as a reserved parameter instead of misinterpreting it as a filter. The column list controls which columns are populated from the JSON body.
 - **`Prefer: return=representation` on POST** -- insert with `.select()` or `.select().single()` now returns the created row(s) instead of null. Also passes `singleObject` mode through for `.single()` responses.

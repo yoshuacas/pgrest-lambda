@@ -17,7 +17,7 @@ const pgrest = createPgrest({
     database: 'postgres',
   },
   jwtSecret: JWT_SECRET,
-  auth: false, // no Cognito in local dev
+  // auth defaults to { provider: 'gotrue' }
 });
 
 // Generate dev API keys
@@ -103,7 +103,7 @@ const server = http.createServer(async (req, res) => {
   const event = translateRequest(req, body);
 
   try {
-    const result = await pgrest.rest(event);
+    const result = await pgrest.handler(event);
     res.writeHead(result.statusCode, result.headers || {});
     res.end(result.body || '');
   } catch (err) {
@@ -118,6 +118,13 @@ server.listen(PORT, () => {
   console.log('API keys (pass as "apikey" header):');
   console.log(`  anon:         ${anonKey}`);
   console.log(`  service_role: ${serviceKey}`);
+  console.log();
+  console.log('Auth endpoints:');
+  console.log(`  POST http://localhost:${PORT}/auth/v1/signup`);
+  console.log(`  POST http://localhost:${PORT}/auth/v1/token?grant_type=password`);
+  console.log(`  POST http://localhost:${PORT}/auth/v1/token?grant_type=refresh_token`);
+  console.log(`  GET  http://localhost:${PORT}/auth/v1/user`);
+  console.log(`  POST http://localhost:${PORT}/auth/v1/logout`);
   console.log();
   console.log('Try:');
   console.log(`  curl http://localhost:${PORT}/rest/v1/todos -H "apikey: ${anonKey}"`);
