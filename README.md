@@ -33,12 +33,23 @@ const pgrest = createPgrest({
     database: 'mydb',
   },
   jwtSecret: process.env.JWT_SECRET,
+  policies: './policies',
+});
+// Auth defaults to GoTrue — users and refresh tokens stored
+// in the same PostgreSQL database. No external dependencies.
+```
+
+To use Cognito instead:
+
+```javascript
+const pgrest = createPgrest({
+  database: { ... },
+  jwtSecret: process.env.JWT_SECRET,
   auth: {
     provider: 'cognito',
     region: 'us-east-1',
     clientId: process.env.USER_POOL_CLIENT_ID,
   },
-  policies: './policies',
 });
 
 // Three Lambda handlers, one config
@@ -100,7 +111,7 @@ The factory resolves config in order: explicit values, then environment variable
 | `database.database` | `PG_DATABASE` | `postgres` |
 | `database.ssl` | `PG_SSL` | `false` |
 | `jwtSecret` | `JWT_SECRET` | — |
-| `auth.provider` | `AUTH_PROVIDER` | `cognito` |
+| `auth.provider` | `AUTH_PROVIDER` | `gotrue` |
 | `auth.region` | `REGION_NAME` | — |
 | `auth.clientId` | `USER_POOL_CLIENT_ID` | — |
 | `policies` | `POLICIES_PATH` | `./policies` |
@@ -120,7 +131,7 @@ API Gateway (REST)
   |
   +-- /auth/v1/*  -->  Auth Handler (GoTrue-compatible)
   |                      +-- signup, token, user, logout
-  |                      +-- Cognito provider (swappable)
+  |                      +-- GoTrue-native (default) or Cognito
   |
   +-- /rest/v1/*  -->  REST Handler (PostgREST-compatible)
   |    |                 +-- schema introspection
@@ -330,6 +341,27 @@ The convention requires: the target table exists in the `public` schema, and it 
 | `Prefer: return=representation` | Return modified rows |
 | `Prefer: count=exact` | Include exact count in Content-Range |
 | `Accept: application/vnd.pgrst.object+json` | Return single object |
+
+### Auth
+
+GoTrue-native is the default auth provider. Users and refresh
+tokens are stored in the `auth` schema of the same PostgreSQL
+database — no external dependencies needed. This works with
+any PostgreSQL backend including Aurora DSQL.
+
+Password policy: minimum 8 characters, at least one uppercase
+letter, one lowercase letter, and one number.
+
+Refresh tokens use rotation with family revocation: each
+refresh issues a new token and invalidates the old one. If a
+previously-used token is replayed, the entire token family is
+revoked.
+
+To use Cognito instead, set `AUTH_PROVIDER=cognito` (or pass
+`auth: { provider: 'cognito', ... }` in code).
+
+The dev server (`node dev.mjs`) includes working auth
+endpoints out of the box.
 
 ### Auth Endpoints (`/auth/v1/`)
 

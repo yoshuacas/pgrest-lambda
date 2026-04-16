@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import { SESSION_EXPIRY_SECONDS } from './constants.mjs';
 
 const ISSUER = 'pgrest-lambda';
 
@@ -9,7 +10,7 @@ export function createJwt(config) {
     return jwt.sign(
       { sub, email, role: 'authenticated', aud: 'authenticated' },
       secret,
-      { issuer: ISSUER, expiresIn: '1h' }
+      { issuer: ISSUER, expiresIn: SESSION_EXPIRY_SECONDS }
     );
   }
 

@@ -1,4 +1,5 @@
 import { CORS_HEADERS } from '../shared/cors.mjs';
+import { SESSION_EXPIRY_SECONDS } from './constants.mjs';
 
 export function sessionResponse(accessToken, refreshToken, user) {
   return {
@@ -7,7 +8,8 @@ export function sessionResponse(accessToken, refreshToken, user) {
     body: JSON.stringify({
       access_token: accessToken,
       token_type: 'bearer',
-      expires_in: 3600,
+      expires_in: SESSION_EXPIRY_SECONDS,
+      expires_at: Math.floor(Date.now() / 1000) + SESSION_EXPIRY_SECONDS,
       refresh_token: refreshToken,
       user: formatUser(user),
     }),

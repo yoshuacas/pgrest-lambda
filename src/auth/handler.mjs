@@ -13,6 +13,7 @@ const ERROR_STATUS = {
   invalid_grant: 400,
   weak_password: 422,
   validation_failed: 400,
+  user_not_found: 404,
   unexpected_failure: 500,
 };
 
@@ -21,6 +22,7 @@ const ERROR_DESCRIPTION = {
   invalid_grant: 'Invalid login credentials',
   weak_password:
     'Password must be at least 8 characters and include uppercase, lowercase, and numbers',
+  user_not_found: 'User not found',
   unexpected_failure: 'An unexpected error occurred',
 };
 
@@ -39,7 +41,7 @@ export function createAuthHandler(config, ctx) {
 
   async function getProvider() {
     if (!ctx.authProvider) {
-      const result = await createProvider(config.auth);
+      const result = await createProvider(config.auth, ctx.db);
       ctx.authProvider = result.provider;
       ctx.authProviderSetClient = result._setClient;
     }
@@ -74,7 +76,7 @@ export function createAuthHandler(config, ctx) {
       case 'user':
         return handleGetUser(event);
       case 'logout':
-        return handleLogout();
+        return handleLogout(event);
       default:
         return errorResponse(404, 'not_found', 'Endpoint not found');
     }
@@ -222,7 +224,21 @@ export function createAuthHandler(config, ctx) {
     return userResponse(user);
   }
 
-  function handleLogout() {
+  async function handleLogout(event) {
+    const authHeader =
+      event.headers?.Authorization || event.headers?.authorization || '';
+
+    if (authHeader.startsWith('Bearer ')) {
+      const token = authHeader.slice(7);
+      try {
+        const claims = jwt.verifyToken(token);
+        const prov = await getProvider();
+        await prov.signOut(claims.sub);
+      } catch {
+        // Best-effort: if the token is invalid we still return 204
+      }
+    }
+
     return logoutResponse();
   }
 
@@ -350,6 +366,7 @@ export function createAuthHandler(config, ctx) {
             access_token: { type: 'string' },
             token_type: { type: 'string', example: 'bearer' },
             expires_in: { type: 'integer', example: 3600 },
+            expires_at: { type: 'integer' },
             refresh_token: { type: 'string' },
             user: { $ref: '#/components/schemas/AuthUser' },
           },

@@ -6,6 +6,8 @@ import {
   logoutResponse,
   errorResponse,
 } from '../gotrue-response.mjs';
+import { SESSION_EXPIRY_SECONDS } from '../constants.mjs';
+import { createJwt } from '../jwt.mjs';
 
 const EXPECTED_CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -75,6 +77,30 @@ describe('gotrue-response.mjs', () => {
         body.user.email,
         'test@example.com',
         'user.email should match'
+      );
+    });
+
+    it('includes expires_at as Unix epoch seconds', () => {
+      const user = {
+        id: 'user-123',
+        email: 'test@example.com',
+        app_metadata: { provider: 'email', providers: ['email'] },
+        user_metadata: {},
+        created_at: '2026-04-11T12:00:00.000Z',
+      };
+
+      const res = sessionResponse('at', 'rt', user);
+      const body = JSON.parse(res.body);
+
+      assert.equal(
+        typeof body.expires_at,
+        'number',
+        'expires_at should be a number'
+      );
+      const expected = Math.floor(Date.now() / 1000) + 3600;
+      assert.ok(
+        Math.abs(body.expires_at - expected) <= 2,
+        `expires_at (${body.expires_at}) should be within 2 seconds of expected (${expected})`
       );
     });
   });
@@ -179,6 +205,45 @@ describe('gotrue-response.mjs', () => {
     it('errorResponse includes CORS headers', () => {
       const res = errorResponse(400, 'err', 'desc');
       assertCorsHeaders(res.headers);
+    });
+  });
+
+  describe('session expiry consistency', () => {
+    it('expires_in matches JWT exp - iat and expires_at matches JWT exp', () => {
+      const jwtHelper = createJwt({ jwtSecret: 'test-secret-for-unit-tests' });
+      const user = {
+        id: 'user-123',
+        email: 'test@example.com',
+        app_metadata: { provider: 'email', providers: ['email'] },
+        user_metadata: {},
+        created_at: '2026-04-11T12:00:00.000Z',
+      };
+
+      const accessToken = jwtHelper.signAccessToken({
+        sub: user.id,
+        email: user.email,
+      });
+      const res = sessionResponse(accessToken, 'rt-token', user);
+      const body = JSON.parse(res.body);
+
+      // Decode the JWT to check exp and iat
+      const claims = jwtHelper.verifyToken(accessToken);
+      const jwtLifetime = claims.exp - claims.iat;
+
+      assert.equal(
+        body.expires_in,
+        jwtLifetime,
+        `expires_in (${body.expires_in}) should equal JWT exp - iat (${jwtLifetime})`
+      );
+      assert.equal(
+        body.expires_in,
+        SESSION_EXPIRY_SECONDS,
+        `expires_in should equal SESSION_EXPIRY_SECONDS (${SESSION_EXPIRY_SECONDS})`
+      );
+      assert.ok(
+        Math.abs(body.expires_at - claims.exp) <= 2,
+        `expires_at (${body.expires_at}) should be within 2 seconds of JWT exp (${claims.exp})`
+      );
     });
   });
 
