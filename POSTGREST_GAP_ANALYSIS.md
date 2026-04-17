@@ -1,6 +1,6 @@
 # pgrest-lambda vs PostgREST: Gap Analysis
 
-**Date:** 2026-04-15
+**Date:** 2026-04-17 (updated)
 **Scope:** Feature-by-feature comparison of pgrest-lambda against PostgREST v12
 
 ---
@@ -14,7 +14,7 @@ The gaps are organized into three tiers:
 | Tier | Description | Count |
 |------|-------------|-------|
 | **P0 — Breaking for supabase-js** | Features supabase-js calls that will fail or return wrong results | 5 |
-| **P1 — Important for parity** | Commonly used PostgREST features not yet covered | 8 |
+| **P1 — Important for parity** | Commonly used PostgREST features not yet covered | 9 |
 | **P2 — Nice to have** | Advanced or niche PostgREST features | 9 |
 
 ---
@@ -69,6 +69,8 @@ const { data } = await supabase
 
 **Impact:** Any select with aliases fails.
 
+**Where to fix:** `src/rest/query-parser.mjs` — `parseSelectList()` (~line 59-64) recognizes colons for embed tokens (`buyer:customers()`) but not for plain column aliases. Parse `alias:column` syntax in non-embed tokens and store as `{ column, alias }`. Then in `src/rest/sql-builder.mjs`, emit `"column" AS "alias"` in the SELECT clause.
+
 ---
 
 ### 2. RPC / Stored Procedure Calls
@@ -89,6 +91,12 @@ const { data } = await supabase.rpc('get_top_customers', { min_orders: 10 })
 **pgrest-lambda:** No `/rpc/` endpoint exists. Requests to `/rest/v1/rpc/*` return 404.
 
 **Impact:** Any supabase-js `.rpc()` call fails entirely.
+
+**Where to fix:** Needs a new subsystem:
+1. `src/rest/router.mjs` — add routing for `/rest/v1/rpc/{function_name}` paths
+2. `src/rest/schema-cache.mjs` — add function introspection from `pg_catalog.pg_proc` (argument names, types, return types, volatility)
+3. `src/rest/sql-builder.mjs` — new `buildRpcCall()` that generates `SELECT * FROM function_name($1, $2)` with named parameter mapping
+4. `src/rest/handler.mjs` — handle RPC requests: POST body → named params, GET query params → named params. Table-valued functions should support the same filtering/pagination as table reads. Scalar functions return unwrapped values.
 
 ---
 
@@ -111,6 +119,8 @@ await supabase.from('items').insert({ name: 'test' }).select()
 
 **Impact:** Mostly works for common patterns, but clients relying on precise status codes or `Location` headers may break.
 
+**Where to fix:** `src/rest/handler.mjs` (~line 328-338) — add `headers-only` branch that returns 204 with a `Location` header in format `/rest/v1/{table}?{pk_column}=eq.{pk_value}`. Requires knowing the primary key columns from schema cache.
+
 ---
 
 ### 4. Type Casting in Select
@@ -129,6 +139,8 @@ const { data } = await supabase.from('people').select('name, salary::text')
 
 **Impact:** Select with type casts fails.
 
+**Where to fix:** `src/rest/query-parser.mjs` — `parseSelectList()` (~line 59-64) needs to detect `::` in column tokens and split into `{ column, cast }`. Then in `src/rest/sql-builder.mjs`, emit `CAST("column" AS type)` or `"column"::type` in the SELECT clause. Should validate cast types against a safe allowlist to prevent SQL injection.
+
 ---
 
 ### 5. Filtering on Embedded Resources
@@ -146,9 +158,11 @@ const { data } = await supabase
   .eq('films.year', 2000)
 ```
 
-**pgrest-lambda:** Not implemented. Resource embedding now works, but dot-notation filters on embedded tables (e.g., `films.year=gt.2000`) are not parsed.
+**pgrest-lambda:** Not implemented. Resource embedding now works, but dot-notation filters on embedded tables (e.g., `films.year=gt.2000`) are not parsed. The filter is applied to the parent table where the column doesn't exist.
 
 **Impact:** Fails for any query that filters on joined tables.
+
+**Where to fix:** `src/rest/query-parser.mjs` — `parseFilter()` (~line 193) needs to detect dot notation in column names (`table.column`) and split into `{ table, column }`. Then in `src/rest/sql-builder.mjs`, route these filters into the embed subqueries (built by `buildEmbedSubquery()`) rather than the parent WHERE clause.
 
 ---
 
@@ -156,15 +170,17 @@ const { data } = await supabase
 
 These are commonly used PostgREST features. Missing them limits what developers can build, but they don't break basic supabase-js CRUD.
 
-### 8. Full-Text Search Operators
+### 6. Full-Text Search Operators
 
 **PostgREST operators:** `fts`, `plfts`, `phfts`, `wfts` — four variants mapping to PostgreSQL's `to_tsquery`, `plainto_tsquery`, `phraseto_tsquery`, `websearch_to_tsquery`. Accept optional language config: `col=plfts(english).search term`.
 
 **pgrest-lambda:** Not implemented. None of the four FTS operators are recognized.
 
+**Where to fix:** `src/rest/query-parser.mjs` — add `fts`, `plfts`, `phfts`, `wfts` to the `VALID_OPERATORS` set (~line 9-11). Extend `parseFilter()` to handle optional language config syntax `fts(english)`. In `src/rest/sql-builder.mjs`, map to PostgreSQL's `@@` operator with the corresponding tsquery function (`to_tsquery`, `plainto_tsquery`, `phraseto_tsquery`, `websearch_to_tsquery`).
+
 ---
 
-### 9. Range / Array / Containment Operators
+### 7. Range / Array / Containment Operators
 
 | Operator | SQL | Purpose |
 |----------|-----|---------|
@@ -179,33 +195,41 @@ These are commonly used PostgREST features. Missing them limits what developers 
 
 **pgrest-lambda:** None of these are implemented. Queries using array containment (`tags=cs.{a,b}`) or range overlap silently fail.
 
+**Where to fix:** Same pattern as FTS — add operators to `VALID_OPERATORS` in `query-parser.mjs`, extend `parseFilter()` to handle `{}` (array literal) and `[]` (range literal) value syntax. In `sql-builder.mjs`, emit the correct PostgreSQL operators.
+
 ---
 
-### 10. Regex Operators: `match` and `imatch`
+### 8. Regex Operators: `match` and `imatch`
 
 **PostgREST:** `match` maps to `~` (POSIX regex), `imatch` maps to `~*` (case-insensitive regex).
 
 **pgrest-lambda:** Not implemented.
 
+**Where to fix:** Add `match` and `imatch` to `VALID_OPERATORS` in `query-parser.mjs`. In `sql-builder.mjs`, map `match` → `~` and `imatch` → `~*`.
+
 ---
 
-### 11. `HEAD` Method
+### 9. `HEAD` Method
 
 **PostgREST:** `HEAD` returns the same headers as `GET` (including `Content-Range`) but no body. Efficient for existence checks and row counting without transferring data.
 
 **pgrest-lambda:** Not handled. Returns 405 or falls through.
 
+**Where to fix:** `src/rest/handler.mjs` (~line 274-277) — add `case 'HEAD':` to the method switch. Execute the same query as GET but return `success()` with null body. Content-Range header is already included in GET responses, so it carries over.
+
 ---
 
-### 12. Range Header Pagination
+### 10. Range Header Pagination
 
 **PostgREST:** Supports `Range: 0-24` header as an alternative to `limit`/`offset` query params. Returns `Content-Range` header with offset info and optional total count.
 
 **pgrest-lambda:** Only `limit`/`offset` query params work. `Range` header is ignored.
 
+**Where to fix:** `src/rest/handler.mjs` — parse `Range` header (format `0-24`), convert start/end to limit/offset. Apply before query building, with query params taking precedence if both are present.
+
 ---
 
-### 13. `Prefer: count=planned` and `count=estimated`
+### 11. `Prefer: count=planned` and `count=estimated`
 
 **PostgREST:** Three counting strategies:
 - `count=exact` — full `COUNT(*)` (slow on large tables)
@@ -214,21 +238,44 @@ These are commonly used PostgREST features. Missing them limits what developers 
 
 **pgrest-lambda:** Only `count=exact` is implemented. No planned or estimated counting.
 
+**Where to fix:** `src/rest/handler.mjs` (~line 207-212) — for `count=planned`, query `SELECT reltuples FROM pg_class WHERE relname = $1` (instant). For `count=estimated`, use exact count if under a configurable threshold, fall back to planned otherwise. `src/rest/schema-cache.mjs` could cache `reltuples` alongside table metadata.
+
 ---
 
-### 14. CSV Response Format
+### 12. CSV Response Format
 
 **PostgREST:** `Accept: text/csv` returns results as CSV. `Content-Type: text/csv` accepts CSV for bulk inserts.
 
 **pgrest-lambda:** JSON only, both directions.
 
+**Where to fix:** `src/rest/handler.mjs` — detect `Accept: text/csv` and route to a CSV serializer in `src/rest/response.mjs`. For CSV input, parse `Content-Type: text/csv` body into a JSON array before passing to insert logic.
+
 ---
 
-### 15. `Prefer: missing=default`
+### 13. `Prefer: missing=default`
 
 **PostgREST:** When set, omitted columns in INSERT/PATCH use the column's `DEFAULT` expression instead of being set to `NULL`.
 
 **pgrest-lambda:** Not implemented. Omitted columns are always `NULL` (or excluded from the SET clause for PATCH).
+
+**Where to fix:** `src/rest/sql-builder.mjs` — in `buildInsert()` and `buildUpdate()`, check the `prefer.missing` flag. When set to `default`, emit the `DEFAULT` keyword for omitted columns instead of `NULL` or excluding them.
+
+---
+
+### 14. `Prefer: resolution=ignore-duplicates`
+
+**PostgREST:** `resolution=ignore-duplicates` with `on_conflict` emits `ON CONFLICT DO NOTHING` — silently skips rows that conflict instead of updating them.
+
+**supabase-js usage:**
+```js
+await supabase.from('items').upsert([...], { ignoreDuplicates: true })
+```
+
+**pgrest-lambda:** Only `resolution=merge-duplicates` is implemented (ON CONFLICT DO UPDATE). `ignore-duplicates` is not handled.
+
+**Impact:** supabase-js `ignoreDuplicates: true` option fails or falls through to default behavior.
+
+**Where to fix:** `src/rest/sql-builder.mjs` — in the upsert branch of `buildInsert()`, check if resolution is `ignore-duplicates` and emit `ON CONFLICT (columns) DO NOTHING` instead of `DO UPDATE SET ...`.
 
 ---
 
@@ -236,7 +283,7 @@ These are commonly used PostgREST features. Missing them limits what developers 
 
 These are advanced PostgREST features used in specific scenarios.
 
-### 16. Schema Switching (`Accept-Profile` / `Content-Profile`)
+### 15. Schema Switching (`Accept-Profile` / `Content-Profile`)
 
 **PostgREST:** Multiple schemas can be exposed. `Accept-Profile: api` switches the read schema; `Content-Profile: api` switches the write schema.
 
@@ -244,7 +291,7 @@ These are advanced PostgREST features used in specific scenarios.
 
 ---
 
-### 17. `PUT` Method (Single-Row Upsert)
+### 16. `PUT` Method (Single-Row Upsert)
 
 **PostgREST:** `PUT` requires all columns (including PK) and performs a single-row upsert. Different from `POST` with `resolution=merge-duplicates`, which handles bulk.
 
@@ -252,7 +299,7 @@ These are advanced PostgREST features used in specific scenarios.
 
 ---
 
-### 18. `any` / `all` Modifiers
+### 17. `any` / `all` Modifiers
 
 **PostgREST:** `?name=like(any).{O*,P*}` matches names starting with O or P. `?name=like(all).{*a*,*b*}` requires both patterns match. Applicable to `eq`, `like`, `ilike`, `gt`, `gte`, `lt`, `lte`, `match`, `imatch`.
 
@@ -260,7 +307,7 @@ These are advanced PostgREST features used in specific scenarios.
 
 ---
 
-### 19. `isdistinct` Operator
+### 18. `isdistinct` Operator
 
 **PostgREST:** `IS DISTINCT FROM` — like `neq` but treats NULL as a comparable value (NULL is distinct from 1, NULL is not distinct from NULL).
 
@@ -268,7 +315,7 @@ These are advanced PostgREST features used in specific scenarios.
 
 ---
 
-### 20. JSON Column Operators in Select and Filter
+### 19. JSON Column Operators in Select and Filter
 
 **PostgREST:** `->`, `->>` operators for JSON traversal in select, filter, and order clauses:
 ```
@@ -279,7 +326,7 @@ These are advanced PostgREST features used in specific scenarios.
 
 ---
 
-### 21. Computed Columns
+### 20. Computed Columns
 
 **PostgREST:** Functions that take a table's row type as argument appear as virtual columns:
 ```sql
@@ -293,7 +340,7 @@ $$ LANGUAGE SQL;
 
 ---
 
-### 22. Aggregate Functions
+### 21. Aggregate Functions
 
 **PostgREST (v12+):** `count()`, `sum()`, `avg()`, `min()`, `max()` in select:
 ```
@@ -305,7 +352,7 @@ Auto-groups by non-aggregated columns. Disabled by default (`db-aggregates-enabl
 
 ---
 
-### 23. Transaction GUC Variables
+### 22. Transaction GUC Variables
 
 **PostgREST:** Sets request context as PostgreSQL GUC variables readable in SQL:
 - `request.headers`, `request.cookies`, `request.jwt.claims`, `request.method`, `request.path`
@@ -315,7 +362,7 @@ Auto-groups by non-aggregated columns. Disabled by default (`db-aggregates-enabl
 
 ---
 
-### 24. Custom Media Type Handlers
+### 23. Custom Media Type Handlers
 
 **PostgREST:** Custom `Accept` types can be handled by PostgreSQL domain + function combos, allowing SQL to produce arbitrary formats (PDF, protobuf, etc.).
 
@@ -373,7 +420,7 @@ Auto-groups by non-aggregated columns. Disabled by default (`db-aggregates-enabl
 | `count=planned` | Yes | No | P1 |
 | `count=estimated` | Yes | No | P1 |
 | `resolution=merge-duplicates` | Yes | Yes | |
-| `resolution=ignore-duplicates` | Yes | No | P1 |
+| `resolution=ignore-duplicates` | Yes | No | P1 (#14) |
 | `missing=default` | Yes | No | P1 |
 | `handling=strict` | Yes | No | P2 |
 | `handling=lenient` | Yes | No | P2 |
@@ -409,11 +456,16 @@ If the goal is supabase-js wire compatibility, this is the priority order:
 
 1. ~~**Resource embedding**~~ — Done
 2. ~~**Logical operators (`or`, `and`)**~~ — Done
-3. **RPC endpoint** — `.rpc()` is heavily used
-4. **Select aliases and type casting** — breaks `.select()` with aliases
-5. **Embedded resource filtering** — required now that embedding works
-6. **Full-text search operators** — common in search UIs
-7. **Range/containment operators** — needed for array/JSONB-heavy schemas
-8. **HEAD method + Range pagination** — standard HTTP compliance
-9. **Prefer header expansion** — `missing=default`, `count=planned`, `resolution=ignore-duplicates`
-10. **CSV format** — useful for data export use cases
+3. **RPC endpoint** (#2) — `.rpc()` is heavily used, biggest single gap
+4. **Select aliases** (#1) — breaks `.select('firstName:first_name')`
+5. **Type casting in select** (#4) — breaks `.select('salary::text')`
+6. **Embedded resource filtering** (#5) — required now that embedding works
+7. **`Prefer: return=headers-only`** (#3) — Location header for mutations
+8. **Full-text search operators** (#6) — common in search UIs
+9. **Range/containment operators** (#7) — needed for array/JSONB-heavy schemas
+10. **HEAD method** (#9) + **Range header pagination** (#10) — HTTP compliance
+11. **Prefer: count=planned/estimated** (#11) — performance on large tables
+12. **Prefer: missing=default** (#13) — simpler insert logic
+13. **Prefer: resolution=ignore-duplicates** (#14) — `ON CONFLICT DO NOTHING`
+14. **Regex operators** (#8) — `match`, `imatch`
+15. **CSV format** (#12) — data export use cases
