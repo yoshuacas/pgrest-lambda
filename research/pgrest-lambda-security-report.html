@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>pgrest-lambda Security Threat Model &amp; Code Audit Report</title>
+<style>
+  :root {
+    --bg: #f8f9fa;
+    --surface: #ffffff;
+    --text: #1a1a2e;
+    --text-secondary: #555;
+    --border: #dee2e6;
+    --accent: #2563eb;
+    --critical: #dc2626;
+    --critical-bg: #fef2f2;
+    --high: #ea580c;
+    --high-bg: #fff7ed;
+    --medium: #ca8a04;
+    --medium-bg: #fefce8;
+    --low: #2563eb;
+    --low-bg: #eff6ff;
+    --info: #6b7280;
+    --info-bg: #f3f4f6;
+    --green: #16a34a;
+    --green-bg: #f0fdf4;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    color: var(--text);
+    background: var(--bg);
+    line-height: 1.6;
+    padding: 0;
+  }
+  .container { max-width: 1100px; margin: 0 auto; padding: 40px 24px; }
+  header {
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    color: white;
+    padding: 48px 24px;
+    text-align: center;
+  }
+  header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 8px; }
+  header .subtitle { font-size: 1.1rem; opacity: 0.85; margin-bottom: 16px; }
+  header .meta { font-size: 0.85rem; opacity: 0.65; }
+  h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 48px 0 16px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--accent);
+    color: var(--text);
+  }
+  h3 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    margin: 28px 0 10px;
+    color: var(--text);
+  }
+  h4 { font-size: 1rem; font-weight: 600; margin: 16px 0 6px; }
+  p, li { font-size: 0.95rem; margin-bottom: 8px; }
+  ul, ol { padding-left: 24px; }
+  code {
+    font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+    font-size: 0.85rem;
+    background: #f1f5f9;
+    padding: 2px 6px;
+    border-radius: 3px;
+  }
+  pre {
+    background: #1e293b;
+    color: #e2e8f0;
+    padding: 16px;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 12px 0;
+    font-size: 0.83rem;
+    line-height: 1.5;
+  }
+  pre code { background: none; padding: 0; color: inherit; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 0.9rem;
+  }
+  th, td { padding: 10px 14px; text-align: left; border: 1px solid var(--border); }
+  th { background: #f1f5f9; font-weight: 600; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+    margin: 16px 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .severity {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .severity-critical { background: var(--critical); color: white; }
+  .severity-high { background: var(--high); color: white; }
+  .severity-medium { background: var(--medium); color: white; }
+  .severity-low { background: var(--low); color: white; }
+  .severity-info { background: var(--info); color: white; }
+  .vuln-card {
+    border-left: 4px solid var(--border);
+    padding: 20px 24px;
+    margin: 16px 0;
+    background: var(--surface);
+    border-radius: 0 8px 8px 0;
+  }
+  .vuln-card.critical { border-left-color: var(--critical); background: var(--critical-bg); }
+  .vuln-card.high { border-left-color: var(--high); background: var(--high-bg); }
+  .vuln-card.medium { border-left-color: var(--medium); background: var(--medium-bg); }
+  .vuln-card.low { border-left-color: var(--low); background: var(--low-bg); }
+  .vuln-card.info { border-left-color: var(--info); background: var(--info-bg); }
+  .vuln-title { font-weight: 700; font-size: 1.05rem; margin-bottom: 6px; }
+  .vuln-meta { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 12px; }
+  .toc { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 24px 32px; margin: 24px 0; }
+  .toc h3 { margin-top: 0; }
+  .toc ol { counter-reset: toc-counter; list-style: none; padding-left: 0; }
+  .toc ol li { counter-increment: toc-counter; padding: 4px 0; }
+  .toc ol li::before { content: counter(toc-counter) ". "; font-weight: 600; color: var(--accent); }
+  .toc a { color: var(--accent); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin: 20px 0;
+  }
+  .summary-box {
+    text-align: center;
+    padding: 20px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .summary-box .count { font-size: 2rem; font-weight: 800; }
+  .summary-box .label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-top: 4px; }
+  .checklist-item {
+    padding: 8px 0;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .checklist-item .check { font-size: 1.1rem; line-height: 1.4; }
+  .arch-diagram {
+    background: #1e293b;
+    color: #94a3b8;
+    padding: 24px;
+    border-radius: 10px;
+    font-family: 'SF Mono', Consolas, monospace;
+    font-size: 0.78rem;
+    line-height: 1.4;
+    overflow-x: auto;
+    white-space: pre;
+  }
+  .stride-table th:first-child { width: 100px; }
+  .positive { color: var(--green); }
+  .negative { color: var(--critical); }
+  @media print {
+    header { padding: 24px; }
+    .container { padding: 20px; }
+    .vuln-card, .card { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>pgrest-lambda Security Report</h1>
+  <div class="subtitle">Comprehensive Threat Model &amp; Code Audit</div>
+  <div class="meta">Date: April 17, 2026 &middot; Auditor: Security Engineering &middot; Commit: 25c090f (main) &middot; Classification: Internal</div>
+</header>
+
+<div class="container">
+
+<!-- TABLE OF CONTENTS -->
+<div class="toc">
+  <h3>Table of Contents</h3>
+  <ol>
+    <li><a href="#exec-summary">Executive Summary</a></li>
+    <li><a href="#architecture">Architecture Overview</a></li>
+    <li><a href="#findings-summary">Findings Summary</a></li>
+    <li><a href="#critical-findings">Critical &amp; High Severity Findings</a></li>
+    <li><a href="#medium-findings">Medium Severity Findings</a></li>
+    <li><a href="#low-findings">Low &amp; Informational Findings</a></li>
+    <li><a href="#stride">STRIDE Threat Model</a></li>
+    <li><a href="#component-analysis">Component-by-Component Analysis</a></li>
+    <li><a href="#positive">Positive Security Observations</a></li>
+    <li><a href="#checklist">Pre-Production Security Checklist</a></li>
+  </ol>
+</div>
+
+<!-- EXECUTIVE SUMMARY -->
+<h2 id="exec-summary">1. Executive Summary</h2>
+
+<div class="card">
+<p>This report presents the findings from a comprehensive security audit of <strong>pgrest-lambda</strong>, a serverless REST API engine that auto-generates PostgREST-compatible endpoints from PostgreSQL schemas, deployed on AWS Lambda.</p>
+
+<p>The audit covered all 25+ source files across REST handling, authentication, authorization (Cedar policies), database adapters, and infrastructure configuration. The analysis applies the STRIDE threat model framework and identifies specific, exploitable vulnerabilities with remediation guidance.</p>
+
+<p><strong>Overall Risk Assessment: MEDIUM-HIGH.</strong> The codebase demonstrates strong security fundamentals &mdash; parameterized SQL queries, schema-validated identifiers, bulk operation protection, and Cedar-based authorization. However, several issues require attention before production deployment, particularly around JWT secret management, CORS configuration, SSL validation, identifier injection in edge cases, and information disclosure through error messages.</p>
+</div>
+
+<div class="summary-grid">
+  <div class="summary-box">
+    <div class="count" style="color: var(--critical);">2</div>
+    <div class="label">Critical</div>
+  </div>
+  <div class="summary-box">
+    <div class="count" style="color: var(--high);">5</div>
+    <div class="label">High</div>
+  </div>
+  <div class="summary-box">
+    <div class="count" style="color: var(--medium);">7</div>
+    <div class="label">Medium</div>
+  </div>
+  <div class="summary-box">
+    <div class="count" style="color: var(--low);">5</div>
+    <div class="label">Low</div>
+  </div>
+  <div class="summary-box">
+    <div class="count" style="color: var(--info);">4</div>
+    <div class="label">Info</div>
+  </div>
+</div>
+
+<!-- ARCHITECTURE -->
+<h2 id="architecture">2. Architecture Overview</h2>
+
+<div class="arch-diagram">
+                        +---------------------------+
+                        |     Client Application     |
+                        |  (supabase-js / fetch)     |
+                        +-------------+-------------+
+                                      |
+                                      | HTTPS
+                                      v
+                        +---------------------------+
+                        |    API Gateway (REST)      |
+                        |   + Lambda Authorizer      |
+                        +------+----------+---------+
+                               |          |
+                    /auth/v1/* |          | /rest/v1/*
+                               v          v
+                   +-----------+--+  +----+-----------+
+                   | Auth Handler |  | REST Handler   |
+                   | (GoTrue API) |  | (PostgREST API)|
+                   +------+-------+  +----+-----------+
+                          |               |
+           +--------------+    +----------+----------+
+           |                   |          |          |
+     +-----+------+    +------+---+ +----+----+ +---+--------+
+     | JWT Module |    | Query    | | SQL     | | Cedar      |
+     | (sign/     |    | Parser   | | Builder | | (WASM)     |
+     |  verify)   |    +----------+ +---------+ +---+--------+
+     +-----+------+                                 |
+           |               +------------------------+
+           |               |
+     +-----+------+  +----+------------+
+     | Auth       |  | Schema Cache    |
+     | Providers  |  | (pg_catalog     |
+     | - GoTrue   |  |  introspection) |
+     | - Cognito  |  +---------+-------+
+     +-----+------+            |
+           |                   |
+           +-------+-----------+
+                   |
+                   v
+          +--------+----------+
+          |    PostgreSQL      |
+          | (DSQL / Aurora /   |
+          |  RDS / any PG)     |
+          +-------------------+
+
+  Trust Boundaries:
+  ==================
+  [1] Internet --> API Gateway    (TLS termination, rate limiting)
+  [2] API GW --> Lambda           (IAM execution role)
+  [3] Lambda --> PostgreSQL       (connection-level auth)
+  [4] Cedar policies              (row-level authorization)
+</div>
+
+<!-- FINDINGS SUMMARY -->
+<h2 id="findings-summary">3. Findings Summary</h2>
+
+<table>
+  <thead>
+    <tr><th>ID</th><th>Severity</th><th>Finding</th><th>Component</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>V-01</td><td><span class="severity severity-critical">CRITICAL</span></td><td>No JWT Secret Strength Enforcement</td><td>jwt.mjs, authorizer</td></tr>
+    <tr><td>V-02</td><td><span class="severity severity-critical">CRITICAL</span></td><td>JWT Algorithm Not Pinned &mdash; Algorithm Confusion Risk</td><td>jwt.mjs, authorizer</td></tr>
+    <tr><td>V-03</td><td><span class="severity severity-high">HIGH</span></td><td>CORS Wildcard Origin with Credentials</td><td>cors.mjs</td></tr>
+    <tr><td>V-04</td><td><span class="severity severity-high">HIGH</span></td><td>SSL Certificate Validation Disabled (rejectUnauthorized: false)</td><td>postgres.mjs, dsql.mjs</td></tr>
+    <tr><td>V-05</td><td><span class="severity severity-high">HIGH</span></td><td>Identifier Injection via on_conflict Parameter</td><td>sql-builder.mjs</td></tr>
+    <tr><td>V-06</td><td><span class="severity severity-high">HIGH</span></td><td>No RLS &mdash; Cedar is the Only Authorization Layer</td><td>cedar.mjs, handler.mjs</td></tr>
+    <tr><td>V-07</td><td><span class="severity severity-high">HIGH</span></td><td>Provider Refresh Token Embedded in JWT (prt claim)</td><td>jwt.mjs, auth/handler.mjs</td></tr>
+    <tr><td>V-08</td><td><span class="severity severity-medium">MEDIUM</span></td><td>Pre-Signup Trigger Auto-Confirms All Users</td><td>presignup.mjs</td></tr>
+    <tr><td>V-09</td><td><span class="severity severity-medium">MEDIUM</span></td><td>Error Messages Leak Internal Database Details</td><td>errors.mjs, handler.mjs</td></tr>
+    <tr><td>V-10</td><td><span class="severity severity-medium">MEDIUM</span></td><td>OpenAPI Spec Exposes Full Schema to Unauthenticated Users</td><td>openapi.mjs, handler.mjs</td></tr>
+    <tr><td>V-11</td><td><span class="severity severity-medium">MEDIUM</span></td><td>Schema Refresh Endpoint Has No Authorization Check</td><td>handler.mjs</td></tr>
+    <tr><td>V-12</td><td><span class="severity severity-medium">MEDIUM</span></td><td>No Rate Limiting on Auth Endpoints</td><td>auth/handler.mjs</td></tr>
+    <tr><td>V-13</td><td><span class="severity severity-medium">MEDIUM</span></td><td>Unbounded Resource Embedding Depth</td><td>sql-builder.mjs</td></tr>
+    <tr><td>V-14</td><td><span class="severity severity-medium">MEDIUM</span></td><td>Order Direction Not Validated</td><td>query-parser.mjs, sql-builder.mjs</td></tr>
+    <tr><td>V-15</td><td><span class="severity severity-low">LOW</span></td><td>Schema Cache Race Condition</td><td>schema-cache.mjs</td></tr>
+    <tr><td>V-16</td><td><span class="severity severity-low">LOW</span></td><td>Cedar Policy Fail-Closed but No Observability</td><td>cedar.mjs</td></tr>
+    <tr><td>V-17</td><td><span class="severity severity-low">LOW</span></td><td>Cognito ID Token Parsed Without Signature Verification</td><td>cognito.mjs</td></tr>
+    <tr><td>V-18</td><td><span class="severity severity-low">LOW</span></td><td>JSON Body Parse Failure Silently Sets body=null</td><td>handler.mjs</td></tr>
+    <tr><td>V-19</td><td><span class="severity severity-low">LOW</span></td><td>No Request Size Limits</td><td>handler.mjs</td></tr>
+    <tr><td>V-20</td><td><span class="severity severity-info">INFO</span></td><td>XSS Vector in docsHtml via Host Header</td><td>handler.mjs</td></tr>
+    <tr><td>V-21</td><td><span class="severity severity-info">INFO</span></td><td>Refresh Token Rotation Race Condition Window</td><td>gotrue.mjs</td></tr>
+    <tr><td>V-22</td><td><span class="severity severity-info">INFO</span></td><td>Auth Schema Auto-Migration in Production</td><td>schema.mjs</td></tr>
+    <tr><td>V-23</td><td><span class="severity severity-info">INFO</span></td><td>No Audit Logging</td><td>System-wide</td></tr>
+  </tbody>
+</table>
+
+
+<!-- CRITICAL & HIGH FINDINGS -->
+<h2 id="critical-findings">4. Critical &amp; High Severity Findings</h2>
+
+<!-- V-01 -->
+<div class="vuln-card critical">
+  <div class="vuln-title"><span class="severity severity-critical">CRITICAL</span> V-01: No JWT Secret Strength Enforcement</div>
+  <div class="vuln-meta">Affected: <code>src/auth/jwt.mjs:6-8</code>, <code>src/authorizer/index.mjs:8</code></div>
+
+  <h4>Description</h4>
+  <p>The JWT secret is consumed directly from config/environment (<code>JWT_SECRET</code>) with no validation of minimum length, entropy, or format. The <code>jsonwebtoken</code> library accepts any string, including empty strings. A weak secret (e.g., <code>"secret"</code>, <code>"changeme"</code>) allows offline brute-force of all JWTs.</p>
+
+  <h4>Attack Scenario</h4>
+  <p>1. Attacker obtains any JWT (the <code>apikey</code> is typically shared with all frontend clients). 2. Attacker runs <code>hashcat</code> or <code>jwt-cracker</code> against the token. With a weak secret, this takes seconds. 3. Attacker forges tokens with <code>role: "service_role"</code>, gaining full access to all data and bypassing all Cedar policies.</p>
+
+  <h4>Recommended Fix</h4>
+  <pre><code>// src/auth/jwt.mjs
+export function createJwt(config) {
+  const secret = config.jwtSecret;
+  if (!secret || secret.length < 32) {
+    throw new Error(
+      'JWT_SECRET must be at least 32 characters. '
+      + 'Generate one with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'base64\'))"'
+    );
+  }
+  // ... rest unchanged
+}</code></pre>
+</div>
+
+<!-- V-02 -->
+<div class="vuln-card critical">
+  <div class="vuln-title"><span class="severity severity-critical">CRITICAL</span> V-02: JWT Algorithm Not Pinned &mdash; Algorithm Confusion Risk</div>
+  <div class="vuln-meta">Affected: <code>src/auth/jwt.mjs:25-27</code>, <code>src/authorizer/index.mjs:16-18,28-29</code></div>
+
+  <h4>Description</h4>
+  <p>The <code>jwt.verify()</code> calls do not specify <code>algorithms: ['HS256']</code>. The <code>jsonwebtoken</code> library defaults to accepting all algorithms including RS256. If an attacker crafts a token using the <code>none</code> algorithm (in older library versions) or RS256 with the HMAC secret as a public key, verification could be bypassed. While <code>jsonwebtoken@9+</code> blocks the <code>none</code> algorithm, not pinning the algorithm remains a defense-in-depth failure and a risk if the library is ever downgraded.</p>
+
+  <h4>Attack Scenario</h4>
+  <p>1. Attacker crafts JWT with <code>alg: "HS256"</code> header but uses an empty or guessed secret. 2. In algorithm confusion attacks against RS256/HS256 mismatches, the public key is used as HMAC secret. 3. Even without confusion, failing to pin the algorithm violates JWT best practices (RFC 8725 Section 3.1).</p>
+
+  <h4>Recommended Fix</h4>
+  <pre><code>// In jwt.mjs:
+function verifyToken(token) {
+  return jwt.verify(token, secret, {
+    issuer: ISSUER,
+    algorithms: ['HS256'],
+  });
+}
+
+// In authorizer/index.mjs (both verify calls):
+jwt.verify(apikey, secret, { issuer: ISSUER, algorithms: ['HS256'] });
+jwt.verify(token, secret, { issuer: ISSUER, algorithms: ['HS256'] });</code></pre>
+</div>
+
+<!-- V-03 -->
+<div class="vuln-card high">
+  <div class="vuln-title"><span class="severity severity-high">HIGH</span> V-03: CORS Wildcard Origin with Credentials</div>
+  <div class="vuln-meta">Affected: <code>src/shared/cors.mjs:1-10</code></div>
+
+  <h4>Description</h4>
+  <p>CORS is configured with <code>Access-Control-Allow-Origin: *</code> (wildcard). While browsers prevent sending cookies with wildcard origins, the API uses <code>apikey</code> and <code>Authorization</code> headers for auth (both listed in <code>Access-Control-Allow-Headers</code>). Any malicious website can make authenticated cross-origin requests if the user's browser has the API key or access token available (e.g., stored in localStorage as supabase-js does).</p>
+
+  <h4>Attack Scenario</h4>
+  <p>1. User visits <code>evil-site.com</code> while logged into a pgrest-lambda application. 2. <code>evil-site.com</code> reads the supabase-js session from localStorage (same-origin policy protects this, but if the API key is public/embedded in the frontend, the attacker uses their own). 3. The wildcard CORS allows cross-origin requests from any domain. 4. With the API key (which is public), the attacker can make anon-level requests. With a stolen Bearer token, full authenticated access.</p>
+
+  <h4>Recommended Fix</h4>
+  <pre><code>// Make CORS configurable with a default allowlist
+export function getCorsHeaders(allowedOrigins, requestOrigin) {
+  const origin = allowedOrigins === '*' ? '*'
+    : allowedOrigins.includes(requestOrigin) ? requestOrigin : null;
+  if (!origin) return {};
+  return {
+    'Access-Control-Allow-Origin': origin,
+    'Access-Control-Allow-Credentials': origin !== '*' ? 'true' : undefined,
+    'Access-Control-Allow-Headers': '...',
+    // ...
+  };
+}</code></pre>
+</div>
+
+<!-- V-04 -->
+<div class="vuln-card high">
+  <div class="vuln-title"><span class="severity severity-high">HIGH</span> V-04: SSL Certificate Validation Disabled</div>
+  <div class="vuln-meta">Affected: <code>src/rest/db/postgres.mjs:31</code>, <code>src/rest/db/dsql.mjs:42</code></div>
+
+  <h4>Description</h4>
+  <p>Both database providers set <code>ssl: { rejectUnauthorized: false }</code>. This disables TLS certificate validation, making the database connections vulnerable to man-in-the-middle attacks. For DSQL (which is always TLS), this is especially dangerous as the IAM auth token is transmitted over this connection.</p>
+
+  <h4>Attack Scenario</h4>
+  <p>1. Attacker with network access (e.g., compromised VPC, misconfigured routing) performs ARP spoofing or DNS hijacking. 2. Attacker presents a self-signed certificate for the database endpoint. 3. Because <code>rejectUnauthorized: false</code>, the connection proceeds. 4. Attacker intercepts all SQL queries (including credentials, user data, IAM tokens).</p>
+
+  <h4>Recommended Fix</h4>
+  <pre><code>// postgres.mjs: Use the system CA bundle (default), or allow custom CA
+ssl: config.ssl ? {
+  rejectUnauthorized: config.sslRejectUnauthorized !== false,
+  ca: config.sslCa || undefined,
+} : undefined,
+
+// dsql.mjs: DSQL uses AWS-issued certs, always validate
+ssl: { rejectUnauthorized: true },</code></pre>
+</div>
+
+<!-- V-05 -->
+<div class="vuln-card high">
+  <div class="vuln-title"><span class="severity severity-high">HIGH</span> V-05: SQL Identifier Injection via on_conflict Parameter</div>
+  <div class="vuln-meta">Affected: <code>src/rest/sql-builder.mjs:444-460</code></div>
+
+  <h4>Description</h4>
+  <p>The <code>on_conflict</code> query parameter is split on commas and directly interpolated into the SQL <code>ON CONFLICT</code> clause with double-quoting but <strong>no schema validation</strong>. Unlike column names in SELECT/WHERE (which are validated via <code>validateCol()</code>), the conflict columns are not checked against the schema. An attacker can inject arbitrary identifiers.</p>
+
+  <p>While PostgreSQL's double-quoting prevents breaking out of the identifier context (you can't inject full SQL), an attacker can reference columns from other tables or trigger error messages that leak schema information. More critically, if a column name contains a double-quote character that isn't properly escaped, SQL injection becomes possible.</p>
+
+  <h4>Attack Scenario</h4>
+  <pre><code>POST /rest/v1/items?on_conflict=id"); DROP TABLE items; --
+# Results in: ON CONFLICT ("id"); DROP TABLE items; --") DO UPDATE SET ...
+# PostgreSQL will reject this syntax, but more subtle injection is possible.
+
+# Identifier with embedded quote:
+POST /rest/v1/items?on_conflict=a",(SELECT password FROM auth.users LIMIT 1))--
+# Could produce: ON CONFLICT ("a",(SELECT password FROM auth.users LIMIT 1))--")</code></pre>
+
+  <h4>Recommended Fix</h4>
+  <pre><code>// sql-builder.mjs, buildInsert(), around line 444
+if (parsed.onConflict) {
+  const conflictCols = parsed.onConflict.split(',').map(c => {
+    const col = c.trim();
+    validateCol(schema, table, col); // ADD THIS: validates against schema
+    return `"${col}"`;
+  }).join(', ');
+  // ... rest unchanged
+}</code></pre>
+</div>
+
+<!-- V-06 -->
+<div class="vuln-card high">
+  <div class="vuln-title"><span class="severity severity-high">HIGH</span> V-06: No RLS &mdash; Cedar is the Only Authorization Layer</div>
+  <div class="vuln-meta">Affected: <code>src/rest/cedar.mjs</code>, <code>src/rest/handler.mjs</code></div>
+
+  <h4>Description</h4>
+  <p>The system relies entirely on Cedar policies (evaluated in-process as WASM) for authorization. There is no PostgreSQL Row-Level Security (RLS) as a secondary enforcement layer. If Cedar policies fail to load (empty <code>./policies</code> directory), the system fails closed (403). However, if there's a bug in the Cedar-to-SQL translation (<code>translateExpr</code>), or if Cedar policies are misconfigured to be overly permissive, there is no database-level safety net.</p>
+
+  <p>Additionally, Cedar authorization is only enforced via query filters. The SQL executes as a single database user with full access to the <code>public</code> schema. A SQL injection or Cedar bypass would give access to all data.</p>
+
+  <h4>Attack Scenario</h4>
+  <p>1. Developer deploys with <code>permit(principal, action, resource);</code> (allow-all) Cedar policy. 2. Anonymous users gain full CRUD access to all tables. 3. Or: a bug in <code>translateExpr()</code> produces a tautological WHERE clause (always true), bypassing row-level filtering.</p>
+
+  <h4>Recommended Fix</h4>
+  <ul>
+    <li>Document that Cedar is the primary authorization layer and policies must be audited</li>
+    <li>Add a policy linter/validator that warns about overly permissive policies (e.g., no conditions on <code>permit</code>)</li>
+    <li>Consider adding PostgreSQL RLS as a defense-in-depth layer for sensitive deployments</li>
+    <li>Log all authorization decisions for audit purposes</li>
+  </ul>
+</div>
+
+<!-- V-07 -->
+<div class="vuln-card high">
+  <div class="vuln-title"><span class="severity severity-high">HIGH</span> V-07: Provider Refresh Token Embedded in JWT (prt claim)</div>
+  <div class="vuln-meta">Affected: <code>src/auth/jwt.mjs:17-20</code>, <code>src/auth/handler.mjs:104-107,147-150</code></div>
+
+  <h4>Description</h4>
+  <p>The <code>signRefreshToken()</code> function embeds the provider's refresh token (Cognito's refresh token or GoTrue's opaque database token) directly in the JWT's <code>prt</code> claim. JWTs are base64-encoded (not encrypted), so anyone who possesses the refresh token JWT can extract the provider refresh token by decoding the payload.</p>
+
+  <p>For Cognito: the extracted Cognito refresh token can be used directly against the Cognito API, bypassing pgrest-lambda's auth layer entirely. For GoTrue: the opaque token is a database lookup key &mdash; while less directly exploitable, it's still a credential that shouldn't be in a client-visible token.</p>
+
+  <h4>Attack Scenario</h4>
+  <p>1. Attacker intercepts or obtains a refresh token JWT (from client storage, logs, or network). 2. Attacker base64-decodes the JWT payload, extracting the <code>prt</code> (Cognito refresh token). 3. Attacker calls Cognito directly with the refresh token, obtaining Cognito access tokens that bypass pgrest-lambda authorization.</p>
+
+  <h4>Recommended Fix</h4>
+  <pre><code>// Option 1: Encrypt the prt claim (JWE)
+// Option 2: Store provider tokens server-side (database or cache)
+// and reference them by an opaque session ID in the JWT
+function signRefreshToken(sub, sessionId) {
+  return jwt.sign(
+    { sub, role: 'authenticated', sid: sessionId },
+    secret,
+    { issuer: ISSUER, expiresIn: '30d' }
+  );
+}
+// Store the provider refresh token in auth.sessions table keyed by sessionId</code></pre>
+</div>
+
+
+<!-- MEDIUM FINDINGS -->
+<h2 id="medium-findings">5. Medium Severity Findings</h2>
+
+<!-- V-08 -->
+<div class="vuln-card medium">
+  <div class="vuln-title"><span class="severity severity-medium">MEDIUM</span> V-08: Pre-Signup Trigger Auto-Confirms All Users</div>
+  <div class="vuln-meta">Affected: <code>src/presignup.mjs:1-5</code></div>
+
+  <h4>Description</h4>
+  <p>The Cognito pre-signup trigger automatically confirms all users and verifies their email without any actual email verification. This means anyone can sign up with any email address (including emails they don't own), and they'll immediately have a confirmed account.</p>
+
+  <h4>Attack Scenario</h4>
+  <p>Attacker signs up as <code>ceo@company.com</code> and gets an immediately confirmed account. If any Cedar policies use email-based access control, the attacker gains those permissions.</p>
+
+  <h4>Recommended Fix</h4>
+  <p>Remove auto-confirmation and implement proper email verification flow, or clearly document this as a development-only convenience and ensure it's disabled in production.</p>
+</div>
+
+<!-- V-09 -->
+<div class="vuln-card medium">
+  <div class="vuln-title"><span class="severity severity-medium">MEDIUM</span> V-09: Error Messages Leak Internal Database Details</div>
+  <div class="vuln-meta">Affected: <code>src/rest/errors.mjs:48-57</code>, <code>src/rest/handler.mjs:340-354</code></div>
+
+  <h4>Description</h4>
+  <p>PostgreSQL errors are forwarded to the client with their original <code>message</code>, <code>detail</code>, and <code>hint</code> fields. These can contain table names, column names, constraint names, SQL fragments, and internal paths. The catch-all error handler also forwards <code>err.message</code> for unrecognized errors.</p>
+
+  <h4>Attack Scenario</h4>
+  <pre><code>// Attacker sends a malformed insert to discover constraint names:
+POST /rest/v1/users {"email": "dup@test.com", "name": "x"}
+// Response: { "code": "23505", "message": "duplicate key value violates
+//   unique constraint \"users_email_key\"", "detail": "Key (email)=(dup@test.com)
+//   already exists." }
+// This reveals: constraint names, column names, and actual values</code></pre>
+
+  <h4>Recommended Fix</h4>
+  <pre><code>// Sanitize PG error details for client responses
+export function mapPgError(pgError) {
+  const statusCode = PG_ERROR_MAP[pgError.code] || 500;
+  const safeMessages = {
+    '23505': 'Resource already exists',
+    '23503': 'Referenced resource not found',
+    '23502': 'Required field missing',
+  };
+  return new PostgRESTError(
+    statusCode,
+    pgError.code,
+    safeMessages[pgError.code] || 'Database error',
+    null,  // Never forward pgError.detail to client
+    null,
+  );
+}</code></pre>
+</div>
+
+<!-- V-10 -->
+<div class="vuln-card medium">
+  <div class="vuln-title"><span class="severity severity-medium">MEDIUM</span> V-10: OpenAPI Spec Exposes Full Schema to Unauthenticated Users</div>
+  <div class="vuln-meta">Affected: <code>src/rest/handler.mjs:133-137</code>, <code>src/rest/openapi.mjs</code></div>
+
+  <h4>Description</h4>
+  <p>The OpenAPI spec at <code>GET /rest/v1/</code> includes all table names, column names, data types, nullability, and required fields for every table in the <code>public</code> schema. While the Lambda authorizer protects REST endpoints, the OpenAPI endpoint itself performs no role-based filtering. If the authorizer allows anon access (which it does by design for the API key), the full database structure is visible.</p>
+
+  <h4>Recommended Fix</h4>
+  <p>Consider optionally restricting the OpenAPI spec to authenticated users, or filtering it based on the requester's role and Cedar policies.</p>
+</div>
+
+<!-- V-11 -->
+<div class="vuln-card medium">
+  <div class="vuln-title"><span class="severity severity-medium">MEDIUM</span> V-11: Schema Refresh Endpoint Has No Authorization Check</div>
+  <div class="vuln-meta">Affected: <code>src/rest/handler.mjs:151-159</code></div>
+
+  <h4>Description</h4>
+  <p>The <code>POST /rest/v1/_refresh</code> endpoint refreshes the schema cache and Cedar policies without checking the caller's role. Any authenticated user (including anon-key holders) can trigger a schema refresh. This forces database introspection queries and S3 reads (for Cedar policies), creating a potential DoS vector. It also refreshes Cedar policies, meaning if S3 policies were temporarily modified, a timed _refresh call could load malicious policies.</p>
+
+  <h4>Recommended Fix</h4>
+  <pre><code>if (routeInfo.type === 'refresh') {
+  if (method !== 'POST') { /* ... */ }
+  if (role !== 'service_role') {
+    throw new PostgRESTError(403, 'PGRST403', 'Only service_role can refresh schema');
+  }
+  // ...
+}</code></pre>
+</div>
+
+<!-- V-12 -->
+<div class="vuln-card medium">
+  <div class="vuln-title"><span class="severity severity-medium">MEDIUM</span> V-12: No Rate Limiting on Auth Endpoints</div>
+  <div class="vuln-meta">Affected: <code>src/auth/handler.mjs</code></div>
+
+  <h4>Description</h4>
+  <p>Auth endpoints (signup, token/password, token/refresh) have no rate limiting. While API Gateway can be configured with usage plans, the application layer has no protection. The bcrypt comparison in GoTrue provides some protection against rapid brute-force (bcrypt cost=10 takes ~100ms), but this doesn't prevent credential stuffing or account enumeration attacks.</p>
+
+  <h4>Attack Scenario</h4>
+  <p>Attacker sends thousands of login attempts against <code>/auth/v1/token?grant_type=password</code> with common passwords. The timing-safe bcrypt comparison prevents timing attacks, but the volume can still succeed against weak passwords.</p>
+
+  <h4>Recommended Fix</h4>
+  <p>Implement rate limiting at the API Gateway level (usage plans/throttling) and add per-IP or per-email lockout after N failed attempts at the application layer.</p>
+</div>
+
+<!-- V-13 -->
+<div class="vuln-card medium">
+  <div class="vuln-title"><span class="severity severity-medium">MEDIUM</span> V-13: Unbounded Resource Embedding Depth</div>
+  <div class="vuln-meta">Affected: <code>src/rest/sql-builder.mjs:115-174</code>, <code>src/rest/query-parser.mjs:19-90</code></div>
+
+  <h4>Description</h4>
+  <p>While the query parser limits logical operator nesting to 10 levels, resource embedding (joins) has no depth limit. An attacker can craft deeply nested embeds like <code>select=*,a(b(c(d(e(f(g(h(i(j(*)))))))))))</code> which generates deeply nested correlated subqueries. Each level adds a subquery, and PostgreSQL's query planner may take exponential time.</p>
+
+  <h4>Recommended Fix</h4>
+  <pre><code>// In parseSelectList, add depth tracking:
+export function parseSelectList(input, depth = 0) {
+  if (depth > 5) {
+    throw new PostgRESTError(400, 'PGRST100',
+      'Resource embedding depth exceeds maximum of 5');
+  }
+  // ... when recursing for embeds:
+  const childNodes = parseSelectList(innerContent, depth + 1);
+}</code></pre>
+</div>
+
+<!-- V-14 -->
+<div class="vuln-card medium">
+  <div class="vuln-title"><span class="severity severity-medium">MEDIUM</span> V-14: Order Direction Not Validated &mdash; SQL Injection via ORDER BY</div>
+  <div class="vuln-meta">Affected: <code>src/rest/query-parser.mjs:328-337</code>, <code>src/rest/sql-builder.mjs:290-301</code></div>
+
+  <h4>Description</h4>
+  <p>The <code>parseOrder()</code> function splits order entries by dots but does not validate the direction value. The direction is then interpolated into SQL via <code>.toUpperCase()</code> without validation. An attacker could inject arbitrary SQL after the ORDER BY clause.</p>
+
+  <pre><code>// query-parser.mjs:330-335
+const parts = entry.split('.');
+return {
+  column: parts[0],
+  direction: parts[1] || 'asc',  // NOT VALIDATED
+  nulls: parts[2] || null,       // NOT VALIDATED
+};
+
+// sql-builder.mjs:294
+let sql = `"${o.column}" ${o.direction.toUpperCase()}`;
+// If direction is "asc; DROP TABLE users--", this becomes:
+// "col" ASC; DROP TABLE USERS--</code></pre>
+
+  <h4>Recommended Fix</h4>
+  <pre><code>const VALID_DIRECTIONS = new Set(['asc', 'desc']);
+const VALID_NULLS = new Set(['nullsfirst', 'nullslast']);
+
+function parseOrder(raw) {
+  return raw.split(',').map((entry) => {
+    const parts = entry.split('.');
+    const direction = (parts[1] || 'asc').toLowerCase();
+    if (!VALID_DIRECTIONS.has(direction)) {
+      throw new PostgRESTError(400, 'PGRST100',
+        `Invalid order direction: ${direction}`);
+    }
+    const nulls = parts[2] ? parts[2].toLowerCase() : null;
+    if (nulls && !VALID_NULLS.has(nulls)) {
+      throw new PostgRESTError(400, 'PGRST100',
+        `Invalid nulls option: ${nulls}`);
+    }
+    return { column: parts[0], direction, nulls };
+  });
+}</code></pre>
+</div>
+
+
+<!-- LOW & INFO FINDINGS -->
+<h2 id="low-findings">6. Low &amp; Informational Findings</h2>
+
+<!-- V-15 -->
+<div class="vuln-card low">
+  <div class="vuln-title"><span class="severity severity-low">LOW</span> V-15: Schema Cache Race Condition</div>
+  <div class="vuln-meta">Affected: <code>src/rest/schema-cache.mjs:175-183</code></div>
+  <p>The schema cache <code>getSchema()</code> function has a TOCTOU race: multiple concurrent requests can trigger simultaneous introspection queries if the TTL expires at the same time. In Lambda's single-concurrency model this is unlikely, but in high-concurrency deployments, it wastes database resources.</p>
+  <p><strong>Fix:</strong> Add a mutex or "refreshing" flag to coalesce concurrent refreshes.</p>
+</div>
+
+<!-- V-16 -->
+<div class="vuln-card low">
+  <div class="vuln-title"><span class="severity severity-low">LOW</span> V-16: Cedar Policy Fail-Closed but No Observability</div>
+  <div class="vuln-meta">Affected: <code>src/rest/cedar.mjs:349-395</code></div>
+  <p>When Cedar policies cannot be loaded or evaluation fails, the system correctly returns 403 (fail-closed). However, there is no logging of policy evaluation results, denials, or errors. This makes it impossible to debug authorization issues or detect attacks in production.</p>
+  <p><strong>Fix:</strong> Add structured logging for Cedar authorization decisions (allow/deny, policy ID, principal, resource, residual conditions).</p>
+</div>
+
+<!-- V-17 -->
+<div class="vuln-card low">
+  <div class="vuln-title"><span class="severity severity-low">LOW</span> V-17: Cognito ID Token Parsed Without Signature Verification</div>
+  <div class="vuln-meta">Affected: <code>src/auth/providers/cognito.mjs:24-45</code></div>
+  <p>The <code>parseIdToken()</code> function decodes the Cognito ID token's payload via base64 without verifying the JWT signature. Since this token comes from the Cognito SDK response (over TLS from AWS), the risk is limited. However, if the response were tampered with (e.g., via a man-in-the-middle, especially since V-04 disables cert validation), the user identity could be spoofed.</p>
+  <p><strong>Fix:</strong> Verify the ID token signature using Cognito's JWKS endpoint, or at minimum validate the token structure and expected claims.</p>
+</div>
+
+<!-- V-18 -->
+<div class="vuln-card low">
+  <div class="vuln-title"><span class="severity severity-low">LOW</span> V-18: JSON Body Parse Failure Silently Sets body=null</div>
+  <div class="vuln-meta">Affected: <code>src/rest/handler.mjs:114-119</code></div>
+  <p>When <code>JSON.parse(event.body)</code> throws, the catch block silently sets <code>body = null</code>. For POST (insert), this triggers the "Missing or invalid request body" error. But for PATCH, the check is <code>!body || typeof body !== 'object'</code> which also catches null. The silent swallowing of the parse error means the client doesn't know their JSON was malformed &mdash; they just see a generic error.</p>
+  <p><strong>Fix:</strong> Return a specific 400 error: "Request body is not valid JSON".</p>
+</div>
+
+<!-- V-19 -->
+<div class="vuln-card low">
+  <div class="vuln-title"><span class="severity severity-low">LOW</span> V-19: No Request Size Limits</div>
+  <div class="vuln-meta">Affected: <code>src/rest/handler.mjs</code> (system-wide)</div>
+  <p>There are no checks on request body size. API Gateway has a 10MB limit by default, but bulk inserts with thousands of rows generate proportionally large SQL queries and parameter arrays, consuming Lambda memory.</p>
+  <p><strong>Fix:</strong> Add a configurable row limit for bulk inserts (e.g., max 1000 rows per request).</p>
+</div>
+
+<!-- V-20 -->
+<div class="vuln-card info">
+  <div class="vuln-title"><span class="severity severity-info">INFO</span> V-20: XSS Vector in docsHtml via Host Header</div>
+  <div class="vuln-meta">Affected: <code>src/rest/handler.mjs:47-59,91-94</code></div>
+  <p>The <code>docsHtml()</code> function injects <code>specUrl</code> into an HTML string via template literal: <code>data-url="${specUrl}"</code>. The <code>specUrl</code> is derived from the <code>Host</code> header. If an attacker can control the Host header, they could inject HTML/JavaScript. API Gateway typically normalizes the Host header, mitigating this in production. However, in local development or behind certain proxies, this could be exploitable.</p>
+  <p><strong>Fix:</strong> HTML-escape the specUrl value before interpolation.</p>
+</div>
+
+<!-- V-21 -->
+<div class="vuln-card info">
+  <div class="vuln-title"><span class="severity severity-info">INFO</span> V-21: Refresh Token Rotation Race Condition Window</div>
+  <div class="vuln-meta">Affected: <code>src/auth/providers/gotrue.mjs:101-146</code></div>
+  <p>The refresh token rotation in GoTrue has a small race window: between the SELECT (line 105-109) and UPDATE (line 136-140), a concurrent request could also read the same non-revoked token. The code handles token reuse detection (revoked=true triggers family revocation), which is good. However, the window between read and revoke is not atomic (no SELECT ... FOR UPDATE), meaning two concurrent refreshes could both succeed.</p>
+  <p><strong>Fix:</strong> Use <code>SELECT ... FOR UPDATE</code> or <code>UPDATE ... RETURNING</code> for atomic token consumption.</p>
+</div>
+
+<!-- V-22 -->
+<div class="vuln-card info">
+  <div class="vuln-title"><span class="severity severity-info">INFO</span> V-22: Auth Schema Auto-Migration in Production</div>
+  <div class="vuln-meta">Affected: <code>src/auth/schema.mjs:34-46</code></div>
+  <p>The <code>ensureAuthSchema()</code> function runs <code>CREATE SCHEMA IF NOT EXISTS auth</code> and <code>CREATE TABLE IF NOT EXISTS</code> on every cold start. While idempotent, running DDL from the application runtime is a code smell. The <code>initialized</code> flag is module-level, so it resets on Lambda cold starts. If the database user lacks CREATE permissions, every auth request will fail with an unhelpful error.</p>
+  <p><strong>Fix:</strong> Consider moving schema migration to a separate setup step/CLI command, and have the runtime only validate the schema exists.</p>
+</div>
+
+<!-- V-23 -->
+<div class="vuln-card info">
+  <div class="vuln-title"><span class="severity severity-info">INFO</span> V-23: No Audit Logging</div>
+  <div class="vuln-meta">Affected: System-wide</div>
+  <p>There is no structured logging for security-relevant events: authentication attempts (success/failure), authorization decisions, data mutations, schema refreshes, or error conditions. This creates a repudiation risk and makes incident investigation impossible.</p>
+  <p><strong>Fix:</strong> Add structured JSON logging for: auth events (signup, login success/failure, token refresh, logout), authorization decisions (Cedar allow/deny with principal and resource), mutations (INSERT/UPDATE/DELETE with table name and row count), and errors.</p>
+</div>
+
+
+<!-- STRIDE THREAT MODEL -->
+<h2 id="stride">7. STRIDE Threat Model</h2>
+
+<h3>7.1 Lambda Authorizer (<code>src/authorizer/index.mjs</code>)</h3>
+<table class="stride-table">
+  <tr><th>Threat</th><th>Analysis</th><th>Risk</th></tr>
+  <tr><td><strong>Spoofing</strong></td><td>JWT verification uses the shared secret. If the secret is weak (V-01) or algorithm is confused (V-02), tokens can be forged. The dual-layer auth (apikey + Bearer) is a good design, but both use the same secret.</td><td><span class="severity severity-critical">CRITICAL</span></td></tr>
+  <tr><td><strong>Tampering</strong></td><td>JWT signatures prevent tampering of token claims. HMAC is symmetric, so both signing and verification share the same key. No evidence of token binding to prevent stolen token replay.</td><td><span class="severity severity-low">LOW</span></td></tr>
+  <tr><td><strong>Repudiation</strong></td><td>No logging of authorization decisions (V-23). Failed auth attempts throw generic "Unauthorized" with no audit trail.</td><td><span class="severity severity-medium">MEDIUM</span></td></tr>
+  <tr><td><strong>Info Disclosure</strong></td><td>The authorizer throws a bare string "Unauthorized" on failure, which is appropriate &mdash; no information leakage about why auth failed.</td><td><span class="severity severity-low">LOW</span></td></tr>
+  <tr><td><strong>DoS</strong></td><td>JWT verification is computationally cheap (HMAC). API Gateway caches authorizer results, reducing invocations. Low risk.</td><td><span class="severity severity-low">LOW</span></td></tr>
+  <tr><td><strong>EoP</strong></td><td>The authorizer's <code>allow()</code> function grants access to <code>arnBase + '/*'</code> &mdash; all methods and paths under the API. This is by design (fine-grained access is handled by Cedar), but it means the authorizer is a coarse gate.</td><td><span class="severity severity-low">LOW</span></td></tr>
+</table>
+
+<h3>7.2 REST Handler (<code>src/rest/handler.mjs</code>)</h3>
+<table class="stride-table">
+  <tr><th>Threat</th><th>Analysis</th><th>Risk</th></tr>
+  <tr><td><strong>Spoofing</strong></td><td>Relies on authorizer context for identity. No additional validation of <code>event.requestContext.authorizer</code> claims &mdash; trusts the authorizer implicitly. This is correct for the API Gateway REQUEST authorizer model.</td><td><span class="severity severity-low">LOW</span></td></tr>
+  <tr><td><strong>Tampering</strong></td><td>All user input flows through query-parser and sql-builder with parameterized queries. The on_conflict parameter (V-05) and order direction (V-14) are gaps in input validation.</td><td><span class="severity severity-high">HIGH</span></td></tr>
+  <tr><td><strong>Repudiation</strong></td><td>No logging of data mutations. INSERT/UPDATE/DELETE operations leave no application-level audit trail.</td><td><span class="severity severity-medium">MEDIUM</span></td></tr>
+  <tr><td><strong>Info Disclosure</strong></td><td>Error messages forward PG details (V-09). OpenAPI spec exposes full schema (V-10). The _refresh endpoint exposes the current schema to any caller (V-11).</td><td><span class="severity severity-medium">MEDIUM</span></td></tr>
+  <tr><td><strong>DoS</strong></td><td>Unbounded embedding depth (V-13). No request body size limits (V-19). The exact count query (COUNT(*)) can be expensive on large tables. No query timeout configuration.</td><td><span class="severity severity-medium">MEDIUM</span></td></tr>
+  <tr><td><strong>EoP</strong></td><td>Cedar policies are the access control gate. If Cedar eval produces an overly permissive filter (V-06), users access unauthorized data. The service_role bypass in Cedar is correct but must be protected by apikey secret strength.</td><td><span class="severity severity-high">HIGH</span></td></tr>
+</table>
+
+<h3>7.3 SQL Builder (<code>src/rest/sql-builder.mjs</code>)</h3>
+<table class="stride-table">
+  <tr><th>Threat</th><th>Analysis</th><th>Risk</th></tr>
+  <tr><td><strong>Spoofing</strong></td><td>N/A &mdash; internal module, no identity handling.</td><td>&mdash;</td></tr>
+  <tr><td><strong>Tampering</strong></td><td><strong class="positive">Strong:</strong> All values use parameterized queries ($1, $2...). Column names are validated against the schema. Table names come from the router which validates against schema cache. <strong class="negative">Gaps:</strong> on_conflict columns not validated (V-05), order direction not validated (V-14), embed alias names use schema-validated identifiers but are double-quoted (safe).</td><td><span class="severity severity-high">HIGH</span></td></tr>
+  <tr><td><strong>Info Disclosure</strong></td><td>RETURNING * on all mutations exposes all columns of affected rows, even if the client only selected specific columns.</td><td><span class="severity severity-low">LOW</span></td></tr>
+  <tr><td><strong>DoS</strong></td><td>Deeply nested embeds produce deeply nested subqueries. Each embed is a correlated subquery, which can be O(N^2) or worse with the query planner.</td><td><span class="severity severity-medium">MEDIUM</span></td></tr>
+  <tr><td><strong>EoP</strong></td><td>Bulk UPDATE and DELETE require at least one filter (good). The filter requirement prevents accidental mass data modification. However, a filter like <code>id=gt.0</code> effectively matches all rows.</td><td><span class="severity severity-low">LOW</span></td></tr>
+</table>
+
+<h3>7.4 Auth Handler (<code>src/auth/handler.mjs</code>)</h3>
+<table class="stride-table">
+  <tr><th>Threat</th><th>Analysis</th><th>Risk</th></tr>
+  <tr><td><strong>Spoofing</strong></td><td>GoTrue provider uses bcrypt with cost 10 (good). Timing-safe comparison via dummy hash on missing user (good). Cognito delegates to AWS SDK. Pre-signup auto-confirm is a spoofing risk (V-08) for Cognito deployments.</td><td><span class="severity severity-medium">MEDIUM</span></td></tr>
+  <tr><td><strong>Tampering</strong></td><td>Auth responses are generated server-side. JWT tokens are signed. Refresh token rotation with family revocation is implemented (good).</td><td><span class="severity severity-low">LOW</span></td></tr>
+  <tr><td><strong>Repudiation</strong></td><td>No logging of auth events (signup, login, logout, refresh). Cannot investigate account compromise.</td><td><span class="severity severity-medium">MEDIUM</span></td></tr>
+  <tr><td><strong>Info Disclosure</strong></td><td>Provider refresh token in JWT payload (V-07). Error messages are appropriately generic for auth failures. The /user endpoint synthesizes user data from JWT claims rather than querying the database, which prevents data leakage but means stale data is returned.</td><td><span class="severity severity-high">HIGH</span></td></tr>
+  <tr><td><strong>DoS</strong></td><td>No rate limiting (V-12). Bcrypt cost 10 uses ~100ms per attempt, providing some natural throttling. But signup creates DB records, which could fill storage.</td><td><span class="severity severity-medium">MEDIUM</span></td></tr>
+  <tr><td><strong>EoP</strong></td><td>All users get <code>role: 'authenticated'</code>. No admin role assignment mechanism in the auth layer. Cedar policies control what authenticated users can do. This separation is clean.</td><td><span class="severity severity-low">LOW</span></td></tr>
+</table>
+
+<h3>7.5 Cedar Authorization (<code>src/rest/cedar.mjs</code>)</h3>
+<table class="stride-table">
+  <tr><th>Threat</th><th>Analysis</th><th>Risk</th></tr>
+  <tr><td><strong>Spoofing</strong></td><td>Cedar principal identity comes from the authorizer context (JWT claims). If JWT is forged (V-01/V-02), Cedar policies are bypassed.</td><td><span class="severity severity-critical">CRITICAL</span></td></tr>
+  <tr><td><strong>Tampering</strong></td><td>Policies loaded from filesystem or S3. Filesystem policies are read-only in Lambda. S3 policies depend on bucket permissions. The _refresh endpoint (V-11) reloads policies, so if S3 policies are tampered, a refresh loads them.</td><td><span class="severity severity-medium">MEDIUM</span></td></tr>
+  <tr><td><strong>Info Disclosure</strong></td><td>Cedar evaluation errors produce generic 500 messages, not leaking policy details. Good.</td><td><span class="severity severity-low">LOW</span></td></tr>
+  <tr><td><strong>DoS</strong></td><td>Cedar WASM evaluation is in-process. Complex policies with many residuals could slow response times. Policies have a 5-minute cache TTL, amortizing load costs.</td><td><span class="severity severity-low">LOW</span></td></tr>
+  <tr><td><strong>EoP</strong></td><td>If no policies are loaded, the system fails closed (403). This is correct. The <code>translateExpr()</code> function handles unknown Cedar expressions by throwing (fail-closed). However, the <code>authorize()</code> function for INSERT falls back to partial evaluation if full evaluation doesn't allow &mdash; if any nontrivial residuals exist, it returns true. This could be overly permissive for INSERT operations.</td><td><span class="severity severity-medium">MEDIUM</span></td></tr>
+</table>
+
+<h3>7.6 Database Adapters (<code>src/rest/db/</code>)</h3>
+<table class="stride-table">
+  <tr><th>Threat</th><th>Analysis</th><th>Risk</th></tr>
+  <tr><td><strong>Spoofing</strong></td><td>DSQL uses IAM token auth (good). Standard PG uses password auth. Credentials come from environment variables (Lambda-managed, encrypted at rest). Connection string in DATABASE_URL could contain credentials.</td><td><span class="severity severity-low">LOW</span></td></tr>
+  <tr><td><strong>Tampering</strong></td><td>SSL validation disabled on both adapters (V-04). MITM can intercept/modify queries and results.</td><td><span class="severity severity-high">HIGH</span></td></tr>
+  <tr><td><strong>Info Disclosure</strong></td><td>Connection errors could leak hostname/port in error messages. The pool configuration (max: 5, idleTimeout: 60s) is reasonable for Lambda.</td><td><span class="severity severity-low">LOW</span></td></tr>
+  <tr><td><strong>DoS</strong></td><td>Pool max of 5 connections per Lambda instance. Lambda concurrency controls limit total connections. No query statement timeout configured &mdash; a slow query could hold a connection indefinitely (up to Lambda timeout).</td><td><span class="severity severity-low">LOW</span></td></tr>
+</table>
+
+
+<!-- COMPONENT ANALYSIS -->
+<h2 id="component-analysis">8. Component-by-Component Analysis</h2>
+
+<h3>8.1 Query Parser (<code>src/rest/query-parser.mjs</code>)</h3>
+<div class="card">
+  <h4>Security Posture: Good</h4>
+  <ul>
+    <li><strong class="positive">Positive:</strong> Operator allowlist (<code>VALID_OPERATORS</code>) prevents arbitrary operator injection</li>
+    <li><strong class="positive">Positive:</strong> IS operator values restricted to <code>null, true, false, unknown</code></li>
+    <li><strong class="positive">Positive:</strong> Logical operator nesting capped at 10 levels</li>
+    <li><strong class="positive">Positive:</strong> Parentheses balanced checked to prevent malformed input</li>
+    <li><strong class="positive">Positive:</strong> Embed alias validated against <code>/^[a-zA-Z_][a-zA-Z0-9_]*$/</code> regex</li>
+    <li><strong class="negative">Gap:</strong> Order direction/nulls not validated (V-14)</li>
+    <li><strong class="negative">Gap:</strong> <code>columns</code> parameter strips quotes (<code>replace(/^"|"$/g, '')</code>) but doesn't validate against schema</li>
+    <li><strong class="negative">Gap:</strong> <code>limit</code> and <code>offset</code> parsed with <code>parseInt()</code> &mdash; no NaN or negative number check</li>
+  </ul>
+</div>
+
+<h3>8.2 SQL Builder (<code>src/rest/sql-builder.mjs</code>)</h3>
+<div class="card">
+  <h4>Security Posture: Strong with Gaps</h4>
+  <ul>
+    <li><strong class="positive">Positive:</strong> All values use parameterized queries ($1, $2...) &mdash; no string interpolation of user values</li>
+    <li><strong class="positive">Positive:</strong> All columns validated against schema via <code>validateCol()</code> before use</li>
+    <li><strong class="positive">Positive:</strong> Table names double-quoted and come from router (schema-validated)</li>
+    <li><strong class="positive">Positive:</strong> UPDATE and DELETE require at least one filter (prevents bulk operations)</li>
+    <li><strong class="positive">Positive:</strong> Cedar authz conditions renumbered correctly when merged into WHERE clause</li>
+    <li><strong class="negative">Gap:</strong> <code>on_conflict</code> columns not validated (V-05)</li>
+    <li><strong class="negative">Gap:</strong> Order direction interpolated unsanitized (V-14)</li>
+    <li><strong class="negative">Gap:</strong> <code>json_build_object</code> pairs use single-quoted column names as JSON keys (<code>'${c}'</code>) &mdash; if a column name contains a single quote, this would break. However, PostgreSQL identifier rules make this unlikely.</li>
+    <li><strong class="negative">Gap:</strong> <code>RETURNING *</code> returns all columns regardless of client's select list</li>
+  </ul>
+</div>
+
+<h3>8.3 Router (<code>src/rest/router.mjs</code>)</h3>
+<div class="card">
+  <h4>Security Posture: Good</h4>
+  <ul>
+    <li><strong class="positive">Positive:</strong> Table name extracted from path and validated against schema cache &mdash; non-existent tables return 404</li>
+    <li><strong class="positive">Positive:</strong> Special routes (_refresh, _docs) handled before table lookup</li>
+    <li><strong class="positive">Positive:</strong> Path traversal prevented by schema validation (table names like <code>../admin</code> won't match)</li>
+    <li><strong>Note:</strong> Tables prefixed with underscore are excluded from schema introspection (<code>c.relname NOT LIKE '\\_%'</code>), providing a convention for "private" tables</li>
+  </ul>
+</div>
+
+<h3>8.4 JWT Module (<code>src/auth/jwt.mjs</code>)</h3>
+<div class="card">
+  <h4>Security Posture: Needs Improvement</h4>
+  <ul>
+    <li><strong class="positive">Positive:</strong> Uses <code>jsonwebtoken</code> library (well-maintained, widely used)</li>
+    <li><strong class="positive">Positive:</strong> Issuer claim validated on verification</li>
+    <li><strong class="positive">Positive:</strong> Access tokens have 1-hour expiry, refresh tokens 30-day</li>
+    <li><strong class="negative">Gap:</strong> No algorithm pinning (V-02)</li>
+    <li><strong class="negative">Gap:</strong> No secret strength validation (V-01)</li>
+    <li><strong class="negative">Gap:</strong> No audience claim validation on access tokens</li>
+    <li><strong class="negative">Gap:</strong> Provider refresh token in JWT payload (V-07)</li>
+  </ul>
+</div>
+
+<h3>8.5 GoTrue Provider (<code>src/auth/providers/gotrue.mjs</code>)</h3>
+<div class="card">
+  <h4>Security Posture: Good</h4>
+  <ul>
+    <li><strong class="positive">Positive:</strong> bcrypt with cost 10 for password hashing</li>
+    <li><strong class="positive">Positive:</strong> Timing-safe comparison using dummy hash for non-existent users (prevents user enumeration)</li>
+    <li><strong class="positive">Positive:</strong> Refresh token rotation with family revocation (prevents token reuse attacks)</li>
+    <li><strong class="positive">Positive:</strong> Password strength validation (8+ chars, upper, lower, digit)</li>
+    <li><strong class="positive">Positive:</strong> All SQL queries parameterized</li>
+    <li><strong class="negative">Gap:</strong> Race condition in refresh token rotation (V-21)</li>
+    <li><strong class="negative">Gap:</strong> No refresh token expiry cleanup (old revoked tokens accumulate)</li>
+    <li><strong class="negative">Gap:</strong> No account lockout after failed attempts</li>
+  </ul>
+</div>
+
+
+<!-- POSITIVE OBSERVATIONS -->
+<h2 id="positive">9. Positive Security Observations</h2>
+
+<div class="card" style="border-left: 4px solid var(--green);">
+  <p>The codebase demonstrates several strong security practices that should be recognized and maintained:</p>
+  <ol>
+    <li><strong>Consistent SQL parameterization</strong> &mdash; Every user-supplied value flows through <code>$N</code> placeholders. No string concatenation of values into SQL. This is the single most important security property of the codebase.</li>
+    <li><strong>Schema-validated identifiers</strong> &mdash; Column names are checked against the introspected schema before being included in SQL. This prevents most identifier injection attacks.</li>
+    <li><strong>Bulk operation protection</strong> &mdash; UPDATE and DELETE require at least one filter, preventing accidental mass data modification.</li>
+    <li><strong>Cedar fail-closed design</strong> &mdash; When policies cannot be loaded or evaluation fails, the system denies access (403) rather than failing open.</li>
+    <li><strong>Timing-safe auth</strong> &mdash; The GoTrue provider uses a dummy bcrypt comparison for non-existent users, preventing user enumeration via timing differences.</li>
+    <li><strong>Refresh token rotation</strong> &mdash; Token reuse detection with family revocation is a strong defense against stolen refresh tokens.</li>
+    <li><strong>Defense-in-depth auth model</strong> &mdash; The dual-layer auth (apikey + Bearer token) means even if one layer is compromised, the attack surface is limited.</li>
+    <li><strong>Input validation at parser level</strong> &mdash; Operators are validated against an allowlist, IS values are restricted, and nesting depth is capped.</li>
+    <li><strong>Clean error abstraction</strong> &mdash; The <code>PostgRESTError</code> class provides structured errors without raw exception forwarding (though PG error mapping needs work per V-09).</li>
+    <li><strong>No-store cache control</strong> &mdash; CORS headers include <code>Cache-Control: no-store</code>, preventing proxy caching of API responses.</li>
+  </ol>
+</div>
+
+
+<!-- PRE-PRODUCTION CHECKLIST -->
+<h2 id="checklist">10. Pre-Production Security Checklist</h2>
+
+<div class="card">
+  <p>The following items must be addressed before deploying pgrest-lambda to production with real user data:</p>
+
+  <div class="checklist-item">
+    <span class="check" style="color: var(--critical);">&#9744;</span>
+    <span><strong>[CRITICAL]</strong> Enforce minimum JWT secret length of 32 characters at startup (V-01)</span>
+  </div>
+  <div class="checklist-item">
+    <span class="check" style="color: var(--critical);">&#9744;</span>
+    <span><strong>[CRITICAL]</strong> Pin JWT algorithm to HS256 in all <code>jwt.verify()</code> calls (V-02)</span>
+  </div>
+  <div class="checklist-item">
+    <span class="check" style="color: var(--high);">&#9744;</span>
+    <span><strong>[HIGH]</strong> Make CORS origins configurable; remove wildcard in production (V-03)</span>
+  </div>
+  <div class="checklist-item">
+    <span class="check" style="color: var(--high);">&#9744;</span>
+    <span><strong>[HIGH]</strong> Enable SSL certificate validation for database connections (V-04)</span>
+  </div>
+  <div class="checklist-item">
+    <span class="check" style="color: var(--high);">&#9744;</span>
+    <span><strong>[HIGH]</strong> Validate <code>on_conflict</code> columns against schema (V-05)</span>
+  </div>
+  <div class="checklist-item">
+    <span class="check" style="color: var(--high);">&#9744;</span>
+    <span><strong>[HIGH]</strong> Audit Cedar policies for overly permissive rules; document authorization model (V-06)</span>
+  </div>
+  <div class="checklist-item">
+    <span class="check" style="color: var(--high);">&#9744;</span>
+    <span><strong>[HIGH]</strong> Stop embedding provider refresh tokens in JWT payloads (V-07)</span>
+  </div>
+  <div class="checklist-item">
+    <span class="check" style="color: var(--medium);">&#9744;</span>
+    <span><strong>[MEDIUM]</strong> Remove or disable pre-signup auto-confirm for production Cognito pools (V-08)</span>
+  </div>
+  <div class="checklist-item">
+    <span class="check" style="color: var(--medium);">&#9744;</span>
+    <span><strong>[MEDIUM]</strong> Sanitize PG error messages before returning to clients (V-09)</span>
+  </div>
+  <div class="checklist-item">
+    <span class="check" style="color: var(--medium);">&#9744;</span>
+    <span><strong>[MEDIUM]</strong> Restrict _refresh endpoint to service_role (V-11)</span>
+  </div>
+  <div class="checklist-item">
+    <span class="check" style="color: var(--medium);">&#9744;</span>
+    <span><strong>[MEDIUM]</strong> Configure API Gateway rate limiting on auth endpoints (V-12)</span>
+  </div>
+  <div class="checklist-item">
+    <span class="check" style="color: var(--medium);">&#9744;</span>
+    <span><strong>[MEDIUM]</strong> Add embedding depth limit (V-13)</span>
+  </div>
+  <div class="checklist-item">
+    <span class="check" style="color: var(--medium);">&#9744;</span>
+    <span><strong>[MEDIUM]</strong> Validate order direction and nulls against allowlist (V-14)</span>
+  </div>
+  <div class="checklist-item">
+    <span class="check" style="color: var(--low);">&#9744;</span>
+    <span><strong>[LOW]</strong> Add structured security logging for auth and authorization events (V-16, V-23)</span>
+  </div>
+  <div class="checklist-item">
+    <span class="check" style="color: var(--low);">&#9744;</span>
+    <span><strong>[LOW]</strong> Verify Cognito ID token signatures (V-17)</span>
+  </div>
+  <div class="checklist-item">
+    <span class="check" style="color: var(--low);">&#9744;</span>
+    <span><strong>[LOW]</strong> Return explicit "invalid JSON" error on parse failure (V-18)</span>
+  </div>
+  <div class="checklist-item">
+    <span class="check" style="color: var(--low);">&#9744;</span>
+    <span><strong>[LOW]</strong> Add configurable PostgreSQL statement_timeout on connection pool</span>
+  </div>
+  <div class="checklist-item">
+    <span class="check" style="color: var(--low);">&#9744;</span>
+    <span><strong>[LOW]</strong> Add bulk insert row count limit (V-19)</span>
+  </div>
+</div>
+
+<div style="text-align: center; margin-top: 48px; padding: 24px; color: var(--text-secondary); font-size: 0.85rem;">
+  <p>pgrest-lambda Security Threat Model &amp; Code Audit Report</p>
+  <p>Generated April 17, 2026 &mdash; Commit 25c090f (main branch)</p>
+  <p>Classification: Internal &mdash; Do not distribute externally without approval</p>
+</div>
+
+</div><!-- /.container -->
+</body>
+</html>
