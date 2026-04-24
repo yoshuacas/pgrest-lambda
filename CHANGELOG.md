@@ -21,6 +21,9 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
 - Dev server routes auth requests through combined handler
 
 ### Security
+- **V-03**: CORS origin is now configurable via
+  `config.cors.allowedOrigins`. Wildcard (`'*'`) is rejected
+  when `production` mode is enabled.
 - **JWT algorithm pinning** — all `jwt.sign` and `jwt.verify` calls
   now explicitly specify `HS256` via a shared `JWT_ALGORITHM` constant,
   closing algorithm-confusion attacks per RFC 8725 §3.1. Closes V-02.

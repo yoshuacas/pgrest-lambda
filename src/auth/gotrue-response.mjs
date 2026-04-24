@@ -1,10 +1,10 @@
 import { CORS_HEADERS } from '../shared/cors.mjs';
 import { SESSION_EXPIRY_SECONDS } from './constants.mjs';
 
-export function sessionResponse(accessToken, refreshToken, user) {
+export function sessionResponse(accessToken, refreshToken, user, corsH) {
   return {
     statusCode: 200,
-    headers: corsHeaders(),
+    headers: resolveCors(corsH),
     body: JSON.stringify({
       access_token: accessToken,
       token_type: 'bearer',
@@ -16,22 +16,22 @@ export function sessionResponse(accessToken, refreshToken, user) {
   };
 }
 
-export function userResponse(user) {
+export function userResponse(user, corsH) {
   return {
     statusCode: 200,
-    headers: corsHeaders(),
+    headers: resolveCors(corsH),
     body: JSON.stringify(formatUser(user)),
   };
 }
 
-export function logoutResponse() {
-  return { statusCode: 204, headers: corsHeaders() };
+export function logoutResponse(corsH) {
+  return { statusCode: 204, headers: resolveCors(corsH) };
 }
 
-export function errorResponse(statusCode, error, description, extra) {
+export function errorResponse(statusCode, error, description, extra, corsH) {
   return {
     statusCode,
-    headers: corsHeaders(),
+    headers: resolveCors(corsH),
     body: JSON.stringify({
       error,
       error_description: description,
@@ -55,6 +55,6 @@ function formatUser(user) {
   };
 }
 
-function corsHeaders() {
-  return { ...CORS_HEADERS };
+function resolveCors(corsH) {
+  return corsH ? { ...corsH } : { ...CORS_HEADERS };
 }

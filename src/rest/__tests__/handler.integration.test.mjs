@@ -699,4 +699,47 @@ describe('handler integration', () => {
         'trailing slash should resolve to todos table');
     });
   });
+
+  describe('CORS headers on REST responses', () => {
+    let corsHandler;
+
+    beforeEach(() => {
+      const corsCtx = createTestContext();
+      corsCtx.cors = {
+        allowedOrigins: ['https://app.com'],
+        allowCredentials: false,
+      };
+      corsHandler = createRestHandler(corsCtx).handler;
+    });
+
+    it('OPTIONS with matching origin reflects it in Allow-Origin', async () => {
+      const event = makeEvent({
+        method: 'OPTIONS',
+        path: '/rest/v1/todos',
+        headers: { Origin: 'https://app.com' },
+      });
+      const res = await corsHandler(event);
+      assert.equal(res.statusCode, 200, 'OPTIONS should return 200');
+      assert.equal(
+        res.headers['Access-Control-Allow-Origin'],
+        'https://app.com',
+        'Allow-Origin should reflect the matching origin',
+      );
+    });
+
+    it('error response includes CORS headers for matching origin', async () => {
+      const event = makeEvent({
+        method: 'GET',
+        path: '/rest/v1/nonexistent',
+        headers: { Origin: 'https://app.com' },
+      });
+      const res = await corsHandler(event);
+      assert.equal(res.statusCode, 404, 'should return 404 for unknown table');
+      assert.equal(
+        res.headers['Access-Control-Allow-Origin'],
+        'https://app.com',
+        'error response should include Allow-Origin for matching origin',
+      );
+    });
+  });
 });

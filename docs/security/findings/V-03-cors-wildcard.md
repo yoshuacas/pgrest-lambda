@@ -1,7 +1,7 @@
 # V-03 — CORS wildcard origin with header-based auth
 
 - **Severity (reported):** High
-- **Status:** Open
+- **Status:** Fixed
 - **Affected (reported):** `src/shared/cors.mjs:1-10`
 - **Backend dependence:** None
 
@@ -11,28 +11,27 @@
 
 ## Our analysis
 
-**Status: still open at HEAD.**
+**Status: fixed at HEAD.**
 
-- `src/shared/cors.mjs:1-10` — `CORS_HEADERS` is a static export with `Access-Control-Allow-Origin: '*'`. No factory-injected config; any consumer gets wildcard.
-- `src/index.mjs` — `createPgrest` has no `cors` config hook; wildcard propagates unconditionally.
-- Headers list includes `apikey`, `Authorization` — the attack path described in the report (any site reaches the API with a stolen Bearer token) is live.
-
-Note: `Access-Control-Allow-Credentials` is **not** set, so cookie-bearing cross-origin fetches are still blocked by browsers. The real risk is header-based auth replay.
-
-**Fix surface:** turn `CORS_HEADERS` into a factory-returned helper; plumb `cors: { allowedOrigins, allowCredentials }` through `createPgrest`. Default to wildcard for dev, require explicit list when a `production` flag (or any non-`*` value) is set.
+- `src/shared/cors.mjs` — `buildCorsHeaders(corsConfig, origin)` computes per-request CORS headers. The static `CORS_HEADERS` export is retained for backward compatibility.
+- `src/shared/cors.mjs` — `assertCorsConfig(corsConfig, production)` throws at construction when `allowedOrigins` is `'*'` and `production` is `true`.
+- `src/index.mjs` — `resolveConfig` resolves `cors.allowedOrigins` (default `'*'`), `cors.allowCredentials` (default `false`), and `production` (default `process.env.NODE_ENV === 'production'`). `createPgrest` calls `assertCorsConfig` after `assertJwtSecret`.
+- `src/rest/handler.mjs` and `src/auth/handler.mjs` — both compute CORS headers per-request via `buildCorsHeaders` and pass them through to all response functions.
 
 ## Decision
 
-_Pending triage._ Likely: make CORS origin configurable via `createPgrest({ cors: { allowedOrigins } })`, keep wildcard as the dev default but refuse it when `NODE_ENV=production` or equivalent, and document the anon-key-as-public caveat.
+Configurable CORS origin with production guardrail. Default remains wildcard for dev; production requires explicit allowlist.
 
 ## Evidence
 
-_Commit / test / doc link when fixed._
+- `src/shared/cors.mjs` — `buildCorsHeaders` computes per-request origin. `assertCorsConfig` throws at construction when wildcard + production.
+- `src/shared/__tests__/cors.test.mjs` — unit tests for `buildCorsHeaders` (wildcard, array, function, credentials) and `assertCorsConfig` (production guardrail).
+- `src/index.mjs` — `resolveCors`, `assertCorsConfig` integration, `ctx.cors` plumbing.
 
 ## Residual risk
 
-Even with origin allowlist, a compromised allowlisted origin (XSS on the consumer's own app) still has full-token reach. Library consumer owns CSP / app-level hardening.
+Operators must configure `cors.allowedOrigins` and enable `production: true` for the guardrail to activate. Unconfigured deployments still use wildcard. Even with an origin allowlist, a compromised allowlisted origin (XSS on the consumer's own app) still has full-token reach. Library consumer owns CSP / app-level hardening.
 
 ## Reviewer handoff
 
-_Two-sentence summary for the reviewer agent._
+CORS origin is now configurable via `createPgrest({ cors: { allowedOrigins } })` with a production guardrail that rejects wildcard. Verify `npm test` passes; spot-check that OPTIONS responses reflect configured origins.

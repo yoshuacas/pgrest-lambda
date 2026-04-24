@@ -96,6 +96,37 @@ const pgrest = createPgrest({
 });
 ```
 
+### CORS Configuration
+
+Control which origins can make cross-origin requests to your API.
+
+```javascript
+createPgrest({
+  cors: {
+    allowedOrigins: ['https://app.example.com'],
+    allowCredentials: false,
+  },
+  production: true,
+  // ... other config
+});
+```
+
+| Config key | Type | Default |
+|---|---|---|
+| `cors.allowedOrigins` | `'*'`, `string[]`, or `(origin) => boolean` | `'*'` |
+| `cors.allowCredentials` | `boolean` | `false` |
+| `production` | `boolean` | `process.env.NODE_ENV === 'production'` |
+
+Wildcard origins (`'*'`) are rejected when `production` mode is
+enabled — `createPgrest` throws at construction time. In
+production, provide an explicit list of allowed origins.
+
+**Security note:** even with `allowedOrigins: '*'`, the anon
+`apikey` is public by design. CORS origin restriction limits
+which sites can make cross-origin requests, but the anon key is
+not a secret. To protect sensitive data, use Cedar policies and
+authenticated requests with per-user Bearer tokens.
+
 ### Config resolution
 
 The factory resolves config in order: explicit values, then environment variables, then defaults.

@@ -78,3 +78,93 @@ describe('createPgrest secret validation', () => {
     assert.ok(pgrest.authorizer);
   });
 });
+
+describe('createPgrest CORS production guardrail', () => {
+  const jwtSecret = 'a'.repeat(32);
+  const database = { host: 'localhost' };
+
+  it('throws when production=true and allowedOrigins is wildcard', () => {
+    assert.throws(
+      () => createPgrest({
+        production: true,
+        cors: { allowedOrigins: '*' },
+        jwtSecret,
+        database,
+      }),
+      (err) => {
+        assert.ok(err instanceof Error, 'should be an Error');
+        assert.ok(
+          err.message.startsWith('pgrest-lambda:'),
+          'message should start with pgrest-lambda:',
+        );
+        assert.ok(
+          err.message.includes('production'),
+          'message should mention production',
+        );
+        assert.ok(
+          err.message.includes('allowedOrigins'),
+          'message should mention allowedOrigins',
+        );
+        return true;
+      },
+    );
+  });
+
+  it('constructs without error when no cors config and production=false', () => {
+    const pgrest = createPgrest({ jwtSecret, database });
+    assert.ok(pgrest.handler, 'should construct successfully');
+  });
+
+  it('constructs without error when production=true with explicit origins', () => {
+    const pgrest = createPgrest({
+      production: true,
+      cors: { allowedOrigins: ['https://a.com'] },
+      jwtSecret,
+      database,
+    });
+    assert.ok(pgrest.handler, 'should construct successfully');
+  });
+
+  it('constructs without error when production=false with wildcard', () => {
+    const pgrest = createPgrest({
+      production: false,
+      cors: { allowedOrigins: '*' },
+      jwtSecret,
+      database,
+    });
+    assert.ok(pgrest.handler, 'should construct successfully');
+  });
+
+  it('throws when NODE_ENV=production and no config.production with wildcard', () => {
+    const prev = process.env.NODE_ENV;
+    try {
+      process.env.NODE_ENV = 'production';
+      assert.throws(
+        () => createPgrest({
+          cors: { allowedOrigins: '*' },
+          jwtSecret,
+          database,
+        }),
+        (err) => {
+          assert.ok(err instanceof Error, 'should be an Error');
+          assert.ok(
+            err.message.startsWith('pgrest-lambda:'),
+            'message should start with pgrest-lambda:',
+          );
+          assert.ok(
+            err.message.includes('production'),
+            'message should mention production',
+          );
+          assert.ok(
+            err.message.includes('allowedOrigins'),
+            'message should mention allowedOrigins',
+          );
+          return true;
+        },
+      );
+    } finally {
+      if (prev === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = prev;
+    }
+  });
+});

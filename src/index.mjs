@@ -7,6 +7,7 @@ import { createRestHandler } from './rest/handler.mjs';
 import { createAuthHandler } from './auth/handler.mjs';
 import { createJwt, assertJwtSecret } from './auth/jwt.mjs';
 import { createAuthorizer } from './authorizer/index.mjs';
+import { assertCorsConfig } from './shared/cors.mjs';
 
 function resolveDatabase(config) {
   if (config.database) {
@@ -55,9 +56,22 @@ function resolveAuth(config) {
   };
 }
 
+function resolveCors(config) {
+  if (!config.cors) {
+    return { allowedOrigins: '*', allowCredentials: false };
+  }
+  return {
+    allowedOrigins: config.cors.allowedOrigins ?? '*',
+    allowCredentials: config.cors.allowCredentials ?? false,
+  };
+}
+
 function resolveConfig(config) {
   const dbConfig = resolveDatabase(config);
   const region = config.region || dbConfig.region || process.env.REGION_NAME;
+  const cors = resolveCors(config);
+  const production = config.production
+    ?? (process.env.NODE_ENV === 'production');
 
   return {
     database: dbConfig,
@@ -73,12 +87,15 @@ function resolveConfig(config) {
       : process.env.PGREST_DOCS !== 'false',
     apiBaseUrl: config.apiBaseUrl || process.env.API_BASE_URL || null,
     contributions: config.contributions || [],
+    cors,
+    production,
   };
 }
 
 export function createPgrest(config = {}) {
   const resolved = resolveConfig(config);
   assertJwtSecret(resolved.jwtSecret);
+  assertCorsConfig(resolved.cors, resolved.production);
 
   // Build context — shared mutable state lives here
   const ctx = {
@@ -107,6 +124,7 @@ export function createPgrest(config = {}) {
   ctx.jwt = jwt;
   ctx.docs = resolved.docs;
   ctx.apiBaseUrl = resolved.apiBaseUrl;
+  ctx.cors = resolved.cors;
 
   // Create auth handler first (needed for OpenAPI contributions)
   let auth = null;

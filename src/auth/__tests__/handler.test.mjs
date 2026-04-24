@@ -584,6 +584,58 @@ describe('handler.mjs', () => {
     });
   });
 
+  describe('CORS headers on auth responses', () => {
+    let corsHandler;
+
+    beforeEach(() => {
+      const corsCtx = {
+        jwt: createJwt({ jwtSecret: TEST_SECRET }),
+        authProvider: null,
+        cors: {
+          allowedOrigins: ['https://app.com'],
+          allowCredentials: false,
+        },
+      };
+      const result = createAuthHandler(
+        { auth: { provider: 'cognito' }, jwtSecret: TEST_SECRET },
+        corsCtx,
+      );
+      corsHandler = result.handler;
+      result._setProvider(createMockProvider());
+    });
+
+    it('OPTIONS /auth/v1/signup with matching origin reflects it', async () => {
+      const event = makeEvent({
+        method: 'OPTIONS',
+        path: '/auth/v1/signup',
+        headers: { Origin: 'https://app.com' },
+      });
+      const res = await corsHandler(event);
+      assert.equal(res.statusCode, 200, 'OPTIONS should return 200');
+      assert.equal(
+        res.headers['Access-Control-Allow-Origin'],
+        'https://app.com',
+        'Allow-Origin should reflect the matching origin',
+      );
+    });
+
+    it('error response includes CORS headers for matching origin', async () => {
+      const event = makeEvent({
+        method: 'POST',
+        path: '/auth/v1/signup',
+        body: { password: 'StrongPass1' },
+        headers: { Origin: 'https://app.com' },
+      });
+      const res = await corsHandler(event);
+      assert.equal(res.statusCode, 400, 'missing email should return 400');
+      assert.equal(
+        res.headers['Access-Control-Allow-Origin'],
+        'https://app.com',
+        'error response should include Allow-Origin for matching origin',
+      );
+    });
+  });
+
   describe('getOpenApiPaths', () => {
     it('returns paths for all auth endpoints', () => {
       const ctx = { jwt: createJwt({ jwtSecret: TEST_SECRET }), authProvider: null };

@@ -8,6 +8,7 @@ import {
 import { success, error } from './response.mjs';
 import { route } from './router.mjs';
 import { generateSpec } from './openapi.mjs';
+import { buildCorsHeaders } from '../shared/cors.mjs';
 
 function parsePrefer(raw) {
   const prefer = {};
@@ -95,11 +96,16 @@ function resolveApiUrl(ctx, headers) {
 
 export function createRestHandler(ctx, contributions = []) {
   const { db, schemaCache, cedar, docs } = ctx;
+  const corsConfig = ctx.cors;
 
   async function handler(event) {
+    const headers = lowercaseHeaders(event.headers);
+    const origin = headers['origin'] || '';
+    const corsHeaders = buildCorsHeaders(corsConfig, origin);
+
     try {
       if (event.httpMethod === 'OPTIONS') {
-        return success(200, null, {});
+        return { statusCode: 200, headers: corsHeaders };
       }
 
       const method = event.httpMethod;
@@ -108,7 +114,6 @@ export function createRestHandler(ctx, contributions = []) {
       const userId = authorizer.userId || authorizer.claims?.sub || '';
       const role = authorizer.role || 'anon';
       const email = authorizer.email || '';
-      const headers = lowercaseHeaders(event.headers);
 
       let body = null;
       if (event.body) {
@@ -133,7 +138,7 @@ export function createRestHandler(ctx, contributions = []) {
       if (routeInfo.type === 'openapi') {
         const apiUrl = resolveApiUrl(ctx, headers);
         const resolved = resolveContributions(contributions, apiUrl);
-        return success(200, generateSpec(schema, apiUrl, resolved));
+        return success(200, generateSpec(schema, apiUrl, resolved), { corsHeaders });
       }
 
       if (routeInfo.type === 'docs') {
@@ -156,7 +161,7 @@ export function createRestHandler(ctx, contributions = []) {
         await cedar.refreshPolicies();
         const apiUrl = resolveApiUrl(ctx, headers);
         const resolved = resolveContributions(contributions, apiUrl);
-        return success(200, generateSpec(newSchema, apiUrl, resolved));
+        return success(200, generateSpec(newSchema, apiUrl, resolved), { corsHeaders });
       }
 
       const table = routeInfo.table;
@@ -322,34 +327,36 @@ export function createRestHandler(ctx, contributions = []) {
         return success(200, rows, {
           contentRange: contentRange(rows.length, count),
           singleObject,
+          corsHeaders,
         });
       }
 
       if (method === 'POST') {
         if (returnRep) {
-          return success(201, rows, { singleObject });
+          return success(201, rows, { singleObject, corsHeaders });
         }
-        return success(201, null, {});
+        return success(201, null, { corsHeaders });
       }
 
       if (returnRep) {
-        return success(200, rows, { singleObject });
+        return success(200, rows, { singleObject, corsHeaders });
       }
-      return success(204, null, {});
+      return success(204, null, { corsHeaders });
 
     } catch (err) {
       if (err instanceof PostgRESTError) {
-        return error(err);
+        return error(err, corsHeaders);
       }
       if (err.code && typeof err.code === 'string'
           && /^[0-9A-Z]{5}$/.test(err.code)) {
-        return error(mapPgError(err));
+        return error(mapPgError(err), corsHeaders);
       }
       return error(
         new PostgRESTError(
           500, 'PGRST000',
           err.message || 'Internal server error',
         ),
+        corsHeaders,
       );
     }
   }

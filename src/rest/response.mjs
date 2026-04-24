@@ -4,12 +4,13 @@ import { PostgRESTError } from './errors.mjs';
 import { CORS_HEADERS } from '../shared/cors.mjs';
 
 export function success(statusCode, body, options = {}) {
-  const { contentRange, singleObject } = options;
+  const { contentRange, singleObject, corsHeaders } = options;
+  const cors = corsHeaders || CORS_HEADERS;
 
   if (body == null) {
     return {
       statusCode,
-      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+      headers: { ...cors, 'Content-Type': 'application/json' },
       body: '',
     };
   }
@@ -39,7 +40,7 @@ export function success(statusCode, body, options = {}) {
   }
 
   const headers = {
-    ...CORS_HEADERS,
+    ...cors,
     'Content-Type': 'application/json',
   };
 
@@ -54,18 +55,20 @@ export function success(statusCode, body, options = {}) {
   };
 }
 
-export function error(err) {
+export function error(err, corsHeaders) {
+  const cors = corsHeaders || CORS_HEADERS;
+
   if (err instanceof PostgRESTError) {
     return {
       statusCode: err.statusCode,
-      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+      headers: { ...cors, 'Content-Type': 'application/json' },
       body: JSON.stringify(err.toJSON()),
     };
   }
 
   return {
     statusCode: 500,
-    headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+    headers: { ...cors, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       code: 'PGRST000',
       message: err.message || 'Internal server error',

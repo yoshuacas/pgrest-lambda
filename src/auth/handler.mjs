@@ -5,6 +5,7 @@ import {
   logoutResponse,
   errorResponse,
 } from './gotrue-response.mjs';
+import { buildCorsHeaders } from '../shared/cors.mjs';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -26,18 +27,19 @@ const ERROR_DESCRIPTION = {
   unexpected_failure: 'An unexpected error occurred',
 };
 
-function providerErrorResponse(err) {
+function providerErrorResponse(err, corsHeaders) {
   const code = err.code || 'unexpected_failure';
   const status = ERROR_STATUS[code] || 500;
   const desc = ERROR_DESCRIPTION[code] || 'An unexpected error occurred';
   const extra = code === 'weak_password' && err.reasons
     ? { weak_password: { reasons: err.reasons } }
     : undefined;
-  return errorResponse(status, code, desc, extra);
+  return errorResponse(status, code, desc, extra, corsHeaders);
 }
 
 export function createAuthHandler(config, ctx) {
   const jwt = ctx.jwt;
+  const corsConfig = ctx.cors;
 
   async function getProvider() {
     if (!ctx.authProvider) {
@@ -54,46 +56,50 @@ export function createAuthHandler(config, ctx) {
 
   async function handler(event) {
     const method = event.httpMethod;
+    const origin =
+      (event.headers?.Origin
+        || event.headers?.origin
+        || '');
+    const corsHeaders = buildCorsHeaders(corsConfig, origin);
 
     if (method === 'OPTIONS') {
-      const { CORS_HEADERS } = await import('../shared/cors.mjs');
-      return { statusCode: 200, headers: { ...CORS_HEADERS } };
+      return { statusCode: 200, headers: corsHeaders };
     }
 
     const path = event.path || '';
     const match = path.match(/^\/auth\/v1\/(\w+)$/);
     if (!match) {
-      return errorResponse(404, 'not_found', 'Endpoint not found');
+      return errorResponse(404, 'not_found', 'Endpoint not found', undefined, corsHeaders);
     }
 
     const action = match[1];
 
     switch (action) {
       case 'signup':
-        return handleSignup(event);
+        return handleSignup(event, corsHeaders);
       case 'token':
-        return handleToken(event);
+        return handleToken(event, corsHeaders);
       case 'user':
-        return handleGetUser(event);
+        return handleGetUser(event, corsHeaders);
       case 'logout':
-        return handleLogout(event);
+        return handleLogout(event, corsHeaders);
       default:
-        return errorResponse(404, 'not_found', 'Endpoint not found');
+        return errorResponse(404, 'not_found', 'Endpoint not found', undefined, corsHeaders);
     }
   }
 
-  async function handleSignup(event) {
+  async function handleSignup(event, corsHeaders) {
     const body = JSON.parse(event.body || '{}');
     const { email, password } = body;
 
     if (!email) {
-      return errorResponse(400, 'validation_failed', 'Email is required');
+      return errorResponse(400, 'validation_failed', 'Email is required', undefined, corsHeaders);
     }
     if (!password) {
-      return errorResponse(400, 'validation_failed', 'Password is required');
+      return errorResponse(400, 'validation_failed', 'Password is required', undefined, corsHeaders);
     }
     if (!EMAIL_RE.test(email)) {
-      return errorResponse(400, 'validation_failed', 'Invalid email format');
+      return errorResponse(400, 'validation_failed', 'Invalid email format', undefined, corsHeaders);
     }
 
     try {
@@ -105,13 +111,13 @@ export function createAuthHandler(config, ctx) {
         user.id,
         providerTokens.refreshToken
       );
-      return sessionResponse(accessToken, refreshToken, user);
+      return sessionResponse(accessToken, refreshToken, user, corsHeaders);
     } catch (err) {
-      return providerErrorResponse(err);
+      return providerErrorResponse(err, corsHeaders);
     }
   }
 
-  async function handleToken(event) {
+  async function handleToken(event, corsHeaders) {
     const query = event.queryStringParameters || {};
     const grantType = query.grant_type;
 
@@ -119,25 +125,27 @@ export function createAuthHandler(config, ctx) {
       return errorResponse(
         400,
         'unsupported_grant_type',
-        'Missing or unsupported grant_type'
+        'Missing or unsupported grant_type',
+        undefined,
+        corsHeaders
       );
     }
 
     if (grantType === 'password') {
-      return handlePasswordGrant(event);
+      return handlePasswordGrant(event, corsHeaders);
     }
-    return handleRefreshGrant(event);
+    return handleRefreshGrant(event, corsHeaders);
   }
 
-  async function handlePasswordGrant(event) {
+  async function handlePasswordGrant(event, corsHeaders) {
     const body = JSON.parse(event.body || '{}');
     const { email, password } = body;
 
     if (!email) {
-      return errorResponse(400, 'validation_failed', 'Email is required');
+      return errorResponse(400, 'validation_failed', 'Email is required', undefined, corsHeaders);
     }
     if (!password) {
-      return errorResponse(400, 'validation_failed', 'Password is required');
+      return errorResponse(400, 'validation_failed', 'Password is required', undefined, corsHeaders);
     }
 
     try {
@@ -148,13 +156,13 @@ export function createAuthHandler(config, ctx) {
         user.id,
         providerTokens.refreshToken
       );
-      return sessionResponse(accessToken, refreshToken, user);
+      return sessionResponse(accessToken, refreshToken, user, corsHeaders);
     } catch (err) {
-      return providerErrorResponse(err);
+      return providerErrorResponse(err, corsHeaders);
     }
   }
 
-  async function handleRefreshGrant(event) {
+  async function handleRefreshGrant(event, corsHeaders) {
     const body = JSON.parse(event.body || '{}');
     const { refresh_token } = body;
 
@@ -162,7 +170,9 @@ export function createAuthHandler(config, ctx) {
       return errorResponse(
         400,
         'validation_failed',
-        'Refresh token is required'
+        'Refresh token is required',
+        undefined,
+        corsHeaders
       );
     }
 
@@ -170,7 +180,7 @@ export function createAuthHandler(config, ctx) {
     try {
       claims = jwt.verifyToken(refresh_token);
     } catch {
-      return errorResponse(401, 'invalid_grant', 'Invalid refresh token');
+      return errorResponse(401, 'invalid_grant', 'Invalid refresh token', undefined, corsHeaders);
     }
 
     try {
@@ -184,13 +194,13 @@ export function createAuthHandler(config, ctx) {
         claims.sub,
         providerTokens.refreshToken
       );
-      return sessionResponse(accessToken, newRefreshToken, user);
+      return sessionResponse(accessToken, newRefreshToken, user, corsHeaders);
     } catch {
-      return errorResponse(401, 'invalid_grant', 'Invalid refresh token');
+      return errorResponse(401, 'invalid_grant', 'Invalid refresh token', undefined, corsHeaders);
     }
   }
 
-  async function handleGetUser(event) {
+  async function handleGetUser(event, corsHeaders) {
     const authHeader =
       event.headers?.Authorization || event.headers?.authorization || '';
 
@@ -198,7 +208,9 @@ export function createAuthHandler(config, ctx) {
       return errorResponse(
         401,
         'not_authenticated',
-        'Missing authorization header'
+        'Missing authorization header',
+        undefined,
+        corsHeaders
       );
     }
 
@@ -210,7 +222,9 @@ export function createAuthHandler(config, ctx) {
       return errorResponse(
         401,
         'not_authenticated',
-        'Invalid or expired token'
+        'Invalid or expired token',
+        undefined,
+        corsHeaders
       );
     }
 
@@ -221,10 +235,10 @@ export function createAuthHandler(config, ctx) {
       user_metadata: {},
       created_at: new Date().toISOString(),
     };
-    return userResponse(user);
+    return userResponse(user, corsHeaders);
   }
 
-  async function handleLogout(event) {
+  async function handleLogout(event, corsHeaders) {
     const authHeader =
       event.headers?.Authorization || event.headers?.authorization || '';
 
@@ -239,7 +253,7 @@ export function createAuthHandler(config, ctx) {
       }
     }
 
-    return logoutResponse();
+    return logoutResponse(corsHeaders);
   }
 
   function getOpenApiPaths(baseUrl) {
