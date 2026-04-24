@@ -18,6 +18,37 @@ describe('jwt.mjs', () => {
     jwt = createJwt({ jwtSecret: TEST_SECRET });
   });
 
+  describe('createJwt secret validation', () => {
+    it('throws when jwtSecret is undefined', () => {
+      assert.throws(
+        () => createJwt({ jwtSecret: undefined }),
+        (err) => {
+          assert.ok(err instanceof Error);
+          assert.ok(err.message.includes('required'));
+          return true;
+        },
+      );
+    });
+
+    it('throws when jwtSecret is short', () => {
+      assert.throws(
+        () => createJwt({ jwtSecret: 'short' }),
+        (err) => {
+          assert.ok(err instanceof Error);
+          assert.ok(err.message.includes('too short'));
+          return true;
+        },
+      );
+    });
+
+    it('returns object with expected methods for valid secret', () => {
+      const j = createJwt({ jwtSecret: 'a'.repeat(32) });
+      assert.equal(typeof j.signAccessToken, 'function');
+      assert.equal(typeof j.signRefreshToken, 'function');
+      assert.equal(typeof j.verifyToken, 'function');
+    });
+  });
+
   describe('signAccessToken', () => {
     it('produces JWT with correct claims for sub and email', () => {
       const token = jwt.signAccessToken({
@@ -136,7 +167,7 @@ describe('jwt.mjs', () => {
 
     it('throws for token signed with wrong secret', () => {
       // Sign with one secret, verify with another
-      const wrongJwt = createJwt({ jwtSecret: 'wrong-secret-key' });
+      const wrongJwt = createJwt({ jwtSecret: 'different-secret-key-for-jwt-tests-999' });
       const token = wrongJwt.signAccessToken({
         sub: 'user-wrong',
         email: 'wrong@example.com',

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import jwt from 'jsonwebtoken';
 import { createAuthorizer } from '../index.mjs';
 
-const SECRET = 'test-secret-key-for-unit-tests';
+const SECRET = 'test-secret-key-for-unit-tests-ok';
 const METHOD_ARN =
   'arn:aws:execute-api:us-east-1:123456789:abc123/prod/GET/rest/v1/todos';
 
@@ -76,13 +76,25 @@ describe('authorizer', () => {
     );
   });
 
-  it('throws Unauthorized when jwtSecret is not configured (fail-closed)', async () => {
-    const noSecretHandler = createAuthorizer({ jwtSecret: undefined }).handler;
-    const apikey = signJwt({ role: 'anon' });
-    await assert.rejects(
-      () => noSecretHandler(makeEvent({ apikey })),
-      (err) => err === 'Unauthorized',
-      'should throw Unauthorized when jwtSecret is missing',
+  it('throws at construction when jwtSecret is undefined', () => {
+    assert.throws(
+      () => createAuthorizer({ jwtSecret: undefined }),
+      (err) => {
+        assert.ok(err instanceof Error);
+        assert.ok(err.message.includes('required'));
+        return true;
+      },
+    );
+  });
+
+  it('throws at construction when jwtSecret is short', () => {
+    assert.throws(
+      () => createAuthorizer({ jwtSecret: 'short' }),
+      (err) => {
+        assert.ok(err instanceof Error);
+        assert.ok(err.message.includes('too short'));
+        return true;
+      },
     );
   });
 

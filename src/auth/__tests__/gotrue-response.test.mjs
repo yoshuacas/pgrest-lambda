@@ -210,7 +210,7 @@ describe('gotrue-response.mjs', () => {
 
   describe('session expiry consistency', () => {
     it('expires_in matches JWT exp - iat and expires_at matches JWT exp', () => {
-      const jwtHelper = createJwt({ jwtSecret: 'test-secret-for-unit-tests' });
+      const jwtHelper = createJwt({ jwtSecret: 'test-secret-for-unit-tests-ok-32' });
       const user = {
         id: 'user-123',
         email: 'test@example.com',

@@ -5,7 +5,7 @@ import { createAuthHandler } from '../handler.mjs';
 import { createJwt } from '../jwt.mjs';
 import { createAuthorizer } from '../../authorizer/index.mjs';
 
-const TEST_SECRET = 'integration-test-secret-key-1234';
+const TEST_SECRET = 'integration-test-secret-key-12345';
 
 // Mock provider for integration tests
 function createMockProvider() {

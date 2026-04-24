@@ -110,7 +110,7 @@ The factory resolves config in order: explicit values, then environment variable
 | `database.password` | `PG_PASSWORD` | `''` |
 | `database.database` | `PG_DATABASE` | `postgres` |
 | `database.ssl` | `PG_SSL` | `false` |
-| `jwtSecret` | `JWT_SECRET` | — |
+| `jwtSecret` | `JWT_SECRET` | — (required, >= 32 chars; generate with `openssl rand -base64 48`) |
 | `auth.provider` | `AUTH_PROVIDER` | `gotrue` |
 | `auth.region` | `REGION_NAME` | — |
 | `auth.clientId` | `USER_POOL_CLIENT_ID` | — |

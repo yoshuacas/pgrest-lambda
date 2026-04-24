@@ -20,6 +20,12 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
 - SAM template: Cognito resources now conditional on `AuthProvider=cognito` parameter
 - Dev server routes auth requests through combined handler
 
+### Security
+- **JWT secret strength enforcement** — `createPgrest`, `createJwt`,
+  and `createAuthorizer` now reject missing, non-string, or short
+  (< 32 character) secrets at construction time with actionable
+  error messages. Closes V-01.
+
 ### Fixed
 - **Bulk insert with `columns` query parameter** -- supabase-js sends `?columns=col1,col2,...` on array inserts. pgrest-lambda now recognizes `columns` as a reserved parameter instead of misinterpreting it as a filter. The column list controls which columns are populated from the JSON body.
 - **`Prefer: return=representation` on POST** -- insert with `.select()` or `.select().single()` now returns the created row(s) instead of null. Also passes `singleObject` mode through for `.single()` responses.

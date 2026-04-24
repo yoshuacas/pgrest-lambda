@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createAuthHandler } from '../handler.mjs';
 import { createJwt } from '../jwt.mjs';
 
-const TEST_SECRET = 'test-secret-for-handler';
+const TEST_SECRET = 'test-secret-for-handler-unit-tests';
 
 // Mock provider that responds based on email/password values
 function createMockProvider() {

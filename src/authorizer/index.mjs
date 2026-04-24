@@ -1,8 +1,11 @@
 import jwt from 'jsonwebtoken';
+import { assertJwtSecret } from '../auth/jwt.mjs';
 
 const ISSUER = 'pgrest-lambda';
 
 export function createAuthorizer(config) {
+  assertJwtSecret(config.jwtSecret);
+
   async function handler(event) {
     try {
       const secret = config.jwtSecret;

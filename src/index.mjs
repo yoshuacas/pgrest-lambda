@@ -5,7 +5,7 @@ import { createSchemaCache } from './rest/schema-cache.mjs';
 import { createCedar } from './rest/cedar.mjs';
 import { createRestHandler } from './rest/handler.mjs';
 import { createAuthHandler } from './auth/handler.mjs';
-import { createJwt } from './auth/jwt.mjs';
+import { createJwt, assertJwtSecret } from './auth/jwt.mjs';
 import { createAuthorizer } from './authorizer/index.mjs';
 
 function resolveDatabase(config) {
@@ -61,7 +61,7 @@ function resolveConfig(config) {
 
   return {
     database: dbConfig,
-    jwtSecret: config.jwtSecret || process.env.JWT_SECRET,
+    jwtSecret: config.jwtSecret ?? process.env.JWT_SECRET,
     auth: resolveAuth(config),
     region,
     policiesPath: config.policies || process.env.POLICIES_PATH || './policies',
@@ -78,6 +78,7 @@ function resolveConfig(config) {
 
 export function createPgrest(config = {}) {
   const resolved = resolveConfig(config);
+  assertJwtSecret(resolved.jwtSecret);
 
   // Build context — shared mutable state lives here
   const ctx = {
