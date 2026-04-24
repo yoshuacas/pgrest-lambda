@@ -49,7 +49,7 @@ function resolveAuth(config) {
   if (config.auth && typeof config.auth === 'object') return config.auth;
   // Fall back to env vars
   return {
-    provider: process.env.AUTH_PROVIDER || 'gotrue',
+    provider: process.env.AUTH_PROVIDER || 'cognito',
     region: process.env.REGION_NAME,
     userPoolId: process.env.USER_POOL_ID,
     clientId: process.env.USER_POOL_CLIENT_ID,

@@ -17,7 +17,9 @@ const pgrest = createPgrest({
     database: 'postgres',
   },
   jwtSecret: JWT_SECRET,
-  // auth defaults to { provider: 'gotrue' }
+  // Opt into GoTrue for local dev so no AWS Cognito is required.
+  // The library default is Cognito; dev.mjs overrides for standalone use.
+  auth: { provider: 'gotrue' },
 });
 
 // Generate dev API keys

@@ -22,7 +22,7 @@
  * @param {Object} [db] - Database adapter. Required for GoTrue, ignored by Cognito.
  */
 export async function createProvider(config, db) {
-  const name = config.provider || 'gotrue';
+  const name = config.provider || 'cognito';
   switch (name) {
     case 'cognito': {
       const { createCognitoProvider } = await import('./cognito.mjs');

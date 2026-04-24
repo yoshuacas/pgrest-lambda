@@ -22,7 +22,7 @@ Parameters:
     Default: us-east-1
   AuthProvider:
     Type: String
-    Default: gotrue
+    Default: cognito
     AllowedValues: [gotrue, cognito]
 
 Conditions:

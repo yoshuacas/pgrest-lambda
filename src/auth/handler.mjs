@@ -113,7 +113,7 @@ export function createAuthHandler(config, ctx) {
       const user = await prov.signUp(email, password);
       const { providerTokens } = await prov.signIn(email, password);
       const pool = await ctx.db.getPool();
-      const providerName = config.auth?.provider || 'gotrue';
+      const providerName = config.auth?.provider || 'cognito';
       const { sid } = await createSession(pool, {
         userId: user.id,
         provider: providerName,
@@ -162,7 +162,7 @@ export function createAuthHandler(config, ctx) {
       const prov = await getProvider();
       const { user, providerTokens } = await prov.signIn(email, password);
       const pool = await ctx.db.getPool();
-      const providerName = config.auth?.provider || 'gotrue';
+      const providerName = config.auth?.provider || 'cognito';
       const { sid } = await createSession(pool, {
         userId: user.id,
         provider: providerName,
@@ -210,7 +210,7 @@ export function createAuthHandler(config, ctx) {
       if (session.revoked) {
         return errorResponse(401, 'invalid_grant', 'Invalid refresh token', undefined, corsHeaders);
       }
-      const providerName = config.auth?.provider || 'gotrue';
+      const providerName = config.auth?.provider || 'cognito';
       if (session.provider !== providerName) {
         return errorResponse(401, 'invalid_grant', 'Invalid refresh token', undefined, corsHeaders);
       }
