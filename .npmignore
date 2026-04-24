@@ -1,0 +1,30 @@
+# Development and test files
+test/
+**/__tests__/
+**/*.test.mjs
+
+# Local dev server
+dev.mjs
+
+# Documentation not needed at runtime
+docs/
+research/
+tasks/
+schema-examples/
+AGENTS.md
+CLAUDE.md
+POSTGREST_GAP_ANALYSIS.md
+
+# Example policies (users supply their own)
+policies/
+
+# Tooling and agent state
+.kiro/
+.maintainer-last-run
+.github/
+
+# Build artifacts
+.aws-sam/
+coverage/
+*.log
+.DS_Store

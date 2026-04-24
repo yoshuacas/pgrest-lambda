@@ -8,6 +8,10 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
 
 ## Unreleased
 
+## 0.2.0 — 2026-04-24
+
+Cognito is the default auth provider. This release hardens JWT handling, refresh-token storage, and TLS verification, and introduces the opt-in GoTrue-native auth provider for deployments that want to avoid an AWS Cognito dependency.
+
 ### Added
 - **GoTrue-native auth provider** (opt-in via `AUTH_PROVIDER=gotrue`) — users and refresh tokens stored directly in PostgreSQL (DSQL-compatible), for deployments that want to avoid an AWS Cognito dependency
 - **Password validation** with configurable policy (min 8 chars, uppercase, lowercase, numbers) — GoTrue provider
