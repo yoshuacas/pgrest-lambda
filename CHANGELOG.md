@@ -21,6 +21,9 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
 - Dev server routes auth requests through combined handler
 
 ### Security
+- **JWT algorithm pinning** — all `jwt.sign` and `jwt.verify` calls
+  now explicitly specify `HS256` via a shared `JWT_ALGORITHM` constant,
+  closing algorithm-confusion attacks per RFC 8725 §3.1. Closes V-02.
 - **JWT secret strength enforcement** — `createPgrest`, `createJwt`,
   and `createAuthorizer` now reject missing, non-string, or short
   (< 32 character) secrets at construction time with actionable

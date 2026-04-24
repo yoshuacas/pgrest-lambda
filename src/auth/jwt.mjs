@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import { SESSION_EXPIRY_SECONDS } from './constants.mjs';
 
 const ISSUER = 'pgrest-lambda';
+export const JWT_ALGORITHM = 'HS256';
 
 export function assertJwtSecret(secret) {
   if (secret === undefined || secret === null) {
@@ -36,7 +37,7 @@ export function createJwt(config) {
     return jwt.sign(
       { sub, email, role: 'authenticated', aud: 'authenticated' },
       secret,
-      { issuer: ISSUER, expiresIn: SESSION_EXPIRY_SECONDS }
+      { algorithm: JWT_ALGORITHM, issuer: ISSUER, expiresIn: SESSION_EXPIRY_SECONDS }
     );
   }
 
@@ -44,12 +45,12 @@ export function createJwt(config) {
     return jwt.sign(
       { sub, role: 'authenticated', prt: providerRefreshToken },
       secret,
-      { issuer: ISSUER, expiresIn: '30d' }
+      { algorithm: JWT_ALGORITHM, issuer: ISSUER, expiresIn: '30d' }
     );
   }
 
   function verifyToken(token) {
-    return jwt.verify(token, secret, { issuer: ISSUER });
+    return jwt.verify(token, secret, { algorithms: [JWT_ALGORITHM], issuer: ISSUER });
   }
 
   return { signAccessToken, signRefreshToken, verifyToken };

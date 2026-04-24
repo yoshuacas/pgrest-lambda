@@ -114,4 +114,72 @@ describe('authorizer', () => {
       'should throw Unauthorized for invalid role',
     );
   });
+
+  describe('algorithm pinning', () => {
+    function forgeToken(alg, payload, signature = 'fakesig') {
+      const header = Buffer.from(
+        JSON.stringify({ alg, typ: 'JWT' }),
+      ).toString('base64url');
+      const body = Buffer.from(
+        JSON.stringify({
+          role: 'anon',
+          iss: 'pgrest-lambda',
+          iat: Math.floor(Date.now() / 1000),
+          exp: Math.floor(Date.now() / 1000) + 3600,
+          ...payload,
+        }),
+      ).toString('base64url');
+      return `${header}.${body}.${signature}`;
+    }
+
+    it('rejects apikey with alg: none', async () => {
+      const apikey = forgeToken('none', { role: 'anon' }, '');
+      await assert.rejects(
+        () => handler(makeEvent({ apikey })),
+        (err) => err === 'Unauthorized',
+        'should reject alg:none apikey',
+      );
+    });
+
+    it('rejects apikey with alg: RS256', async () => {
+      const apikey = forgeToken('RS256', { role: 'anon' });
+      await assert.rejects(
+        () => handler(makeEvent({ apikey })),
+        (err) => err === 'Unauthorized',
+        'should reject RS256 apikey',
+      );
+    });
+
+    it('rejects bearer with alg: none', async () => {
+      const apikey = signJwt({ role: 'anon' });
+      const bearer = forgeToken('none', {
+        role: 'authenticated',
+        sub: 'attacker',
+      }, '');
+      await assert.rejects(
+        () => handler(makeEvent({
+          apikey,
+          authorization: `Bearer ${bearer}`,
+        })),
+        (err) => err === 'Unauthorized',
+        'should reject alg:none bearer',
+      );
+    });
+
+    it('rejects bearer with alg: RS256', async () => {
+      const apikey = signJwt({ role: 'anon' });
+      const bearer = forgeToken('RS256', {
+        role: 'authenticated',
+        sub: 'attacker',
+      });
+      await assert.rejects(
+        () => handler(makeEvent({
+          apikey,
+          authorization: `Bearer ${bearer}`,
+        })),
+        (err) => err === 'Unauthorized',
+        'should reject RS256 bearer',
+      );
+    });
+  });
 });

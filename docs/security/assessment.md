@@ -33,7 +33,7 @@ Rule: when a finding's fix relies on a capability not present on all supported b
 | ID | Severity | Finding | Status | Notes |
 |---|---|---|---|---|
 | [V-01](findings/V-01-jwt-secret-strength.md) | Critical | No JWT secret strength enforcement | Fixed | Closes V-01; `assertJwtSecret` enforced at all entry points |
-| [V-02](findings/V-02-jwt-algorithm-pinning.md) | Critical | JWT algorithm not pinned | Open | Confirmed; 2 verify sites |
+| [V-02](findings/V-02-jwt-algorithm-pinning.md) | Critical | JWT algorithm not pinned | Fixed | Pinned HS256 at all sign/verify sites via shared constant |
 | [V-03](findings/V-03-cors-wildcard.md) | High | CORS wildcard with header-based auth | Open | Confirmed; static `*` |
 | [V-04](findings/V-04-ssl-cert-validation.md) | High | SSL cert validation disabled | Open | **Worse than audit:** opting into TLS still disables verify |
 | [V-05](findings/V-05-on-conflict-injection.md) | High | Identifier injection via `on_conflict` | Open | Confirmed at HEAD |

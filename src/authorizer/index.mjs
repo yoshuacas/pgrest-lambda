@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { assertJwtSecret } from '../auth/jwt.mjs';
+import { assertJwtSecret, JWT_ALGORITHM } from '../auth/jwt.mjs';
 
 const ISSUER = 'pgrest-lambda';
 
@@ -17,7 +17,7 @@ export function createAuthorizer(config) {
       // 1. Validate apikey
       if (!apikey) throw 'Unauthorized';
       const apikeyPayload = jwt.verify(apikey, secret,
-        { issuer: ISSUER });
+        { algorithms: [JWT_ALGORITHM], issuer: ISSUER });
       if (!['anon', 'service_role'].includes(apikeyPayload.role))
         throw 'Unauthorized';
 
@@ -29,7 +29,7 @@ export function createAuthorizer(config) {
       if (authHeader.startsWith('Bearer ')) {
         const token = authHeader.slice(7);
         const payload = jwt.verify(token, secret,
-          { issuer: ISSUER });
+          { algorithms: [JWT_ALGORITHM], issuer: ISSUER });
         role = payload.role;
         userId = payload.sub || '';
         email = payload.email || '';

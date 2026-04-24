@@ -1,6 +1,7 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { createJwt } from '../jwt.mjs';
+import crypto from 'node:crypto';
+import { createJwt, JWT_ALGORITHM } from '../jwt.mjs';
 
 const TEST_SECRET = 'test-secret-key-for-jwt-tests-1234567890';
 
@@ -222,6 +223,64 @@ describe('jwt.mjs', () => {
           );
           return true;
         }
+      );
+    });
+  });
+
+  describe('algorithm pinning', () => {
+    it('exports JWT_ALGORITHM as HS256', () => {
+      assert.equal(JWT_ALGORITHM, 'HS256');
+    });
+
+    it('round-trips HS256 tokens successfully', () => {
+      const token = jwt.signAccessToken({
+        sub: 'user-alg',
+        email: 'alg@example.com',
+      });
+      const payload = jwt.verifyToken(token);
+      assert.equal(payload.sub, 'user-alg');
+      assert.equal(payload.email, 'alg@example.com');
+    });
+
+    it('rejects a token with alg: none', () => {
+      const header = Buffer.from(
+        JSON.stringify({ alg: 'none', typ: 'JWT' }),
+      ).toString('base64url');
+      const payload = Buffer.from(
+        JSON.stringify({
+          sub: 'attacker',
+          role: 'authenticated',
+          iss: 'pgrest-lambda',
+          iat: Math.floor(Date.now() / 1000),
+          exp: Math.floor(Date.now() / 1000) + 3600,
+        }),
+      ).toString('base64url');
+      const forgedToken = `${header}.${payload}.`;
+
+      assert.throws(
+        () => jwt.verifyToken(forgedToken),
+        { name: 'JsonWebTokenError' },
+      );
+    });
+
+    it('rejects a token with alg: RS256', () => {
+      const header = Buffer.from(
+        JSON.stringify({ alg: 'RS256', typ: 'JWT' }),
+      ).toString('base64url');
+      const payload = Buffer.from(
+        JSON.stringify({
+          sub: 'attacker',
+          role: 'authenticated',
+          iss: 'pgrest-lambda',
+          iat: Math.floor(Date.now() / 1000),
+          exp: Math.floor(Date.now() / 1000) + 3600,
+        }),
+      ).toString('base64url');
+      const forgedToken = `${header}.${payload}.fakesignature`;
+
+      assert.throws(
+        () => jwt.verifyToken(forgedToken),
+        (err) => err.message.includes('invalid algorithm'),
       );
     });
   });
