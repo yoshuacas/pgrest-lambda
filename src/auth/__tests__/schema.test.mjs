@@ -80,4 +80,14 @@ describe('ensureAuthSchema', () => {
       'should execute all DDL statements again after reset'
     );
   });
+
+  it('AUTH_SCHEMA_SQL includes sessions DDL', () => {
+    const hasSessionsDDL = AUTH_SCHEMA_SQL.some(
+      (sql) => sql.includes('auth.sessions')
+    );
+    assert.ok(
+      hasSessionsDDL,
+      'AUTH_SCHEMA_SQL should include auth.sessions DDL'
+    );
+  });
 });

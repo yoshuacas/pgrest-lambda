@@ -41,9 +41,9 @@ export function createJwt(config) {
     );
   }
 
-  function signRefreshToken(sub, providerRefreshToken) {
+  function signRefreshToken(sub, sid) {
     return jwt.sign(
-      { sub, role: 'authenticated', prt: providerRefreshToken },
+      { sub, role: 'authenticated', sid },
       secret,
       { algorithm: JWT_ALGORITHM, issuer: ISSUER, expiresIn: '30d' }
     );

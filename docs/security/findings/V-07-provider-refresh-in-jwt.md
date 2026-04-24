@@ -1,7 +1,7 @@
 # V-07 — Provider refresh token embedded in JWT `prt` claim
 
 - **Severity (reported):** High
-- **Status:** Open
+- **Status:** Fixed
 - **Affected (reported):** `src/auth/jwt.mjs:17-20`, `src/auth/handler.mjs:104-107, 147-150`
 - **Backend dependence:** None (auth-provider dependent, not DB-dependent)
 
@@ -11,7 +11,7 @@
 
 ## Our analysis
 
-**Status: still open at HEAD.**
+**Status: fixed at HEAD.**
 
 - `src/auth/jwt.mjs:17-22` — `signRefreshToken(sub, providerRefreshToken)` puts `prt: providerRefreshToken` directly in the JWT payload, 30-day expiry.
 - `src/auth/handler.mjs:104-107, 147-150, 183-186` — all three paths (signup, password grant, refresh grant) feed the provider token in.
@@ -23,11 +23,11 @@
 
 ## Decision
 
-_Pending triage._
+Fixed. Session-ID indirection replaces the prt claim with an opaque sid referencing auth.sessions.
 
 ## Evidence
 
-_Commit / test / doc link when fixed._
+Design: docs/design/security-v07-session-id-indirection.md
 
 ## Residual risk
 
@@ -35,4 +35,4 @@ Session-ID model introduces a DB lookup on every refresh (small cost). Token sto
 
 ## Reviewer handoff
 
-_Two-sentence summary for the reviewer agent._
+signRefreshToken now emits a sid claim (UUID referencing auth.sessions) instead of the provider refresh token. The handler resolves the session server-side on refresh and rejects pre-upgrade tokens with a hard cut to 401.

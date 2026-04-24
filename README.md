@@ -438,6 +438,11 @@ refresh issues a new token and invalidates the old one. If a
 previously-used token is replayed, the entire token family is
 revoked.
 
+Refresh JWTs carry an opaque session ID (`sid`) instead of
+the provider token. The actual provider refresh token is
+stored server-side in `auth.sessions` and resolved on each
+refresh request.
+
 To use Cognito instead, set `AUTH_PROVIDER=cognito` (or pass
 `auth: { provider: 'cognito', ... }` in code).
 

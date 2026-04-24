@@ -132,14 +132,67 @@ const SERVICE_ROLE_KEY = signJwt({
   exp: Math.floor(Date.now() / 1000) + 3600,
 });
 
+function decodePayload(token) {
+  const parts = token.split('.');
+  return JSON.parse(Buffer.from(parts[1], 'base64url').toString());
+}
+
+function createSessionMockPool() {
+  const queries = [];
+  const sessions = new Map();
+  let sidCounter = 0;
+
+  return {
+    queries,
+    query: async (sql, params) => {
+      queries.push({ sql, params });
+      if (sql.includes('INSERT INTO auth.sessions')) {
+        const sid = `session-${++sidCounter}`;
+        sessions.set(sid, {
+          id: sid,
+          user_id: params?.[0],
+          provider: params?.[1],
+          prt: params?.[2],
+          revoked: false,
+        });
+        return { rows: [{ id: sid }] };
+      }
+      if (sql.includes('FROM auth.sessions WHERE id')) {
+        const row = sessions.get(params?.[0]);
+        return { rows: row ? [row] : [] };
+      }
+      if (sql.includes('UPDATE auth.sessions SET prt')) {
+        const row = sessions.get(params?.[1]);
+        if (row) row.prt = params[0];
+        return { rows: [] };
+      }
+      if (sql.includes('UPDATE auth.sessions SET revoked')) {
+        if (sql.includes('user_id')) {
+          for (const [, row] of sessions) {
+            if (row.user_id === params?.[0]) row.revoked = true;
+          }
+        }
+        return { rows: [] };
+      }
+      return { rows: [] };
+    },
+  };
+}
+
 describe('integration tests', () => {
   let authHandler;
   let _setProvider;
   let authorizer;
+  let mockPool;
 
   beforeEach(() => {
+    mockPool = createSessionMockPool();
     const jwt = createJwt({ jwtSecret: TEST_SECRET });
-    const ctx = { jwt, authProvider: null };
+    const ctx = {
+      jwt,
+      authProvider: null,
+      db: { getPool: async () => mockPool },
+    };
     const authResult = createAuthHandler(
       { auth: { provider: 'cognito' }, jwtSecret: TEST_SECRET },
       ctx,
@@ -200,6 +253,25 @@ describe('integration tests', () => {
       userBody.id,
       signupBody.user.id,
       'GET /user id should match signup user id'
+    );
+
+    const insertSession = mockPool.queries.find(
+      (q) => q.sql?.includes('INSERT INTO auth.sessions')
+    );
+    assert.ok(
+      insertSession,
+      'signup should create a session (INSERT INTO auth.sessions)'
+    );
+    const refreshPayload = decodePayload(signupBody.refresh_token);
+    assert.equal(
+      typeof refreshPayload.sid,
+      'string',
+      'signup refresh JWT should contain sid'
+    );
+    assert.equal(
+      refreshPayload.prt,
+      undefined,
+      'signup refresh JWT should not contain prt'
     );
   });
 
@@ -312,6 +384,28 @@ describe('integration tests', () => {
       getUserRes.statusCode,
       200,
       'new access_token should work for GET /user'
+    );
+
+    const insertSession = mockPool.queries.find(
+      (q) => q.sql?.includes('INSERT INTO auth.sessions')
+    );
+    assert.ok(
+      insertSession,
+      'signin should create a session (INSERT INTO auth.sessions)'
+    );
+    const selectSession = mockPool.queries.find(
+      (q) => q.sql?.includes('FROM auth.sessions WHERE id')
+    );
+    assert.ok(
+      selectSession,
+      'refresh should resolve session (SELECT FROM auth.sessions)'
+    );
+    const updateSession = mockPool.queries.find(
+      (q) => q.sql?.includes('UPDATE auth.sessions')
+    );
+    assert.ok(
+      updateSession,
+      'refresh should update session prt (UPDATE auth.sessions)'
     );
   });
 

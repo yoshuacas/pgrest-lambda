@@ -88,9 +88,9 @@ describe('jwt.mjs', () => {
   });
 
   describe('signRefreshToken', () => {
-    it('produces JWT with sub, role, iss, prt and ~30d expiry', () => {
-      const providerToken = 'cognito-refresh-token-abc';
-      const token = jwt.signRefreshToken('user-123', providerToken);
+    it('produces JWT with sub, role, iss, sid and ~30d expiry', () => {
+      const sid = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+      const token = jwt.signRefreshToken('user-123', sid);
 
       assert.equal(typeof token, 'string', 'should return a string');
 
@@ -103,9 +103,14 @@ describe('jwt.mjs', () => {
       );
       assert.equal(payload.iss, 'pgrest-lambda', 'issuer should be pgrest-lambda');
       assert.equal(
+        payload.sid,
+        sid,
+        'sid should contain session ID'
+      );
+      assert.equal(
         payload.prt,
-        providerToken,
-        'prt should contain provider refresh token'
+        undefined,
+        'prt should not be present'
       );
 
       // ~30d expiry: exp - iat should be approximately 2592000

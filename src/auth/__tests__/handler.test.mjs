@@ -2,6 +2,7 @@ import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { createAuthHandler } from '../handler.mjs';
 import { createJwt } from '../jwt.mjs';
+import { createHmac } from 'node:crypto';
 
 const TEST_SECRET = 'test-secret-for-handler-unit-tests';
 
@@ -94,14 +95,67 @@ function parseBody(response) {
   return JSON.parse(response.body);
 }
 
+function decodePayload(token) {
+  const parts = token.split('.');
+  return JSON.parse(Buffer.from(parts[1], 'base64url').toString());
+}
+
+function b64url(str) {
+  return Buffer.from(str).toString('base64url');
+}
+
+function signJwt(payload) {
+  const header = { alg: 'HS256', typ: 'JWT' };
+  const now = Math.floor(Date.now() / 1000);
+  const fullPayload = { iat: now, ...payload };
+  const segments = [
+    b64url(JSON.stringify(header)),
+    b64url(JSON.stringify(fullPayload)),
+  ];
+  const sig = createHmac('sha256', TEST_SECRET)
+    .update(segments.join('.'))
+    .digest('base64url');
+  return [...segments, sig].join('.');
+}
+
 describe('handler.mjs', () => {
   let handler;
   let _setProvider;
   let jwt;
+  let mockPoolQueries;
+  let mockSessionRow;
 
   beforeEach(() => {
     jwt = createJwt({ jwtSecret: TEST_SECRET });
-    const ctx = { jwt, authProvider: null };
+    mockSessionRow = {
+      user_id: 'test-user-id-123',
+      provider: 'cognito',
+      prt: 'stored-provider-token',
+      revoked: false,
+    };
+    mockPoolQueries = [];
+    const mockPool = {
+      query: async (sql, params) => {
+        mockPoolQueries.push({ sql, params });
+        if (sql.includes('INSERT INTO auth.sessions')) {
+          return { rows: [{ id: 'mock-session-id' }] };
+        }
+        if (sql.includes('FROM auth.sessions WHERE id')) {
+          return mockSessionRow
+            ? { rows: [mockSessionRow] }
+            : { rows: [] };
+        }
+        if (sql.includes('UPDATE auth.sessions')) {
+          return { rows: [] };
+        }
+        return { rows: [] };
+      },
+    };
+    const ctx = {
+      jwt,
+      authProvider: null,
+      db: { getPool: async () => mockPool },
+    };
     const result = createAuthHandler(
       { auth: { provider: 'cognito' }, jwtSecret: TEST_SECRET },
       ctx,
@@ -294,6 +348,31 @@ describe('handler.mjs', () => {
         'An unexpected error occurred'
       );
     });
+
+    it('Signup: refresh token contains sid not prt', async () => {
+      const event = makeEvent({
+        body: {
+          email: 'newsid@example.com',
+          password: 'StrongPass1',
+        },
+      });
+
+      const res = await handler(event);
+
+      assert.equal(res.statusCode, 200, 'status should be 200');
+      const body = parseBody(res);
+      const refreshPayload = decodePayload(body.refresh_token);
+      assert.equal(
+        typeof refreshPayload.sid,
+        'string',
+        'refresh JWT should contain sid as string'
+      );
+      assert.equal(
+        refreshPayload.prt,
+        undefined,
+        'refresh JWT should not contain prt'
+      );
+    });
   });
 
   describe('POST /auth/v1/token?grant_type=password', () => {
@@ -367,6 +446,33 @@ describe('handler.mjs', () => {
       assert.equal(
         body.error_description,
         'Invalid login credentials'
+      );
+    });
+
+    it('Password grant: refresh token contains sid not prt', async () => {
+      const event = makeEvent({
+        path: '/auth/v1/token',
+        query: { grant_type: 'password' },
+        body: {
+          email: 'test@example.com',
+          password: 'StrongPass1',
+        },
+      });
+
+      const res = await handler(event);
+
+      assert.equal(res.statusCode, 200, 'status should be 200');
+      const body = parseBody(res);
+      const refreshPayload = decodePayload(body.refresh_token);
+      assert.equal(
+        typeof refreshPayload.sid,
+        'string',
+        'refresh JWT should contain sid as string'
+      );
+      assert.equal(
+        refreshPayload.prt,
+        undefined,
+        'refresh JWT should not contain prt'
       );
     });
   });
@@ -469,6 +575,178 @@ describe('handler.mjs', () => {
         'Invalid refresh token'
       );
     });
+
+    it('Refresh grant: JWT with sid is accepted', async () => {
+      let refreshCalledWith;
+      const spyProvider = {
+        ...createMockProvider(),
+        async refreshToken(prt) {
+          refreshCalledWith = prt;
+          return {
+            user: {
+              id: 'test-user-id-123',
+              email: 'test@example.com',
+              app_metadata: { provider: 'email', providers: ['email'] },
+              user_metadata: {},
+              created_at: '2026-04-11T12:00:00.000Z',
+            },
+            providerTokens: {
+              accessToken: 'new-access',
+              refreshToken: 'new-provider-refresh-token',
+              idToken: 'new-id',
+            },
+          };
+        },
+      };
+      _setProvider(spyProvider);
+
+      const refreshJwt = signJwt({
+        sub: 'test-user-id-123',
+        role: 'authenticated',
+        sid: 'mock-session-id',
+        iss: 'pgrest-lambda',
+        exp: Math.floor(Date.now() / 1000) + 86400 * 30,
+      });
+
+      const event = makeEvent({
+        path: '/auth/v1/token',
+        query: { grant_type: 'refresh_token' },
+        body: { refresh_token: refreshJwt },
+      });
+
+      const res = await handler(event);
+
+      assert.equal(res.statusCode, 200, 'status should be 200');
+      const body = parseBody(res);
+      assert.ok(body.access_token, 'should have new access_token');
+      assert.ok(body.refresh_token, 'should have new refresh_token');
+
+      assert.equal(
+        refreshCalledWith,
+        'stored-provider-token',
+        'prov.refreshToken should be called with stored prt from session'
+      );
+
+      const updateQuery = mockPoolQueries.find(
+        (q) => q.sql?.includes('UPDATE auth.sessions SET prt')
+      );
+      assert.ok(updateQuery, 'should call updateSessionPrt');
+      assert.deepEqual(
+        updateQuery.params,
+        ['new-provider-refresh-token', 'mock-session-id'],
+        'updateSessionPrt should receive new prt and session id'
+      );
+
+      const refreshPayload = decodePayload(body.refresh_token);
+      assert.equal(
+        refreshPayload.sid,
+        'mock-session-id',
+        'new refresh JWT should contain sid'
+      );
+      assert.equal(
+        refreshPayload.prt,
+        undefined,
+        'new refresh JWT should not contain prt'
+      );
+    });
+
+    it('Refresh grant: JWT with prt but no sid rejected', async () => {
+      const oldFormatJwt = signJwt({
+        sub: 'test-user-id-123',
+        role: 'authenticated',
+        prt: 'old-provider-token',
+        iss: 'pgrest-lambda',
+        exp: Math.floor(Date.now() / 1000) + 86400 * 30,
+      });
+
+      const event = makeEvent({
+        path: '/auth/v1/token',
+        query: { grant_type: 'refresh_token' },
+        body: { refresh_token: oldFormatJwt },
+      });
+
+      const res = await handler(event);
+
+      assert.equal(res.statusCode, 401, 'status should be 401');
+      const body = parseBody(res);
+      assert.equal(body.error, 'invalid_grant');
+      assert.equal(
+        body.error_description,
+        'Invalid refresh token'
+      );
+    });
+
+    it('Refresh grant: revoked session returns invalid_grant', async () => {
+      mockSessionRow = { ...mockSessionRow, revoked: true };
+
+      const refreshJwt = signJwt({
+        sub: 'test-user-id-123',
+        role: 'authenticated',
+        sid: 'mock-session-id',
+        iss: 'pgrest-lambda',
+        exp: Math.floor(Date.now() / 1000) + 86400 * 30,
+      });
+
+      const event = makeEvent({
+        path: '/auth/v1/token',
+        query: { grant_type: 'refresh_token' },
+        body: { refresh_token: refreshJwt },
+      });
+
+      const res = await handler(event);
+
+      assert.equal(res.statusCode, 401, 'status should be 401');
+      const body = parseBody(res);
+      assert.equal(body.error, 'invalid_grant');
+    });
+
+    it('Refresh grant: nonexistent session returns invalid_grant', async () => {
+      mockSessionRow = null;
+
+      const refreshJwt = signJwt({
+        sub: 'test-user-id-123',
+        role: 'authenticated',
+        sid: 'nonexistent-session-id',
+        iss: 'pgrest-lambda',
+        exp: Math.floor(Date.now() / 1000) + 86400 * 30,
+      });
+
+      const event = makeEvent({
+        path: '/auth/v1/token',
+        query: { grant_type: 'refresh_token' },
+        body: { refresh_token: refreshJwt },
+      });
+
+      const res = await handler(event);
+
+      assert.equal(res.statusCode, 401, 'status should be 401');
+      const body = parseBody(res);
+      assert.equal(body.error, 'invalid_grant');
+    });
+
+    it('Refresh grant: provider mismatch returns invalid_grant', async () => {
+      mockSessionRow = { ...mockSessionRow, provider: 'gotrue' };
+
+      const refreshJwt = signJwt({
+        sub: 'test-user-id-123',
+        role: 'authenticated',
+        sid: 'mock-session-id',
+        iss: 'pgrest-lambda',
+        exp: Math.floor(Date.now() / 1000) + 86400 * 30,
+      });
+
+      const event = makeEvent({
+        path: '/auth/v1/token',
+        query: { grant_type: 'refresh_token' },
+        body: { refresh_token: refreshJwt },
+      });
+
+      const res = await handler(event);
+
+      assert.equal(res.statusCode, 401, 'status should be 401');
+      const body = parseBody(res);
+      assert.equal(body.error, 'invalid_grant');
+    });
   });
 
   describe('GET /auth/v1/user', () => {
@@ -541,6 +819,35 @@ describe('handler.mjs', () => {
       const res = await handler(event);
 
       assert.equal(res.statusCode, 204, 'status should be 204');
+    });
+
+    it('Logout: revokes all user sessions', async () => {
+      const accessToken = jwt.signAccessToken({
+        sub: 'test-user-id-123',
+        email: 'test@example.com',
+      });
+      const event = makeEvent({
+        method: 'POST',
+        path: '/auth/v1/logout',
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      await handler(event);
+
+      const revokeQuery = mockPoolQueries.find(
+        (q) =>
+          q.sql?.includes(
+            'UPDATE auth.sessions SET revoked = true'
+          ) && q.sql?.includes('user_id')
+      );
+      assert.ok(
+        revokeQuery,
+        'should call revokeUserSessions'
+      );
+      assert.ok(
+        revokeQuery.params.includes('test-user-id-123'),
+        'revokeUserSessions should be called with claims.sub'
+      );
     });
   });
 

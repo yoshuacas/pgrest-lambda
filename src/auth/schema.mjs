@@ -29,6 +29,18 @@ export const AUTH_SCHEMA_SQL = [
   'CREATE UNIQUE INDEX IF NOT EXISTS auth_refresh_tokens_token_idx ON auth.refresh_tokens (token)',
 
   'CREATE INDEX IF NOT EXISTS auth_refresh_tokens_user_id_idx ON auth.refresh_tokens (user_id)',
+
+  `CREATE TABLE IF NOT EXISTS auth.sessions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL,
+    provider TEXT NOT NULL,
+    prt TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    revoked BOOLEAN NOT NULL DEFAULT false
+  )`,
+
+  'CREATE INDEX IF NOT EXISTS auth_sessions_user_id_idx ON auth.sessions (user_id)',
 ];
 
 let initialized = false;

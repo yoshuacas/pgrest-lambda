@@ -21,6 +21,9 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
 - Dev server routes auth requests through combined handler
 
 ### Security
+- **V-07**: Refresh JWTs no longer carry the provider refresh token.
+  The `prt` claim is replaced by an opaque `sid` referencing a
+  server-side session in `auth.sessions`. Closes V-07 (High).
 - **V-05**: Validate `on_conflict` column identifiers against the
   schema cache via `validateCol`, closing the last unvalidated
   identifier-interpolation path in `sql-builder.mjs`. Invalid
@@ -42,6 +45,12 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
   and `createAuthorizer` now reject missing, non-string, or short
   (< 32 character) secrets at construction time with actionable
   error messages. Closes V-01.
+
+### Breaking
+- Refresh tokens issued before this version are rejected on
+  upgrade. Clients must re-authenticate. Cognito deployments
+  now require a PostgreSQL database for session storage
+  (`auth.sessions` table).
 
 ### Fixed
 - **Bulk insert with `columns` query parameter** -- supabase-js sends `?columns=col1,col2,...` on array inserts. pgrest-lambda now recognizes `columns` as a reserved parameter instead of misinterpreting it as a filter. The column list controls which columns are populated from the JSON body.

@@ -6,6 +6,12 @@ import {
   errorResponse,
 } from './gotrue-response.mjs';
 import { buildCorsHeaders } from '../shared/cors.mjs';
+import {
+  createSession,
+  resolveSession,
+  updateSessionPrt,
+  revokeUserSessions,
+} from './sessions.mjs';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -106,11 +112,15 @@ export function createAuthHandler(config, ctx) {
       const prov = await getProvider();
       const user = await prov.signUp(email, password);
       const { providerTokens } = await prov.signIn(email, password);
+      const pool = await ctx.db.getPool();
+      const providerName = config.auth?.provider || 'gotrue';
+      const { sid } = await createSession(pool, {
+        userId: user.id,
+        provider: providerName,
+        prt: providerTokens.refreshToken,
+      });
       const accessToken = jwt.signAccessToken({ sub: user.id, email });
-      const refreshToken = jwt.signRefreshToken(
-        user.id,
-        providerTokens.refreshToken
-      );
+      const refreshToken = jwt.signRefreshToken(user.id, sid);
       return sessionResponse(accessToken, refreshToken, user, corsHeaders);
     } catch (err) {
       return providerErrorResponse(err, corsHeaders);
@@ -151,11 +161,15 @@ export function createAuthHandler(config, ctx) {
     try {
       const prov = await getProvider();
       const { user, providerTokens } = await prov.signIn(email, password);
+      const pool = await ctx.db.getPool();
+      const providerName = config.auth?.provider || 'gotrue';
+      const { sid } = await createSession(pool, {
+        userId: user.id,
+        provider: providerName,
+        prt: providerTokens.refreshToken,
+      });
       const accessToken = jwt.signAccessToken({ sub: user.id, email: user.email });
-      const refreshToken = jwt.signRefreshToken(
-        user.id,
-        providerTokens.refreshToken
-      );
+      const refreshToken = jwt.signRefreshToken(user.id, sid);
       return sessionResponse(accessToken, refreshToken, user, corsHeaders);
     } catch (err) {
       return providerErrorResponse(err, corsHeaders);
@@ -183,17 +197,32 @@ export function createAuthHandler(config, ctx) {
       return errorResponse(401, 'invalid_grant', 'Invalid refresh token', undefined, corsHeaders);
     }
 
+    if (!claims.sid) {
+      return errorResponse(401, 'invalid_grant', 'Invalid refresh token', undefined, corsHeaders);
+    }
+
     try {
+      const pool = await ctx.db.getPool();
+      const session = await resolveSession(pool, claims.sid);
+      if (!session) {
+        return errorResponse(401, 'invalid_grant', 'Invalid refresh token', undefined, corsHeaders);
+      }
+      if (session.revoked) {
+        return errorResponse(401, 'invalid_grant', 'Invalid refresh token', undefined, corsHeaders);
+      }
+      const providerName = config.auth?.provider || 'gotrue';
+      if (session.provider !== providerName) {
+        return errorResponse(401, 'invalid_grant', 'Invalid refresh token', undefined, corsHeaders);
+      }
+
       const prov = await getProvider();
-      const { user, providerTokens } = await prov.refreshToken(claims.prt);
+      const { user, providerTokens } = await prov.refreshToken(session.prt);
+      await updateSessionPrt(pool, claims.sid, providerTokens.refreshToken);
       const accessToken = jwt.signAccessToken({
         sub: claims.sub,
         email: user.email,
       });
-      const newRefreshToken = jwt.signRefreshToken(
-        claims.sub,
-        providerTokens.refreshToken
-      );
+      const newRefreshToken = jwt.signRefreshToken(claims.sub, claims.sid);
       return sessionResponse(accessToken, newRefreshToken, user, corsHeaders);
     } catch {
       return errorResponse(401, 'invalid_grant', 'Invalid refresh token', undefined, corsHeaders);
@@ -246,6 +275,8 @@ export function createAuthHandler(config, ctx) {
       const token = authHeader.slice(7);
       try {
         const claims = jwt.verifyToken(token);
+        const pool = await ctx.db.getPool();
+        await revokeUserSessions(pool, claims.sub);
         const prov = await getProvider();
         await prov.signOut(claims.sub);
       } catch {
