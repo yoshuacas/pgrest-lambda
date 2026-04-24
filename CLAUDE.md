@@ -31,8 +31,8 @@ pgrest-lambda/
 │   │   ├── gotrue-response.mjs # GoTrue response formatting
 │   │   └── providers/         # Swappable auth backends
 │   │       ├── interface.mjs  # Provider contract (typedef)
-│   │       ├── gotrue.mjs     # GoTrue-native (default)
-│   │       └── cognito.mjs    # Amazon Cognito (optional)
+│   │       ├── cognito.mjs    # Amazon Cognito (default)
+│   │       └── gotrue.mjs     # GoTrue-native (optional, DB-only)
 │   ├── authorizer/            # API Gateway Lambda authorizer
 │   │   └── index.mjs
 │   └── shared/
@@ -61,7 +61,7 @@ When adding new database features, ensure they work with both modes. Do not add 
 5. **All SQL must be parameterized** — no string interpolation of user input. The sql-builder uses `$1`, `$2`, etc. exclusively.
 6. **REST API Gateway, not HTTP API** — required for REQUEST-type Lambda authorizer with header caching.
 7. **`@supabase/supabase-js` compatibility is a hard requirement** — the REST and auth APIs must remain wire-compatible with Supabase client libraries. Test against supabase-js before breaking response formats.
-8. **Auth providers are swappable** — GoTrue-native is the default, storing users in the `auth` schema of the same PostgreSQL database. Cognito is available as an optional provider (`AUTH_PROVIDER=cognito`). The provider interface in `src/auth/providers/interface.mjs` defines the contract. Future providers (Auth0, etc.) must implement the same interface.
+8. **Auth providers are swappable** — Amazon Cognito is the default (`AUTH_PROVIDER=cognito`, or unset). A GoTrue-native provider is available as an opt-in (`AUTH_PROVIDER=gotrue`) that stores users in the `auth` schema of the same PostgreSQL database for deployments that want to avoid an AWS Cognito dependency. The provider interface in `src/auth/providers/interface.mjs` defines the contract. Future providers (Auth0, etc.) must implement the same interface.
 9. **Schema introspection targets the `public` schema only** — this is intentional and matches PostgREST defaults.
 10. **OpenAPI spec is auto-generated** — never hand-write endpoint definitions. The spec comes from live schema introspection.
 

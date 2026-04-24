@@ -9,16 +9,16 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
 ## Unreleased
 
 ### Added
-- **GoTrue-native auth provider as default** — users and refresh tokens stored directly in PostgreSQL (DSQL-compatible)
-- **Password validation** with configurable policy (min 8 chars, uppercase, lowercase, numbers)
+- **GoTrue-native auth provider** (opt-in via `AUTH_PROVIDER=gotrue`) — users and refresh tokens stored directly in PostgreSQL (DSQL-compatible), for deployments that want to avoid an AWS Cognito dependency
+- **Password validation** with configurable policy (min 8 chars, uppercase, lowercase, numbers) — GoTrue provider
 - **Refresh token rotation** with family revocation
 - `expires_at` field in session responses for supabase-js v2.39+ compatibility
-- Auth endpoints in dev server (`dev.mjs`)
+- Auth endpoints in dev server (`dev.mjs`), which opts into the GoTrue-native provider so local development works without AWS credentials
 
 ### Changed
-- Default auth provider changed from `cognito` to `gotrue`
-- SAM template: Cognito resources now conditional on `AuthProvider=cognito` parameter
+- SAM template: Cognito resources now conditional on `AuthProvider=cognito` parameter (default remains `cognito`)
 - Dev server routes auth requests through combined handler
+- Default auth provider remains `cognito`; `AUTH_PROVIDER=gotrue` is required to use the GoTrue-native provider
 
 ### Security
 - **V-07**: Refresh JWTs no longer carry the provider refresh token.

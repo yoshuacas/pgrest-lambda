@@ -34,22 +34,24 @@ const pgrest = createPgrest({
   },
   jwtSecret: process.env.JWT_SECRET,
   policies: './policies',
-});
-// Auth defaults to GoTrue — users and refresh tokens stored
-// in the same PostgreSQL database. No external dependencies.
-```
-
-To use Cognito instead:
-
-```javascript
-const pgrest = createPgrest({
-  database: { ... },
-  jwtSecret: process.env.JWT_SECRET,
   auth: {
     provider: 'cognito',
     region: 'us-east-1',
     clientId: process.env.USER_POOL_CLIENT_ID,
   },
+});
+// Auth defaults to Cognito. For a DB-only deployment with no
+// AWS dependency, opt into the GoTrue-native provider below.
+```
+
+To use the GoTrue-native provider (users and refresh tokens
+stored in the same PostgreSQL database, no external dependencies):
+
+```javascript
+const pgrest = createPgrest({
+  database: { ... },
+  jwtSecret: process.env.JWT_SECRET,
+  auth: { provider: 'gotrue' },
 });
 
 // Three Lambda handlers, one config
@@ -212,7 +214,7 @@ API Gateway (REST)
   |
   +-- /auth/v1/*  -->  Auth Handler (GoTrue-compatible)
   |                      +-- signup, token, user, logout
-  |                      +-- GoTrue-native (default) or Cognito
+  |                      +-- Cognito (default) or GoTrue-native
   |
   +-- /rest/v1/*  -->  REST Handler (PostgREST-compatible)
   |    |                 +-- schema introspection
@@ -425,29 +427,33 @@ The convention requires: the target table exists in the `public` schema, and it 
 
 ### Auth
 
-GoTrue-native is the default auth provider. Users and refresh
-tokens are stored in the `auth` schema of the same PostgreSQL
-database — no external dependencies needed. This works with
-any PostgreSQL backend including Aurora DSQL.
+Cognito is the default auth provider. Set `AUTH_PROVIDER=cognito`
+(or omit it) and provide `REGION_NAME`, `USER_POOL_ID`, and
+`USER_POOL_CLIENT_ID` at runtime.
 
-Password policy: minimum 8 characters, at least one uppercase
-letter, one lowercase letter, and one number.
+A GoTrue-native provider is available for deployments that want
+to avoid an AWS Cognito dependency. Opt in with
+`AUTH_PROVIDER=gotrue` or `auth: { provider: 'gotrue' }`. Users
+and refresh tokens are then stored in the `auth` schema of the
+same PostgreSQL database, works with any PostgreSQL backend
+including Aurora DSQL.
 
-Refresh tokens use rotation with family revocation: each
-refresh issues a new token and invalidates the old one. If a
+Password policy (GoTrue-native): minimum 8 characters, at least
+one uppercase letter, one lowercase letter, and one number.
+
+Refresh tokens use rotation with family revocation: each refresh
+issues a new token and invalidates the old one. If a
 previously-used token is replayed, the entire token family is
-revoked.
+revoked. This applies to both providers.
 
-Refresh JWTs carry an opaque session ID (`sid`) instead of
-the provider token. The actual provider refresh token is
-stored server-side in `auth.sessions` and resolved on each
-refresh request.
+Refresh JWTs carry an opaque session ID (`sid`) instead of the
+provider token. The actual provider refresh token is stored
+server-side in `auth.sessions` and resolved on each refresh
+request.
 
-To use Cognito instead, set `AUTH_PROVIDER=cognito` (or pass
-`auth: { provider: 'cognito', ... }` in code).
-
-The dev server (`node dev.mjs`) includes working auth
-endpoints out of the box.
+The dev server (`node dev.mjs`) opts into the GoTrue-native
+provider so local development works with just a Postgres
+container and no AWS credentials.
 
 ### Auth Endpoints (`/auth/v1/`)
 
