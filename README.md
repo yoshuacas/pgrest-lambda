@@ -152,6 +152,56 @@ The factory resolves config in order: explicit values, then environment variable
 
 If you only set environment variables, `createPgrest()` with no arguments works.
 
+### TLS Configuration
+
+The `database.ssl` option controls TLS to the database. Four
+postures are available:
+
+```javascript
+// No TLS (localhost, same-VPC). Default when ssl is unset.
+createPgrest({ database: { host: 'localhost' } });
+
+// TLS with certificate verification (secure default).
+createPgrest({ database: { host: 'db.example.com', ssl: true } });
+
+// TLS with a private CA (verification on by default).
+createPgrest({
+  database: {
+    host: 'db.internal',
+    ssl: { ca: fs.readFileSync('/path/to/ca.pem', 'utf8') },
+  },
+});
+
+// TLS without verification (consumer explicitly accepts MITM risk).
+createPgrest({
+  database: {
+    host: 'db.internal',
+    ssl: { rejectUnauthorized: false },
+  },
+});
+```
+
+| `database.ssl` value | TLS | Certificate verification |
+|---|---|---|
+| `undefined` / `false` | Off | N/A |
+| `true` | On | On |
+| `{ ca: '...' }` | On | On (with custom CA) |
+| `{ rejectUnauthorized: false }` | On | Off |
+
+DSQL connections always verify TLS certificates. AWS-managed
+certificates chain to public roots included in the Node.js trust
+store. There is no config surface and no opt-out for DSQL.
+
+When `database.connectionString` (or `DATABASE_URL`) is set, TLS
+is controlled by `sslmode=...` in the URL. The `database.ssl`
+option is not applied.
+
+**Breaking change:** `ssl: true` now means TLS *with* certificate
+verification. Consumers who previously set `ssl: true` and connect
+to a database with a self-signed certificate will see TLS errors.
+To restore the old behavior, pass
+`ssl: { rejectUnauthorized: false }` explicitly.
+
 ## Architecture
 
 ```

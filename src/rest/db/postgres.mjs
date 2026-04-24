@@ -4,6 +4,12 @@ import pg from 'pg';
 
 const { Pool } = pg;
 
+function resolveSsl(ssl) {
+  if (!ssl) return undefined;
+  if (ssl === true) return { rejectUnauthorized: true };
+  return { rejectUnauthorized: true, ...ssl };
+}
+
 /** @returns {import('./interface.mjs').DatabaseProvider} */
 export function createPostgresProvider(config) {
   let pool = null;
@@ -28,7 +34,7 @@ export function createPostgresProvider(config) {
         user: config.user || 'postgres',
         password: config.password || '',
         database: config.database || 'postgres',
-        ssl: config.ssl ? { rejectUnauthorized: false } : undefined,
+        ssl: resolveSsl(config.ssl),
         max: 5,
         idleTimeoutMillis: 60000,
       });

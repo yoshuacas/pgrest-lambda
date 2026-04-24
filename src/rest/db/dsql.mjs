@@ -39,7 +39,7 @@ export function createDsqlProvider(config) {
       user: 'admin',
       password: token,
       database: 'postgres',
-      ssl: { rejectUnauthorized: false },
+      ssl: { rejectUnauthorized: true },
       max: 5,
       idleTimeoutMillis: 60000,
     });

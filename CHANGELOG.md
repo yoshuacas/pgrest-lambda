@@ -21,6 +21,12 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
 - Dev server routes auth requests through combined handler
 
 ### Security
+- **V-04**: Enforce TLS certificate verification on DSQL
+  adapter; add secure-default SSL resolution to standard
+  Postgres adapter. `ssl: true` now means TLS with
+  verification. **Breaking:** connections to databases with
+  self-signed certificates will fail unless
+  `ssl: { rejectUnauthorized: false }` is set explicitly.
 - **V-03**: CORS origin is now configurable via
   `config.cors.allowedOrigins`. Wildcard (`'*'`) is rejected
   when `production` mode is enabled.

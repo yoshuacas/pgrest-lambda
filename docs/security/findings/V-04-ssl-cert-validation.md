@@ -1,7 +1,7 @@
 # V-04 — SSL certificate validation disabled
 
 - **Severity (reported):** High
-- **Status:** Open
+- **Status:** Fixed
 - **Affected (reported):** `src/rest/db/postgres.mjs:31`, `src/rest/db/dsql.mjs:42`
 - **Backend dependence:** Yes — per-adapter decision
 
@@ -23,16 +23,34 @@ Both DB adapters set `ssl: { rejectUnauthorized: false }`. DSQL IAM tokens trave
 
 ## Decision
 
-_Pending triage._ Per-adapter: DSQL hard-enforces verify; Postgres adapter gets explicit config with secure default.
+DSQL adapter hard-sets `rejectUnauthorized: true` with no
+consumer override — AWS-managed certs chain to public roots.
+Standard Postgres adapter resolves `config.ssl` via a new
+`resolveSsl` function: `true` → `{ rejectUnauthorized: true }`,
+object → forwarded with `rejectUnauthorized: true` as default
+(consumer can override to `false`), falsy → no TLS. The
+connection-string path is unchanged (`sslmode=...` in the URL).
 
 ## Evidence
 
-_Commit / test / doc link when fixed._
+- DSQL fix: `57e0e02` (`src/rest/db/dsql.mjs`)
+- Postgres fix: `5f73553` (`src/rest/db/postgres.mjs`)
+- Tests: `src/rest/db/__tests__/dsql.test.mjs`,
+  `src/rest/db/__tests__/postgres.test.mjs`
+- README TLS configuration subsection documents all four
+  postures and the breaking change.
 
 ## Residual risk
 
-Self-managed-Postgres consumer who disables verification explicitly accepts MITM risk; documented in adapter README.
+A consumer who passes `ssl: { rejectUnauthorized: false }` to
+the standard Postgres adapter explicitly accepts MITM risk.
+This is an opt-in override, not a default, and is documented
+in the README with a clear warning.
 
 ## Reviewer handoff
 
-_Two-sentence summary for the reviewer agent._
+V-04 is fixed: DSQL always verifies TLS certificates; the
+standard Postgres adapter now defaults to verification-on,
+with an explicit object override for consumers who need to
+disable it. The breaking change (self-signed certs now fail
+with `ssl: true`) is documented in the README and CHANGELOG.

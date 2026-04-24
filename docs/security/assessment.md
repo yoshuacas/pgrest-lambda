@@ -35,7 +35,7 @@ Rule: when a finding's fix relies on a capability not present on all supported b
 | [V-01](findings/V-01-jwt-secret-strength.md) | Critical | No JWT secret strength enforcement | Fixed | Closes V-01; `assertJwtSecret` enforced at all entry points |
 | [V-02](findings/V-02-jwt-algorithm-pinning.md) | Critical | JWT algorithm not pinned | Fixed | Pinned HS256 at all sign/verify sites via shared constant |
 | [V-03](findings/V-03-cors-wildcard.md) | High | CORS wildcard with header-based auth | Fixed | Configurable CORS origin with production guardrail |
-| [V-04](findings/V-04-ssl-cert-validation.md) | High | SSL cert validation disabled | Open | **Worse than audit:** opting into TLS still disables verify |
+| [V-04](findings/V-04-ssl-cert-validation.md) | High | SSL cert validation disabled | Fixed | DSQL hard-enforces verify; Postgres adapter defaults `rejectUnauthorized: true` with consumer override |
 | [V-05](findings/V-05-on-conflict-injection.md) | High | Identifier injection via `on_conflict` | Open | Confirmed at HEAD |
 | [V-06](findings/V-06-no-rls.md) | High | Cedar is the only authz layer (no RLS) | Open | Backend-specific; DSQL cannot satisfy. Flag: possible fail-open at `cedar.mjs:386-388` |
 | [V-07](findings/V-07-provider-refresh-in-jwt.md) | High | Provider refresh token in JWT `prt` claim | Open | Cognito provider only (GoTrue path does not set `prt`) |
