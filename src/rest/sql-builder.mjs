@@ -444,7 +444,11 @@ export function buildInsert(table, body, schema, parsed) {
   if (parsed.onConflict) {
     const conflictCols = parsed.onConflict
       .split(',')
-      .map((c) => `"${c.trim()}"`)
+      .map((c) => {
+        const col = c.trim();
+        validateCol(schema, table, col);
+        return `"${col}"`;
+      })
       .join(', ');
     const pk = schema.tables[table]?.primaryKey || [];
     const updateCols = columns.filter(

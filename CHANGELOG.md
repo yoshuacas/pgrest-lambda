@@ -21,6 +21,11 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
 - Dev server routes auth requests through combined handler
 
 ### Security
+- **V-05**: Validate `on_conflict` column identifiers against the
+  schema cache via `validateCol`, closing the last unvalidated
+  identifier-interpolation path in `sql-builder.mjs`. Invalid
+  column names now produce a 400 (PGRST204) instead of reaching
+  the database.
 - **V-04**: Enforce TLS certificate verification on DSQL
   adapter; add secure-default SSL resolution to standard
   Postgres adapter. `ssl: true` now means TLS with

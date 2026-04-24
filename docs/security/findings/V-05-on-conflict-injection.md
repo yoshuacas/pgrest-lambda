@@ -1,7 +1,7 @@
 # V-05 — Identifier injection via `on_conflict` parameter
 
 - **Severity (reported):** High
-- **Status:** Open
+- **Status:** Fixed
 - **Affected (reported):** `src/rest/sql-builder.mjs:444-460`
 - **Backend dependence:** None
 
@@ -30,16 +30,16 @@ Exploitability is mostly limited by PostgreSQL identifier quoting (double quotes
 
 ## Decision
 
-_Pending triage._ Low-risk fix: run conflict columns through the existing `validateCol()`.
+Fix — route `on_conflict` identifiers through the existing `validateCol` allowlist; identical pattern to every other identifier path in `sql-builder.mjs`.
 
 ## Evidence
 
-_Commit / test / doc link when fixed._
+`src/rest/sql-builder.mjs:444-451` — `validateCol` call added. Tests: `src/rest/__tests__/sql-builder.test.mjs`, "buildInsert (on_conflict validation)" describe block.
 
 ## Residual risk
 
-None expected once validated.
+None. `validateCol` is the same guarantee used by the rest of the module.
 
 ## Reviewer handoff
 
-_Two-sentence summary for the reviewer agent._
+The `on_conflict` parameter now runs each comma-separated column through `validateCol(schema, table, col)` before quoting, matching every other identifier path in `sql-builder.mjs`. Invalid or injected column names produce a 400 with PGRST204 instead of reaching the database.

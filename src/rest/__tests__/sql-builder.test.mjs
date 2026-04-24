@@ -229,6 +229,87 @@ describe('sql-builder', () => {
     });
   });
 
+  describe('buildInsert (on_conflict validation)', () => {
+    it('validates single on_conflict column against schema', () => {
+      const body = { id: 'abc', title: 'Hello' };
+      const parsed = {
+        select: [{ type: 'column', name: '*' }],
+        filters: [],
+        order: [],
+        limit: null,
+        offset: 0,
+        onConflict: 'id',
+      };
+      const { text } = buildInsert('todos', body, schema, parsed);
+      assert.ok(text.includes('ON CONFLICT ("id")'),
+        'should produce ON CONFLICT with validated column');
+    });
+
+    it('validates multiple on_conflict columns', () => {
+      const body = { id: 'abc', user_id: 'u1', title: 'Hello' };
+      const parsed = {
+        select: [{ type: 'column', name: '*' }],
+        filters: [],
+        order: [],
+        limit: null,
+        offset: 0,
+        onConflict: 'id,user_id',
+      };
+      const { text } = buildInsert('todos', body, schema, parsed);
+      assert.ok(text.includes('ON CONFLICT ("id", "user_id")'),
+        'should produce ON CONFLICT with both validated columns');
+    });
+
+    it('throws PGRST204 for unknown on_conflict column', () => {
+      const body = { id: 'abc', title: 'Hello' };
+      const parsed = {
+        select: [{ type: 'column', name: '*' }],
+        filters: [],
+        order: [],
+        limit: null,
+        offset: 0,
+        onConflict: 'does_not_exist',
+      };
+      assert.throws(
+        () => buildInsert('todos', body, schema, parsed),
+        (err) => err.code === 'PGRST204',
+        'should throw PGRST204 for unknown on_conflict column',
+      );
+    });
+
+    it('throws PGRST204 for SQL injection payload in on_conflict', () => {
+      const body = { id: 'abc', title: 'Hello' };
+      const parsed = {
+        select: [{ type: 'column', name: '*' }],
+        filters: [],
+        order: [],
+        limit: null,
+        offset: 0,
+        onConflict: 'id"; DROP TABLE x; --',
+      };
+      assert.throws(
+        () => buildInsert('todos', body, schema, parsed),
+        (err) => err.code === 'PGRST204',
+        'should throw PGRST204 for injection payload',
+      );
+    });
+
+    it('trims whitespace from on_conflict columns before validation', () => {
+      const body = { id: 'abc', user_id: 'u1', title: 'Hello' };
+      const parsed = {
+        select: [{ type: 'column', name: '*' }],
+        filters: [],
+        order: [],
+        limit: null,
+        offset: 0,
+        onConflict: ' id , user_id ',
+      };
+      const { text } = buildInsert('todos', body, schema, parsed);
+      assert.ok(text.includes('ON CONFLICT ("id", "user_id")'),
+        'should trim and validate columns with surrounding whitespace');
+    });
+  });
+
   describe('buildInsert (upsert edge cases)', () => {
     it('produces DO NOTHING when all columns are in on_conflict', () => {
       const body = { id: 'abc' };
