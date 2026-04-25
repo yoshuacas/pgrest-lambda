@@ -144,10 +144,10 @@ DSQL_TOKEN=$(aws dsql generate-db-connect-admin-auth-token \
 
 PGPASSWORD="$DSQL_TOKEN" psql \
   "host=$DSQL_HOST port=5432 dbname=postgres user=admin sslmode=require" \
-  -f ../../../schema-examples/dsql-compatible.sql
+  -f ../../schema-examples/dsql-compatible.sql
 
 # Standard Postgres
-psql "$DATABASE_URL" -f ../../../schema-examples/standard-postgres.sql
+psql "$DATABASE_URL" -f ../../schema-examples/standard-postgres.sql
 ```
 
 The DSQL auth token has a short TTL (~15 min) — regenerate if you need to re-run.

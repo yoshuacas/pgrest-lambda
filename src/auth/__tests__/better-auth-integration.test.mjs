@@ -6,7 +6,7 @@ import pg from 'pg';
 import { createAuthHandler } from '../handler.mjs';
 import { createJwt } from '../jwt.mjs';
 import { createBetterAuthProvider } from '../providers/better-auth.mjs';
-import { createAuthorizer } from '../../authorizer/index.mjs';
+import { createAuthorizer } from '../../../deploy/aws-sam/authorizer.mjs';
 import { makeEvent, parseBody } from './helpers/events.mjs';
 
 const DATABASE_URL = process.env.DATABASE_URL;

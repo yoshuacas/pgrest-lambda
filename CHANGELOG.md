@@ -66,6 +66,17 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
   `needsSessionTable` as the dispatch flag. When true,
   the provider returns fully-baked tokens; when false,
   the handler mints HS256.
+- **Reorganized repo layout so deployment targets are
+  first-class peers.** `src/` now holds only
+  deploy-agnostic core code; each deployment mode lives
+  in its own `deploy/<target>/` folder. Today:
+  `deploy/aws-sam/` with the SAM template, the Lambda
+  authorizer that was previously at `src/authorizer/`,
+  and the deploy README that was at
+  `docs/deploy/aws-sam/README.md`. Future targets (Kong,
+  Express, Cloudflare Workers) go in sibling folders.
+  `createAuthorizer` is still exported from the root
+  entry point so existing imports keep working.
 - **`POLICIES_PATH` now accepts a URI.** Filesystem paths
   (`./policies`, `/etc/pgrest/policies`), `file:///...`,
   and `s3://<bucket>/<prefix>/` all resolve through a

@@ -102,7 +102,7 @@ Best for values you rotate rarely. The SAM template already resolves
 `/pgrest/jwt-secret` at deploy time:
 
 ```yaml
-# docs/deploy/aws-sam/template.yaml (excerpt)
+# deploy/aws-sam/template.yaml (excerpt)
 Environment:
   Variables:
     JWT_SECRET: !Sub '{{resolve:ssm:/pgrest/jwt-secret}}'

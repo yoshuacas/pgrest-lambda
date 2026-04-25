@@ -1,7 +1,7 @@
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import jwt from 'jsonwebtoken';
-import { createAuthorizer } from '../index.mjs';
+import { createAuthorizer } from '../authorizer.mjs';
 
 const SECRET = 'test-secret-key-for-unit-tests-ok';
 const METHOD_ARN =

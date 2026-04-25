@@ -99,7 +99,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: lambda.presignup
-      CodeUri: ../../../
+      CodeUri: ../../
       MemorySize: 128
       Timeout: 5
 
@@ -135,7 +135,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: lambda.authorizer
-      CodeUri: ../../../
+      CodeUri: ../../
       MemorySize: 128
       Timeout: 5
 
@@ -143,7 +143,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: lambda.handler
-      CodeUri: ../../../
+      CodeUri: ../../
       Environment:
         Variables:
           DSQL_ENDPOINT: !If [IsDsql, !Ref DsqlEndpoint, !Ref 'AWS::NoValue']

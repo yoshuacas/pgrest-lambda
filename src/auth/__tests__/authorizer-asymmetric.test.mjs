@@ -2,7 +2,7 @@ import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
 import { SignJWT, exportJWK } from 'jose';
-import { createAuthorizer } from '../../authorizer/index.mjs';
+import { createAuthorizer } from '../../../deploy/aws-sam/authorizer.mjs';
 import {
   privateKey, publicKey,
   makeEdDSAToken as signEdDSA, getPubJwk,

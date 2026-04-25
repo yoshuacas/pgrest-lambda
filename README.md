@@ -530,9 +530,11 @@ await supabase
 
 ## Deploy Examples
 
-Deployment examples live in `docs/deploy/`:
+Deployment examples live in `deploy/` — each subfolder is one way to
+run pgrest-lambda in production. Core library code under `src/` stays
+deploy-target-agnostic.
 
-- **AWS SAM** — [`docs/deploy/aws-sam/README.md`](docs/deploy/aws-sam/README.md). Provisions API Gateway, Lambda, and (optionally) Cognito. Supports DSQL and standard Postgres.
+- **AWS SAM** — [`deploy/aws-sam/README.md`](deploy/aws-sam/README.md). Provisions API Gateway, Lambda, and (optionally) Cognito. Supports DSQL and standard Postgres.
 
 ## License
 

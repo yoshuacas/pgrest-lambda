@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
-import { assertJwtSecret, JWT_ALGORITHM } from '../auth/jwt.mjs';
-import { createTokenVerifier } from '../auth/verify-token.mjs';
+import { assertJwtSecret, JWT_ALGORITHM } from '../../src/auth/jwt.mjs';
+import { createTokenVerifier } from '../../src/auth/verify-token.mjs';
 
 const ISSUER = 'pgrest-lambda';
 

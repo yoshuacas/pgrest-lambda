@@ -6,7 +6,7 @@ import { createCedar } from './rest/cedar.mjs';
 import { createRestHandler } from './rest/handler.mjs';
 import { createAuthHandler } from './auth/handler.mjs';
 import { createJwt, assertJwtSecret } from './auth/jwt.mjs';
-import { createAuthorizer } from './authorizer/index.mjs';
+import { createAuthorizer } from '../deploy/aws-sam/authorizer.mjs';
 import { assertCorsConfig } from './shared/cors.mjs';
 
 export { ensureBetterAuthSchema } from './auth/schema-migrator.mjs';

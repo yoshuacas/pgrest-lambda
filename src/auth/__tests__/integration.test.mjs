@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
 import { createAuthHandler } from '../handler.mjs';
 import { createJwt } from '../jwt.mjs';
-import { createAuthorizer } from '../../authorizer/index.mjs';
+import { createAuthorizer } from '../../../deploy/aws-sam/authorizer.mjs';
 
 const TEST_SECRET = 'integration-test-secret-key-12345';
 

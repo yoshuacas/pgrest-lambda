@@ -1,7 +1,7 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
-import { createAuthorizer } from '../../authorizer/index.mjs';
+import { createAuthorizer } from '../../../deploy/aws-sam/authorizer.mjs';
 
 const TEST_SECRET = 'test-secret-for-authorizer-tests';
 const TEST_METHOD_ARN =
