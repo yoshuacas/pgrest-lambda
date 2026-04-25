@@ -129,6 +129,12 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
   in dev mode. When `production=false`, `unexpected_failure`
   errors now log the stack and upstream response body to
   stderr so developers can diagnose provider errors.
+- **Dev server ignored the apikey's role claim**, so
+  `apikey: <service_role>` alone behaved as `anon`.
+  `extractAuthorizerContext` now reads `role` from the
+  apikey JWT (matching the production authorizer) and
+  lets a Bearer token override. Service-role requests
+  from local dev now bypass Cedar correctly.
 
 ### Documentation
 - AWS SAM deploy guide (`docs/deploy/aws-sam/README.md`) rewritten

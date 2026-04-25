@@ -133,12 +133,21 @@ async function handleRequest(handler, req, res) {
 // JWT. Safe because the dev server is only reachable from localhost.
 // The authorizer's flat context (role, userId, email) is what the REST
 // engine expects to see on requestContext.authorizer.
+// Matches the production Lambda authorizer's logic:
+// 1. Start with the role from the apikey JWT (anon or service_role).
+// 2. If the request also has `Authorization: Bearer <token>`, that
+//    token's role wins — it represents an authenticated user session.
+//
+// The dev server does NOT verify signatures — trust is delegated to
+// the developer running on localhost. Production runs the real
+// authorizer (src/authorizer/index.mjs) in front of API Gateway.
 function extractAuthorizerContext(headers) {
   const authHeader = headers.authorization || headers.Authorization || '';
   const apikey = headers.apikey || '';
   if (!apikey) return null;
 
-  let role = 'anon';
+  const apikeyClaims = decodeJwtPayload(apikey) || {};
+  let role = apikeyClaims.role || 'anon';
   let userId = '';
   let email = '';
 
