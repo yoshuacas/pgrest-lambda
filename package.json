@@ -9,12 +9,12 @@
     "./aws-sam": "./deploy/aws-sam/authorizer.mjs"
   },
   "bin": {
-    "pgrest-lambda": "./bin/pgrest-lambda.mjs"
+    "pgrest-lambda": "bin/pgrest-lambda.mjs"
   },
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yoshuacas/pgrest-lambda.git"
+    "url": "git+https://github.com/yoshuacas/pgrest-lambda.git"
   },
   "files": [
     "src",
