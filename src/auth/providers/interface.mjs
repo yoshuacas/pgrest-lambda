@@ -33,7 +33,7 @@
  * @param {Object} config - Auth configuration with a `provider` key.
  */
 export async function createProvider(config) {
-  const name = config.provider || 'cognito';
+  const name = config.provider || 'better-auth';
   switch (name) {
     case 'cognito': {
       const { createCognitoProvider } = await import('./cognito.mjs');

@@ -163,7 +163,7 @@ env vars win over defaults.
 | Config key | Env var | Default |
 |---|---|---|
 | `jwtSecret` | `JWT_SECRET` | — (required, ≥ 32 chars) |
-| `auth.provider` | `AUTH_PROVIDER` | `cognito` for `createPgrest()`; `better-auth` for `pgrest-lambda dev` |
+| `auth.provider` | `AUTH_PROVIDER` | `better-auth` |
 | `auth.betterAuthSecret` | `BETTER_AUTH_SECRET` | — (required when provider is `better-auth`) |
 | `auth.betterAuthUrl` | `BETTER_AUTH_URL` | — (required for OAuth callbacks) |
 | `auth.googleClientId` | `GOOGLE_CLIENT_ID` | — (enables `/auth/v1/authorize?provider=google`) |

@@ -6,6 +6,19 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
 
 ---
 
+## Unreleased
+
+### Changed
+
+- **Default auth provider is now `better-auth`** for the library
+  (`createPgrest()`) and the `AUTH_PROVIDER` env var. Previously the
+  library defaulted to `cognito`; users who want Cognito now pass
+  `auth: { provider: 'cognito', ... }` explicitly. Breaking change for
+  anyone who was relying on the implicit default — migration is
+  one-line. The AWS SAM template keeps `cognito` as its default
+  because the template actively wires up a user pool; set
+  `AuthProvider=better-auth` at deploy time to use better-auth there.
+
 ## 0.1.0 — 2026-04-25
 
 First public release on npm. (The earlier `0.2.0` tag in git history
