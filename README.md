@@ -10,7 +10,8 @@ reference AWS SAM template.
 Works with the `@supabase/supabase-js` client unchanged.
 
 ```bash
-npx pgrest-lambda dev
+npm install -g pgrest-lambda
+pgrest-lambda dev
 ```
 
 ## Getting started
@@ -22,11 +23,17 @@ standalone or embed it in your own project.
 
 **Prerequisites:** Docker Desktop (or equivalent) running, Node 20+.
 
-From any directory:
+Install once, then use `pgrest-lambda` from any directory:
 
 ```bash
-npx pgrest-lambda dev
+npm install -g pgrest-lambda
+pgrest-lambda dev
 ```
+
+> Want to skip the install? Run `npx --yes pgrest-lambda dev`
+> instead. `npx` downloads the package into a per-machine cache
+> (`~/.npm/_npx`) on first use and runs it from there. Useful for
+> trying once; global install is tidier for everyday use.
 
 That's it. No clone, no config, no AWS account. The command:
 
@@ -67,11 +74,11 @@ Other commands:
 
 | Command | What it does |
 |---|---|
-| `npx pgrest-lambda refresh` | Reload schema cache and Cedar policies without restarting. Run this after you change a `.cedar` file or run a migration. |
-| `npx pgrest-lambda generate-key anon` | Mint an anon apikey JWT (prints to stdout). |
-| `npx pgrest-lambda generate-key service_role` | Mint a service-role apikey JWT. |
-| `npx pgrest-lambda migrate-auth` | Apply the better-auth schema against `DATABASE_URL`. For production bootstraps. |
-| `npx pgrest-lambda help` | Full command reference. |
+| `pgrest-lambda refresh` | Reload schema cache and Cedar policies without restarting. Run this after you change a `.cedar` file or run a migration. |
+| `pgrest-lambda generate-key anon` | Mint an anon apikey JWT (prints to stdout). |
+| `pgrest-lambda generate-key service_role` | Mint a service-role apikey JWT. |
+| `pgrest-lambda migrate-auth` | Apply the better-auth schema against `DATABASE_URL`. For production bootstraps. |
+| `pgrest-lambda help` | Full command reference. |
 
 To stop the API server: `Ctrl-C` in the terminal running `dev`.
 

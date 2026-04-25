@@ -44,7 +44,7 @@ permit(
 Reload policies without restarting the server:
 
 ```bash
-npm run refresh
+pgrest-lambda refresh
 ```
 
 Then:
@@ -81,11 +81,11 @@ Files get loaded lazily on the first request after startup and cached
 for 5 minutes. To force a reload:
 
 ```bash
-npm run refresh
+pgrest-lambda refresh
 ```
 
 (or hit `POST /rest/v1/_refresh` directly with the `apikey` header,
-which is what `npm run refresh` does under the hood.)
+which is what `pgrest-lambda refresh` does under the hood.)
 
 `pgrest-lambda dev` seeds a reasonable `policies/default.cedar` — read
 it before writing your own. It covers the common "users see their own
@@ -275,7 +275,7 @@ docs/authorization.md for the policy model and recipes.
 
 Steps to unblock:
 
-1. Confirm the policies loaded. Run `npm run refresh` (or hit
+1. Confirm the policies loaded. Run `pgrest-lambda refresh` (or hit
    `POST /rest/v1/_refresh` directly). If the request itself returns
    403, the Cedar engine found no `permit` anywhere.
 2. Check you're keying on `context.table` (not `resource.table`) in
@@ -308,7 +308,7 @@ Two things to check:
 
 1. File extension. Only files ending in `.cedar` get loaded. A file
    named `posts.policy` or `posts.txt` is silently skipped.
-2. Cache TTL. Policies cache for five minutes. Run `npm run refresh`
+2. Cache TTL. Policies cache for five minutes. Run `pgrest-lambda refresh`
    to see changes immediately without restarting the server.
 
 ## Cedar language, cheatsheet
