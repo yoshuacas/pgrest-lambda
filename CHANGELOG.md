@@ -6,7 +6,13 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
 
 ---
 
-## Unreleased
+## 0.1.0 — 2026-04-25
+
+First public release on npm. (The earlier `0.2.0` tag in git history
+was internal-only, pre-npm; resetting the version for the published
+lineage.)
+
+
 
 ### Added
 - better-auth provider (`AUTH_PROVIDER=better-auth`) —
