@@ -11,11 +11,16 @@ const execFile = promisify(execFileCb);
 const HERE = dirname(fileURLToPath(import.meta.url));
 const COMPOSE_FILE = join(HERE, 'docker', 'compose.yml');
 
+// Local-dev defaults match the de-facto community convention
+// (postgres/postgres/postgres). They're convenience values for a
+// throwaway container bound to localhost — not secrets. Port 54322
+// deliberately differs from the standard 5432 so we don't collide
+// with a developer's system Postgres.
 const DEFAULTS = {
   port: parseInt(process.env.POSTGRES_PORT || '54322', 10),
-  user: process.env.POSTGRES_USER || 'pgrest',
-  password: process.env.POSTGRES_PASSWORD || 'pgrest',
-  database: process.env.POSTGRES_DB || 'pgrest',
+  user: process.env.POSTGRES_USER || 'postgres',
+  password: process.env.POSTGRES_PASSWORD || 'postgres',
+  database: process.env.POSTGRES_DB || 'postgres',
 };
 
 function connectionInfo() {

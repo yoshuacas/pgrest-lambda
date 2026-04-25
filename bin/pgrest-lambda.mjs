@@ -17,6 +17,7 @@ import {
 
 const COMMANDS = {
   dev: cmdDev,
+  refresh: cmdRefresh,
   'migrate-auth': cmdMigrateAuth,
   'generate-key': cmdGenerateKey,
   help: cmdHelp,
@@ -125,6 +126,7 @@ async function cmdDev(argv) {
   console.log(`  API:           ${actualUrl}`);
   console.log(`  OpenAPI spec:  ${actualUrl}/rest/v1/`);
   console.log(`  Scalar docs:   ${actualUrl}/rest/v1/_docs`);
+  console.log(`  DATABASE_URL:  ${dbUrl}`);
   console.log('');
   console.log(`  Anon apikey:     ${anonKey}`);
   console.log(`  Service apikey:  ${serviceKey}`);
@@ -168,6 +170,44 @@ async function cmdMigrateAuth(argv) {
   console.log('✓ done');
 }
 
+async function cmdRefresh(argv) {
+  const opts = parseFlags(argv, {
+    url: { type: 'string', default: null },
+  });
+  await loadDotenv();
+
+  const target = opts.url || process.env.PGREST_URL || 'http://localhost:3000';
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error(
+      'JWT_SECRET must be set (check .env.local). `refresh` needs an apikey to hit the running server.',
+    );
+  }
+  const apikey = generateApikey({ secret, role: 'anon' });
+
+  log(`→ POST ${target}/rest/v1/_refresh`);
+  let res;
+  try {
+    res = await fetch(`${target}/rest/v1/_refresh`, {
+      method: 'POST',
+      headers: { apikey, 'Content-Type': 'application/json' },
+    });
+  } catch (err) {
+    throw new Error(
+      `Could not reach ${target}. Is \`pgrest-lambda dev\` running?\n  (${err.message})`,
+    );
+  }
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Server returned ${res.status}: ${body.slice(0, 200)}`);
+  }
+
+  // Successful _refresh returns the full OpenAPI spec — no need to
+  // parse or print it. Just confirm the call worked.
+  console.log('✓ schema cache and Cedar policies reloaded');
+}
+
 async function cmdGenerateKey(argv) {
   const role = argv[0];
   if (role !== 'anon' && role !== 'service_role') {
@@ -193,6 +233,12 @@ Commands:
       apikey and the Scalar docs URL. Generates JWT_SECRET and
       BETTER_AUTH_SECRET into memory if absent — pin them in .env for
       stable keys.
+
+  refresh [--url URL]
+      Tell a running dev server to reload its schema cache and Cedar
+      policies. Default URL is http://localhost:3000 (overridable with
+      --url or PGREST_URL). Use this after you change a .cedar file or
+      run a migration without restarting the server.
 
   migrate-auth
       Apply the better-auth schema against DATABASE_URL. Idempotent.

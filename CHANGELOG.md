@@ -38,12 +38,15 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
   end-to-end. New npm scripts: `test:integration`,
   `test:e2e`, `test:all`. See `tests/README.md` for
   the recipe to run on better-auth version bumps.
-- **`pgrest-lambda` CLI** (first iteration) with the
-  `dev`, `migrate-auth`, and `generate-key` commands.
+- **`pgrest-lambda` CLI** with `dev`, `refresh`,
+  `migrate-auth`, and `generate-key` commands.
   `npx pgrest-lambda dev` boots a bundled Postgres
   container, applies the better-auth schema, starts the
   API on `localhost:3000`, and prints the Scalar docs
-  URL and apikeys. Zero configuration for first run.
+  URL, `DATABASE_URL`, and apikeys. Zero configuration
+  for first run. `pgrest-lambda refresh` tells a running
+  dev server to reload its schema cache and Cedar
+  policies without restarting.
 - New library exports for composition (used by the CLI
   and usable directly by consumers like BOA):
   `startDevServer`, `generateApikey`,
@@ -161,6 +164,20 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
   that were denied and points at `docs/authorization.md`.
   Production messages are unchanged (terse, no model
   leak).
+- **`PGRST000 "untranslatable condition"` errors now
+  explain themselves.** The three throw sites in the
+  Cedar-to-SQL translator each have a specific reason
+  (e.g. "comparison where neither side is column+value"
+  or "operator 'like' is not supported"). In dev mode
+  the error also names the policy id and the source
+  directory, so you know which file to fix.
+- **Dev banner now prints `DATABASE_URL`** next to the
+  API URL. Devs can copy-paste it into `psql` without
+  grepping for credentials.
+- **Bundled local Postgres defaults switched to
+  `postgres / postgres / postgres`** to match the
+  de-facto community convention (Supabase CLI, etc.).
+  Port remains 54322.
 - **Dev server ignored the apikey's role claim**, so
   `apikey: <service_role>` alone behaved as `anon`.
   `extractAuthorizerContext` now reads `role` from the

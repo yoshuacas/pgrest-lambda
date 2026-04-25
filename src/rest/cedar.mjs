@@ -197,6 +197,34 @@ function buildEntities(principalUid, principal, schema) {
 
 // --- Residual-to-SQL translation ---
 
+// Summarize an untranslatable Cedar expression for a developer-facing
+// error. We don't try to pretty-print the whole node — just enough for
+// them to find the offending clause in their .cedar file.
+function describeNode(node) {
+  if (!node || typeof node !== 'object') return typeof node;
+  const keys = Object.keys(node);
+  const op = keys[0];
+  if (!op) return '(empty)';
+  if (op === '==' || op === '!=' || op === '<' || op === '>' ||
+      op === '<=' || op === '>=') {
+    return `comparison '${op}' where neither side resolves to a column+value`;
+  }
+  return `unsupported operator '${op}'`;
+}
+
+function untranslatableError(node, reason) {
+  const desc = describeNode(node);
+  const err = new PostgRESTError(
+    500,
+    'PGRST000',
+    `Authorization policy produced untranslatable condition: ${reason} (${desc}). ` +
+    `See docs/authorization.md "Errors" for common causes.`,
+  );
+  err.cedarReason = reason;
+  err.cedarNode = node;
+  return err;
+}
+
 function isResourceRef(node) {
   if (node?.Var === 'resource') return true;
   if (Array.isArray(node?.unknown)
@@ -290,9 +318,10 @@ export function translateExpr(expr, values, tableName, schema) {
         values.push(val2);
         return `"${col2}" ${sqlOp} $${values.length}`;
       }
-      throw new PostgRESTError(
-        500, 'PGRST000',
-        'Authorization policy produced untranslatable condition',
+      throw untranslatableError(
+        expr,
+        "comparison must be between a resource column and a value (e.g. `resource.user_id == principal`). " +
+        "Comparing two columns, or referencing a principal attribute that isn't in the JWT, isn't supported"
       );
     }
   }
@@ -315,16 +344,16 @@ export function translateExpr(expr, values, tableName, schema) {
   ];
   for (const op of UNTRANSLATABLE) {
     if (op in expr) {
-      throw new PostgRESTError(
-        500, 'PGRST000',
-        'Authorization policy produced untranslatable condition',
+      throw untranslatableError(
+        expr,
+        `operator '${op}' is not supported in row-level policies (the engine can't translate it to SQL)`
       );
     }
   }
 
-  throw new PostgRESTError(
-    500, 'PGRST000',
-    'Authorization policy produced untranslatable condition',
+  throw untranslatableError(
+    expr,
+    "expression shape is not recognized by the policy-to-SQL translator"
   );
 }
 
@@ -500,9 +529,20 @@ export function createCedar(config) {
 
       for (const cond of residual.conditions || []) {
         if (cond.kind !== 'when') continue;
-        const sql = translateExpr(
-          cond.body, tempValues, context.table, schema,
-        );
+        let sql;
+        try {
+          sql = translateExpr(
+            cond.body, tempValues, context.table, schema,
+          );
+        } catch (err) {
+          if (err?.code === 'PGRST000' && !production) {
+            err.message =
+              `${err.message}\n` +
+              `  policy id: ${policyId}\n` +
+              `  policies loaded from: ${currentSourceKey()}`;
+          }
+          throw err;
+        }
         if (sql === null) {
           if (effect === 'permit') {
             return { conditions: [], values: [] };
