@@ -6,7 +6,6 @@ import { createCedar } from './rest/cedar.mjs';
 import { createRestHandler } from './rest/handler.mjs';
 import { createAuthHandler } from './auth/handler.mjs';
 import { createJwt, assertJwtSecret } from './auth/jwt.mjs';
-import { createAuthorizer } from '../deploy/aws-sam/authorizer.mjs';
 import { assertCorsConfig } from './shared/cors.mjs';
 
 export { ensureBetterAuthSchema } from './auth/schema-migrator.mjs';
@@ -160,11 +159,6 @@ export function createPgrest(config = {}) {
   // Create rest handler with contributions
   const rest = createRestHandler(ctx, contributions);
 
-  const authorizer = createAuthorizer({
-    jwtSecret: resolved.jwtSecret,
-    jwksUrl: process.env.JWKS_URL || null,
-  });
-
   // Combined handler (routes /auth/v1/* to auth, else to rest)
   function handler(event) {
     const path = event.path || '';
@@ -177,7 +171,6 @@ export function createPgrest(config = {}) {
   return {
     rest: rest.handler,
     auth: auth?.handler || null,
-    authorizer: authorizer.handler,
     handler,
     // Expose subsystems for advanced use and testing
     _db: db,

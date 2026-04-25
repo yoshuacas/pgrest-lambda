@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.mjs",
-    "./contribution": "./src/rest/openapi-contribution.mjs"
+    "./contribution": "./src/rest/openapi-contribution.mjs",
+    "./aws-sam": "./deploy/aws-sam/authorizer.mjs"
   },
   "bin": {
     "pgrest-lambda": "./bin/pgrest-lambda.mjs"
@@ -20,8 +21,6 @@
     "bin",
     "deploy",
     "policies",
-    "lambda.mjs",
-    "dev.mjs",
     "README.md",
     "LICENSE"
   ],

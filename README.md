@@ -80,15 +80,22 @@ stored in the same PostgreSQL database, no external dependencies):
 const pgrest = createPgrest({
   database: { ... },
   jwtSecret: process.env.JWT_SECRET,
-  auth: { provider: 'gotrue' },
+  auth: { provider: 'better-auth' },
 });
 
-// Three Lambda handlers, one config
-export const handler    = pgrest.handler;     // combined: routes /auth/v1/* and /rest/v1/*
-export const authorizer = pgrest.authorizer;  // API Gateway Lambda authorizer
+// One combined handler that routes /auth/v1/* to auth and /rest/v1/* to REST.
+export const handler = pgrest.handler;
 ```
 
-pgrest-lambda gives you handler functions. How you deploy them (CDK, SAM, Terraform, SST) is up to you.
+pgrest-lambda gives you handler functions. How you deploy them (CDK, SAM,
+Terraform, SST, Kong, Cloudflare Workers, plain Express) is up to you.
+AWS Lambda authorizers are a deploy-target concern — see
+[`deploy/aws-sam/`](deploy/aws-sam/) if you're using AWS API Gateway:
+
+```javascript
+import { createAuthorizer } from 'pgrest-lambda/aws-sam';
+export const authorizer = createAuthorizer({ jwtSecret: process.env.JWT_SECRET }).handler;
+```
 
 ### Override auth
 

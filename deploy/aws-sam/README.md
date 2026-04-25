@@ -80,7 +80,7 @@ From this directory:
 sam build
 ```
 
-The build respects the `files` list in `package.json`, so the Lambda package includes `src/`, `policies/`, `lambda.mjs`, and `node_modules/` — roughly 32 MB. If you omit `files` from `package.json` the package balloons to include everything in the repo and `policies/` may be dropped entirely (causing every request to 403).
+The build respects the `files` list in `package.json`, so the Lambda package includes `src/`, `deploy/`, `policies/`, and `node_modules/` — roughly 32 MB. If you omit `files` from `package.json` the package balloons to include everything in the repo and `policies/` may be dropped entirely (causing every request to 403).
 
 ### Deploy — DSQL + Cognito (defaults)
 
@@ -227,7 +227,7 @@ aws dsql delete-cluster --identifier <clusterId> --region us-east-1
 | Symptom | Cause |
 |---|---|
 | `sam deploy` fails: `Non-secure ssm prefix was used for secure parameter` | SSM parameter is a `SecureString`. Recreate as plain `String` (CloudFormation does not support `ssm-secure` in Lambda env vars) |
-| Signup returns `500 {"error":"unexpected_failure"}` and Cognito `admin-get-user` shows `InvalidLambdaResponseException` | PreSignUp Lambda returning `null` — usually because `createPgrest()` was evaluated at import time. Fixed by the lazy-import pattern in `lambda.mjs` (v0.2.0+) |
+| Signup returns `500 {"error":"unexpected_failure"}` and Cognito `admin-get-user` shows `InvalidLambdaResponseException` | PreSignUp Lambda returning `null` — usually because `createPgrest()` was evaluated at import time. Fixed by the lazy-import pattern in `deploy/aws-sam/lambda.mjs` (v0.2.0+) |
 | Every REST request returns `403 PGRST403` | `policies/` directory not shipped with the Lambda. The `files` list in `package.json` must include `"policies"` |
 | `500 {"code":"42P01"}` on `/rest/v1/<table>` | Schema not applied to the database. Re-run the schema-apply step |
 | `500 {"code":"42P01"}` on `/auth/v1/signup` with `AUTH_PROVIDER=gotrue` | GoTrue provider auto-creates its `auth` schema on first request; if it fails, check Lambda IAM has `CREATE SCHEMA` permission on the database |

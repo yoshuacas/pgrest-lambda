@@ -98,7 +98,7 @@ Resources:
     Condition: IsCognito
     Type: AWS::Serverless::Function
     Properties:
-      Handler: lambda.presignup
+      Handler: deploy/aws-sam/lambda.presignup
       CodeUri: ../../
       MemorySize: 128
       Timeout: 5
@@ -134,7 +134,7 @@ Resources:
   AuthorizerFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: lambda.authorizer
+      Handler: deploy/aws-sam/lambda.authorizer
       CodeUri: ../../
       MemorySize: 128
       Timeout: 5
@@ -142,7 +142,7 @@ Resources:
   ApiFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: lambda.handler
+      Handler: deploy/aws-sam/lambda.handler
       CodeUri: ../../
       Environment:
         Variables:

@@ -12,6 +12,7 @@ import assert from 'node:assert/strict';
 import pg from 'pg';
 import jwt from 'jsonwebtoken';
 import { createPgrest } from '../../index.mjs';
+import { createAuthorizer } from '../../../deploy/aws-sam/authorizer.mjs';
 
 const DATABASE_URL = process.env.TEST_DATABASE_URL;
 const JWT_SECRET = 'real-db-test-secret';
@@ -635,19 +636,23 @@ describe('real-db integration', { skip: skip() }, () => {
 
   // --- Authorizer ---
 
-  describe('authorizer', () => {
+  // The AWS-SAM Lambda authorizer is no longer part of createPgrest —
+  // it's a deploy-target artifact (see deploy/aws-sam/authorizer.mjs).
+  // Import it directly when testing it.
+  describe('aws-sam authorizer', () => {
     const methodArn = 'arn:aws:execute-api:us-east-1:123:abc/prod/GET/rest/v1/todos';
+    const authorize = createAuthorizer({ jwtSecret: JWT_SECRET }).handler;
 
     it('allows valid anon apikey', async () => {
       const anonKey = jwt.sign({ role: 'anon' }, JWT_SECRET, { issuer: 'pgrest-lambda' });
-      const result = await pgrest.authorizer({ headers: { apikey: anonKey }, methodArn });
+      const result = await authorize({ headers: { apikey: anonKey }, methodArn });
       assert.equal(result.policyDocument.Statement[0].Effect, 'Allow');
       assert.equal(result.context.role, 'anon');
     });
 
     it('allows service_role apikey', async () => {
       const key = jwt.sign({ role: 'service_role' }, JWT_SECRET, { issuer: 'pgrest-lambda' });
-      const result = await pgrest.authorizer({ headers: { apikey: key }, methodArn });
+      const result = await authorize({ headers: { apikey: key }, methodArn });
       assert.equal(result.context.role, 'service_role');
     });
 
@@ -657,7 +662,7 @@ describe('real-db integration', { skip: skip() }, () => {
         { role: 'authenticated', sub: 'user-123', email: 'u@test.com' },
         JWT_SECRET, { issuer: 'pgrest-lambda' },
       );
-      const result = await pgrest.authorizer({
+      const result = await authorize({
         headers: { apikey: anonKey, Authorization: `Bearer ${userToken}` },
         methodArn,
       });
@@ -668,14 +673,14 @@ describe('real-db integration', { skip: skip() }, () => {
 
     it('rejects missing apikey', async () => {
       await assert.rejects(
-        () => pgrest.authorizer({ headers: {}, methodArn }),
+        () => authorize({ headers: {}, methodArn }),
         (err) => err === 'Unauthorized',
       );
     });
 
     it('rejects invalid apikey', async () => {
       await assert.rejects(
-        () => pgrest.authorizer({ headers: { apikey: 'garbage' }, methodArn }),
+        () => authorize({ headers: { apikey: 'garbage' }, methodArn }),
         (err) => err === 'Unauthorized',
       );
     });
@@ -687,7 +692,7 @@ describe('real-db integration', { skip: skip() }, () => {
         JWT_SECRET, { issuer: 'pgrest-lambda' },
       );
       await assert.rejects(
-        () => pgrest.authorizer({
+        () => authorize({
           headers: { apikey: anonKey, Authorization: `Bearer ${expired}` },
           methodArn,
         }),

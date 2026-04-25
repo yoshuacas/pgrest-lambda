@@ -75,7 +75,10 @@ describe('createPgrest secret validation', () => {
     assert.ok(pgrest.handler);
     assert.ok(pgrest.rest);
     assert.ok(pgrest.auth);
-    assert.ok(pgrest.authorizer);
+    // createPgrest no longer bundles an AWS authorizer — that lives
+    // in deploy/aws-sam/authorizer.mjs and is only used by the SAM
+    // deployment. The core library is deploy-target-agnostic.
+    assert.equal(pgrest.authorizer, undefined);
   });
 });
 

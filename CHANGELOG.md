@@ -71,12 +71,21 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
   deploy-agnostic core code; each deployment mode lives
   in its own `deploy/<target>/` folder. Today:
   `deploy/aws-sam/` with the SAM template, the Lambda
-  authorizer that was previously at `src/authorizer/`,
-  and the deploy README that was at
-  `docs/deploy/aws-sam/README.md`. Future targets (Kong,
-  Express, Cloudflare Workers) go in sibling folders.
-  `createAuthorizer` is still exported from the root
-  entry point so existing imports keep working.
+  authorizer, the Lambda entry points (`lambda.mjs`), and
+  the deploy README. Future targets (Kong, Express,
+  Cloudflare Workers) go in sibling folders.
+- **`createAuthorizer` moved out of the root export.**
+  It was AWS-specific glue and is now accessible only
+  via the subpath export `pgrest-lambda/aws-sam`:
+  `import { createAuthorizer } from 'pgrest-lambda/aws-sam'`.
+  `pgrest.authorizer` no longer exists on the value
+  returned by `createPgrest()`. Users embedding
+  pgrest-lambda in non-AWS environments (Kong, Express,
+  Cloudflare Workers, ...) no longer bundle AWS Lambda
+  authorizer code.
+- Removed dead files: repo-root `dev.mjs` (superseded
+  by `pgrest-lambda dev`) and `src/presignup.mjs`
+  (duplicated inside `deploy/aws-sam/lambda.mjs`).
 - **`POLICIES_PATH` now accepts a URI.** Filesystem paths
   (`./policies`, `/etc/pgrest/policies`), `file:///...`,
   and `s3://<bucket>/<prefix>/` all resolve through a
