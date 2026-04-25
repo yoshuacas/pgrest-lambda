@@ -23,12 +23,30 @@ Parameters:
   AuthProvider:
     Type: String
     Default: cognito
-    AllowedValues: [gotrue, cognito]
+    AllowedValues: [better-auth, cognito]
+  BetterAuthSecret:
+    Type: String
+    Default: ''
+    NoEcho: true
+  BetterAuthUrl:
+    Type: String
+    Default: ''
+  GoogleClientId:
+    Type: String
+    Default: ''
+  GoogleClientSecret:
+    Type: String
+    Default: ''
+    NoEcho: true
+  SesFromAddress:
+    Type: String
+    Default: ''
 
 Conditions:
   IsDsql: !Equals [!Ref DatabaseMode, dsql]
   IsStandard: !Equals [!Ref DatabaseMode, standard]
   IsCognito: !Equals [!Ref AuthProvider, cognito]
+  IsBetterAuth: !Equals [!Ref AuthProvider, better-auth]
 
 Globals:
   Function:
@@ -135,6 +153,22 @@ Resources:
           USER_POOL_CLIENT_ID: !If
             [IsCognito, !Ref UserPoolClient, !Ref 'AWS::NoValue']
           AUTH_PROVIDER: !Ref AuthProvider
+          BETTER_AUTH_SECRET: !If
+            [IsBetterAuth, !Ref BetterAuthSecret, !Ref 'AWS::NoValue']
+          BETTER_AUTH_URL: !If
+            [IsBetterAuth,
+             !Sub 'https://${Api}.execute-api.${AWS::Region}.amazonaws.com/v1',
+             !Ref 'AWS::NoValue']
+          GOOGLE_CLIENT_ID: !If
+            [IsBetterAuth, !Ref GoogleClientId, !Ref 'AWS::NoValue']
+          GOOGLE_CLIENT_SECRET: !If
+            [IsBetterAuth, !Ref GoogleClientSecret, !Ref 'AWS::NoValue']
+          SES_FROM_ADDRESS: !If
+            [IsBetterAuth, !Ref SesFromAddress, !Ref 'AWS::NoValue']
+          JWKS_URL: !If
+            [IsBetterAuth,
+             !Sub 'https://${Api}.execute-api.${AWS::Region}.amazonaws.com/v1/auth/v1/jwks',
+             !Ref 'AWS::NoValue']
           POLICIES_PATH: ./policies
       Policies:
         - !If
@@ -143,6 +177,14 @@ Resources:
             Statement:
               - Effect: Allow
                 Action: [dsql:DbConnect, dsql:DbConnectAdmin]
+                Resource: '*'
+          - !Ref 'AWS::NoValue'
+        - !If
+          - IsBetterAuth
+          - Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: [ses:SendEmail]
                 Resource: '*'
           - !Ref 'AWS::NoValue'
       Events:

@@ -85,22 +85,7 @@ function b64url(str) {
   return Buffer.from(str).toString('base64url');
 }
 
-// Helper: build a Lambda proxy event
-function makeEvent({
-  method = 'POST',
-  path = '/auth/v1/signup',
-  query = {},
-  headers = {},
-  body = null,
-} = {}) {
-  return {
-    httpMethod: method,
-    path,
-    queryStringParameters: Object.keys(query).length ? query : null,
-    headers: { 'Content-Type': 'application/json', ...headers },
-    body: body ? JSON.stringify(body) : null,
-  };
-}
+import { makeEvent, parseBody, decodePayload } from './helpers/events.mjs';
 
 // Helper: build a REQUEST-type authorizer event
 function makeAuthEvent({ apikey, authorization } = {}) {
@@ -117,10 +102,6 @@ function makeAuthEvent({ apikey, authorization } = {}) {
   };
 }
 
-function parseBody(response) {
-  return JSON.parse(response.body);
-}
-
 // Pre-build anon and service_role keys
 const ANON_KEY = signJwt({
   role: 'anon',
@@ -132,11 +113,6 @@ const SERVICE_ROLE_KEY = signJwt({
   iss: 'pgrest-lambda',
   exp: Math.floor(Date.now() / 1000) + 3600,
 });
-
-function decodePayload(token) {
-  const parts = token.split('.');
-  return JSON.parse(Buffer.from(parts[1], 'base64url').toString());
-}
 
 function createSessionMockPool() {
   const queries = [];

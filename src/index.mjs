@@ -53,6 +53,11 @@ function resolveAuth(config) {
     region: process.env.REGION_NAME,
     userPoolId: process.env.USER_POOL_ID,
     clientId: process.env.USER_POOL_CLIENT_ID,
+    betterAuthSecret: process.env.BETTER_AUTH_SECRET,
+    betterAuthUrl: process.env.BETTER_AUTH_URL,
+    googleClientId: process.env.GOOGLE_CLIENT_ID,
+    googleClientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    sesFromAddress: process.env.SES_FROM_ADDRESS,
   };
 }
 
@@ -145,7 +150,10 @@ export function createPgrest(config = {}) {
   // Create rest handler with contributions
   const rest = createRestHandler(ctx, contributions);
 
-  const authorizer = createAuthorizer({ jwtSecret: resolved.jwtSecret });
+  const authorizer = createAuthorizer({
+    jwtSecret: resolved.jwtSecret,
+    jwksUrl: process.env.JWKS_URL || null,
+  });
 
   // Combined handler (routes /auth/v1/* to auth, else to rest)
   function handler(event) {

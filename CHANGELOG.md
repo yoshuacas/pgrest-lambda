@@ -8,19 +8,61 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
 
 ## Unreleased
 
+### Added
+- better-auth provider (`AUTH_PROVIDER=better-auth`) —
+  self-hosted auth backed by PostgreSQL with
+  email+password, magic link (OTP via SES), and
+  Google OAuth.
+- `POST /auth/v1/otp` — Magic-link email request
+- `POST /auth/v1/verify` — OTP token verification
+- `GET /auth/v1/authorize` — OAuth flow initiation
+- `GET /auth/v1/callback` — OAuth callback handler
+- `GET /auth/v1/jwks` — Public JWKS endpoint
+- Asymmetric JWT signing (EdDSA) for better-auth
+  provider. Cognito continues to use HS256.
+- Dual-algorithm verification in Lambda authorizer
+  (HS256 for Cognito/apikeys, EdDSA for better-auth
+  via JWKS).
+- Dependencies: `better-auth`, `jose`,
+  `@aws-sdk/client-sesv2`.
+- New environment variables for better-auth:
+  `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `JWKS_URL`,
+  `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
+  `SES_FROM_ADDRESS`.
+- Shared token verification (`verify-token.mjs`) —
+  handler and authorizer use the same dual-algorithm
+  verification logic.
+
+### Changed
+- Provider interface: `issuesOwnAccessToken` replaces
+  `needsSessionTable` as the dispatch flag. When true,
+  the provider returns fully-baked tokens; when false,
+  the handler mints HS256.
+
+### Removed
+- GoTrue auth provider (`AUTH_PROVIDER=gotrue`).
+  Deployments on GoTrue must migrate to `better-auth`.
+- `bcryptjs` dependency (only used by GoTrue).
+- `src/auth/schema.mjs` (GoTrue DDL).
+- `src/auth/sessions.mjs` (session-table machinery).
+
 ### Fixed
 - **Cognito path no longer requires `auth.sessions` table** —
-  the handler now checks `provider.needsSessionTable` and
-  skips session creation, lookup, and revocation for
-  providers that manage their own refresh tokens (Cognito).
-  The Cognito refresh token is returned directly to the
-  client. GoTrue path is unchanged.
+  the handler now skips session creation, lookup, and
+  revocation for providers that manage their own refresh
+  tokens (Cognito). The Cognito refresh token is returned
+  directly to the client.
 - **SAM Lambda entrypoints use lazy imports** — `lambda.presignup`,
   `lambda.handler`, and `lambda.authorizer` in `lambda.mjs` no
   longer pay the full pgrest boot cost at module load. The
   PreSignUp trigger previously returned `null` to Cognito because
   `createPgrest()` ran at import time and threw; signup now works
   on the Cognito path.
+- Open redirect bypass via protocol-relative URLs
+  (`//evil.com`) in OAuth callback error path.
+- OAuth callback success redirect using `undefined` as
+  base URL — `redirect_to` now threaded through the
+  state parameter.
 
 ### Documentation
 - AWS SAM deploy guide (`docs/deploy/aws-sam/README.md`) rewritten

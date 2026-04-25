@@ -2,14 +2,12 @@ import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { createAuthHandler } from '../handler.mjs';
 import { createJwt } from '../jwt.mjs';
-import { createHmac } from 'node:crypto';
-
+import { makeEvent, parseBody } from './helpers/events.mjs';
 const TEST_SECRET = 'test-secret-for-handler-unit-tests';
 
 // Mock provider that responds based on email/password values
 function createMockProvider() {
   return {
-    needsSessionTable: true,
     async signUp(email, password) {
       if (email === 'existing@example.com') {
         const err = new Error('User already exists');
@@ -75,82 +73,14 @@ function createMockProvider() {
   };
 }
 
-// Helper: build a Lambda proxy event
-function makeEvent({
-  method = 'POST',
-  path = '/auth/v1/signup',
-  query = {},
-  headers = {},
-  body = null,
-} = {}) {
-  return {
-    httpMethod: method,
-    path,
-    queryStringParameters: Object.keys(query).length ? query : null,
-    headers: { 'Content-Type': 'application/json', ...headers },
-    body: body ? JSON.stringify(body) : null,
-  };
-}
-
-function parseBody(response) {
-  return JSON.parse(response.body);
-}
-
-function decodePayload(token) {
-  const parts = token.split('.');
-  return JSON.parse(Buffer.from(parts[1], 'base64url').toString());
-}
-
-function b64url(str) {
-  return Buffer.from(str).toString('base64url');
-}
-
-function signJwt(payload) {
-  const header = { alg: 'HS256', typ: 'JWT' };
-  const now = Math.floor(Date.now() / 1000);
-  const fullPayload = { iat: now, ...payload };
-  const segments = [
-    b64url(JSON.stringify(header)),
-    b64url(JSON.stringify(fullPayload)),
-  ];
-  const sig = createHmac('sha256', TEST_SECRET)
-    .update(segments.join('.'))
-    .digest('base64url');
-  return [...segments, sig].join('.');
-}
-
 describe('handler.mjs', () => {
   let handler;
   let _setProvider;
   let jwt;
-  let mockPoolQueries;
-  let mockSessionRow;
-
   beforeEach(() => {
     jwt = createJwt({ jwtSecret: TEST_SECRET });
-    mockSessionRow = {
-      user_id: 'test-user-id-123',
-      provider: 'cognito',
-      prt: 'stored-provider-token',
-      revoked: false,
-    };
-    mockPoolQueries = [];
     const mockPool = {
-      query: async (sql, params) => {
-        mockPoolQueries.push({ sql, params });
-        if (sql.includes('INSERT INTO auth.sessions')) {
-          return { rows: [{ id: 'mock-session-id' }] };
-        }
-        if (sql.includes('FROM auth.sessions WHERE id')) {
-          return mockSessionRow
-            ? { rows: [mockSessionRow] }
-            : { rows: [] };
-        }
-        if (sql.includes('UPDATE auth.sessions')) {
-          return { rows: [] };
-        }
-        return { rows: [] };
-      },
+      query: async () => ({ rows: [] }),
     };
     const ctx = {
       jwt,
@@ -350,7 +280,7 @@ describe('handler.mjs', () => {
       );
     });
 
-    it('Signup: refresh token contains sid not prt', async () => {
+    it('Signup: refresh token is the raw provider token', async () => {
       const event = makeEvent({
         body: {
           email: 'newsid@example.com',
@@ -362,16 +292,10 @@ describe('handler.mjs', () => {
 
       assert.equal(res.statusCode, 200, 'status should be 200');
       const body = parseBody(res);
-      const refreshPayload = decodePayload(body.refresh_token);
       assert.equal(
-        typeof refreshPayload.sid,
-        'string',
-        'refresh JWT should contain sid as string'
-      );
-      assert.equal(
-        refreshPayload.prt,
-        undefined,
-        'refresh JWT should not contain prt'
+        body.refresh_token,
+        'cognito-refresh-token',
+        'refresh_token should be the raw provider token',
       );
     });
   });
@@ -450,7 +374,7 @@ describe('handler.mjs', () => {
       );
     });
 
-    it('Password grant: refresh token contains sid not prt', async () => {
+    it('Password grant: refresh token is the raw provider token', async () => {
       const event = makeEvent({
         path: '/auth/v1/token',
         query: { grant_type: 'password' },
@@ -464,16 +388,10 @@ describe('handler.mjs', () => {
 
       assert.equal(res.statusCode, 200, 'status should be 200');
       const body = parseBody(res);
-      const refreshPayload = decodePayload(body.refresh_token);
       assert.equal(
-        typeof refreshPayload.sid,
-        'string',
-        'refresh JWT should contain sid as string'
-      );
-      assert.equal(
-        refreshPayload.prt,
-        undefined,
-        'refresh JWT should not contain prt'
+        body.refresh_token,
+        'cognito-refresh-token',
+        'refresh_token should be the raw provider token',
       );
     });
   });
@@ -559,7 +477,16 @@ describe('handler.mjs', () => {
       );
     });
 
-    it('returns 401 with invalid_grant for invalid refresh token', async () => {
+    it('returns 401 with invalid_grant when provider rejects refresh token', async () => {
+      _setProvider({
+        ...createMockProvider(),
+        async refreshToken() {
+          const err = new Error('Token expired or revoked');
+          err.code = 'invalid_grant';
+          throw err;
+        },
+      });
+
       const event = makeEvent({
         path: '/auth/v1/token',
         query: { grant_type: 'refresh_token' },
@@ -575,14 +502,16 @@ describe('handler.mjs', () => {
         body.error_description,
         'Invalid refresh token'
       );
+
+      _setProvider(createMockProvider());
     });
 
-    it('Refresh grant: JWT with sid is accepted', async () => {
+    it('Refresh grant: passes token directly to provider', async () => {
       let refreshCalledWith;
       const spyProvider = {
         ...createMockProvider(),
-        async refreshToken(prt) {
-          refreshCalledWith = prt;
+        async refreshToken(token) {
+          refreshCalledWith = token;
           return {
             user: {
               id: 'test-user-id-123',
@@ -601,18 +530,10 @@ describe('handler.mjs', () => {
       };
       _setProvider(spyProvider);
 
-      const refreshJwt = signJwt({
-        sub: 'test-user-id-123',
-        role: 'authenticated',
-        sid: 'mock-session-id',
-        iss: 'pgrest-lambda',
-        exp: Math.floor(Date.now() / 1000) + 86400 * 30,
-      });
-
       const event = makeEvent({
         path: '/auth/v1/token',
         query: { grant_type: 'refresh_token' },
-        body: { refresh_token: refreshJwt },
+        body: { refresh_token: 'cognito-refresh-token' },
       });
 
       const res = await handler(event);
@@ -624,129 +545,11 @@ describe('handler.mjs', () => {
 
       assert.equal(
         refreshCalledWith,
-        'stored-provider-token',
-        'prov.refreshToken should be called with stored prt from session'
+        'cognito-refresh-token',
+        'prov.refreshToken should be called with the raw token',
       );
 
-      const updateQuery = mockPoolQueries.find(
-        (q) => q.sql?.includes('UPDATE auth.sessions SET prt')
-      );
-      assert.ok(updateQuery, 'should call updateSessionPrt');
-      assert.deepEqual(
-        updateQuery.params,
-        ['new-provider-refresh-token', 'mock-session-id'],
-        'updateSessionPrt should receive new prt and session id'
-      );
-
-      const refreshPayload = decodePayload(body.refresh_token);
-      assert.equal(
-        refreshPayload.sid,
-        'mock-session-id',
-        'new refresh JWT should contain sid'
-      );
-      assert.equal(
-        refreshPayload.prt,
-        undefined,
-        'new refresh JWT should not contain prt'
-      );
-    });
-
-    it('Refresh grant: JWT with prt but no sid rejected', async () => {
-      const oldFormatJwt = signJwt({
-        sub: 'test-user-id-123',
-        role: 'authenticated',
-        prt: 'old-provider-token',
-        iss: 'pgrest-lambda',
-        exp: Math.floor(Date.now() / 1000) + 86400 * 30,
-      });
-
-      const event = makeEvent({
-        path: '/auth/v1/token',
-        query: { grant_type: 'refresh_token' },
-        body: { refresh_token: oldFormatJwt },
-      });
-
-      const res = await handler(event);
-
-      assert.equal(res.statusCode, 401, 'status should be 401');
-      const body = parseBody(res);
-      assert.equal(body.error, 'invalid_grant');
-      assert.equal(
-        body.error_description,
-        'Invalid refresh token'
-      );
-    });
-
-    it('Refresh grant: revoked session returns invalid_grant', async () => {
-      mockSessionRow = { ...mockSessionRow, revoked: true };
-
-      const refreshJwt = signJwt({
-        sub: 'test-user-id-123',
-        role: 'authenticated',
-        sid: 'mock-session-id',
-        iss: 'pgrest-lambda',
-        exp: Math.floor(Date.now() / 1000) + 86400 * 30,
-      });
-
-      const event = makeEvent({
-        path: '/auth/v1/token',
-        query: { grant_type: 'refresh_token' },
-        body: { refresh_token: refreshJwt },
-      });
-
-      const res = await handler(event);
-
-      assert.equal(res.statusCode, 401, 'status should be 401');
-      const body = parseBody(res);
-      assert.equal(body.error, 'invalid_grant');
-    });
-
-    it('Refresh grant: nonexistent session returns invalid_grant', async () => {
-      mockSessionRow = null;
-
-      const refreshJwt = signJwt({
-        sub: 'test-user-id-123',
-        role: 'authenticated',
-        sid: 'nonexistent-session-id',
-        iss: 'pgrest-lambda',
-        exp: Math.floor(Date.now() / 1000) + 86400 * 30,
-      });
-
-      const event = makeEvent({
-        path: '/auth/v1/token',
-        query: { grant_type: 'refresh_token' },
-        body: { refresh_token: refreshJwt },
-      });
-
-      const res = await handler(event);
-
-      assert.equal(res.statusCode, 401, 'status should be 401');
-      const body = parseBody(res);
-      assert.equal(body.error, 'invalid_grant');
-    });
-
-    it('Refresh grant: provider mismatch returns invalid_grant', async () => {
-      mockSessionRow = { ...mockSessionRow, provider: 'gotrue' };
-
-      const refreshJwt = signJwt({
-        sub: 'test-user-id-123',
-        role: 'authenticated',
-        sid: 'mock-session-id',
-        iss: 'pgrest-lambda',
-        exp: Math.floor(Date.now() / 1000) + 86400 * 30,
-      });
-
-      const event = makeEvent({
-        path: '/auth/v1/token',
-        query: { grant_type: 'refresh_token' },
-        body: { refresh_token: refreshJwt },
-      });
-
-      const res = await handler(event);
-
-      assert.equal(res.statusCode, 401, 'status should be 401');
-      const body = parseBody(res);
-      assert.equal(body.error, 'invalid_grant');
+      _setProvider(createMockProvider());
     });
   });
 
@@ -822,7 +625,15 @@ describe('handler.mjs', () => {
       assert.equal(res.statusCode, 204, 'status should be 204');
     });
 
-    it('Logout: revokes all user sessions', async () => {
+    it('Logout: calls provider signOut with user id', async () => {
+      let signOutCalledWith = null;
+      _setProvider({
+        ...createMockProvider(),
+        async signOut(userId) {
+          signOutCalledWith = userId;
+        },
+      });
+
       const accessToken = jwt.signAccessToken({
         sub: 'test-user-id-123',
         email: 'test@example.com',
@@ -833,22 +644,16 @@ describe('handler.mjs', () => {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
 
-      await handler(event);
+      const res = await handler(event);
 
-      const revokeQuery = mockPoolQueries.find(
-        (q) =>
-          q.sql?.includes(
-            'UPDATE auth.sessions SET revoked = true'
-          ) && q.sql?.includes('user_id')
+      assert.equal(res.statusCode, 204, 'status should be 204');
+      assert.equal(
+        signOutCalledWith,
+        'test-user-id-123',
+        'provider.signOut should be called with claims.sub',
       );
-      assert.ok(
-        revokeQuery,
-        'should call revokeUserSessions'
-      );
-      assert.ok(
-        revokeQuery.params.includes('test-user-id-123'),
-        'revokeUserSessions should be called with claims.sub'
-      );
+
+      _setProvider(createMockProvider());
     });
   });
 
@@ -959,6 +764,11 @@ describe('handler.mjs', () => {
       assert.ok(contribution.paths['/token?grant_type=refresh_token'], 'should have /token refresh');
       assert.ok(contribution.paths['/user'], 'should have /user');
       assert.ok(contribution.paths['/logout'], 'should have /logout');
+      assert.ok(contribution.paths['/otp'], 'should have /otp');
+      assert.ok(contribution.paths['/verify'], 'should have /verify');
+      assert.ok(contribution.paths['/authorize'], 'should have /authorize');
+      assert.ok(contribution.paths['/callback'], 'should have /callback');
+      assert.ok(contribution.paths['/jwks'], 'should have /jwks');
     });
 
     it('returns auth schemas', () => {
@@ -973,6 +783,8 @@ describe('handler.mjs', () => {
       assert.ok(contribution.schemas.AuthSession, 'should have AuthSession');
       assert.ok(contribution.schemas.AuthUser, 'should have AuthUser');
       assert.ok(contribution.schemas.AuthError, 'should have AuthError');
+      assert.ok(contribution.schemas.OtpRequest, 'should have OtpRequest');
+      assert.ok(contribution.schemas.VerifyRequest, 'should have VerifyRequest');
     });
 
     it('derives auth URL from base URL', () => {

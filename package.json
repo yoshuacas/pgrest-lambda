@@ -32,13 +32,18 @@
   ],
   "dependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.0.0",
+    "@aws-sdk/client-sesv2": "^3.0.0",
     "@aws-sdk/dsql-signer": "^3.0.0",
     "@cedar-policy/cedar-wasm": "^4.9.1",
-    "bcryptjs": "^3.0.3",
+    "better-auth": "^1.0.0",
+    "jose": "^6.2.2",
     "jsonwebtoken": "^9.0.0",
     "pg": "^8.13.0"
   },
   "scripts": {
     "test": "node --experimental-test-module-mocks --test 'src/**/*.test.mjs'"
+  },
+  "devDependencies": {
+    "@supabase/supabase-js": "^2.104.1"
   }
 }

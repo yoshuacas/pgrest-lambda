@@ -1,10 +1,16 @@
 import jwt from 'jsonwebtoken';
 import { assertJwtSecret, JWT_ALGORITHM } from '../auth/jwt.mjs';
+import { createTokenVerifier } from '../auth/verify-token.mjs';
 
 const ISSUER = 'pgrest-lambda';
 
 export function createAuthorizer(config) {
   assertJwtSecret(config.jwtSecret);
+
+  const verifier = createTokenVerifier({
+    jwtSecret: config.jwtSecret,
+    jwksUrl: config.jwksUrl || null,
+  });
 
   async function handler(event) {
     try {
@@ -14,28 +20,24 @@ export function createAuthorizer(config) {
       const authHeader = event.headers?.Authorization
         || event.headers?.authorization || '';
 
-      // 1. Validate apikey
       if (!apikey) throw 'Unauthorized';
       const apikeyPayload = jwt.verify(apikey, secret,
         { algorithms: [JWT_ALGORITHM], issuer: ISSUER });
       if (!['anon', 'service_role'].includes(apikeyPayload.role))
         throw 'Unauthorized';
 
-      // 2. Determine effective identity
       let role = apikeyPayload.role;
       let userId = '';
       let email = '';
 
       if (authHeader.startsWith('Bearer ')) {
         const token = authHeader.slice(7);
-        const payload = jwt.verify(token, secret,
-          { algorithms: [JWT_ALGORITHM], issuer: ISSUER });
+        const payload = await verifier.verify(token);
         role = payload.role;
         userId = payload.sub || '';
         email = payload.email || '';
       }
 
-      // 3. Return Allow policy with context
       return allow(event.methodArn, { role, userId, email });
     } catch (err) {
       throw 'Unauthorized';
