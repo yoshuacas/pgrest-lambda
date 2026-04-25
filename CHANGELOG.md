@@ -38,6 +38,20 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
   end-to-end. New npm scripts: `test:integration`,
   `test:e2e`, `test:all`. See `tests/README.md` for
   the recipe to run on better-auth version bumps.
+- **`pgrest-lambda` CLI** (first iteration) with the
+  `dev`, `migrate-auth`, and `generate-key` commands.
+  `npx pgrest-lambda dev` boots a bundled Postgres
+  container, applies the better-auth schema, starts the
+  API on `localhost:3000`, and prints the Scalar docs
+  URL and apikeys. Zero configuration for first run.
+- New library exports for composition (used by the CLI
+  and usable directly by consumers like BOA):
+  `startDevServer`, `generateApikey`,
+  `startBundledPostgres`, `stopBundledPostgres`,
+  `resetBundledPostgres`.
+- `.env.example` at the repo root documenting every
+  environment variable.
+- README Quickstart section.
 - `close()` method on REST database adapters (postgres
   and dsql) so tests and long-running processes can
   release pool resources explicitly.

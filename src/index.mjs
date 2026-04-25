@@ -10,6 +10,13 @@ import { createAuthorizer } from './authorizer/index.mjs';
 import { assertCorsConfig } from './shared/cors.mjs';
 
 export { ensureBetterAuthSchema } from './auth/schema-migrator.mjs';
+export { startDevServer } from './dev/server.mjs';
+export { generateApikey } from './dev/keys.mjs';
+export {
+  startBundledPostgres,
+  stopBundledPostgres,
+  resetBundledPostgres,
+} from './dev/docker-postgres.mjs';
 
 function resolveDatabase(config) {
   if (config.database) {

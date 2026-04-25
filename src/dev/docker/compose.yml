@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: pgrest-lambda-dev-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-pgrest}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pgrest}
+      POSTGRES_DB: ${POSTGRES_DB:-pgrest}
+    ports:
+      - "${POSTGRES_PORT:-54322}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pgrest} -d ${POSTGRES_DB:-pgrest}"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+    volumes:
+      - pgrest_lambda_dev_data:/var/lib/postgresql/data
+volumes:
+  pgrest_lambda_dev_data:

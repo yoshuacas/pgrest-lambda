@@ -4,6 +4,29 @@ A serverless REST API for any PostgreSQL database.
 
 Introspects your PostgreSQL schema and serves PostgREST-compatible CRUD endpoints with built-in auth. Works as an npm library in your own project or as a standalone deployment.
 
+## Quickstart
+
+Prerequisites: Docker Desktop (or equivalent) running, Node 20+.
+
+```bash
+npx pgrest-lambda dev
+```
+
+This will:
+
+1. Start a Postgres container on `localhost:54322` (first run only).
+2. Apply the better-auth schema.
+3. Start the API on `http://localhost:3000`.
+4. Print an anon apikey and the URL of the interactive docs.
+
+Open the Scalar UI at `http://localhost:3000/rest/v1/_docs` to browse
+the API. Point `@supabase/supabase-js` at `http://localhost:3000` with
+the anon apikey and you're off.
+
+To pin the secrets (so apikeys survive restarts), copy `.env.example`
+to `.env` and fill in `JWT_SECRET` and `BETTER_AUTH_SECRET`. Run
+`pgrest-lambda help` for other commands (`migrate-auth`, `generate-key`).
+
 ## Features
 
 - **PostgREST-compatible query syntax** — filtering, ordering, pagination, upserts, exact counts, resource embedding (joins)

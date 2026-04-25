@@ -7,6 +7,9 @@
     ".": "./src/index.mjs",
     "./contribution": "./src/rest/openapi-contribution.mjs"
   },
+  "bin": {
+    "pgrest-lambda": "./bin/pgrest-lambda.mjs"
+  },
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -14,6 +17,7 @@
   },
   "files": [
     "src",
+    "bin",
     "policies",
     "lambda.mjs",
     "dev.mjs",
