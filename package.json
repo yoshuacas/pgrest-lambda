@@ -41,7 +41,11 @@
     "pg": "^8.13.0"
   },
   "scripts": {
-    "test": "node --experimental-test-module-mocks --test 'src/**/*.test.mjs'"
+    "test": "node --experimental-test-module-mocks --test 'src/**/*.test.mjs'",
+    "test:integration": "node --test --test-concurrency=1 'tests/integration/**/*.test.mjs'",
+    "test:e2e": "node --test --test-concurrency=1 'tests/e2e/**/*.test.mjs'",
+    "test:all": "npm test && npm run test:integration && npm run test:e2e",
+    "test:bump-better-auth": "echo 'Usage: npm i better-auth@<version> && npm run test:all' && exit 1"
   },
   "devDependencies": {
     "@supabase/supabase-js": "^2.104.1"

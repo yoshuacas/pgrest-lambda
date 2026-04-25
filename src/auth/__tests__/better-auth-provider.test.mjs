@@ -81,9 +81,13 @@ mock.module('better-auth', {
       });
 
       getSessionFn = mock.fn(async ({ headers, returnHeaders }) => {
+        // Provider uses Bearer auth (raw token). Also accept the legacy
+        // cookie form so older tests that pass cookies still work.
+        const auth = headers.get('authorization') || '';
+        const bearerMatch = auth.match(/^Bearer (.+)$/);
         const cookie = headers.get('cookie') || '';
-        const match = cookie.match(/better-auth\.session_token=([^;]+)/);
-        const token = match?.[1];
+        const cookieMatch = cookie.match(/better-auth\.session_token=([^;]+)/);
+        const token = bearerMatch?.[1] || cookieMatch?.[1];
         const session = token ? mockSessions.get(token) : null;
         if (!session) {
           if (returnHeaders) return { response: null, headers: new Headers() };
@@ -186,6 +190,7 @@ mock.module('better-auth/plugins', {
   namedExports: {
     jwt: (opts) => ({ id: 'jwt-plugin', ...opts }),
     magicLink: (opts) => ({ id: 'magic-link-plugin', ...opts }),
+    bearer: () => ({ id: 'bearer-plugin' }),
   },
 });
 

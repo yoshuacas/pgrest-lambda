@@ -32,6 +32,17 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
 - Shared token verification (`verify-token.mjs`) —
   handler and authorizer use the same dual-algorithm
   verification logic.
+- Integration + e2e test harness under `tests/` that
+  runs against a real PostgreSQL container (via
+  docker-compose) and exercises `@supabase/supabase-js`
+  end-to-end. New npm scripts: `test:integration`,
+  `test:e2e`, `test:all`. See `tests/README.md` for
+  the recipe to run on better-auth version bumps.
+- `close()` method on REST database adapters (postgres
+  and dsql) so tests and long-running processes can
+  release pool resources explicitly.
+- `getProvider()` exposed by `createAuthHandler` so
+  callers can reach the auth provider for cleanup.
 
 ### Changed
 - Provider interface: `issuesOwnAccessToken` replaces
@@ -63,6 +74,19 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
 - OAuth callback success redirect using `undefined` as
   base URL — `redirect_to` now threaded through the
   state parameter.
+- **better-auth signed-cookie auth failure**:
+  `getSessionWithJwt` and `signOut` passed raw session
+  tokens in a cookie header, but better-auth signs its
+  cookies with an HMAC suffix — the unsigned form
+  failed verification silently and returned `null`
+  sessions. Switched both call sites to
+  `Authorization: Bearer` and enabled the `bearer()`
+  plugin. Surfaced by the new integration harness;
+  previously hidden by the mocked unit tests.
+- **better-auth Zod validation errors surfaced as 500**:
+  `VALIDATION_ERROR` and `INVALID_EMAIL` codes from
+  better-auth now map to `validation_failed` (400),
+  matching the GoTrue contract.
 
 ### Documentation
 - AWS SAM deploy guide (`docs/deploy/aws-sam/README.md`) rewritten

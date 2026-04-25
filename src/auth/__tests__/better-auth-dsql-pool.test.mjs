@@ -43,6 +43,7 @@ mock.module('better-auth/plugins', {
   namedExports: {
     jwt: () => ({ id: 'jwt-plugin' }),
     magicLink: () => ({ id: 'magic-link-plugin' }),
+    bearer: () => ({ id: 'bearer-plugin' }),
   },
 });
 

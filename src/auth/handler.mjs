@@ -692,5 +692,5 @@ export function createAuthHandler(config, ctx) {
     };
   }
 
-  return { handler, getOpenApiPaths, _setProvider };
+  return { handler, getOpenApiPaths, _setProvider, getProvider };
 }

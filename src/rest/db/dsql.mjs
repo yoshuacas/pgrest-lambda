@@ -48,5 +48,12 @@ export function createDsqlProvider(config) {
     return pool;
   }
 
-  return { getPool, _setPool };
+  async function close() {
+    if (pool) {
+      await pool.end().catch(() => {});
+      pool = null;
+    }
+  }
+
+  return { getPool, _setPool, close };
 }

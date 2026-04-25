@@ -1,5 +1,5 @@
 import { betterAuth } from 'better-auth';
-import { jwt as jwtPlugin, magicLink } from 'better-auth/plugins';
+import { jwt as jwtPlugin, magicLink, bearer } from 'better-auth/plugins';
 import pg from 'pg';
 
 const BA_ERROR_MAP = {
@@ -14,6 +14,8 @@ const BA_ERROR_MAP = {
   FAILED_TO_GET_SESSION: 'invalid_grant',
   INVALID_TOKEN: 'invalid_grant',
   TOKEN_EXPIRED: 'invalid_grant',
+  VALIDATION_ERROR: 'validation_failed',
+  INVALID_EMAIL: 'validation_failed',
 };
 
 const OUR_CODES = new Set([
@@ -139,6 +141,10 @@ export function createBetterAuthProvider(config) {
     }),
     session: { expiresIn: 60 * 60 * 24 * 30 },
     plugins: [
+      // bearer() accepts `Authorization: Bearer <session-token>` on
+      // server-side API calls. Required by getSessionWithJwt and
+      // signOut, which pass raw session tokens (no cookie HMAC).
+      bearer(),
       jwtPlugin({
         jwks: { keyPairConfig: { alg: 'EdDSA', crv: 'Ed25519' } },
         jwt: {
@@ -178,8 +184,12 @@ export function createBetterAuthProvider(config) {
   });
 
   async function getSessionWithJwt(sessionToken) {
+    // Use Bearer auth rather than a cookie header: cookie values are
+    // signed (HMAC-suffixed) by better-auth when set, and passing only
+    // the raw token in the cookie causes signature verification to fail
+    // silently. The bearer plugin accepts the raw token directly.
     const headers = new Headers();
-    headers.set('cookie', `better-auth.session_token=${sessionToken}`);
+    headers.set('authorization', `Bearer ${sessionToken}`);
     const result = await auth.api.getSession({
       headers,
       returnHeaders: true,
@@ -287,11 +297,10 @@ export function createBetterAuthProvider(config) {
 
   async function signOut(sessionToken) {
     try {
+      // See getSessionWithJwt: use Bearer instead of a cookie header
+      // because raw session tokens don't carry the signed-cookie HMAC.
       const headers = new Headers();
-      headers.set(
-        'cookie',
-        `better-auth.session_token=${sessionToken}`,
-      );
+      headers.set('authorization', `Bearer ${sessionToken}`);
       await auth.api.signOut({ headers });
     } catch (err) {
       if (OUR_CODES.has(err?.code)) throw err;
