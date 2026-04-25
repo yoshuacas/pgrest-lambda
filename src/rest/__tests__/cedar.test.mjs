@@ -792,7 +792,10 @@ describe('authorize (table-level)', () => {
         schema,
       }),
       (err) => err.code === 'PGRST403'
-        && err.message.includes("Not authorized to select on 'todos'"),
+        // Message shape differs between production and dev modes;
+        // check for the three facts that appear in both.
+        && /select/.test(err.message)
+        && /todos/.test(err.message),
       'anon should be denied with PGRST403',
     );
   });

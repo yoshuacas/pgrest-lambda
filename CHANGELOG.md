@@ -55,6 +55,12 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
 - `docs/configuration.md` — full environment-variable
   reference, local vs. production secret patterns, and
   guidance on what not to commit.
+- `docs/authorization.md` — user-facing Cedar guide with
+  a working end-to-end example, "I want to..." recipes
+  (public read, team-scoped, admin override,
+  forbid-on-archived, owner-only delete), a compact
+  mental model, an error reference, and a Cedar syntax
+  cheatsheet.
 - `close()` method on REST database adapters (postgres
   and dsql) so tests and long-running processes can
   release pool resources explicitly.
@@ -149,6 +155,12 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
   in dev mode. When `production=false`, `unexpected_failure`
   errors now log the stack and upstream response body to
   stderr so developers can diagnose provider errors.
+- **Authorization denials (`PGRST403`) now carry enough
+  context to debug them in dev.** When `production=false`,
+  the error message names the role, action, and table
+  that were denied and points at `docs/authorization.md`.
+  Production messages are unchanged (terse, no model
+  leak).
 - **Dev server ignored the apikey's role claim**, so
   `apikey: <service_role>` alone behaved as `anon`.
   `extractAuthorizerContext` now reads `role` from the

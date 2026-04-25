@@ -286,6 +286,10 @@ The OpenAPI spec at `/rest/v1/` remains available regardless of this setting.
 
 pgrest-lambda uses Cedar policies for access control. Policies are evaluated via partial evaluation and translated into SQL WHERE clauses before the query runs — the database only returns authorized rows.
 
+See [docs/authorization.md](docs/authorization.md) for a guide with
+recipes (public read, team-scoped, admin override, forbid-on-archived)
+and an error reference.
+
 Default policies in `policies/default.cedar`:
 
 ```cedar

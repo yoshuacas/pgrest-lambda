@@ -127,6 +127,7 @@ export function createPgrest(config = {}) {
   const cedar = createCedar({
     policiesPath: resolved.policiesPath,
     region: resolved.region,
+    production: resolved.production,
   });
   const jwt = createJwt({ jwtSecret: resolved.jwtSecret });
 

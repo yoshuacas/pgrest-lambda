@@ -335,8 +335,25 @@ export function createCedar(config) {
   let policiesLoadedAt = 0;
   let cachedPoliciesPath = null;
   const policiesTtl = config.policiesTtl || 300_000;
+  const production = config.production === true;
 
   const source = parsePolicySource(config.policiesPath);
+
+  // In local/dev mode, surface *which* role was denied *what* action on
+  // *which* table and point at the docs. Production keeps the terse form
+  // so we don't leak the policy model to arbitrary callers.
+  function denyMessage(principal, action, table) {
+    if (production) {
+      return `Not authorized to ${action} on '${table}'`;
+    }
+    const role = principal?.role ?? 'unknown';
+    const src = currentSourceKey();
+    return (
+      `Not authorized: role='${role}' action='${action}' table='${table}'.\n` +
+      `No Cedar policy grants it. Loaded from ${src}. ` +
+      `See docs/authorization.md for the policy model and recipes.`
+    );
+  }
 
   function loadPolicyText() {
     if (source.scheme === 's3') {
@@ -384,7 +401,7 @@ export function createCedar(config) {
     if (!cachedPolicies) {
       throw new PostgRESTError(
         403, 'PGRST403',
-        `Not authorized to ${action} on '${resource}'`,
+        denyMessage(principal, action, resource),
       );
     }
 
@@ -424,7 +441,7 @@ export function createCedar(config) {
 
     throw new PostgRESTError(
       403, 'PGRST403',
-      `Not authorized to ${action} on '${resource}'`,
+      denyMessage(principal, action, resource),
     );
   }
 
@@ -434,7 +451,7 @@ export function createCedar(config) {
     if (!cachedPolicies) {
       throw new PostgRESTError(
         403, 'PGRST403',
-        `Not authorized to ${action} on '${context.table}'`,
+        denyMessage(principal, action, context.table),
       );
     }
 
@@ -454,7 +471,7 @@ export function createCedar(config) {
     if (result.type === 'failure') {
       throw new PostgRESTError(
         403, 'PGRST403',
-        `Not authorized to ${action} on '${context.table}'`,
+        denyMessage(principal, action, context.table),
       );
     }
 
@@ -468,7 +485,7 @@ export function createCedar(config) {
     if (response.decision === 'deny') {
       throw new PostgRESTError(
         403, 'PGRST403',
-        `Not authorized to ${action} on '${context.table}'`,
+        denyMessage(principal, action, context.table),
       );
     }
 
@@ -493,7 +510,7 @@ export function createCedar(config) {
           if (effect === 'forbid') {
             throw new PostgRESTError(
               403, 'PGRST403',
-              `Not authorized to ${action} on '${context.table}'`,
+              denyMessage(principal, action, context.table),
             );
           }
         } else if (sql !== 'FALSE') {
@@ -510,7 +527,7 @@ export function createCedar(config) {
     if (!anyPermitGrantsAccess && forbidConditions.length === 0) {
       throw new PostgRESTError(
         403, 'PGRST403',
-        `Not authorized to ${action} on '${context.table}'`,
+        denyMessage(principal, action, context.table),
       );
     }
 
