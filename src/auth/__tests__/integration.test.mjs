@@ -13,6 +13,7 @@ function createMockProvider() {
   let nextRefreshToken = 'cognito-refresh-initial';
 
   return {
+    needsSessionTable: false,
     async signUp(email) {
       const id = `user-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const user = {
@@ -258,20 +259,15 @@ describe('integration tests', () => {
     const insertSession = mockPool.queries.find(
       (q) => q.sql?.includes('INSERT INTO auth.sessions')
     );
-    assert.ok(
+    assert.equal(
       insertSession,
-      'signup should create a session (INSERT INTO auth.sessions)'
-    );
-    const refreshPayload = decodePayload(signupBody.refresh_token);
-    assert.equal(
-      typeof refreshPayload.sid,
-      'string',
-      'signup refresh JWT should contain sid'
-    );
-    assert.equal(
-      refreshPayload.prt,
       undefined,
-      'signup refresh JWT should not contain prt'
+      'Cognito signup should not create a session (needsSessionTable: false)'
+    );
+    assert.equal(
+      typeof signupBody.refresh_token,
+      'string',
+      'signup should return a refresh token'
     );
   });
 
@@ -386,26 +382,10 @@ describe('integration tests', () => {
       'new access_token should work for GET /user'
     );
 
-    const insertSession = mockPool.queries.find(
-      (q) => q.sql?.includes('INSERT INTO auth.sessions')
-    );
-    assert.ok(
-      insertSession,
-      'signin should create a session (INSERT INTO auth.sessions)'
-    );
-    const selectSession = mockPool.queries.find(
-      (q) => q.sql?.includes('FROM auth.sessions WHERE id')
-    );
-    assert.ok(
-      selectSession,
-      'refresh should resolve session (SELECT FROM auth.sessions)'
-    );
-    const updateSession = mockPool.queries.find(
-      (q) => q.sql?.includes('UPDATE auth.sessions')
-    );
-    assert.ok(
-      updateSession,
-      'refresh should update session prt (UPDATE auth.sessions)'
+    assert.equal(
+      mockPool.queries.length,
+      0,
+      'Cognito flow should not touch the database (needsSessionTable: false)'
     );
   });
 

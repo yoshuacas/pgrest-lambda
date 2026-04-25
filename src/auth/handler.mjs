@@ -112,6 +112,12 @@ export function createAuthHandler(config, ctx) {
       const prov = await getProvider();
       const user = await prov.signUp(email, password);
       const { providerTokens } = await prov.signIn(email, password);
+      const accessToken = jwt.signAccessToken({ sub: user.id, email });
+
+      if (!prov.needsSessionTable) {
+        return sessionResponse(accessToken, providerTokens.refreshToken, user, corsHeaders);
+      }
+
       const pool = await ctx.db.getPool();
       const providerName = config.auth?.provider || 'cognito';
       const { sid } = await createSession(pool, {
@@ -119,7 +125,6 @@ export function createAuthHandler(config, ctx) {
         provider: providerName,
         prt: providerTokens.refreshToken,
       });
-      const accessToken = jwt.signAccessToken({ sub: user.id, email });
       const refreshToken = jwt.signRefreshToken(user.id, sid);
       return sessionResponse(accessToken, refreshToken, user, corsHeaders);
     } catch (err) {
@@ -161,6 +166,12 @@ export function createAuthHandler(config, ctx) {
     try {
       const prov = await getProvider();
       const { user, providerTokens } = await prov.signIn(email, password);
+      const accessToken = jwt.signAccessToken({ sub: user.id, email: user.email });
+
+      if (!prov.needsSessionTable) {
+        return sessionResponse(accessToken, providerTokens.refreshToken, user, corsHeaders);
+      }
+
       const pool = await ctx.db.getPool();
       const providerName = config.auth?.provider || 'cognito';
       const { sid } = await createSession(pool, {
@@ -168,7 +179,6 @@ export function createAuthHandler(config, ctx) {
         provider: providerName,
         prt: providerTokens.refreshToken,
       });
-      const accessToken = jwt.signAccessToken({ sub: user.id, email: user.email });
       const refreshToken = jwt.signRefreshToken(user.id, sid);
       return sessionResponse(accessToken, refreshToken, user, corsHeaders);
     } catch (err) {
@@ -188,6 +198,21 @@ export function createAuthHandler(config, ctx) {
         undefined,
         corsHeaders
       );
+    }
+
+    const prov = await getProvider();
+
+    if (!prov.needsSessionTable) {
+      try {
+        const { user, providerTokens } = await prov.refreshToken(refresh_token);
+        const accessToken = jwt.signAccessToken({
+          sub: user.id,
+          email: user.email,
+        });
+        return sessionResponse(accessToken, providerTokens.refreshToken, user, corsHeaders);
+      } catch {
+        return errorResponse(401, 'invalid_grant', 'Invalid refresh token', undefined, corsHeaders);
+      }
     }
 
     let claims;
@@ -215,7 +240,6 @@ export function createAuthHandler(config, ctx) {
         return errorResponse(401, 'invalid_grant', 'Invalid refresh token', undefined, corsHeaders);
       }
 
-      const prov = await getProvider();
       const { user, providerTokens } = await prov.refreshToken(session.prt);
       await updateSessionPrt(pool, claims.sid, providerTokens.refreshToken);
       const accessToken = jwt.signAccessToken({
@@ -275,9 +299,11 @@ export function createAuthHandler(config, ctx) {
       const token = authHeader.slice(7);
       try {
         const claims = jwt.verifyToken(token);
-        const pool = await ctx.db.getPool();
-        await revokeUserSessions(pool, claims.sub);
         const prov = await getProvider();
+        if (prov.needsSessionTable) {
+          const pool = await ctx.db.getPool();
+          await revokeUserSessions(pool, claims.sub);
+        }
         await prov.signOut(claims.sub);
       } catch {
         // Best-effort: if the token is invalid we still return 204

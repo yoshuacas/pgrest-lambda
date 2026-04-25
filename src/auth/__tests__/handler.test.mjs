@@ -9,6 +9,7 @@ const TEST_SECRET = 'test-secret-for-handler-unit-tests';
 // Mock provider that responds based on email/password values
 function createMockProvider() {
   return {
+    needsSessionTable: true,
     async signUp(email, password) {
       if (email === 'existing@example.com') {
         const err = new Error('User already exists');

@@ -14,6 +14,11 @@
  * @property {(providerRefreshToken: string) => Promise<{user: AuthUser, providerTokens: Object}>} refreshToken
  * @property {(identifier: string) => Promise<AuthUser>} getUser - Cognito: access token; GoTrue: user ID
  * @property {(providerAccessToken: string) => Promise<void>} signOut
+ * @property {boolean} [needsSessionTable] - If true, the handler
+ *   stores refresh tokens in auth.sessions and issues refresh JWTs
+ *   with an opaque sid. If false or absent, the provider manages
+ *   refresh state itself and the handler delegates refresh to
+ *   provider.refreshToken directly.
  */
 
 /**

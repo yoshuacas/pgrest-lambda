@@ -206,6 +206,6 @@ export function createGoTrueProvider(config, db) {
     );
   }
 
-  const provider = { signUp, signIn, refreshToken, getUser, signOut };
+  const provider = { needsSessionTable: true, signUp, signIn, refreshToken, getUser, signOut };
   return { provider, _setClient: null };
 }

@@ -61,6 +61,8 @@ export function createCognitoProvider(config) {
   }
 
   const provider = {
+    needsSessionTable: false,
+
     async signUp(email, password) {
       try {
         const result = await getClient().send(new SignUpCommand({

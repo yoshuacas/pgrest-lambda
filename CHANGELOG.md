@@ -8,6 +8,14 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
 
 ## Unreleased
 
+### Fixed
+- **Cognito path no longer requires `auth.sessions` table** —
+  the handler now checks `provider.needsSessionTable` and
+  skips session creation, lookup, and revocation for
+  providers that manage their own refresh tokens (Cognito).
+  The Cognito refresh token is returned directly to the
+  client. GoTrue path is unchanged.
+
 ## 0.2.0 — 2026-04-24
 
 Cognito is the default auth provider. This release hardens JWT handling, refresh-token storage, and TLS verification, and introduces the opt-in GoTrue-native auth provider for deployments that want to avoid an AWS Cognito dependency.
@@ -52,9 +60,7 @@ Cognito is the default auth provider. This release hardens JWT handling, refresh
 
 ### Breaking
 - Refresh tokens issued before this version are rejected on
-  upgrade. Clients must re-authenticate. Cognito deployments
-  now require a PostgreSQL database for session storage
-  (`auth.sessions` table).
+  upgrade. Clients must re-authenticate.
 
 ### Fixed
 - **Bulk insert with `columns` query parameter** -- supabase-js sends `?columns=col1,col2,...` on array inserts. pgrest-lambda now recognizes `columns` as a reserved parameter instead of misinterpreting it as a filter. The column list controls which columns are populated from the JSON body.
