@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import pg from 'pg';
+import { ensureBetterAuthSchema } from '../../src/index.mjs';
 
 const execFile = promisify(execFileCb);
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -82,11 +83,9 @@ async function execSql(pool, sql) {
 }
 
 export async function applyBetterAuthSchema(pool) {
-  const sql = await readFile(
-    join(FIXTURES_DIR, 'better-auth-schema.sql'),
-    'utf8'
-  );
-  await execSql(pool, sql);
+  // Delegate to the real library export — the test harness must exercise
+  // the same code path production uses. No more fixture-file drift.
+  await ensureBetterAuthSchema(pool);
 }
 
 export async function applyPublicSchema(pool) {

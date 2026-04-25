@@ -9,6 +9,8 @@ import { createJwt, assertJwtSecret } from './auth/jwt.mjs';
 import { createAuthorizer } from './authorizer/index.mjs';
 import { assertCorsConfig } from './shared/cors.mjs';
 
+export { ensureBetterAuthSchema } from './auth/schema-migrator.mjs';
+
 function resolveDatabase(config) {
   if (config.database) {
     const d = config.database;

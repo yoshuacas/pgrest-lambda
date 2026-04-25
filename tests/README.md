@@ -58,8 +58,10 @@ tests/
 │   ├── pgrest.mjs                createTestPgrest(), event() builder
 │   └── server.mjs                startDevServer() for e2e
 ├── fixtures/
-│   ├── better-auth-schema.sql    DDL for better_auth.user/session/account/...
 │   └── public-schema.sql         test tables (notes)
+│                                 (better_auth DDL lives in
+│                                 src/auth/migrations/ and is applied
+│                                 via the library's ensureBetterAuthSchema)
 ├── integration/
 │   ├── auth-flows.test.mjs       signup, signin, refresh, user, logout, JWKS
 │   └── rest-with-auth.test.mjs   REST insert/select gated by authorizer context
