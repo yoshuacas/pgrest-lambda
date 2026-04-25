@@ -12,6 +12,14 @@
     "type": "git",
     "url": "https://github.com/yoshuacas/pgrest-lambda.git"
   },
+  "files": [
+    "src",
+    "policies",
+    "lambda.mjs",
+    "dev.mjs",
+    "README.md",
+    "LICENSE"
+  ],
   "keywords": [
     "postgrest",
     "postgresql",
