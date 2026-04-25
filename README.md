@@ -4,11 +4,16 @@ A serverless REST API for any PostgreSQL database.
 
 Introspects your PostgreSQL schema and serves PostgREST-compatible CRUD endpoints with built-in auth. Works as an npm library in your own project or as a standalone deployment.
 
-## Quickstart
+## Getting started
+
+Two ways to use pgrest-lambda, depending on what you're doing.
+
+### Path A — Run it locally as a full stack (most developers)
+
+Best for: trying it out, building an app that talks to it, local
+development before deploying anywhere.
 
 Prerequisites: Docker Desktop (or equivalent) running, Node 20+.
-
-pgrest-lambda isn't on npm yet. Clone the repo and run from there:
 
 ```bash
 git clone https://github.com/yoshuacas/pgrest-lambda.git
@@ -17,46 +22,78 @@ npm install
 npm run dev
 ```
 
-`npm run dev` will:
+That's it. `npm run dev` starts a Postgres container on
+`localhost:54322`, applies the better-auth schema, and serves the API
+on `http://localhost:3000`. The banner prints the `DATABASE_URL`, an
+anon apikey, a service-role apikey, and the URL of the interactive
+Scalar docs. Open that URL in a browser; you're looking at a live
+OpenAPI explorer for your own API.
 
-1. Start a Postgres container on `localhost:54322` (first run only).
-2. Apply the better-auth schema.
-3. Start the API on `http://localhost:3000`.
-4. Print an anon apikey, the `DATABASE_URL`, and the interactive docs URL.
+Point any Supabase client at `http://localhost:3000` and use the anon
+apikey as the anon key:
 
-Open the Scalar UI at `http://localhost:3000/rest/v1/_docs` to browse
-the API. Point `@supabase/supabase-js` at `http://localhost:3000` with
-the anon apikey and you're off.
+```javascript
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  'http://localhost:3000',
+  '<anon apikey from the banner>',
+);
+
+await supabase.from('posts').select();
+```
 
 On first run the CLI generates `JWT_SECRET` and `BETTER_AUTH_SECRET`
-and writes them to `.env.local` so apikeys are stable across restarts.
-`.env.local` is gitignored — never commit it. See
+and writes them to `.env.local` so your apikeys stay stable across
+restarts. `.env.local` is gitignored — never commit it. See
 [docs/configuration.md](docs/configuration.md) for the full variable
 reference and production secret patterns.
 
-Other commands (while pre-publish, run via `npm run …`):
+Other commands:
 
-- `npm run refresh` — reload schema cache and Cedar policies without restarting
-- `npm run migrate-auth` — apply the better-auth schema against `DATABASE_URL` (for production bootstraps)
+- `npm run refresh` — reload schema cache and Cedar policies without restarting the server (do this after editing a `.cedar` file or running a DB migration)
 - `npm run generate-key anon` / `npm run generate-key service_role` — mint apikey JWTs
+- `npm run migrate-auth` — apply the better-auth schema against `DATABASE_URL` (for production bootstraps)
 
-### Using pgrest-lambda as a library in your own project
+To stop:
 
-While we're pre-publish, install from GitHub:
+- `Ctrl-C` — stops the API server, leaves Postgres running.
+- `docker compose -f src/dev/docker/compose.yml down` — stops Postgres but keeps the data volume.
+- `docker compose -f src/dev/docker/compose.yml down -v` — wipes everything including data.
+
+### Path B — Embed pgrest-lambda in your own project
+
+Best for: using pgrest-lambda as one piece of a larger backend, or
+building your own deployment.
 
 ```bash
 npm install github:yoshuacas/pgrest-lambda
 ```
 
-Then:
+Then in your code:
 
 ```javascript
 import { createPgrest } from 'pgrest-lambda';
-export const handler = createPgrest({ /* config */ }).handler;
+
+const pgrest = createPgrest({
+  database: { connectionString: process.env.DATABASE_URL },
+  jwtSecret: process.env.JWT_SECRET,
+  auth: {
+    provider: 'better-auth',
+    betterAuthSecret: process.env.BETTER_AUTH_SECRET,
+    betterAuthUrl: process.env.BETTER_AUTH_URL,
+  },
+});
+
+// Route HTTP requests however your platform expects.
+// The handler takes an API Gateway-style event and returns a response.
+export const handler = pgrest.handler;
 ```
 
-Once the package ships on npm, `npm install pgrest-lambda` and
-`npx pgrest-lambda dev` will work directly — no clone required.
+See [docs/configuration.md](docs/configuration.md) for the full config
+shape. If you're deploying to AWS Lambda behind API Gateway, also see
+the reference wiring in [`deploy/aws-sam/`](deploy/aws-sam/) — including
+`createAuthorizer` from `pgrest-lambda/aws-sam` for the Lambda authorizer.
 
 ## Features
 
