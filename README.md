@@ -1,36 +1,48 @@
 # pgrest-lambda
 
-A serverless REST API for any PostgreSQL database.
+A serverless REST API and auth layer for any PostgreSQL database.
 
-Introspects your PostgreSQL schema and serves PostgREST-compatible CRUD endpoints with built-in auth. Works as an npm library in your own project or as a standalone deployment.
+Point it at a Postgres schema; get a Supabase-compatible REST API,
+user signup/login, OAuth, magic links, and an interactive OpenAPI
+explorer. Run it as a CLI, embed it in your own Lambda, or deploy the
+reference AWS SAM template.
+
+Works with the `@supabase/supabase-js` client unchanged.
+
+```bash
+npx pgrest-lambda dev
+```
 
 ## Getting started
 
-Two ways to use pgrest-lambda, depending on what you're doing.
+Two paths depending on whether you want to run pgrest-lambda
+standalone or embed it in your own project.
 
-### Path A — Run it locally as a full stack (most developers)
+### Path A — Run it locally (most developers start here)
 
-Best for: trying it out, building an app that talks to it, local
-development before deploying anywhere.
+**Prerequisites:** Docker Desktop (or equivalent) running, Node 20+.
 
-Prerequisites: Docker Desktop (or equivalent) running, Node 20+.
+From any directory:
 
 ```bash
-git clone https://github.com/yoshuacas/pgrest-lambda.git
-cd pgrest-lambda
-npm install
-npm run dev
+npx pgrest-lambda dev
 ```
 
-That's it. `npm run dev` starts a Postgres container on
-`localhost:54322`, applies the better-auth schema, and serves the API
-on `http://localhost:3000`. The banner prints the `DATABASE_URL`, an
-anon apikey, a service-role apikey, and the URL of the interactive
-Scalar docs. Open that URL in a browser; you're looking at a live
-OpenAPI explorer for your own API.
+That's it. No clone, no config, no AWS account. The command:
 
-Point any Supabase client at `http://localhost:3000` and use the anon
-apikey as the anon key:
+1. Starts a Postgres container on `localhost:54322` (first run only).
+2. Applies the better-auth schema.
+3. Starts the API on `http://localhost:3000`.
+4. Writes `JWT_SECRET` and `BETTER_AUTH_SECRET` to `.env.local` in
+   the current directory (so your apikeys stay stable across
+   restarts). `.env.local` is `.gitignore`-ed — don't commit it.
+5. Prints a banner with the `DATABASE_URL`, an anon apikey, a
+   service-role apikey, and the URL of the interactive docs.
+
+Open `http://localhost:3000/rest/v1/_docs` in a browser. That's the
+live Scalar API explorer for your own API.
+
+Use any Supabase client against it:
 
 ```javascript
 import { createClient } from '@supabase/supabase-js';
@@ -40,37 +52,49 @@ const supabase = createClient(
   '<anon apikey from the banner>',
 );
 
-await supabase.from('posts').select();
-```
+// Signup
+const { data: signup } = await supabase.auth.signUp({
+  email: 'alice@example.com',
+  password: 'Passw0rd!',
+});
 
-On first run the CLI generates `JWT_SECRET` and `BETTER_AUTH_SECRET`
-and writes them to `.env.local` so your apikeys stay stable across
-restarts. `.env.local` is gitignored — never commit it. See
-[docs/configuration.md](docs/configuration.md) for the full variable
-reference and production secret patterns.
+// Query any table in your `public` schema — endpoints are
+// auto-generated from schema introspection.
+const { data: rows } = await supabase.from('posts').select();
+```
 
 Other commands:
 
-- `npm run refresh` — reload schema cache and Cedar policies without restarting the server (do this after editing a `.cedar` file or running a DB migration)
-- `npm run generate-key anon` / `npm run generate-key service_role` — mint apikey JWTs
-- `npm run migrate-auth` — apply the better-auth schema against `DATABASE_URL` (for production bootstraps)
+| Command | What it does |
+|---|---|
+| `npx pgrest-lambda refresh` | Reload schema cache and Cedar policies without restarting. Run this after you change a `.cedar` file or run a migration. |
+| `npx pgrest-lambda generate-key anon` | Mint an anon apikey JWT (prints to stdout). |
+| `npx pgrest-lambda generate-key service_role` | Mint a service-role apikey JWT. |
+| `npx pgrest-lambda migrate-auth` | Apply the better-auth schema against `DATABASE_URL`. For production bootstraps. |
+| `npx pgrest-lambda help` | Full command reference. |
 
-To stop:
+To stop the API server: `Ctrl-C` in the terminal running `dev`.
 
-- `Ctrl-C` — stops the API server, leaves Postgres running.
-- `docker compose -f src/dev/docker/compose.yml down` — stops Postgres but keeps the data volume.
-- `docker compose -f src/dev/docker/compose.yml down -v` — wipes everything including data.
+The Postgres container (named `pgrest-lambda-dev-postgres`) keeps
+running and its data persists across restarts. To stop or wipe it:
+
+```bash
+# Stop Postgres, keep data:
+docker stop pgrest-lambda-dev-postgres
+
+# Wipe Postgres and its data volume for a clean slate:
+docker rm -f pgrest-lambda-dev-postgres
+docker volume rm docker_pgrest_lambda_dev_data
+```
 
 ### Path B — Embed pgrest-lambda in your own project
 
-Best for: using pgrest-lambda as one piece of a larger backend, or
-building your own deployment.
+For a custom deploy (your own Lambda wrapper, Fastify server, Kong
+plugin, Cloudflare Worker, etc.):
 
 ```bash
-npm install github:yoshuacas/pgrest-lambda
+npm install pgrest-lambda
 ```
-
-Then in your code:
 
 ```javascript
 import { createPgrest } from 'pgrest-lambda';
@@ -85,427 +109,181 @@ const pgrest = createPgrest({
   },
 });
 
-// Route HTTP requests however your platform expects.
-// The handler takes an API Gateway-style event and returns a response.
+// pgrest.handler takes an API Gateway-style event and returns a
+// { statusCode, headers, body } response. Route HTTP requests into
+// it however your platform expects.
 export const handler = pgrest.handler;
 ```
 
 See [docs/configuration.md](docs/configuration.md) for the full config
-shape. If you're deploying to AWS Lambda behind API Gateway, also see
-the reference wiring in [`deploy/aws-sam/`](deploy/aws-sam/) — including
-`createAuthorizer` from `pgrest-lambda/aws-sam` for the Lambda authorizer.
+reference.
 
-## Features
-
-- **PostgREST-compatible query syntax** — filtering, ordering, pagination, upserts, exact counts, resource embedding (joins)
-- **GoTrue-compatible auth** — signup, signin, token refresh, user profile (`@supabase/supabase-js` works as a client)
-- **Cedar authorization** — policy-as-code row-level filtering via partial evaluation, translated to SQL WHERE clauses
-- **OpenAPI 3.0 auto-generation** — hit `GET /rest/v1/` for the full spec
-- **Multiple database backends** — Aurora DSQL (IAM auth), Aurora Serverless v2, RDS PostgreSQL, or any PostgreSQL
-- **Library-first** — use as an npm package in your own Lambda, or deploy standalone
-
-## Usage
-
-### As a library
-
-```bash
-npm install pgrest-lambda
-```
-
-```javascript
-import { createPgrest } from 'pgrest-lambda';
-
-const pgrest = createPgrest({
-  database: {
-    host: 'your-db-host.amazonaws.com',
-    port: 5432,
-    user: 'postgres',
-    password: 'secret',
-    database: 'mydb',
-  },
-  jwtSecret: process.env.JWT_SECRET,
-  policies: './policies',
-  auth: {
-    provider: 'cognito',
-    region: 'us-east-1',
-    clientId: process.env.USER_POOL_CLIENT_ID,
-  },
-});
-// Auth defaults to Cognito. For a DB-only deployment with no
-// AWS dependency, opt into the GoTrue-native provider below.
-```
-
-To use the GoTrue-native provider (users and refresh tokens
-stored in the same PostgreSQL database, no external dependencies):
-
-```javascript
-const pgrest = createPgrest({
-  database: { ... },
-  jwtSecret: process.env.JWT_SECRET,
-  auth: { provider: 'better-auth' },
-});
-
-// One combined handler that routes /auth/v1/* to auth and /rest/v1/* to REST.
-export const handler = pgrest.handler;
-```
-
-pgrest-lambda gives you handler functions. How you deploy them (CDK, SAM,
-Terraform, SST, Kong, Cloudflare Workers, plain Express) is up to you.
-AWS Lambda authorizers are a deploy-target concern — see
-[`deploy/aws-sam/`](deploy/aws-sam/) if you're using AWS API Gateway:
+If you're deploying to AWS Lambda behind API Gateway, the
+[`deploy/aws-sam/`](deploy/aws-sam/) folder ships a reference
+template. It also exposes a Lambda authorizer on a subpath export:
 
 ```javascript
 import { createAuthorizer } from 'pgrest-lambda/aws-sam';
-export const authorizer = createAuthorizer({ jwtSecret: process.env.JWT_SECRET }).handler;
-```
-
-### Override auth
-
-Bring your own auth handler:
-
-```javascript
-const pgrest = createPgrest({
-  database: { connectionString: process.env.DATABASE_URL },
+export const authorizer = createAuthorizer({
   jwtSecret: process.env.JWT_SECRET,
-  auth: myCustomAuthHandler,  // any (event) => response function
-});
+}).handler;
 ```
 
-### Disable auth
+## Features
 
-REST-only mode when you handle auth elsewhere:
+- **PostgREST-compatible query syntax** — filtering, ordering, pagination, upserts, exact counts, resource embedding (joins).
+- **Supabase-compatible auth** — signup, signin, refresh, user profile, magic link, OAuth, JWKS. Works with the `@supabase/supabase-js` client unchanged.
+- **Cedar authorization** — policy-as-code row-level filtering, translated into SQL `WHERE` clauses before query execution.
+- **OpenAPI 3.0 auto-generation** — live spec at `GET /rest/v1/`, interactive Scalar docs at `GET /rest/v1/_docs`.
+- **Multiple database backends** — Aurora DSQL (IAM auth), Aurora Serverless v2, RDS PostgreSQL, or any PostgreSQL.
+- **Swappable auth providers** — better-auth (default, DB-only, no AWS) or Cognito (AWS-managed).
+- **Deploy-agnostic core** — the library doesn't care whether it's behind API Gateway, Kong, Cloudflare Workers, or plain Express. The `deploy/` folder ships reference integrations.
 
-```javascript
-const pgrest = createPgrest({
-  database: { connectionString: process.env.DATABASE_URL },
-  jwtSecret: process.env.JWT_SECRET,
-  auth: false,
-});
-// pgrest.auth is null, pgrest.handler routes everything to REST
-```
+## Configuration
 
-### DSQL mode
+Everything below can be passed as an argument to `createPgrest()` or
+set as an environment variable. Explicit arguments win over env vars,
+env vars win over defaults.
 
-```javascript
-const pgrest = createPgrest({
-  database: {
-    dsqlEndpoint: 'your-cluster.dsql.us-east-1.on.aws',
-    region: 'us-east-1',
-  },
-  jwtSecret: process.env.JWT_SECRET,
-});
-```
+### Database
 
-### CORS Configuration
-
-Control which origins can make cross-origin requests to your API.
-
-```javascript
-createPgrest({
-  cors: {
-    allowedOrigins: ['https://app.example.com'],
-    allowCredentials: false,
-  },
-  production: true,
-  // ... other config
-});
-```
-
-| Config key | Type | Default |
+| Config key | Env var | Default |
 |---|---|---|
-| `cors.allowedOrigins` | `'*'`, `string[]`, or `(origin) => boolean` | `'*'` |
-| `cors.allowCredentials` | `boolean` | `false` |
-| `production` | `boolean` | `process.env.NODE_ENV === 'production'` |
-
-Wildcard origins (`'*'`) are rejected when `production` mode is
-enabled — `createPgrest` throws at construction time. In
-production, provide an explicit list of allowed origins.
-
-**Security note:** even with `allowedOrigins: '*'`, the anon
-`apikey` is public by design. CORS origin restriction limits
-which sites can make cross-origin requests, but the anon key is
-not a secret. To protect sensitive data, use Cedar policies and
-authenticated requests with per-user Bearer tokens.
-
-### Config resolution
-
-The factory resolves config in order: explicit values, then environment variables, then defaults.
-
-| Config key | Env var fallback | Default |
-|---|---|---|
-| `database.dsqlEndpoint` | `DSQL_ENDPOINT` | — |
 | `database.connectionString` | `DATABASE_URL` | — |
 | `database.host` | `PG_HOST` | `localhost` |
 | `database.port` | `PG_PORT` | `5432` |
 | `database.user` | `PG_USER` | `postgres` |
 | `database.password` | `PG_PASSWORD` | `''` |
 | `database.database` | `PG_DATABASE` | `postgres` |
-| `database.ssl` | `PG_SSL` | `false` |
-| `jwtSecret` | `JWT_SECRET` | — (required, >= 32 chars; generate with `openssl rand -base64 48`) |
-| `auth.provider` | `AUTH_PROVIDER` | `cognito` |
-| `auth.region` | `REGION_NAME` | — |
-| `auth.clientId` | `USER_POOL_CLIENT_ID` | — |
+| `database.ssl` | `PG_SSL` | `false` (see TLS below) |
+| `database.dsqlEndpoint` | `DSQL_ENDPOINT` | — (Aurora DSQL mode) |
+
+### Auth
+
+| Config key | Env var | Default |
+|---|---|---|
+| `jwtSecret` | `JWT_SECRET` | — (required, ≥ 32 chars) |
+| `auth.provider` | `AUTH_PROVIDER` | `cognito` for `createPgrest()`; `better-auth` for `pgrest-lambda dev` |
+| `auth.betterAuthSecret` | `BETTER_AUTH_SECRET` | — (required when provider is `better-auth`) |
+| `auth.betterAuthUrl` | `BETTER_AUTH_URL` | — (required for OAuth callbacks) |
+| `auth.googleClientId` | `GOOGLE_CLIENT_ID` | — (enables `/auth/v1/authorize?provider=google`) |
+| `auth.googleClientSecret` | `GOOGLE_CLIENT_SECRET` | — |
+| `auth.sesFromAddress` | `SES_FROM_ADDRESS` | — (required for magic-link emails) |
+| `auth.region` | `REGION_NAME` | — (Cognito and SES) |
+| `auth.clientId` | `USER_POOL_CLIENT_ID` | — (Cognito) |
+
+### Other
+
+| Config key | Env var | Default |
+|---|---|---|
 | `policies` | `POLICIES_PATH` | `./policies` (filesystem path or `s3://<bucket>/<prefix>/`) |
+| `cors.allowedOrigins` | — | `'*'` (rejected in production mode; provide a list) |
+| `cors.allowCredentials` | — | `false` |
 | `schemaCacheTtl` | `SCHEMA_CACHE_TTL_MS` | `30000` (30 sec) |
 | `docs` | `PGREST_DOCS` | `true` |
+| `production` | — | `process.env.NODE_ENV === 'production'` |
 
-If you only set environment variables, `createPgrest()` with no arguments works.
+For production deploys and secret-management patterns, see
+[docs/configuration.md](docs/configuration.md).
 
-### TLS Configuration
+### TLS
 
-The `database.ssl` option controls TLS to the database. Four
-postures are available:
+The `database.ssl` option controls TLS to the database:
 
-```javascript
-// No TLS (localhost, same-VPC). Default when ssl is unset.
-createPgrest({ database: { host: 'localhost' } });
-
-// TLS with certificate verification (secure default).
-createPgrest({ database: { host: 'db.example.com', ssl: true } });
-
-// TLS with a private CA (verification on by default).
-createPgrest({
-  database: {
-    host: 'db.internal',
-    ssl: { ca: fs.readFileSync('/path/to/ca.pem', 'utf8') },
-  },
-});
-
-// TLS without verification (consumer explicitly accepts MITM risk).
-createPgrest({
-  database: {
-    host: 'db.internal',
-    ssl: { rejectUnauthorized: false },
-  },
-});
-```
-
-| `database.ssl` value | TLS | Certificate verification |
+| Value | TLS | Verification |
 |---|---|---|
-| `undefined` / `false` | Off | N/A |
-| `true` | On | On |
-| `{ ca: '...' }` | On | On (with custom CA) |
-| `{ rejectUnauthorized: false }` | On | Off |
+| `undefined` / `false` | Off | — |
+| `true` | On | On (secure default) |
+| `{ ca: '...' }` | On | On with custom CA |
+| `{ rejectUnauthorized: false }` | On | Off (consumer accepts MITM risk) |
 
-DSQL connections always verify TLS certificates. AWS-managed
-certificates chain to public roots included in the Node.js trust
-store. There is no config surface and no opt-out for DSQL.
+DSQL connections always verify TLS. When `DATABASE_URL` is set, TLS is
+controlled by `sslmode=...` in the URL and `database.ssl` is ignored.
 
-When `database.connectionString` (or `DATABASE_URL`) is set, TLS
-is controlled by `sslmode=...` in the URL. The `database.ssl`
-option is not applied.
+### Alternative auth setups
 
-**Breaking change:** `ssl: true` now means TLS *with* certificate
-verification. Consumers who previously set `ssl: true` and connect
-to a database with a self-signed certificate will see TLS errors.
-To restore the old behavior, pass
-`ssl: { rejectUnauthorized: false }` explicitly.
-
-## Architecture
-
-```
-Client (supabase-js, fetch, curl)
-  |
-  v
-API Gateway (REST)
-  |
-  +-- /auth/v1/*  -->  Auth Handler (GoTrue-compatible)
-  |                      +-- signup, token, user, logout
-  |                      +-- Cognito (default) or GoTrue-native
-  |
-  +-- /rest/v1/*  -->  REST Handler (PostgREST-compatible)
-  |    |                 +-- schema introspection
-  |    |                 +-- query parsing + SQL building
-  |    |                 +-- Cedar authorization (partial eval -> SQL WHERE)
-  |    |                 +-- OpenAPI generation
-  |    v
-  |  PostgreSQL (DSQL / Aurora / RDS / any)
-  |
-  +-- Authorizer  -->  JWT validation (apikey + bearer dual-layer)
-```
-
-## API Documentation
-
-pgrest-lambda serves interactive API documentation at `GET /rest/v1/_docs`, powered by [Scalar](https://scalar.com). The docs page loads from CDN and fetches the auto-generated OpenAPI spec — no build step, no extra dependencies.
-
-The OpenAPI 3.0 spec itself is at `GET /rest/v1/` and includes all tables, columns, types, and operations discovered from your database.
-
-To disable the docs page (e.g., in production):
+**No auth at all.** REST-only mode:
 
 ```javascript
-createPgrest({ docs: false, ... })
+createPgrest({ auth: false });
 ```
 
-Or via environment variable:
+**Custom auth handler.** Your function replaces the `/auth/v1/*` path:
 
+```javascript
+createPgrest({ auth: (event) => yourHandler(event) });
 ```
-PGREST_DOCS=false
+
+**Cognito.** Use the AWS-managed user pool instead of better-auth:
+
+```javascript
+createPgrest({
+  auth: {
+    provider: 'cognito',
+    region: 'us-east-1',
+    clientId: process.env.USER_POOL_CLIENT_ID,
+  },
+});
 ```
 
-The OpenAPI spec at `/rest/v1/` remains available regardless of this setting.
+## Authorization
 
-## Cedar Authorization
+Every REST request runs through a Cedar policy check. The engine
+combines all `.cedar` files in `policies/` (or whatever
+`POLICIES_PATH` points at), translates each row-level predicate into
+a SQL `WHERE` clause, and attaches it to the query before execution.
 
-pgrest-lambda uses Cedar policies for access control. Policies are evaluated via partial evaluation and translated into SQL WHERE clauses before the query runs — the database only returns authorized rows.
+The shipped `policies/default.cedar` lets authenticated users read /
+write their own rows (`resource.user_id == principal`) and lets
+`service_role` bypass everything.
 
-See [docs/authorization.md](docs/authorization.md) for a guide with
-recipes (public read, team-scoped, admin override, forbid-on-archived)
-and an error reference.
+See [docs/authorization.md](docs/authorization.md) for a full guide
+with recipes (public read, team-scoped, admin override,
+forbid-on-archived), error reference, and a Cedar syntax cheatsheet.
 
-Default policies in `policies/default.cedar`:
+Quick example:
 
 ```cedar
-// Authenticated users can read/update/delete their own rows
-permit(
-    principal is PgrestLambda::User,
-    action in [Action::"select", Action::"update", Action::"delete"],
-    resource is PgrestLambda::Row
-) when {
-    resource has user_id && resource.user_id == principal
-};
-
-// Authenticated users can insert into any table
-permit(
-    principal is PgrestLambda::User,
-    action == Action::"insert",
-    resource is PgrestLambda::Table
-);
-
-// Service role bypasses all authorization
-permit(principal is PgrestLambda::ServiceRole, action, resource);
-```
-
-Write custom policies by adding `.cedar` files to the `policies/` directory:
-
-```cedar
-// Admins see all rows
-permit(
-    principal is PgrestLambda::User,
-    action == Action::"select",
-    resource
-) when {
-    principal.role == "admin"
-};
-
-// Public tables readable by anyone
+// Everyone — including anon — reads the posts table.
 permit(
     principal,
-    action == Action::"select",
+    action == PgrestLambda::Action::"select",
     resource is PgrestLambda::Row
 ) when {
-    context.table == "public_posts"
+    context.table == "posts"
 };
 ```
 
-## API Reference
+## API reference
 
-### REST Endpoints (`/rest/v1/`)
+### REST endpoints
 
 | Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/rest/v1/` | OpenAPI 3.0 spec |
-| `POST` | `/rest/v1/_refresh` | Refresh schema cache + policies |
+|---|---|---|
+| `GET` | `/rest/v1/` | OpenAPI 3.0 spec (auto-generated) |
+| `GET` | `/rest/v1/_docs` | Interactive Scalar UI |
+| `POST` | `/rest/v1/_refresh` | Reload schema cache + policies |
 | `GET` | `/rest/v1/:table` | Read rows |
 | `POST` | `/rest/v1/:table` | Insert rows |
 | `PATCH` | `/rest/v1/:table` | Update rows (filters required) |
 | `DELETE` | `/rest/v1/:table` | Delete rows (filters required) |
 
-### Query Parameters
+### Query parameters
 
 | Parameter | Example | Description |
-|-----------|---------|-------------|
-| `select` | `select=id,name,email` | Columns to return (supports embedding) |
+|---|---|---|
+| `select` | `select=id,name,customers(email)` | Columns + resource embedding |
 | `order` | `order=created_at.desc` | Sort order |
 | `limit` | `limit=10` | Max rows |
 | `offset` | `offset=20` | Skip rows |
 | `on_conflict` | `on_conflict=id` | Upsert conflict column |
 
-### Resource Embedding (Joins)
+### Filter operators
 
-Fetch related data from multiple tables in a single request. pgrest-lambda detects foreign key relationships automatically and generates correlated subqueries.
-
-```javascript
-// Many-to-one: order belongs to a customer
-const { data } = await supabase
-  .from('orders')
-  .select('id, amount, customers(name, email)')
-
-// Returns: [{ id: 1, amount: 99.50, customers: { name: "Alice", email: "alice@ex.com" } }]
-```
-
-```javascript
-// One-to-many: customer has many orders
-const { data } = await supabase
-  .from('customers')
-  .select('id, name, orders(id, amount)')
-
-// Returns: [{ id: 1, name: "Alice", orders: [{ id: 10, amount: 50 }, { id: 11, amount: 75 }] }]
-```
-
-```javascript
-// Nested: orders → line items → products
-const { data } = await supabase
-  .from('orders')
-  .select('id, items(id, quantity, products(name, price))')
-```
-
-```javascript
-// Aliased embed: rename the embedded key in the response
-const { data } = await supabase
-  .from('orders')
-  .select('id, buyer:customers(name)')
-
-// Returns: [{ id: 1, buyer: { name: "Alice" } }]
-```
-
-```javascript
-// Disambiguation: two FKs to the same table
-const { data } = await supabase
-  .from('orders')
-  .select('id, billing:addresses!billing_address_id(*), shipping:addresses!shipping_address_id(*)')
-```
-
-```javascript
-// Inner join: only parents with matching children
-const { data } = await supabase
-  .from('customers')
-  .select('id, name, orders!inner(id)')
-// Only returns customers who have at least one order
-```
-
-**URL syntax:**
-
-| Pattern | Meaning |
-|---------|---------|
-| `select=*,customers(*)` | Embed all columns from related table |
-| `select=id,customers(name,email)` | Embed specific columns |
-| `select=id,buyer:customers(name)` | Alias the embed key |
-| `select=*,addresses!billing_address_id(*)` | Disambiguate when multiple FKs exist |
-| `select=*,orders!inner(*)` | Inner join — exclude parents without children |
-| `select=id,items(id,products(name))` | Nested embedding (2+ levels) |
-
-**Relationship detection:**
-
-**Relationship detection:**
-
-On standard PostgreSQL, relationships are detected automatically from foreign key constraints — no configuration needed.
-
-On Aurora DSQL (which doesn't support `REFERENCES`), relationships are inferred from a column naming convention. Name your FK columns as `{singular_table}_id` and pgrest-lambda figures out the rest:
-
-| Column name | Target table found |
-|---|---|
-| `customer_id` | `customers` |
-| `category_id` | `categories` |
-| `address_id` | `addresses` |
-| `status_id` | `statuses` |
-| `company_id` | `companies` |
-
-The convention requires: the target table exists in the `public` schema, and it has a primary key that matches. If no match is found, no relationship is created (no error).
-
-### Filter Operators
+Apply to any column as `column=<op>.<value>`:
 
 | Operator | Example | SQL |
-|----------|---------|-----|
+|---|---|---|
 | `eq` | `name=eq.John` | `name = 'John'` |
 | `neq` | `status=neq.done` | `status != 'done'` |
 | `gt` / `gte` | `age=gt.21` | `age > 21` |
@@ -519,96 +297,92 @@ The convention requires: the target table exists in the `public` schema, and it 
 ### Headers
 
 | Header | Description |
-|--------|-------------|
-| `apikey` | API key JWT (anon or service_role) |
-| `Authorization: Bearer <token>` | User access token |
-| `Prefer: return=representation` | Return modified rows |
-| `Prefer: count=exact` | Include exact count in Content-Range |
-| `Accept: application/vnd.pgrst.object+json` | Return single object |
+|---|---|
+| `apikey` | Apikey JWT — anon or service_role |
+| `Authorization: Bearer <token>` | User access token (for authenticated requests) |
+| `Prefer: return=representation` | Return inserted/updated rows in the response body |
+| `Prefer: count=exact` | Include exact row count in `Content-Range` |
+| `Accept: application/vnd.pgrst.object+json` | Return a single object instead of an array |
 
-### Auth
-
-Cognito is the default auth provider. Set `AUTH_PROVIDER=cognito`
-(or omit it) and provide `REGION_NAME`, `USER_POOL_ID`, and
-`USER_POOL_CLIENT_ID` at runtime.
-
-A GoTrue-native provider is available for deployments that want
-to avoid an AWS Cognito dependency. Opt in with
-`AUTH_PROVIDER=gotrue` or `auth: { provider: 'gotrue' }`. Users
-and refresh tokens are then stored in the `auth` schema of the
-same PostgreSQL database, works with any PostgreSQL backend
-including Aurora DSQL.
-
-Password policy (GoTrue-native): minimum 8 characters, at least
-one uppercase letter, one lowercase letter, and one number.
-
-Refresh tokens use rotation with family revocation: each refresh
-issues a new token and invalidates the old one. If a
-previously-used token is replayed, the entire token family is
-revoked. This applies to both providers.
-
-Refresh JWTs carry an opaque session ID (`sid`) instead of the
-provider token. The actual provider refresh token is stored
-server-side in `auth.sessions` and resolved on each refresh
-request.
-
-The dev server (`node dev.mjs`) opts into the GoTrue-native
-provider so local development works with just a Postgres
-container and no AWS credentials.
-
-### Auth Endpoints (`/auth/v1/`)
+### Auth endpoints
 
 | Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/auth/v1/signup` | Register new user |
+|---|---|---|
+| `POST` | `/auth/v1/signup` | Register a new user |
 | `POST` | `/auth/v1/token?grant_type=password` | Sign in |
-| `POST` | `/auth/v1/token?grant_type=refresh_token` | Refresh token |
-| `GET` | `/auth/v1/user` | Get current user |
-| `POST` | `/auth/v1/logout` | Sign out (204) |
+| `POST` | `/auth/v1/token?grant_type=refresh_token` | Refresh access token |
+| `GET` | `/auth/v1/user` | Get current user profile |
+| `POST` | `/auth/v1/logout` | Sign out |
+| `POST` | `/auth/v1/otp` | Send a magic-link email |
+| `POST` | `/auth/v1/verify` | Verify an OTP / magic-link token |
+| `GET` | `/auth/v1/authorize?provider=<name>` | Begin OAuth flow |
+| `GET` | `/auth/v1/callback` | OAuth callback |
+| `GET` | `/auth/v1/jwks` | Public JWKS for asymmetric JWT verification |
 
-## Client Example
+### Resource embedding
+
+Fetch related data from multiple tables in a single request. pgrest-lambda
+detects foreign key relationships automatically on standard PostgreSQL and
+infers them from column naming (`customer_id` → `customers`) on Aurora DSQL.
 
 ```javascript
-import { createClient } from '@supabase/supabase-js';
+// Many-to-one
+await supabase.from('orders')
+  .select('id, amount, customers(name, email)');
 
-const supabase = createClient(
-  'https://YOUR_API_URL/v1',
-  'YOUR_ANON_KEY'
-);
+// One-to-many
+await supabase.from('customers')
+  .select('id, name, orders(id, amount)');
 
-// Sign up
-await supabase.auth.signUp({
-  email: 'user@example.com',
-  password: 'Password123',
-});
+// Nested (2+ levels)
+await supabase.from('orders')
+  .select('id, items(quantity, products(name, price))');
 
-// Query with embedding — fetch todos with their project info
-const { data } = await supabase
-  .from('todos')
-  .select('id, title, done, projects(name)')
-  .order('created_at', { ascending: false });
+// Alias, disambiguate, inner join
+await supabase.from('orders')
+  .select('id, buyer:customers(name), billing:addresses!billing_address_id(*)');
 
-// Flat query
-const { data: todos } = await supabase
-  .from('todos')
-  .select('*')
-  .eq('done', false);
-
-// Insert
-await supabase
-  .from('todos')
-  .insert({ title: 'Ship it', done: false })
-  .select();
+await supabase.from('customers')
+  .select('id, name, orders!inner(id)');  // only customers with at least one order
 ```
 
-## Deploy Examples
+## Architecture
 
-Deployment examples live in `deploy/` — each subfolder is one way to
-run pgrest-lambda in production. Core library code under `src/` stays
-deploy-target-agnostic.
+```
+Client (supabase-js, fetch, curl)
+  │
+  ▼
+Your platform (API Gateway, Kong, Cloudflare Workers, Express, …)
+  │
+  ▼
+pgrest-lambda handler
+  │
+  ├── /auth/v1/*  →  Auth provider (better-auth or Cognito)
+  │                     └── signup, signin, refresh, OAuth, magic link, JWKS
+  │
+  └── /rest/v1/*  →  REST engine
+                        ├── Schema introspection (pg_catalog)
+                        ├── Query parsing (PostgREST-compatible)
+                        ├── Cedar authorization → SQL WHERE
+                        ├── OpenAPI generation
+                        └── PostgreSQL (DSQL, Aurora, RDS, any)
+```
 
-- **AWS SAM** — [`deploy/aws-sam/README.md`](deploy/aws-sam/README.md). Provisions API Gateway, Lambda, and (optionally) Cognito. Supports DSQL and standard Postgres.
+The library exposes `createPgrest(config)`. Everything else — how
+requests arrive, how JWTs are verified, how the result is returned to
+the client — is a deploy-target concern. See [`deploy/`](deploy/) for
+reference integrations.
+
+## Deploy
+
+Each subfolder under `deploy/` is one way to run pgrest-lambda in
+production. Core library code stays deploy-agnostic.
+
+- [**AWS SAM**](deploy/aws-sam/) — API Gateway + Lambda + (optional) Cognito. Supports DSQL, Aurora, and standard Postgres.
+
+More targets welcome — the pattern is in
+[`deploy/aws-sam/README.md`](deploy/aws-sam/README.md).
 
 ## License
 
-MIT
+MIT.
