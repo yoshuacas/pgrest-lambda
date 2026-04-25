@@ -502,7 +502,9 @@ await supabase
 
 ## Deploy Examples
 
-Deployment examples for SAM, CDK, and Terraform are in `docs/deploy/`.
+Deployment examples live in `docs/deploy/`:
+
+- **AWS SAM** — [`docs/deploy/aws-sam/README.md`](docs/deploy/aws-sam/README.md). Provisions API Gateway, Lambda, and (optionally) Cognito. Supports DSQL and standard Postgres.
 
 ## License
 

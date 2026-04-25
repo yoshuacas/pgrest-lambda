@@ -1,0 +1,16 @@
+docs
+research
+tasks
+test
+schema-examples
+.git
+.github
+.aws-sam
+.maintainer-last-run
+CHANGELOG.md
+CLAUDE.md
+AGENTS.md
+POSTGREST_GAP_ANALYSIS.md
+LICENSE
+dev.mjs
+*.md
