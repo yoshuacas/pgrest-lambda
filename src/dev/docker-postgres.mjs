@@ -70,13 +70,58 @@ async function waitForHealthy(timeoutMs = 30000) {
  *
  * @returns {Promise<{host:string,port:number,user:string,password:string,database:string,url:string}>}
  */
+// The two failure modes have different fixes: one needs an install,
+// the other just needs the daemon started. `docker version` exits with
+// "command not found" in the first case; in the second it connects to
+// the CLI but fails to reach the engine, producing a stderr message
+// that mentions "Cannot connect to the Docker daemon" (or "docker daemon
+// is not running" on Windows).
+function formatDockerError(err) {
+  const stderr = err?.stderr || '';
+  const message = err?.message || '';
+  const combined = `${stderr}\n${message}`;
+
+  // Order matters: check for daemon-specific phrasing FIRST, because
+  // those stderrs sometimes contain "no such file" (referring to a
+  // socket path), which would otherwise trigger the "not installed"
+  // branch.
+  const daemonNotRunning = /Cannot connect to the Docker daemon|daemon is not running|docker daemon is not running|Is the docker daemon running|failed to connect to the docker API|if the daemon is running/i.test(combined);
+
+  const dockerNotInstalled =
+    !daemonNotRunning && (
+      err?.code === 'ENOENT' ||
+      /docker: command not found|spawn docker ENOENT/i.test(combined)
+    );
+
+  const alreadyHavePostgresHint =
+    '\n\n' +
+    'Already have a Postgres running locally (or on a reachable host)?\n' +
+    'Skip the Docker container and point pgrest-lambda at it:\n' +
+    '  DATABASE_URL=postgres://user:pass@host:5432/db pgrest-lambda dev --skip-docker';
+
+  if (dockerNotInstalled) {
+    return new Error(
+      'Docker is not installed. Install Docker Desktop (or an equivalent runtime like Colima or OrbStack) and try again.' +
+      alreadyHavePostgresHint,
+    );
+  }
+  if (daemonNotRunning) {
+    return new Error(
+      'The Docker daemon is not running. Start Docker Desktop (or your runtime) and try again.' +
+      alreadyHavePostgresHint,
+    );
+  }
+  return new Error(
+    `Docker is not available: ${stderr || message}` +
+    alreadyHavePostgresHint,
+  );
+}
+
 export async function startBundledPostgres() {
   try {
     await execFile('docker', ['version'], { timeout: 5000 });
-  } catch {
-    throw new Error(
-      'Docker is not available. Install Docker Desktop (or equivalent) and ensure the daemon is running.',
-    );
+  } catch (err) {
+    throw formatDockerError(err);
   }
 
   try {

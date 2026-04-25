@@ -35,6 +35,19 @@ pgrest-lambda dev
 > (`~/.npm/_npx`) on first use and runs it from there. Useful for
 > trying once; global install is tidier for everyday use.
 
+> **Already have Postgres running?** Skip the bundled container and
+> point pgrest-lambda at your own database:
+>
+> ```bash
+> DATABASE_URL=postgres://user:pass@host:5432/db \
+>   pgrest-lambda dev --skip-docker
+> ```
+>
+> pgrest-lambda will create the `better_auth` schema (tables
+> `user`, `session`, `account`, `verification`, `jwks`) in that
+> database on first boot — the migration is idempotent, so
+> repeated runs are safe. Your `public` schema is untouched.
+
 That's it. No clone, no config, no AWS account. The command:
 
 1. Starts a Postgres container on `localhost:54322` (first run only).
