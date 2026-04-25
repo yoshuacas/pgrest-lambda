@@ -66,6 +66,15 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
   `needsSessionTable` as the dispatch flag. When true,
   the provider returns fully-baked tokens; when false,
   the handler mints HS256.
+- **`POLICIES_PATH` now accepts a URI.** Filesystem paths
+  (`./policies`, `/etc/pgrest/policies`), `file:///...`,
+  and `s3://<bucket>/<prefix>/` all resolve through a
+  single env var. Replaces the previous split between
+  `POLICIES_PATH` (filesystem only) and `POLICIES_BUCKET`
+  + `POLICIES_PREFIX` (S3). Breaking for any deployment
+  using the old env vars — migrate by setting
+  `POLICIES_PATH=s3://<bucket>/<prefix>/` and removing
+  the two old ones. See `docs/configuration.md`.
 
 ### Removed
 - GoTrue auth provider (`AUTH_PROVIDER=gotrue`).

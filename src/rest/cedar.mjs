@@ -8,6 +8,43 @@ import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { PostgRESTError } from './errors.mjs';
 
+// --- Policy source resolution ---
+//
+// POLICIES_PATH accepts either:
+//   • a plain filesystem path (default: ./policies)
+//   • file:///absolute/path        (explicit filesystem)
+//   • s3://<bucket>/<prefix>       (S3 object listing)
+//
+// Callers pass the raw value as config.policiesPath. parsePolicySource
+// splits it into { scheme, ... } so the loader can dispatch on scheme.
+
+const SCHEME_RE = /^([a-z][a-z0-9+.-]*):\/\/(.*)$/i;
+
+export function parsePolicySource(raw) {
+  if (!raw) return { scheme: 'file', path: './policies' };
+  const m = SCHEME_RE.exec(raw);
+  if (!m) {
+    return { scheme: 'file', path: raw };
+  }
+  const [, scheme, rest] = m;
+  if (scheme === 'file') {
+    // file:///absolute/path  → path is everything after the scheme;
+    // strip a single leading slash to accept triple-slash form.
+    return { scheme: 'file', path: rest.startsWith('/') ? rest : '/' + rest };
+  }
+  if (scheme === 's3') {
+    // s3://bucket/prefix/...  → first segment is the bucket, rest is the key prefix
+    const slash = rest.indexOf('/');
+    if (slash === -1) {
+      return { scheme: 's3', bucket: rest, prefix: '' };
+    }
+    return { scheme: 's3', bucket: rest.slice(0, slash), prefix: rest.slice(slash + 1) };
+  }
+  throw new Error(
+    `Unsupported POLICIES_PATH scheme '${scheme}'. Use a filesystem path or s3://<bucket>/<prefix>.`
+  );
+}
+
 // --- Policy loading helpers (stateless) ---
 
 async function loadFromFilesystem(dirPath) {
@@ -299,23 +336,20 @@ export function createCedar(config) {
   let cachedPoliciesPath = null;
   const policiesTtl = config.policiesTtl || 300_000;
 
+  const source = parsePolicySource(config.policiesPath);
+
   function loadPolicyText() {
-    if (config.policiesBucket) {
-      return loadFromS3(
-        config.policiesBucket,
-        config.policiesPrefix || 'policies/',
-        config.region,
-      );
+    if (source.scheme === 's3') {
+      return loadFromS3(source.bucket, source.prefix, config.region);
     }
-    return loadFromFilesystem(config.policiesPath || './policies');
+    return loadFromFilesystem(source.path);
   }
 
   function currentSourceKey() {
-    if (config.policiesBucket) {
-      const prefix = config.policiesPrefix || 'policies/';
-      return `s3://${config.policiesBucket}/${prefix}`;
+    if (source.scheme === 's3') {
+      return `s3://${source.bucket}/${source.prefix}`;
     }
-    return config.policiesPath || './policies';
+    return source.path;
   }
 
   async function loadPolicies() {
@@ -343,7 +377,7 @@ export function createCedar(config) {
   function _setPolicies(policies) {
     cachedPolicies = policies;
     policiesLoadedAt = Date.now();
-    cachedPoliciesPath = config.policiesPath || './policies';
+    cachedPoliciesPath = currentSourceKey();
   }
 
   function authorize({ principal, action, resource, schema }) {

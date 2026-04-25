@@ -92,9 +92,11 @@ function resolveConfig(config) {
     jwtSecret: config.jwtSecret ?? process.env.JWT_SECRET,
     auth: resolveAuth(config),
     region,
+    // POLICIES_PATH accepts a filesystem path or a URI with a scheme
+    // (currently `s3://<bucket>/<prefix>`; `file://` also accepted as an
+    // explicit synonym for the default). See src/rest/cedar.mjs for the
+    // parser and loader dispatch.
     policiesPath: config.policies || process.env.POLICIES_PATH || './policies',
-    policiesBucket: config.policiesBucket || process.env.POLICIES_BUCKET || null,
-    policiesPrefix: config.policiesPrefix || process.env.POLICIES_PREFIX || 'policies/',
     schemaCacheTtl: config.schemaCacheTtl
       || parseInt(process.env.SCHEMA_CACHE_TTL_MS || '30000', 10),
     docs: config.docs !== undefined ? config.docs
@@ -125,8 +127,6 @@ export function createPgrest(config = {}) {
   });
   const cedar = createCedar({
     policiesPath: resolved.policiesPath,
-    policiesBucket: resolved.policiesBucket,
-    policiesPrefix: resolved.policiesPrefix,
     region: resolved.region,
   });
   const jwt = createJwt({ jwtSecret: resolved.jwtSecret });

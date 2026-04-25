@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import {
   translateExpr,
   createCedar,
+  parsePolicySource,
 } from '../cedar.mjs';
 
 // Helper: create a cedar instance with test defaults
@@ -934,5 +935,68 @@ describe('buildAuthzFilter (row-level)', () => {
       'should contain parameter placeholders');
     assert.ok(parseInt(paramMatch[1], 10) >= 5,
       'parameter numbers should start at 5 or higher');
+  });
+});
+
+describe('parsePolicySource (POLICIES_PATH URI parsing)', () => {
+  it('defaults undefined/empty input to ./policies on the filesystem', () => {
+    assert.deepEqual(parsePolicySource(undefined), { scheme: 'file', path: './policies' });
+    assert.deepEqual(parsePolicySource(''), { scheme: 'file', path: './policies' });
+  });
+
+  it('treats a plain relative path as a filesystem source', () => {
+    assert.deepEqual(
+      parsePolicySource('./my-policies'),
+      { scheme: 'file', path: './my-policies' },
+    );
+  });
+
+  it('treats a plain absolute path as a filesystem source', () => {
+    assert.deepEqual(
+      parsePolicySource('/etc/pgrest/policies'),
+      { scheme: 'file', path: '/etc/pgrest/policies' },
+    );
+  });
+
+  it('parses file:///absolute/path as a filesystem source', () => {
+    assert.deepEqual(
+      parsePolicySource('file:///var/policies'),
+      { scheme: 'file', path: '/var/policies' },
+    );
+  });
+
+  it('parses s3://bucket/prefix/ as an S3 source', () => {
+    assert.deepEqual(
+      parsePolicySource('s3://my-bucket/policies/'),
+      { scheme: 's3', bucket: 'my-bucket', prefix: 'policies/' },
+    );
+  });
+
+  it('parses s3://bucket/ with no prefix', () => {
+    assert.deepEqual(
+      parsePolicySource('s3://my-bucket/'),
+      { scheme: 's3', bucket: 'my-bucket', prefix: '' },
+    );
+  });
+
+  it('parses s3://bucket (no trailing slash) as bucket + empty prefix', () => {
+    assert.deepEqual(
+      parsePolicySource('s3://my-bucket'),
+      { scheme: 's3', bucket: 'my-bucket', prefix: '' },
+    );
+  });
+
+  it('parses s3://bucket/deep/nested/prefix/', () => {
+    assert.deepEqual(
+      parsePolicySource('s3://b/one/two/three/'),
+      { scheme: 's3', bucket: 'b', prefix: 'one/two/three/' },
+    );
+  });
+
+  it('throws on unsupported schemes with a clear message', () => {
+    assert.throws(
+      () => parsePolicySource('gcs://some-bucket/policies/'),
+      /Unsupported POLICIES_PATH scheme 'gcs'/,
+    );
   });
 });

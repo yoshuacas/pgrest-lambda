@@ -41,7 +41,30 @@ your `.gitignore` too.
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google OAuth. Enables `/auth/v1/authorize?provider=google`. |
 | `REGION_NAME` | AWS region for SES, DSQL signing, etc. Never use `AWS_REGION` — Lambda reserves it. |
 | `DSQL_ENDPOINT` | Enables Aurora DSQL mode with IAM auth. |
-| `POLICIES_PATH`, `POLICIES_BUCKET`, `POLICIES_PREFIX` | Cedar policy loading. |
+| `POLICIES_PATH` | Cedar policy source. Accepts a filesystem path (`./policies`), `file:///absolute/path`, or `s3://<bucket>/<prefix>/`. See below. |
+
+## Policy loading
+
+`POLICIES_PATH` is a single variable that accepts three forms:
+
+| Value | Meaning |
+|---|---|
+| *(unset)* | Defaults to `./policies` on the filesystem. |
+| `./policies` or `/etc/pgrest/policies` | Plain path. Load every `*.cedar` file from that directory. |
+| `file:///var/policies` | Explicit filesystem form. Same as a plain absolute path. |
+| `s3://my-bucket/policies/` | List every `*.cedar` object under that bucket + key prefix. Requires the Lambda (or dev process) to have `s3:ListBucket` and `s3:GetObject` on that bucket. |
+
+**Local development:** leave `POLICIES_PATH` unset. The default
+`./policies` directory is what `pgrest-lambda dev` expects, and setting
+an `s3://` URI would try to reach AWS at boot — which fails without
+credentials.
+
+**Production:** either bake your policies into the Lambda deployment
+package (under `policies/`) or store them in S3 and set
+`POLICIES_PATH=s3://<bucket>/<prefix>/`. The S3 form lets you rotate
+policies without redeploying code. Policies are cached in-process for
+`policiesTtl` (default 5 minutes); to force a refresh, restart the
+Lambda or POST `/rest/v1/_refresh`.
 
 ## Local development: secret persistence
 

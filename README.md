@@ -176,8 +176,7 @@ The factory resolves config in order: explicit values, then environment variable
 | `auth.provider` | `AUTH_PROVIDER` | `cognito` |
 | `auth.region` | `REGION_NAME` | — |
 | `auth.clientId` | `USER_POOL_CLIENT_ID` | — |
-| `policies` | `POLICIES_PATH` | `./policies` |
-| `policiesBucket` | `POLICIES_BUCKET` | — |
+| `policies` | `POLICIES_PATH` | `./policies` (filesystem path or `s3://<bucket>/<prefix>/`) |
 | `schemaCacheTtl` | `SCHEMA_CACHE_TTL_MS` | `30000` (30 sec) |
 | `docs` | `PGREST_DOCS` | `true` |
 
