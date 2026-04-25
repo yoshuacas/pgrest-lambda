@@ -1,6 +1,8 @@
 # Deploy pgrest-lambda with AWS SAM
 
-This guide walks through a live deployment on AWS using the SAM template in this directory. End state: a working REST API behind API Gateway, backed by a PostgreSQL-compatible database and (optionally) a Cognito user pool.
+Live deployment on AWS using the SAM template in this directory. End state: a working REST API behind API Gateway, backed by a PostgreSQL-compatible database and (by default) a Cognito user pool.
+
+The steps below have been executed against a real AWS account and the template as it ships.
 
 ## What gets created
 
@@ -9,13 +11,14 @@ With defaults (`AuthProvider=cognito`, `DatabaseMode=dsql`):
 | Resource | Purpose |
 |---|---|
 | `AWS::Serverless::Api` | REST API Gateway (stage `v1`) |
-| `AWS::Serverless::Function` × 3 | REST handler, authorizer, Cognito pre-signup |
+| `AWS::Serverless::Function` × 3 | REST handler, authorizer, Cognito pre-signup trigger |
 | `AWS::Cognito::UserPool` + `UserPoolClient` | Auth backend |
 | `AWS::Lambda::Permission` | Lets Cognito invoke the pre-signup trigger |
-| IAM roles | Execution roles for each Lambda |
-| CloudWatch log groups | One per Lambda (auto-created on first invoke) |
+| IAM roles | Execution roles for each Lambda (DSQL mode also grants `dsql:DbConnect`) |
+| CloudWatch log groups | Auto-created on first invoke per Lambda |
 
 **Not created by this template:**
+
 - The database (DSQL cluster or RDS instance) — provision separately.
 - The `JWT_SECRET` SSM parameter — create before deploy (see below).
 - Table schema — apply via `psql` after the database is reachable.
@@ -24,8 +27,9 @@ With defaults (`AuthProvider=cognito`, `DatabaseMode=dsql`):
 
 - AWS CLI v2 authenticated against the target account (`aws sts get-caller-identity`).
 - SAM CLI ≥ 1.100 (`sam --version`).
-- Node.js ≥ 20 (the runtime the template pins).
-- A PostgreSQL-compatible database. One of:
+- Node.js ≥ 20 — the runtime the template pins.
+- `psql` for the schema-apply step.
+- A PostgreSQL-compatible database:
   - **Aurora DSQL cluster** — create via console or `aws dsql create-cluster`. Note the cluster endpoint.
   - **Standard Postgres** reachable from Lambda — RDS, Aurora Serverless v2, or any Postgres with a public endpoint. You need a connection string.
 
@@ -33,43 +37,50 @@ With defaults (`AuthProvider=cognito`, `DatabaseMode=dsql`):
 
 ### 1. Create the JWT signing secret in SSM
 
-The template reads `/pgrest/jwt-secret` via `{{resolve:ssm:...}}` at deploy time. Create it before `sam deploy`:
+The template reads `/pgrest/jwt-secret` via `{{resolve:ssm:...}}` at deploy time. Create it **as a plain `String` parameter**:
 
 ```bash
 aws ssm put-parameter \
   --name /pgrest/jwt-secret \
-  --type SecureString \
+  --type String \
   --value "$(openssl rand -base64 48)" \
   --region us-east-1
 ```
 
-The secret must be ≥ 32 characters — `openssl rand -base64 48` produces 64. Rotate by updating the parameter and redeploying (Lambdas pick up the new value on cold start).
+> **Note:** CloudFormation does not support `SecureString` resolution inside Lambda environment variables. If you need a secret at rest, use Secrets Manager instead and switch the template to `{{resolve:secretsmanager:...}}`. For a test deployment, a plain SSM `String` is fine; the secret still lives in SSM.
+
+The secret must be ≥ 32 characters — `openssl rand -base64 48` produces 64.
 
 ### 2. (DSQL only) Create a cluster and capture the endpoint
 
 ```bash
 aws dsql create-cluster \
-  --deletion-protection-enabled \
+  --no-deletion-protection-enabled \
   --region us-east-1
-# Returns a clusterId; endpoint is <clusterId>.dsql.<region>.on.aws
+# Returns { identifier, endpoint, status: "CREATING", ... }
 ```
 
-Wait for `aws dsql get-cluster --identifier <clusterId>` to show `status: ACTIVE`.
+Wait for `status: ACTIVE`:
+
+```bash
+aws dsql get-cluster --identifier <clusterId> --region us-east-1 --query status
+```
+
+For a production cluster drop `--no-deletion-protection-enabled` — deletion protection defaults on.
 
 ### 3. (Standard Postgres only) Have a `DATABASE_URL` ready
 
-Format: `postgres://user:password@host:5432/dbname?sslmode=require`. The Lambda must be able to reach the host — if it's in a VPC, you'll need to extend the template with `VpcConfig` (not covered here).
+Format: `postgres://user:password@host:5432/dbname?sslmode=require`. The Lambda must be able to reach the host. If it's inside a VPC, you'll need to extend the template with `VpcConfig` — not covered here.
 
 ## Deploy
 
-From the repo root:
+From this directory:
 
 ```bash
-cd docs/deploy/aws-sam
 sam build
 ```
 
-`sam build` copies the repo into `.aws-sam/build/` per function. The `CodeUri: ../../../` in the template points at the repo root, so `node_modules/` and everything else ships with the Lambda zip. For a smaller package, see **Reducing package size** below.
+The build respects the `files` list in `package.json`, so the Lambda package includes `src/`, `policies/`, `lambda.mjs`, and `node_modules/` — roughly 32 MB. If you omit `files` from `package.json` the package balloons to include everything in the repo and `policies/` may be dropped entirely (causing every request to 403).
 
 ### Deploy — DSQL + Cognito (defaults)
 
@@ -79,6 +90,7 @@ sam deploy \
   --region us-east-1 \
   --capabilities CAPABILITY_IAM \
   --resolve-s3 \
+  --no-confirm-changeset \
   --parameter-overrides \
     DsqlEndpoint=<clusterId>.dsql.us-east-1.on.aws
 ```
@@ -91,6 +103,7 @@ sam deploy \
   --region us-east-1 \
   --capabilities CAPABILITY_IAM \
   --resolve-s3 \
+  --no-confirm-changeset \
   --parameter-overrides \
     DatabaseMode=standard \
     "DatabaseUrl=postgres://user:pass@host:5432/db?sslmode=require"
@@ -104,6 +117,7 @@ sam deploy \
   --region us-east-1 \
   --capabilities CAPABILITY_IAM \
   --resolve-s3 \
+  --no-confirm-changeset \
   --parameter-overrides \
     AuthProvider=gotrue \
     DatabaseMode=standard \
@@ -124,17 +138,19 @@ The database has no tables yet. Apply one of the example schemas:
 
 ```bash
 # DSQL — generate an IAM auth token and use it as the password
+DSQL_HOST=<clusterId>.dsql.us-east-1.on.aws
 DSQL_TOKEN=$(aws dsql generate-db-connect-admin-auth-token \
-  --hostname <clusterId>.dsql.us-east-1.on.aws \
-  --region us-east-1)
+  --hostname "$DSQL_HOST" --region us-east-1)
 
 PGPASSWORD="$DSQL_TOKEN" psql \
-  "host=<clusterId>.dsql.us-east-1.on.aws port=5432 dbname=postgres user=admin sslmode=require" \
+  "host=$DSQL_HOST port=5432 dbname=postgres user=admin sslmode=require" \
   -f ../../../schema-examples/dsql-compatible.sql
 
 # Standard Postgres
 psql "$DATABASE_URL" -f ../../../schema-examples/standard-postgres.sql
 ```
+
+The DSQL auth token has a short TTL (~15 min) — regenerate if you need to re-run.
 
 ## Smoke test
 
@@ -143,82 +159,98 @@ Grab the outputs and exercise auth + REST:
 ```bash
 API_URL=$(aws cloudformation describe-stacks \
   --stack-name pgrest-lambda \
+  --region us-east-1 \
   --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" --output text)
 
-# Mint an anon API key from the JWT secret (same secret that's in SSM)
+# Load the JWT secret and mint an anon key
 JWT_SECRET=$(aws ssm get-parameter --name /pgrest/jwt-secret \
-  --with-decryption --query Parameter.Value --output text)
+  --region us-east-1 --query Parameter.Value --output text)
 
-ANON_KEY=$(node -e "
+ANON_KEY=$(S="$JWT_SECRET" node -e "
   const jwt = require('jsonwebtoken');
-  console.log(jwt.sign({ role: 'anon' }, '$JWT_SECRET',
+  console.log(jwt.sign({ role: 'anon' }, process.env.S,
     { issuer: 'pgrest-lambda', algorithm: 'HS256' }));
 ")
 
-# Signup
-curl -s -X POST "$API_URL/auth/v1/signup" \
+# Signup (Cognito path — no auth.sessions DB write)
+EMAIL="test-$(date +%s)@example.com"
+SIGNUP=$(curl -s -X POST "$API_URL/auth/v1/signup" \
   -H "apikey: $ANON_KEY" -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","password":"Password1"}' | jq
+  -d "{\"email\":\"$EMAIL\",\"password\":\"TestPass123\"}")
+echo "$SIGNUP" | jq
+ACCESS=$(echo "$SIGNUP" | jq -r '.access_token')
 
-# Check OpenAPI spec
-curl -s "$API_URL/rest/v1/" -H "apikey: $ANON_KEY" | jq '.paths | keys'
+# Authenticated REST — insert a task, then select it back
+curl -s -X POST "$API_URL/rest/v1/tasks" \
+  -H "apikey: $ANON_KEY" -H "Authorization: Bearer $ACCESS" \
+  -H "Content-Type: application/json" \
+  -H "Prefer: return=representation" \
+  -d "{\"title\":\"hello\"}"
+
+curl -s "$API_URL/rest/v1/tasks" \
+  -H "apikey: $ANON_KEY" -H "Authorization: Bearer $ACCESS" | jq
 ```
 
-## Reducing package size
-
-The template's `CodeUri: ../../../` ships the whole repo — including `node_modules/`, `docs/`, `research/`, `tasks/`. Lambda's 250 MB unzipped limit is easy to hit.
-
-Two options:
-
-**A. Add a `.samignore` at repo root:**
-
-```
-docs
-research
-tasks
-test
-.git
-.maintainer-last-run
-CHANGELOG.md
-CLAUDE.md
-POSTGREST_GAP_ANALYSIS.md
-schema-examples
-```
-
-**B. Use a dedicated build step.** Before `sam build`, stage only `src/`, `lambda.mjs`, `package.json`, and run `npm ci --omit=dev` in a scratch directory referenced by `CodeUri`.
-
-Production deployments should do one or both.
+A successful signup returns `access_token` (pgrest-lambda HS256 JWT) and `refresh_token` (the raw Cognito refresh token for the Cognito path; a pgrest-lambda session-ID JWT for the GoTrue path).
 
 ## Tear down
 
 ```bash
 sam delete --stack-name pgrest-lambda --region us-east-1
+
+# DSQL cluster — only if you created one just for this stack
+aws dsql delete-cluster --identifier <clusterId> --region us-east-1
+
+# SSM parameter — only if nothing else uses it
+aws ssm delete-parameter --name /pgrest/jwt-secret --region us-east-1
 ```
 
-Cognito user pools with users cannot be deleted via CloudFormation by default — delete users first via the console or `aws cognito-idp admin-delete-user`, or set `DeletionPolicy: Retain` (not currently in the template).
-
-DSQL clusters with `--deletion-protection-enabled` must have protection disabled before deletion:
+Cognito user pools with users cannot be deleted via CloudFormation by default. Delete users first:
 
 ```bash
-aws dsql update-cluster --identifier <clusterId> --no-deletion-protection-enabled
-aws dsql delete-cluster --identifier <clusterId>
+for user in $(aws cognito-idp list-users --user-pool-id <UserPoolId> \
+  --region us-east-1 --query 'Users[].Username' --output text); do
+  aws cognito-idp admin-delete-user --user-pool-id <UserPoolId> \
+    --username "$user" --region us-east-1
+done
+```
+
+DSQL clusters with deletion protection on must have it disabled first:
+
+```bash
+aws dsql update-cluster --identifier <clusterId> --no-deletion-protection-enabled --region us-east-1
+aws dsql delete-cluster --identifier <clusterId> --region us-east-1
 ```
 
 ## Troubleshooting
 
-| Symptom | Likely cause |
+| Symptom | Cause |
 |---|---|
-| `sam deploy` fails on `JWT_SECRET` resolution | SSM parameter `/pgrest/jwt-secret` missing or in a different region |
-| `500 {"error":"42P01"}` on `/rest/v1/<table>` | Schema not applied to the database yet |
-| `500 {"error":"42P01"}` on `/auth/v1/signup` with `AUTH_PROVIDER=gotrue` | `auth` schema not auto-created — fixed in v0.2.0+. Redeploy from `main`. |
-| `401 invalid_grant` on every signin | JWT secret mismatch between what Lambda sees and what the client signed with |
-| Lambda times out hitting DSQL | IAM role missing `dsql:DbConnect*` (template handles this for DSQL mode only) |
-| Client can't reach the API from a browser | CORS — template uses `AllowOrigin: '*'`, but if you hit the `/rest/v1/` endpoint through `createPgrest` with `production: true` and a list of origins, the library enforces that |
+| `sam deploy` fails: `Non-secure ssm prefix was used for secure parameter` | SSM parameter is a `SecureString`. Recreate as plain `String` (CloudFormation does not support `ssm-secure` in Lambda env vars) |
+| Signup returns `500 {"error":"unexpected_failure"}` and Cognito `admin-get-user` shows `InvalidLambdaResponseException` | PreSignUp Lambda returning `null` — usually because `createPgrest()` was evaluated at import time. Fixed by the lazy-import pattern in `lambda.mjs` (v0.2.0+) |
+| Every REST request returns `403 PGRST403` | `policies/` directory not shipped with the Lambda. The `files` list in `package.json` must include `"policies"` |
+| `500 {"code":"42P01"}` on `/rest/v1/<table>` | Schema not applied to the database. Re-run the schema-apply step |
+| `500 {"code":"42P01"}` on `/auth/v1/signup` with `AUTH_PROVIDER=gotrue` | GoTrue provider auto-creates its `auth` schema on first request; if it fails, check Lambda IAM has `CREATE SCHEMA` permission on the database |
+| `401 Unauthorized` on every REST request with `apikey` set | API Gateway CORS adds an `OPTIONS` method with no auth, but `ANY` requires the Bearer token too. Pass `Authorization: Bearer <anon_key>` alongside `apikey` for anon traffic, or use supabase-js which handles this automatically |
+| Lambda times out hitting DSQL | Template grants `dsql:DbConnect` only when `DatabaseMode=dsql`. Verify the parameter |
 
 ## Cost estimate
 
-Idle stack (no traffic, no DSQL cluster): < $1/month (Cognito free tier, Lambda/API Gateway have no idle cost, CloudWatch log retention).
+| Resource | Idle cost |
+|---|---|
+| API Gateway | $0 (per-request pricing) |
+| Lambda | $0 (per-invocation pricing) |
+| CloudWatch logs | ~pennies/month with default retention |
+| Cognito | $0 up to 50k MAU (free tier) |
+| DSQL cluster (active) | ~$0.28/vCPU-hour — **tear down when not in use** |
+| RDS / Aurora | Billed continuously; independent of this stack |
 
-DSQL cluster: billed per vCPU-hour once active. Tear it down when not in use.
+## What was verified
 
-Standard Postgres on RDS: billed continuously by the RDS instance, independent of this stack.
+This guide reflects a verified end-to-end deployment (Cognito + DSQL + us-east-1). The following were exercised against the live stack:
+
+- `POST /auth/v1/signup` — returns access_token + Cognito refresh_token, no `auth.sessions` DB write (confirms v0.2.0 Cognito-no-session fix on real infrastructure).
+- `POST /auth/v1/token?grant_type=refresh_token` — exchanges Cognito refresh token for new access token.
+- `GET /auth/v1/user` — returns the authenticated profile.
+- `POST /rest/v1/tasks` with Bearer token — Cedar allows when `user_id == principal`.
+- `GET /rest/v1/tasks` — returns the authenticated user's row.

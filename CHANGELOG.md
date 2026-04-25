@@ -15,6 +15,24 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
   providers that manage their own refresh tokens (Cognito).
   The Cognito refresh token is returned directly to the
   client. GoTrue path is unchanged.
+- **SAM Lambda entrypoints use lazy imports** — `lambda.presignup`,
+  `lambda.handler`, and `lambda.authorizer` in `lambda.mjs` no
+  longer pay the full pgrest boot cost at module load. The
+  PreSignUp trigger previously returned `null` to Cognito because
+  `createPgrest()` ran at import time and threw; signup now works
+  on the Cognito path.
+
+### Documentation
+- AWS SAM deploy guide (`docs/deploy/aws-sam/README.md`) rewritten
+  against a verified end-to-end deployment. Key corrections:
+  `JWT_SECRET` must be a plain SSM `String` (CloudFormation does
+  not resolve `ssm-secure` in Lambda env vars); the Lambda package
+  is shaped by the `files` list in `package.json` (not `.samignore`,
+  which SAM ignores); troubleshooting entries for the real deploy
+  failures encountered.
+- Removed obsolete `.samignore` at repo root and
+  `docs/deploy/aws-sam/handler.mjs` (never referenced by the
+  template after the lambda entrypoints moved to `lambda.mjs`).
 
 ## 0.2.0 — 2026-04-24
 
