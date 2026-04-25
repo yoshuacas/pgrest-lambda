@@ -8,16 +8,21 @@ Introspects your PostgreSQL schema and serves PostgREST-compatible CRUD endpoint
 
 Prerequisites: Docker Desktop (or equivalent) running, Node 20+.
 
+pgrest-lambda isn't on npm yet. Clone the repo and run from there:
+
 ```bash
-npx pgrest-lambda dev
+git clone https://github.com/yoshuacas/pgrest-lambda.git
+cd pgrest-lambda
+npm install
+npm run dev
 ```
 
-This will:
+`npm run dev` will:
 
 1. Start a Postgres container on `localhost:54322` (first run only).
 2. Apply the better-auth schema.
 3. Start the API on `http://localhost:3000`.
-4. Print an anon apikey and the URL of the interactive docs.
+4. Print an anon apikey, the `DATABASE_URL`, and the interactive docs URL.
 
 Open the Scalar UI at `http://localhost:3000/rest/v1/_docs` to browse
 the API. Point `@supabase/supabase-js` at `http://localhost:3000` with
@@ -29,9 +34,29 @@ and writes them to `.env.local` so apikeys are stable across restarts.
 [docs/configuration.md](docs/configuration.md) for the full variable
 reference and production secret patterns.
 
-Other commands: `pgrest-lambda migrate-auth` (apply better-auth schema
-against `DATABASE_URL`), `pgrest-lambda generate-key <anon|service_role>`
-(mint apikeys), `pgrest-lambda help`.
+Other commands (while pre-publish, run via `npm run …`):
+
+- `npm run refresh` — reload schema cache and Cedar policies without restarting
+- `npm run migrate-auth` — apply the better-auth schema against `DATABASE_URL` (for production bootstraps)
+- `npm run generate-key anon` / `npm run generate-key service_role` — mint apikey JWTs
+
+### Using pgrest-lambda as a library in your own project
+
+While we're pre-publish, install from GitHub:
+
+```bash
+npm install github:yoshuacas/pgrest-lambda
+```
+
+Then:
+
+```javascript
+import { createPgrest } from 'pgrest-lambda';
+export const handler = createPgrest({ /* config */ }).handler;
+```
+
+Once the package ships on npm, `npm install pgrest-lambda` and
+`npx pgrest-lambda dev` will work directly — no clone required.
 
 ## Features
 

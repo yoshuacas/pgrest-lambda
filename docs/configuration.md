@@ -153,7 +153,7 @@ private key at rest, so every user session in the DB becomes
 unreadable. Rotate by:
 
 1. Clear the `better_auth.jwks` table in the target DB (or drop and
-   re-apply the schema via `pgrest-lambda migrate-auth`).
+   re-apply the schema via `npm run migrate-auth`).
 2. Update the secret in SSM / Secrets Manager.
 3. Redeploy.
 

@@ -178,6 +178,12 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
   `postgres / postgres / postgres`** to match the
   de-facto community convention (Supabase CLI, etc.).
   Port remains 54322.
+- **npm run shortcuts for the CLI** so contributors
+  running from a clone don't need `npx`. `npm run dev`,
+  `npm run refresh`, `npm run generate-key <role>`,
+  `npm run migrate-auth`. The Quickstart in the README
+  now reflects the pre-publish install path (clone →
+  `npm install` → `npm run dev`).
 - **Dev server ignored the apikey's role claim**, so
   `apikey: <service_role>` alone behaved as `anon`.
   `extractAuthorizerContext` now reads `role` from the

@@ -45,6 +45,10 @@
     "pg": "^8.13.0"
   },
   "scripts": {
+    "dev": "node bin/pgrest-lambda.mjs dev",
+    "refresh": "node bin/pgrest-lambda.mjs refresh",
+    "generate-key": "node bin/pgrest-lambda.mjs generate-key",
+    "migrate-auth": "node bin/pgrest-lambda.mjs migrate-auth",
     "test": "node --experimental-test-module-mocks --test 'src/**/*.test.mjs' 'deploy/**/*.test.mjs'",
     "test:integration": "node --test --test-concurrency=1 'tests/integration/**/*.test.mjs'",
     "test:e2e": "node --test --test-concurrency=1 'tests/e2e/**/*.test.mjs'",
