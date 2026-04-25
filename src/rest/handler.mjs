@@ -91,7 +91,12 @@ function resolveContributions(contributions, apiUrl) {
 
 function resolveApiUrl(ctx, headers) {
   if (ctx.apiBaseUrl) return ctx.apiBaseUrl;
-  return `https://${headers['host'] || 'localhost'}/rest/v1`;
+  const host = headers['host'] || 'localhost';
+  // Prefer X-Forwarded-Proto (set by API Gateway and most proxies);
+  // fall back to http for plain local connections (e.g. `pgrest-lambda dev`).
+  const proto = headers['x-forwarded-proto']
+    || (host.startsWith('localhost') || host.startsWith('127.0.0.1') ? 'http' : 'https');
+  return `${proto}://${host}/rest/v1`;
 }
 
 export function createRestHandler(ctx, contributions = []) {

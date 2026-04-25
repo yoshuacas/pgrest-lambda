@@ -31,7 +31,7 @@ const ERROR_DESCRIPTION = {
   unexpected_failure: 'An unexpected error occurred',
 };
 
-function providerErrorResponse(err, corsHeaders) {
+function providerErrorResponse(err, corsHeaders, ctx) {
   const code = err.code || 'unexpected_failure';
   const status = ERROR_STATUS[code] || 500;
   const desc = err.code === 'validation_failed'
@@ -40,6 +40,16 @@ function providerErrorResponse(err, corsHeaders) {
   const extra = code === 'weak_password' && err.reasons
     ? { weak_password: { reasons: err.reasons } }
     : undefined;
+
+  // In non-production deployments, log unexpected failures to stderr so
+  // the dev can see what went wrong. Expected auth errors (bad
+  // credentials, duplicate email, etc.) stay quiet.
+  if (ctx && !ctx.production && code === 'unexpected_failure') {
+    console.error('[pgrest-lambda] auth failure:', err.message);
+    if (err.stack) console.error(err.stack);
+    if (err.body) console.error('  upstream body:', err.body);
+  }
+
   return errorResponse(status, code, desc, extra, corsHeaders);
 }
 
@@ -161,7 +171,7 @@ export function createAuthHandler(config, ctx) {
       const accessToken = jwt.signAccessToken({ sub: user.id, email });
       return sessionResponse(accessToken, providerTokens.refreshToken, signInUser, corsHeaders);
     } catch (err) {
-      return providerErrorResponse(err, corsHeaders);
+      return providerErrorResponse(err, corsHeaders, ctx);
     }
   }
 
@@ -206,7 +216,7 @@ export function createAuthHandler(config, ctx) {
       const accessToken = jwt.signAccessToken({ sub: user.id, email: user.email });
       return sessionResponse(accessToken, providerTokens.refreshToken, user, corsHeaders);
     } catch (err) {
-      return providerErrorResponse(err, corsHeaders);
+      return providerErrorResponse(err, corsHeaders, ctx);
     }
   }
 
@@ -337,7 +347,7 @@ export function createAuthHandler(config, ctx) {
       return { statusCode: 200, headers: corsHeaders, body: '{}' };
     } catch (err) {
       if (err.code && ERROR_STATUS[err.code]) {
-        return providerErrorResponse(err, corsHeaders);
+        return providerErrorResponse(err, corsHeaders, ctx);
       }
       return errorResponse(500, 'unexpected_failure', 'An unexpected error occurred', undefined, corsHeaders);
     }
@@ -364,7 +374,7 @@ export function createAuthHandler(config, ctx) {
       if (err.code === 'invalid_grant') {
         return errorResponse(400, 'invalid_grant', 'Invalid or expired OTP token', undefined, corsHeaders);
       }
-      return providerErrorResponse(err, corsHeaders);
+      return providerErrorResponse(err, corsHeaders, ctx);
     }
   }
 
@@ -390,7 +400,7 @@ export function createAuthHandler(config, ctx) {
         body: '',
       };
     } catch (err) {
-      return providerErrorResponse(err, corsHeaders);
+      return providerErrorResponse(err, corsHeaders, ctx);
     }
   }
 

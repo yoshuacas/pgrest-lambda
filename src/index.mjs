@@ -139,6 +139,7 @@ export function createPgrest(config = {}) {
   ctx.docs = resolved.docs;
   ctx.apiBaseUrl = resolved.apiBaseUrl;
   ctx.cors = resolved.cors;
+  ctx.production = resolved.production;
 
   // Create auth handler first (needed for OpenAPI contributions)
   let auth = null;

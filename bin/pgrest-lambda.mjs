@@ -4,7 +4,7 @@
 // generateApikey). All business logic lives in `src/`; this file just
 // parses argv and orchestrates calls.
 
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile, appendFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import pg from 'pg';
@@ -86,11 +86,12 @@ async function cmdDev(argv) {
     await pool.end();
   }
 
-  // 3. Resolve secrets. JWT_SECRET and BETTER_AUTH_SECRET are generated
-  //    if absent so the first run is zero-config. They're logged once
-  //    so the user can pin them in .env.local if they want stable keys.
-  const jwtSecret = ensureSecret('JWT_SECRET');
-  const betterAuthSecret = ensureSecret('BETTER_AUTH_SECRET');
+  // 3. Resolve secrets. On first run, generate JWT_SECRET and
+  //    BETTER_AUTH_SECRET and persist them to .env.local. On every
+  //    subsequent run they come back from that file via loadDotenv(),
+  //    so apikeys stay stable and better-auth can decrypt its JWKS.
+  const jwtSecret = await ensureStableSecret('JWT_SECRET');
+  const betterAuthSecret = await ensureStableSecret('BETTER_AUTH_SECRET');
   const port = opts.port;
   const baseUrl = process.env.BETTER_AUTH_URL || `http://localhost:${port}`;
 
@@ -263,11 +264,31 @@ async function loadDotenv() {
   }
 }
 
-function ensureSecret(name) {
+// If the named secret is already set (from .env, .env.local, or the
+// shell), reuse it. Otherwise mint a fresh 48-byte base64 value, append
+// it to .env.local, and populate process.env so the rest of this
+// process sees it. Next invocation loads it via loadDotenv() and this
+// function returns the same value — so apikeys are stable and
+// better-auth's JWKS private key stays decryptable across restarts.
+async function ensureStableSecret(name) {
+  const ENV_LOCAL = '.env.local';
   if (process.env[name]) return process.env[name];
+
   const generated = randomBytes(48).toString('base64');
   process.env[name] = generated;
-  console.log(`  generated ephemeral ${name} (pin in .env for stable apikeys)`);
+
+  const cwd = process.cwd();
+  const path = resolve(cwd, ENV_LOCAL);
+  const line = `${name}=${generated}\n`;
+  try {
+    await readFile(path, 'utf8');          // exists? append
+    await appendFile(path, line, 'utf8');
+  } catch (err) {
+    if (err.code !== 'ENOENT') throw err;
+    await writeFile(path, line, 'utf8');
+    log(`  created ${ENV_LOCAL} — do not commit this file`);
+  }
+  log(`  wrote ${name} to ${ENV_LOCAL}`);
   return generated;
 }
 

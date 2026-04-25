@@ -52,6 +52,9 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
 - `.env.example` at the repo root documenting every
   environment variable.
 - README Quickstart section.
+- `docs/configuration.md` — full environment-variable
+  reference, local vs. production secret patterns, and
+  guidance on what not to commit.
 - `close()` method on REST database adapters (postgres
   and dsql) so tests and long-running processes can
   release pool resources explicitly.
@@ -101,6 +104,22 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
   `VALIDATION_ERROR` and `INVALID_EMAIL` codes from
   better-auth now map to `validation_failed` (400),
   matching the GoTrue contract.
+- **`pgrest-lambda dev` regenerated secrets on every
+  restart**: CLI now persists generated `JWT_SECRET`
+  and `BETTER_AUTH_SECRET` to `.env.local` on first run
+  so they survive restarts. Prevents better-auth's
+  "Failed to decrypt private key" error, keeps apikeys
+  equivalent across reboots, and keeps user sessions
+  valid. `.env.local` is gitignored.
+- **Scalar docs HTML used `https://` even on localhost**,
+  causing mixed-content failures when the UI tried to
+  fetch the OpenAPI spec. `resolveApiUrl` now honors the
+  `X-Forwarded-Proto` header and falls back to `http://`
+  for localhost/127.0.0.1.
+- **Auth handler swallowed unexpected failures silently**
+  in dev mode. When `production=false`, `unexpected_failure`
+  errors now log the stack and upstream response body to
+  stderr so developers can diagnose provider errors.
 
 ### Documentation
 - AWS SAM deploy guide (`docs/deploy/aws-sam/README.md`) rewritten

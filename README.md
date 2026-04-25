@@ -23,9 +23,15 @@ Open the Scalar UI at `http://localhost:3000/rest/v1/_docs` to browse
 the API. Point `@supabase/supabase-js` at `http://localhost:3000` with
 the anon apikey and you're off.
 
-To pin the secrets (so apikeys survive restarts), copy `.env.example`
-to `.env` and fill in `JWT_SECRET` and `BETTER_AUTH_SECRET`. Run
-`pgrest-lambda help` for other commands (`migrate-auth`, `generate-key`).
+On first run the CLI generates `JWT_SECRET` and `BETTER_AUTH_SECRET`
+and writes them to `.env.local` so apikeys are stable across restarts.
+`.env.local` is gitignored — never commit it. See
+[docs/configuration.md](docs/configuration.md) for the full variable
+reference and production secret patterns.
+
+Other commands: `pgrest-lambda migrate-auth` (apply better-auth schema
+against `DATABASE_URL`), `pgrest-lambda generate-key <anon|service_role>`
+(mint apikeys), `pgrest-lambda help`.
 
 ## Features
 
