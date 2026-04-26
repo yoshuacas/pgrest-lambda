@@ -7,7 +7,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { _buildFilterConditions } from '../../src/rest/sql-builder.mjs';
+import { _buildFilterConditions } from '../sql-builder.mjs';
 
 const mockSchema = {
   tables: {
