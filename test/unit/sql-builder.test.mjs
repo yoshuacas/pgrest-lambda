@@ -42,8 +42,13 @@ describe('buildFilterConditions', () => {
     ];
 
     const values = [];
+    const columnValidator = (col) => {
+      if (!mockSchema.tables.people.columns[col]) {
+        throw new Error(`Column '${col}' not found`);
+      }
+    };
     const conditions = _buildFilterConditions(
-      filters, mockSchema, 'people', values);
+      filters, values, columnValidator);
 
     assert.deepStrictEqual(conditions, [
       '"age" > $1',
@@ -60,8 +65,13 @@ describe('buildFilterConditions', () => {
     ];
 
     const values = [];
+    const columnValidator = (col) => {
+      if (!mockSchema.tables.people.columns[col]) {
+        throw new Error(`Column '${col}' not found`);
+      }
+    };
     const conditions = _buildFilterConditions(
-      filters, mockSchema, 'people', values);
+      filters, values, columnValidator);
 
     assert.deepStrictEqual(conditions, ['"age" = $1']);
     assert.deepStrictEqual(values, ['25']);
@@ -79,8 +89,13 @@ describe('buildFilterConditions', () => {
     ];
 
     const values = [];
+    const columnValidator = (col) => {
+      if (!mockSchema.tables.people.columns[col]) {
+        throw new Error(`Column '${col}' not found`);
+      }
+    };
     const conditions = _buildFilterConditions(
-      filters, mockSchema, 'people', values);
+      filters, values, columnValidator);
 
     assert.deepStrictEqual(conditions, [
       '("status" IN ($1, $2, $3) OR "priority" = $4)',
@@ -100,8 +115,13 @@ describe('buildFilterConditions', () => {
     ];
 
     const values = [];
+    const columnValidator = (col) => {
+      if (!mockSchema.tables.people.columns[col]) {
+        throw new Error(`Column '${col}' not found`);
+      }
+    };
     const conditions = _buildFilterConditions(
-      filters, mockSchema, 'people', values);
+      filters, values, columnValidator);
 
     assert.deepStrictEqual(conditions, [
       'NOT ("status" = $1 OR "status" = $2)',

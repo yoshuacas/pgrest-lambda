@@ -1,68 +1,63 @@
-# pgrest-lambda
+<p align="center">
+  <em>A serverless REST API and auth layer for any PostgreSQL database.</em>
+</p>
 
-A serverless REST API and auth layer for any PostgreSQL database.
+<p align="center">
+  <a href="https://www.npmjs.com/package/pgrest-lambda"><img src="https://img.shields.io/npm/v/pgrest-lambda.svg" alt="npm" /></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/npm/l/pgrest-lambda.svg" alt="License: MIT" /></a>
+  <a href="https://nodejs.org"><img src="https://img.shields.io/node/v/pgrest-lambda.svg" alt="Node.js" /></a>
+</p>
 
-Point it at a Postgres schema; get a Supabase-compatible REST API,
-user signup/login, OAuth, magic links, and an interactive OpenAPI
-explorer. Run it as a CLI, embed it in your own Lambda, or deploy the
+<p align="center">
+  <a href="#quickstart">Quickstart</a> &middot;
+  <a href="#use-as-a-library">Library</a> &middot;
+  <a href="./docs/configuration.md">Configuration</a> &middot;
+  <a href="./docs/authorization.md">Authorization</a> &middot;
+  <a href="./deploy/aws-sam">Deploy</a>
+</p>
+
+---
+
+## What is pgrest-lambda?
+
+Point it at a Postgres schema and get a Supabase-compatible REST API, user
+signup/login, OAuth, magic links, and an interactive OpenAPI explorer. Run it
+as a CLI for local development, embed it in your own server, or deploy the
 reference AWS SAM template.
 
-Works with the `@supabase/supabase-js` client unchanged.
+Works with the [`@supabase/supabase-js`](https://github.com/supabase/supabase-js)
+client unchanged. If you've been using Supabase but want your own stack on
+your own account, pgrest-lambda drops into the same client code.
+
+## Key features
+
+- **PostgREST-compatible query syntax** &mdash; filtering, ordering, pagination, upserts, exact counts, and resource embedding (joins).
+- **Supabase-wire-compatible auth** &mdash; signup, signin, refresh, user profile, magic link, OAuth, and JWKS.
+- **Cedar authorization** &mdash; policy-as-code row-level filters, translated into SQL `WHERE` clauses before each query runs.
+- **OpenAPI 3.0 auto-generation** &mdash; live spec and an interactive Scalar explorer on every running instance.
+- **Multiple database backends** &mdash; Aurora DSQL (IAM auth), Aurora Serverless v2, RDS PostgreSQL, or any reachable Postgres.
+- **Swappable auth providers** &mdash; `better-auth` (default, DB-only, no AWS) or Amazon Cognito.
+- **Deploy-agnostic core** &mdash; the library doesn't care whether it's behind API Gateway, Kong, Cloudflare Workers, or plain Express.
+
+## Quickstart
+
+Get to a working REST API in under 60 seconds. Requires Node.js 20+ and a
+running Docker daemon.
 
 ```bash
-npm install -g pgrest-lambda
-pgrest-lambda dev
+npx --yes pgrest-lambda dev
 ```
-
-## Getting started
-
-Two paths depending on whether you want to run pgrest-lambda
-standalone or embed it in your own project.
-
-### Path A — Run it locally (most developers start here)
-
-**Prerequisites:** Docker Desktop (or equivalent) running, Node 20+.
-
-Install once, then use `pgrest-lambda` from any directory:
-
-```bash
-npm install -g pgrest-lambda
-pgrest-lambda dev
-```
-
-> Want to skip the install? Run `npx --yes pgrest-lambda dev`
-> instead. `npx` downloads the package into a per-machine cache
-> (`~/.npm/_npx`) on first use and runs it from there. Useful for
-> trying once; global install is tidier for everyday use.
-
-> **Already have Postgres running?** Skip the bundled container and
-> point pgrest-lambda at your own database:
->
-> ```bash
-> DATABASE_URL=postgres://user:pass@host:5432/db \
->   pgrest-lambda dev --skip-docker
-> ```
->
-> pgrest-lambda will create the `better_auth` schema (tables
-> `user`, `session`, `account`, `verification`, `jwks`) in that
-> database on first boot — the migration is idempotent, so
-> repeated runs are safe. Your `public` schema is untouched.
 
 That's it. No clone, no config, no AWS account. The command:
 
 1. Starts a Postgres container on `localhost:54322` (first run only).
-2. Applies the better-auth schema.
+2. Applies the `better_auth` schema.
 3. Starts the API on `http://localhost:3000`.
-4. Writes `JWT_SECRET` and `BETTER_AUTH_SECRET` to `.env.local` in
-   the current directory (so your apikeys stay stable across
-   restarts). `.env.local` is `.gitignore`-ed — don't commit it.
-5. Prints a banner with the `DATABASE_URL`, an anon apikey, a
-   service-role apikey, and the URL of the interactive docs.
+4. Writes `JWT_SECRET` and `BETTER_AUTH_SECRET` to `.env.local` so apikeys stay stable across restarts.
+5. Prints a banner with the `DATABASE_URL`, an anon apikey, a service-role apikey, and the docs URL.
 
-Open `http://localhost:3000/rest/v1/_docs` in a browser. That's the
-live Scalar API explorer for your own API.
-
-Use any Supabase client against it:
+Open `http://localhost:3000/rest/v1/_docs` for the live Scalar API explorer on
+your own schema. Then point any Supabase client at it:
 
 ```javascript
 import { createClient } from '@supabase/supabase-js';
@@ -73,48 +68,55 @@ const supabase = createClient(
 );
 
 // Signup
-const { data: signup } = await supabase.auth.signUp({
+await supabase.auth.signUp({
   email: 'alice@example.com',
   password: 'Passw0rd!',
 });
 
 // Query any table in your `public` schema — endpoints are
 // auto-generated from schema introspection.
-const { data: rows } = await supabase.from('posts').select();
+const { data: posts } = await supabase.from('posts').select();
 ```
 
-Other commands:
-
-| Command | What it does |
-|---|---|
-| `pgrest-lambda refresh` | Reload schema cache and Cedar policies without restarting. Run this after you change a `.cedar` file or run a migration. |
-| `pgrest-lambda generate-key anon` | Mint an anon apikey JWT (prints to stdout). |
-| `pgrest-lambda generate-key service_role` | Mint a service-role apikey JWT. |
-| `pgrest-lambda migrate-auth` | Apply the better-auth schema against `DATABASE_URL`. For production bootstraps. |
-| `pgrest-lambda help` | Full command reference. |
-
-To stop the API server: `Ctrl-C` in the terminal running `dev`.
-
-The Postgres container (named `pgrest-lambda-dev-postgres`) keeps
-running and its data persists across restarts. To stop or wipe it:
+<details>
+<summary>Already have Postgres running? Skip the bundled container.</summary>
 
 ```bash
-# Stop Postgres, keep data:
-docker stop pgrest-lambda-dev-postgres
-
-# Wipe Postgres and its data volume for a clean slate:
-docker rm -f pgrest-lambda-dev-postgres
-docker volume rm docker_pgrest_lambda_dev_data
+DATABASE_URL=postgres://user:pass@host:5432/db \
+  npx pgrest-lambda dev --skip-docker
 ```
 
-### Path B — Embed pgrest-lambda in your own project
+pgrest-lambda creates the `better_auth` schema (tables `user`, `session`,
+`account`, `verification`, `jwks`) on first boot. The migration is
+idempotent, and your `public` schema is untouched.
 
-For a custom deploy (your own Lambda wrapper, Fastify server, Kong
-plugin, Cloudflare Worker, etc.):
+</details>
+
+## Installation
+
+For everyday use, install globally:
+
+```bash
+npm install -g pgrest-lambda
+```
+
+Or as a dependency, if you want to embed it in your own server or Lambda:
 
 ```bash
 npm install pgrest-lambda
 ```
+
+**Requirements**
+
+- Node.js 20+
+- A Docker daemon (only for `pgrest-lambda dev` with the bundled Postgres container &mdash; not needed if you pass your own `DATABASE_URL`)
+
+## Use as a library
+
+`createPgrest(config)` returns a handler you can route requests into. It
+accepts an API Gateway-style event and returns a
+`{ statusCode, headers, body }` response, so it works on AWS Lambda, Fastify,
+Express, Cloudflare Workers, or any platform you can translate to that shape.
 
 ```javascript
 import { createPgrest } from 'pgrest-lambda';
@@ -129,112 +131,39 @@ const pgrest = createPgrest({
   },
 });
 
-// pgrest.handler takes an API Gateway-style event and returns a
-// { statusCode, headers, body } response. Route HTTP requests into
-// it however your platform expects.
 export const handler = pgrest.handler;
 ```
 
-See [docs/configuration.md](docs/configuration.md) for the full config
-reference.
+All configuration can be passed as an argument or read from environment
+variables &mdash; explicit arguments win over env vars, env vars win over
+defaults. The full reference lives in
+[docs/configuration.md](./docs/configuration.md); the most common keys are:
 
-If you're deploying to AWS Lambda behind API Gateway, the
-[`deploy/aws-sam/`](deploy/aws-sam/) folder ships a reference
-template. It also exposes a Lambda authorizer on a subpath export:
-
-```javascript
-import { createAuthorizer } from 'pgrest-lambda/aws-sam';
-export const authorizer = createAuthorizer({
-  jwtSecret: process.env.JWT_SECRET,
-}).handler;
-```
-
-## Features
-
-- **PostgREST-compatible query syntax** — filtering, ordering, pagination, upserts, exact counts, resource embedding (joins).
-- **Supabase-compatible auth** — signup, signin, refresh, user profile, magic link, OAuth, JWKS. Works with the `@supabase/supabase-js` client unchanged.
-- **Cedar authorization** — policy-as-code row-level filtering, translated into SQL `WHERE` clauses before query execution.
-- **OpenAPI 3.0 auto-generation** — live spec at `GET /rest/v1/`, interactive Scalar docs at `GET /rest/v1/_docs`.
-- **Multiple database backends** — Aurora DSQL (IAM auth), Aurora Serverless v2, RDS PostgreSQL, or any PostgreSQL.
-- **Swappable auth providers** — better-auth (default, DB-only, no AWS) or Cognito (AWS-managed).
-- **Deploy-agnostic core** — the library doesn't care whether it's behind API Gateway, Kong, Cloudflare Workers, or plain Express. The `deploy/` folder ships reference integrations.
-
-## Configuration
-
-Everything below can be passed as an argument to `createPgrest()` or
-set as an environment variable. Explicit arguments win over env vars,
-env vars win over defaults.
-
-### Database
-
-| Config key | Env var | Default |
+| Config key | Env var | Notes |
 |---|---|---|
-| `database.connectionString` | `DATABASE_URL` | — |
-| `database.host` | `PG_HOST` | `localhost` |
-| `database.port` | `PG_PORT` | `5432` |
-| `database.user` | `PG_USER` | `postgres` |
-| `database.password` | `PG_PASSWORD` | `''` |
-| `database.database` | `PG_DATABASE` | `postgres` |
-| `database.ssl` | `PG_SSL` | `false` (see TLS below) |
-| `database.dsqlEndpoint` | `DSQL_ENDPOINT` | — (Aurora DSQL mode) |
+| `database.connectionString` | `DATABASE_URL` | Standard Postgres URI. |
+| `database.dsqlEndpoint` | `DSQL_ENDPOINT` | Switches to Aurora DSQL IAM auth. |
+| `jwtSecret` | `JWT_SECRET` | HS256 secret for apikeys, &ge; 32 chars. |
+| `auth.provider` | `AUTH_PROVIDER` | `better-auth` (default) or `cognito`. |
+| `policies` | `POLICIES_PATH` | Path or `s3://bucket/prefix/` for `.cedar` files. Defaults to `./policies`. |
+| `cors.allowedOrigins` | &mdash; | `'*'` rejected in production; provide a list. |
 
-### Auth
+<details>
+<summary>Alternative auth setups</summary>
 
-| Config key | Env var | Default |
-|---|---|---|
-| `jwtSecret` | `JWT_SECRET` | — (required, ≥ 32 chars) |
-| `auth.provider` | `AUTH_PROVIDER` | `better-auth` |
-| `auth.betterAuthSecret` | `BETTER_AUTH_SECRET` | — (required when provider is `better-auth`) |
-| `auth.betterAuthUrl` | `BETTER_AUTH_URL` | — (required for OAuth callbacks) |
-| `auth.googleClientId` | `GOOGLE_CLIENT_ID` | — (enables `/auth/v1/authorize?provider=google`) |
-| `auth.googleClientSecret` | `GOOGLE_CLIENT_SECRET` | — |
-| `auth.sesFromAddress` | `SES_FROM_ADDRESS` | — (required for magic-link emails) |
-| `auth.region` | `REGION_NAME` | — (Cognito and SES) |
-| `auth.clientId` | `USER_POOL_CLIENT_ID` | — (Cognito) |
-
-### Other
-
-| Config key | Env var | Default |
-|---|---|---|
-| `policies` | `POLICIES_PATH` | `./policies` (filesystem path or `s3://<bucket>/<prefix>/`) |
-| `cors.allowedOrigins` | — | `'*'` (rejected in production mode; provide a list) |
-| `cors.allowCredentials` | — | `false` |
-| `schemaCacheTtl` | `SCHEMA_CACHE_TTL_MS` | `30000` (30 sec) |
-| `docs` | `PGREST_DOCS` | `true` |
-| `production` | — | `process.env.NODE_ENV === 'production'` |
-
-For production deploys and secret-management patterns, see
-[docs/configuration.md](docs/configuration.md).
-
-### TLS
-
-The `database.ssl` option controls TLS to the database:
-
-| Value | TLS | Verification |
-|---|---|---|
-| `undefined` / `false` | Off | — |
-| `true` | On | On (secure default) |
-| `{ ca: '...' }` | On | On with custom CA |
-| `{ rejectUnauthorized: false }` | On | Off (consumer accepts MITM risk) |
-
-DSQL connections always verify TLS. When `DATABASE_URL` is set, TLS is
-controlled by `sslmode=...` in the URL and `database.ssl` is ignored.
-
-### Alternative auth setups
-
-**No auth at all.** REST-only mode:
+**REST-only, no auth:**
 
 ```javascript
 createPgrest({ auth: false });
 ```
 
-**Custom auth handler.** Your function replaces the `/auth/v1/*` path:
+**Custom auth handler &mdash; your function replaces `/auth/v1/*`:**
 
 ```javascript
 createPgrest({ auth: (event) => yourHandler(event) });
 ```
 
-**Cognito.** Use the AWS-managed user pool instead of better-auth:
+**Amazon Cognito instead of better-auth:**
 
 ```javascript
 createPgrest({
@@ -246,25 +175,21 @@ createPgrest({
 });
 ```
 
+</details>
+
 ## Authorization
 
-Every REST request runs through a Cedar policy check. The engine
-combines all `.cedar` files in `policies/` (or whatever
-`POLICIES_PATH` points at), translates each row-level predicate into
-a SQL `WHERE` clause, and attaches it to the query before execution.
+Every REST request runs through a [Cedar](https://www.cedarpolicy.com/) policy
+check. The engine combines all `.cedar` files in `policies/` (or wherever
+`POLICIES_PATH` points), translates each row-level predicate into a SQL
+`WHERE` clause, and attaches it to the query before execution.
 
-The shipped `policies/default.cedar` lets authenticated users read /
-write their own rows (`resource.user_id == principal`) and lets
-`service_role` bypass everything.
-
-See [docs/authorization.md](docs/authorization.md) for a full guide
-with recipes (public read, team-scoped, admin override,
-forbid-on-archived), error reference, and a Cedar syntax cheatsheet.
-
-Quick example:
+The shipped `policies/default.cedar` lets authenticated users read and write
+their own rows (`resource.user_id == principal`) and lets `service_role`
+bypass all checks.
 
 ```cedar
-// Everyone — including anon — reads the posts table.
+// Everyone — including anon — can read the posts table.
 permit(
     principal,
     action == PgrestLambda::Action::"select",
@@ -274,135 +199,96 @@ permit(
 };
 ```
 
-## API reference
+See [docs/authorization.md](./docs/authorization.md) for a full guide with
+recipes (public read, team-scoped, admin override, forbid-on-archived), an
+error reference, and a Cedar syntax cheatsheet.
 
-### REST endpoints
+## How it works
 
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/rest/v1/` | OpenAPI 3.0 spec (auto-generated) |
-| `GET` | `/rest/v1/_docs` | Interactive Scalar UI |
-| `POST` | `/rest/v1/_refresh` | Reload schema cache + policies |
-| `GET` | `/rest/v1/:table` | Read rows |
-| `POST` | `/rest/v1/:table` | Insert rows |
-| `PATCH` | `/rest/v1/:table` | Update rows (filters required) |
-| `DELETE` | `/rest/v1/:table` | Delete rows (filters required) |
-
-### Query parameters
-
-| Parameter | Example | Description |
-|---|---|---|
-| `select` | `select=id,name,customers(email)` | Columns + resource embedding |
-| `order` | `order=created_at.desc` | Sort order |
-| `limit` | `limit=10` | Max rows |
-| `offset` | `offset=20` | Skip rows |
-| `on_conflict` | `on_conflict=id` | Upsert conflict column |
-
-### Filter operators
-
-Apply to any column as `column=<op>.<value>`:
-
-| Operator | Example | SQL |
-|---|---|---|
-| `eq` | `name=eq.John` | `name = 'John'` |
-| `neq` | `status=neq.done` | `status != 'done'` |
-| `gt` / `gte` | `age=gt.21` | `age > 21` |
-| `lt` / `lte` | `price=lt.100` | `price < 100` |
-| `like` | `name=like.*john*` | `name LIKE '%john%'` |
-| `ilike` | `name=ilike.*john*` | `name ILIKE '%john%'` |
-| `in` | `id=in.(1,2,3)` | `id IN (1, 2, 3)` |
-| `is` | `deleted_at=is.null` | `deleted_at IS NULL` |
-| `not.*` | `status=not.eq.done` | `status != 'done'` |
-
-### Headers
-
-| Header | Description |
-|---|---|
-| `apikey` | Apikey JWT — anon or service_role |
-| `Authorization: Bearer <token>` | User access token (for authenticated requests) |
-| `Prefer: return=representation` | Return inserted/updated rows in the response body |
-| `Prefer: count=exact` | Include exact row count in `Content-Range` |
-| `Accept: application/vnd.pgrst.object+json` | Return a single object instead of an array |
-
-### Auth endpoints
-
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/auth/v1/signup` | Register a new user |
-| `POST` | `/auth/v1/token?grant_type=password` | Sign in |
-| `POST` | `/auth/v1/token?grant_type=refresh_token` | Refresh access token |
-| `GET` | `/auth/v1/user` | Get current user profile |
-| `POST` | `/auth/v1/logout` | Sign out |
-| `POST` | `/auth/v1/otp` | Send a magic-link email |
-| `POST` | `/auth/v1/verify` | Verify an OTP / magic-link token |
-| `GET` | `/auth/v1/authorize?provider=<name>` | Begin OAuth flow |
-| `GET` | `/auth/v1/callback` | OAuth callback |
-| `GET` | `/auth/v1/jwks` | Public JWKS for asymmetric JWT verification |
-
-### Resource embedding
-
-Fetch related data from multiple tables in a single request. pgrest-lambda
-detects foreign key relationships automatically on standard PostgreSQL and
-infers them from column naming (`customer_id` → `customers`) on Aurora DSQL.
-
-```javascript
-// Many-to-one
-await supabase.from('orders')
-  .select('id, amount, customers(name, email)');
-
-// One-to-many
-await supabase.from('customers')
-  .select('id, name, orders(id, amount)');
-
-// Nested (2+ levels)
-await supabase.from('orders')
-  .select('id, items(quantity, products(name, price))');
-
-// Alias, disambiguate, inner join
-await supabase.from('orders')
-  .select('id, buyer:customers(name), billing:addresses!billing_address_id(*)');
-
-await supabase.from('customers')
-  .select('id, name, orders!inner(id)');  // only customers with at least one order
-```
-
-## Architecture
-
-```
+```text
 Client (supabase-js, fetch, curl)
-  │
-  ▼
-Your platform (API Gateway, Kong, Cloudflare Workers, Express, …)
-  │
-  ▼
+  |
+  v
+Your platform (API Gateway, Kong, Cloudflare Workers, Express, ...)
+  |
+  v
 pgrest-lambda handler
-  │
-  ├── /auth/v1/*  →  Auth provider (better-auth or Cognito)
-  │                     └── signup, signin, refresh, OAuth, magic link, JWKS
-  │
-  └── /rest/v1/*  →  REST engine
-                        ├── Schema introspection (pg_catalog)
-                        ├── Query parsing (PostgREST-compatible)
-                        ├── Cedar authorization → SQL WHERE
-                        ├── OpenAPI generation
-                        └── PostgreSQL (DSQL, Aurora, RDS, any)
+  |
+  +--- /auth/v1/*  -->  Auth provider (better-auth or Cognito)
+  |                        signup, signin, refresh, OAuth, magic link, JWKS
+  |
+  +--- /rest/v1/*  -->  REST engine
+                           schema introspection (pg_catalog)
+                           query parsing (PostgREST-compatible)
+                           Cedar authorization (compiled to SQL WHERE)
+                           OpenAPI generation
+                           PostgreSQL (DSQL, Aurora, RDS, any)
 ```
 
-The library exposes `createPgrest(config)`. Everything else — how
-requests arrive, how JWTs are verified, how the result is returned to
-the client — is a deploy-target concern. See [`deploy/`](deploy/) for
-reference integrations.
+The library exposes `createPgrest(config)`. Everything else &mdash; how
+requests arrive, how the result is returned to the client &mdash; is a
+deploy-target concern. See [`deploy/`](./deploy/) for reference integrations.
+
+## API surface
+
+A running instance exposes its own OpenAPI 3.0 spec at `GET /rest/v1/` and an
+interactive explorer at `GET /rest/v1/_docs`. The high-level shape:
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` / `POST` / `PATCH` / `DELETE` | `/rest/v1/:table` | CRUD on any table in the `public` schema |
+| `POST` | `/rest/v1/_refresh` | Reload schema cache and Cedar policies |
+| `POST` | `/auth/v1/signup` | Register a new user |
+| `POST` | `/auth/v1/token` | Password or refresh-token grant |
+| `GET` | `/auth/v1/user` | Current user profile |
+| `POST` | `/auth/v1/otp` &middot; `/verify` | Magic-link email flow |
+| `GET` | `/auth/v1/authorize` &middot; `/callback` | OAuth flow |
+| `GET` | `/auth/v1/jwks` | Public JWKS for asymmetric verification |
+
+The query syntax is PostgREST-compatible: filters like `status=eq.published`,
+ordering (`order=created_at.desc`), pagination (`limit`, `offset`), upserts
+(`on_conflict`), exact counts (`Prefer: count=exact`), and resource embedding
+(`select=id,customers(name,email)`). Browse the live `_docs` UI for the full,
+schema-specific reference.
+
+## CLI commands
+
+| Command | What it does |
+|---|---|
+| `pgrest-lambda dev` | Boot a local dev stack (Postgres + API + auth + docs). |
+| `pgrest-lambda refresh` | Reload schema cache and Cedar policies without restarting. |
+| `pgrest-lambda generate-key <anon\|service_role>` | Mint an apikey JWT. |
+| `pgrest-lambda migrate-auth` | Apply the `better_auth` schema against `DATABASE_URL`. For production bootstraps. |
+| `pgrest-lambda help` | Full reference. |
+
+`pgrest-lambda dev` accepts `--port N` and `--skip-docker`. `refresh` accepts
+`--url` (or set `PGREST_URL`).
 
 ## Deploy
 
-Each subfolder under `deploy/` is one way to run pgrest-lambda in
-production. Core library code stays deploy-agnostic.
+Each subfolder under `deploy/` is one way to run pgrest-lambda in production.
+The core library stays deploy-agnostic.
 
-- [**AWS SAM**](deploy/aws-sam/) — API Gateway + Lambda + (optional) Cognito. Supports DSQL, Aurora, and standard Postgres.
+- [**AWS SAM**](./deploy/aws-sam/) &mdash; API Gateway + Lambda + (optional) Cognito. Supports DSQL, Aurora, and standard Postgres. Ships a Lambda authorizer on the `pgrest-lambda/aws-sam` subpath export:
 
-More targets welcome — the pattern is in
-[`deploy/aws-sam/README.md`](deploy/aws-sam/README.md).
+  ```javascript
+  import { createAuthorizer } from 'pgrest-lambda/aws-sam';
+  export const authorizer = createAuthorizer({
+    jwtSecret: process.env.JWT_SECRET,
+  }).handler;
+  ```
+
+More targets are welcome &mdash; the pattern is in
+[`deploy/aws-sam/README.md`](./deploy/aws-sam/README.md).
+
+## Documentation
+
+- [Configuration reference](./docs/configuration.md) &mdash; every config key and env var, plus secret-management patterns.
+- [Authorization guide](./docs/authorization.md) &mdash; Cedar policies with recipes and a syntax cheatsheet.
+- [AWS SAM deploy runbook](./deploy/aws-sam/README.md) &mdash; end-to-end live-on-AWS walkthrough.
+- [Changelog](./CHANGELOG.md) &mdash; what's shipped and what's coming.
+- [Agent integration guide](./AGENTS.md) &mdash; notes for AI coding agents working in this repo.
 
 ## License
 
-MIT.
+MIT. See [LICENSE](./LICENSE).

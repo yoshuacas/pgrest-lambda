@@ -119,6 +119,7 @@ export function generateCedarSchema(dbSchema) {
         ServiceRole: {},
         AnonRole: {},
         Table: {},
+        Function: {},
         Row: {
           memberOfTypes: ['Table'],
           shape: {
@@ -150,6 +151,12 @@ export function generateCedarSchema(dbSchema) {
           appliesTo: {
             principalTypes: ['User', 'ServiceRole', 'AnonRole'],
             resourceTypes: ['Table', 'Row'],
+          },
+        },
+        call: {
+          appliesTo: {
+            principalTypes: ['User', 'ServiceRole', 'AnonRole'],
+            resourceTypes: ['Function'],
           },
         },
       },
@@ -191,6 +198,15 @@ function buildEntities(principalUid, principal, schema) {
       attrs: {},
       parents: [],
     });
+  }
+  if (schema.functions) {
+    for (const fnName of Object.keys(schema.functions)) {
+      entities.push({
+        uid: { type: 'PgrestLambda::Function', id: fnName },
+        attrs: {},
+        parents: [],
+      });
+    }
   }
   return entities;
 }
@@ -426,7 +442,9 @@ export function createCedar(config) {
     cachedPoliciesPath = currentSourceKey();
   }
 
-  function authorize({ principal, action, resource, schema }) {
+  function authorize({
+    principal, action, resource, resourceType, schema,
+  }) {
     if (!cachedPolicies) {
       throw new PostgRESTError(
         403, 'PGRST403',
@@ -437,12 +455,16 @@ export function createCedar(config) {
     const principalUid = buildPrincipalUid(principal.role, principal.userId);
     const entities = buildEntities(principalUid, principal, schema);
     const actionUid = { type: 'PgrestLambda::Action', id: action };
+    const type = resourceType || 'Table';
+    const resourceUid = {
+      type: `PgrestLambda::${type}`, id: resource,
+    };
 
     const result = isAuthorized({
       principal: principalUid,
       action: actionUid,
-      resource: { type: 'PgrestLambda::Table', id: resource },
-      context: { table: resource },
+      resource: resourceUid,
+      context: { table: resource, resource_type: type },
       policies: cachedPolicies,
       entities,
     });
@@ -455,7 +477,7 @@ export function createCedar(config) {
       principal: principalUid,
       action: actionUid,
       resource: null,
-      context: { table: resource },
+      context: { table: resource, resource_type: type },
       policies: cachedPolicies,
       entities,
     });

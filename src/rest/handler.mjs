@@ -4,7 +4,9 @@ import { PostgRESTError, mapPgError } from './errors.mjs';
 import { parseQuery } from './query-parser.mjs';
 import {
   buildSelect, buildInsert, buildUpdate, buildDelete, buildCount,
+  buildRpcCall,
 } from './sql-builder.mjs';
+import { getFunction } from './schema-cache.mjs';
 import { success, error } from './response.mjs';
 import { route } from './router.mjs';
 import { generateSpec } from './openapi.mjs';
@@ -99,6 +101,77 @@ function resolveApiUrl(ctx, headers) {
   return `${proto}://${host}/rest/v1`;
 }
 
+export function validateRpcArgs(fnName, args, fnSchema) {
+  const required = fnSchema.args.length - fnSchema.numDefaults;
+  for (let i = 0; i < required; i++) {
+    const argDef = fnSchema.args[i];
+    if (!(argDef.name in args)) {
+      throw new PostgRESTError(400, 'PGRST209',
+        `Function '${fnName}' requires argument `
+        + `'${argDef.name}' which was not provided`);
+    }
+  }
+  const validNames = new Set(fnSchema.args.map(a => a.name));
+  for (const key of Object.keys(args)) {
+    if (!validNames.has(key)) {
+      throw new PostgRESTError(400, 'PGRST207',
+        `Function '${fnName}' does not have an `
+        + `argument named '${key}'`);
+    }
+  }
+}
+
+export function coerceRpcArgs(fnName, args, fnSchema) {
+  for (const argDef of fnSchema.args) {
+    if (!(argDef.name in args)) continue;
+    const val = args[argDef.name];
+    if (typeof val !== 'string') continue;
+
+    const t = argDef.type;
+    if (['int4', 'int2', 'int8'].includes(t)) {
+      if (!/^-?\d+$/.test(val)) {
+        throw new PostgRESTError(400, 'PGRST208',
+          `Argument '${argDef.name}' of function `
+          + `'${fnName}' expects type '${t}' but `
+          + `received a value that could not be coerced`);
+      }
+      const n = parseInt(val, 10);
+      args[argDef.name] = n;
+    } else if (t === 'bool') {
+      if (val === 'true') args[argDef.name] = true;
+      else if (val === 'false') args[argDef.name] = false;
+      else {
+        throw new PostgRESTError(400, 'PGRST208',
+          `Argument '${argDef.name}' of function `
+          + `'${fnName}' expects type '${t}' but `
+          + `received a value that could not be coerced`);
+      }
+    } else if (['json', 'jsonb'].includes(t)) {
+      try {
+        args[argDef.name] = JSON.parse(val);
+      } catch {
+        throw new PostgRESTError(400, 'PGRST208',
+          `Argument '${argDef.name}' of function `
+          + `'${fnName}' expects type '${t}' but `
+          + `received a value that could not be coerced`);
+      }
+    }
+  }
+  return args;
+}
+
+const RPC_RESERVED = new Set([
+  'select', 'order', 'limit', 'offset',
+  'on_conflict', 'columns',
+]);
+const RPC_OP_PREFIX = /^(not\.)?(eq|neq|gt|gte|lt|lte|like|ilike|match|imatch|in|is|isdistinct|fts|plfts|phfts|wfts|cs|cd|ov|sl|sr|nxr|nxl|adj)\./;
+
+export function classifyRpcParam(key, val) {
+  if (RPC_RESERVED.has(key)) return 'rest';
+  if (RPC_OP_PREFIX.test(val)) return 'rest';
+  return 'arg';
+}
+
 export function createRestHandler(ctx, contributions = []) {
   const { db, schemaCache, cedar, docs } = ctx;
   const corsConfig = ctx.cors;
@@ -167,6 +240,15 @@ export function createRestHandler(ctx, contributions = []) {
         const apiUrl = resolveApiUrl(ctx, headers);
         const resolved = resolveContributions(contributions, apiUrl);
         return success(200, generateSpec(newSchema, apiUrl, resolved), { corsHeaders });
+      }
+
+      if (routeInfo.type === 'rpc') {
+        return await handleRpc({
+          fnName: routeInfo.functionName, method, body,
+          params, multiValueParams, accept, prefer, headers,
+          schema, pool, cedar, ctx, corsHeaders,
+          role, userId, email,
+        });
       }
 
       const table = routeInfo.table;
@@ -364,6 +446,132 @@ export function createRestHandler(ctx, contributions = []) {
         corsHeaders,
       );
     }
+  }
+
+  async function handleRpc({
+      fnName, method, body, params, multiValueParams,
+      accept, prefer, headers, schema, pool, cedar,
+      ctx, corsHeaders, role, userId, email,
+  }) {
+    if (method !== 'GET' && method !== 'POST'
+        && method !== 'HEAD' && method !== 'OPTIONS') {
+      throw new PostgRESTError(405, 'PGRST101',
+        'Only GET, POST, and HEAD are allowed for RPC');
+    }
+
+    if (!ctx.dbCapabilities?.supportsRpc) {
+      throw new PostgRESTError(501, 'PGRST501',
+        'RPC is not supported on this database',
+        null,
+        'Deploy on standard PostgreSQL to use stored '
+        + 'function calls.');
+    }
+
+    const fnSchema = getFunction(schema, fnName);
+    if (!fnSchema) {
+      throw new PostgRESTError(404, 'PGRST202',
+        `Could not find the function '${fnName}' in the schema cache`);
+    }
+
+    if (fnSchema.overloaded) {
+      throw new PostgRESTError(300, 'PGRST203',
+        `Could not choose the best candidate function between: ${fnName}`);
+    }
+
+    await cedar.loadPolicies();
+    const principal = { role, userId, email };
+    cedar.authorize({
+      principal, action: 'call', resource: fnName,
+      resourceType: 'Function', schema,
+    });
+
+    let args;
+    let parsed;
+
+    if (method === 'POST') {
+      args = body || {};
+      parsed = parseQuery(params, method, multiValueParams);
+    } else {
+      const argParams = {};
+      const restParams = {};
+      for (const [key, val] of Object.entries(params)) {
+        const kind = classifyRpcParam(key, val);
+        if (kind === 'arg') {
+          argParams[key] = val;
+        } else {
+          restParams[key] = val;
+        }
+      }
+      parsed = parseQuery(restParams, method, multiValueParams);
+      args = argParams;
+    }
+
+    validateRpcArgs(fnName, args, fnSchema);
+
+    if (method === 'GET' || method === 'HEAD') {
+      coerceRpcArgs(fnName, args, fnSchema);
+    }
+
+    if (method === 'HEAD' && fnSchema.returnsSet) {
+      parsed = { ...parsed, limit: 0 };
+    }
+
+    const q = buildRpcCall(fnName, args, fnSchema, parsed);
+
+    if (!ctx.production) {
+      console.info(
+        `[pgrest-lambda] rpc: ${fnName}(`
+        + `${Object.keys(args).join(', ')})`);
+    }
+
+    const result = await pool.query(q.text, q.values);
+
+    if (method === 'HEAD') {
+      return {
+        statusCode: 200,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+        },
+        body: '',
+      };
+    }
+
+    if (q.resultMode === 'void') {
+      return success(200, null, { corsHeaders });
+    }
+
+    if (q.resultMode === 'scalar') {
+      const value = result.rows[0]?.[fnName] ?? null;
+      return {
+        statusCode: 200,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(value),
+      };
+    }
+
+    const singleObject =
+      accept.includes('application/vnd.pgrst.object+json');
+
+    if (!fnSchema.returnsSet) {
+      const row = result.rows[0] || null;
+      return {
+        statusCode: 200,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(row),
+      };
+    }
+
+    return success(200, result.rows, {
+      singleObject,
+      corsHeaders,
+    });
   }
 
   return { handler };

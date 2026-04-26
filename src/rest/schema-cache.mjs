@@ -55,6 +55,147 @@ const FK_SQL = `
    GROUP BY con.conname, c.relname, fc.relname
    ORDER BY con.conname`;
 
+const FUNCTIONS_SQL = `
+  SELECT p.proname AS function_name,
+         p.proargnames AS arg_names,
+         COALESCE(
+           (SELECT array_agg(t.typname ORDER BY a.ord)
+              FROM unnest(p.proargtypes)
+                   WITH ORDINALITY AS a(oid, ord)
+              JOIN pg_catalog.pg_type t
+                ON t.oid = a.oid),
+           '{}'::text[]
+         ) AS arg_types,
+         p.proargmodes AS arg_modes,
+         p.proallargtypes AS all_arg_types,
+         rt.typname AS return_type,
+         rt.typtype AS return_type_category,
+         p.proretset AS returns_set,
+         p.provolatile AS volatility,
+         l.lanname AS language,
+         p.pronargs AS num_args,
+         p.pronargdefaults AS num_defaults,
+         p.prokind AS prokind
+    FROM pg_catalog.pg_proc p
+    JOIN pg_catalog.pg_namespace n
+      ON n.oid = p.pronamespace
+    JOIN pg_catalog.pg_type rt
+      ON rt.oid = p.prorettype
+    JOIN pg_catalog.pg_language l
+      ON l.oid = p.prolang
+   WHERE n.nspname = 'public'
+     AND p.prokind = 'f'
+     AND (
+       p.proargmodes IS NULL
+       OR NOT p.proargmodes::text[] && ARRAY['o','b','v']
+     )
+   ORDER BY p.proname`;
+
+const EXCLUDED_ARG_MODES = new Set(['o', 'b', 'v']);
+
+function parseCharArray(val) {
+  if (Array.isArray(val)) return val;
+  if (typeof val === 'string' && val.startsWith('{') && val.endsWith('}')) {
+    return val.slice(1, -1).split(',');
+  }
+  return null;
+}
+
+async function buildFunctionsMap(rows, pool) {
+  const groups = new Map();
+  for (const row of rows) {
+    if (row.prokind && row.prokind !== 'f') continue;
+
+    const modes = parseCharArray(row.arg_modes);
+    row.arg_modes = modes;
+    if (modes && modes.some(m => EXCLUDED_ARG_MODES.has(m))) continue;
+
+    const name = row.function_name;
+    if (!groups.has(name)) groups.set(name, []);
+    groups.get(name).push(row);
+  }
+
+  const tableOids = new Set();
+  for (const [, fnRows] of groups) {
+    if (fnRows.length !== 1) continue;
+    const row = fnRows[0];
+    if (row.arg_modes && row.arg_modes.includes('t')
+        && row.all_arg_types) {
+      for (let i = 0; i < row.arg_modes.length; i++) {
+        if (row.arg_modes[i] === 't') {
+          tableOids.add(row.all_arg_types[i]);
+        }
+      }
+    }
+  }
+
+  const oidToType = {};
+  if (tableOids.size > 0) {
+    const res = await pool.query(
+      'SELECT oid, typname FROM pg_catalog.pg_type'
+      + ' WHERE oid = ANY($1::oid[])',
+      [Array.from(tableOids)],
+    );
+    for (const r of res.rows) {
+      oidToType[r.oid] = r.typname;
+    }
+  }
+
+  const functions = {};
+  for (const [name, fnRows] of groups) {
+    if (fnRows.length > 1) {
+      functions[name] = { overloaded: true };
+      continue;
+    }
+
+    const row = fnRows[0];
+
+    if (row.num_args > 0 && row.arg_names == null) continue;
+    if (row.num_args > 0
+        && row.arg_names.slice(0, row.num_args).some(n => n === '')) {
+      continue;
+    }
+
+    const args = [];
+    for (let i = 0; i < row.num_args; i++) {
+      args.push({
+        name: row.arg_names[i],
+        type: row.arg_types[i],
+      });
+    }
+
+    let returnColumns = null;
+    if (row.arg_modes && row.arg_modes.includes('t')
+        && row.all_arg_types) {
+      returnColumns = [];
+      for (let i = 0; i < row.arg_modes.length; i++) {
+        if (row.arg_modes[i] === 't') {
+          returnColumns.push({
+            name: row.arg_names[i],
+            type: oidToType[row.all_arg_types[i]] || 'unknown',
+          });
+        }
+      }
+    }
+
+    const isScalar = ['b', 'd', 'e'].includes(row.return_type_category)
+      && !row.returns_set;
+
+    functions[name] = {
+      args,
+      returnType: row.return_type,
+      returnColumns,
+      returnsSet: Boolean(row.returns_set),
+      isScalar,
+      volatility: row.volatility,
+      language: row.language,
+      numDefaults: row.num_defaults,
+    };
+  }
+
+  return functions;
+}
+
 function inferConventionRelationships(tables) {
   const relationships = [];
   const tableNames = Object.keys(tables);
@@ -154,7 +295,13 @@ async function pgIntrospect(pool, capabilities) {
     relationships = inferConventionRelationships(tables);
   }
 
-  return { tables, relationships };
+  let functions = {};
+  if (!capabilities || capabilities.supportsRpc) {
+    const fnResult = await pool.query(FUNCTIONS_SQL);
+    functions = await buildFunctionsMap(fnResult.rows, pool);
+  }
+
+  return { tables, relationships, functions };
 }
 
 export function createSchemaCache(config) {
@@ -204,4 +351,12 @@ export function getPrimaryKey(schema, table) {
 
 export function getRelationships(schema) {
   return schema.relationships || [];
+}
+
+export function hasFunction(schema, fnName) {
+  return Boolean(schema.functions?.[fnName]);
+}
+
+export function getFunction(schema, fnName) {
+  return schema.functions?.[fnName] || null;
 }

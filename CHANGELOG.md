@@ -35,6 +35,27 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
   supabase-js pattern for mapping snake_case DB columns
   to camelCase client fields. Duplicate aliases or
   collisions with other select keys return `PGRST100`.
+- **RPC endpoint** (`POST/GET/HEAD /rest/v1/rpc/:fn`).
+  Calls stored PostgreSQL functions, matching the
+  PostgREST surface used by `supabase-js` `.rpc()`.
+  Supports scalar, composite, void, and set-returning
+  functions — including `RETURNS TABLE(...)`.
+  Introspects `pg_proc`, emits named-parameter SQL
+  (`"arg" := $N`), and applies standard `select` /
+  `order` / `limit` / `offset` / filter query params
+  to set-returning results. Cedar authorization
+  extends with a new `PgrestLambda::Function`
+  resource type and `call` action. New error codes:
+  `PGRST202` (function not found), `PGRST203`
+  (overloaded), `PGRST207` (unknown argument),
+  `PGRST208` (type coercion), `PGRST209` (missing
+  argument). Gated on `ctx.dbCapabilities.supportsRpc`
+  (both providers default to `true`; returns
+  `PGRST501` when the flag is off). Functions with
+  OUT / INOUT / VARIADIC parameters are excluded
+  from the cache. Overloaded functions return
+  `PGRST203` (HTTP 300) in v1 — resolution by
+  argument count is deferred.
 
 ### Changed
 

@@ -7,7 +7,8 @@ import { mintAnonAndService } from './keys.mjs';
 // a fresh better-auth backend. Callers get { handler, anon, service, baseUrl }.
 // baseUrl is needed as the better-auth baseURL; integration tests pass a
 // placeholder, e2e tests override it with the real bound server URL.
-export function createTestPgrest({ baseUrl, betterAuthBasePath = '/auth/v1/ba' } = {}) {
+// Pass `capabilities` to override dbCapabilities (e.g. { supportsRpc: false }).
+export function createTestPgrest({ baseUrl, betterAuthBasePath = '/auth/v1/ba', capabilities } = {}) {
   const db = connectionInfo();
   const jwtSecret = randomBytes(48).toString('base64');
   const betterAuthSecret = randomBytes(48).toString('base64');
@@ -37,6 +38,10 @@ export function createTestPgrest({ baseUrl, betterAuthBasePath = '/auth/v1/ba' }
     production: false,
     docs: false,
   });
+
+  if (capabilities) {
+    pgrest._ctx.dbCapabilities = { ...pgrest._dbCapabilities, ...capabilities };
+  }
 
   const { anon, service } = mintAnonAndService(jwtSecret);
 
@@ -89,6 +94,7 @@ export function event({
   headers = {},
   body = null,
   query = null,
+  multiValueQuery = null,
   authorizer = null,
 } = {}) {
   const queryStringParameters = query
@@ -103,7 +109,7 @@ export function event({
     headers,
     body: body == null ? null : typeof body === 'string' ? body : JSON.stringify(body),
     queryStringParameters,
-    multiValueQueryStringParameters: null,
+    multiValueQueryStringParameters: multiValueQuery,
     requestContext: {
       authorizer: authorizer || undefined,
       identity: {},
@@ -112,5 +118,18 @@ export function event({
       stage: 'v1',
     },
     isBase64Encoded: false,
+  };
+}
+
+// Capture calls to a console method. Call restore() in a finally block.
+export function captureConsole(method = 'info') {
+  const calls = [];
+  const original = console[method];
+  console[method] = (...args) => {
+    calls.push(args);
+  };
+  return {
+    calls,
+    restore() { console[method] = original; },
   };
 }

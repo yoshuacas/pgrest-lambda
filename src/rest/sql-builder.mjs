@@ -34,16 +34,15 @@ function validateCol(schema, table, column) {
   }
 }
 
-function resolveSelectCols(selectList, schema, table) {
-  // Support both old string format and new node format
+function resolveSelectCols(selectList, columnValidator, allColumns) {
   const cols = selectList
     .filter(s => typeof s === 'string' || s.type === 'column')
     .map(s => typeof s === 'string' ? s : s.name);
   if (cols.length === 1 && cols[0] === '*') {
-    return Object.keys(schema.tables[table].columns);
+    return [...allColumns];
   }
   for (const col of cols) {
-    validateCol(schema, table, col);
+    columnValidator(col);
   }
   return cols;
 }
@@ -212,8 +211,8 @@ function renumberConditions(conditions, startParam) {
   );
 }
 
-function buildSingleCondition(f, schema, table, values) {
-  validateCol(schema, table, f.column);
+function buildSingleCondition(f, values, columnValidator) {
+  columnValidator(f.column);
   if (f.operator === 'is') {
     const keyword = f.value.toLowerCase();
     if (!['null', 'true', 'false', 'unknown'].includes(keyword)) {
@@ -242,7 +241,7 @@ function buildSingleCondition(f, schema, table, values) {
 const MAX_NESTING_DEPTH = 10;
 
 function buildLogicalCondition(
-    group, schema, table, values, depth = 0) {
+    group, values, columnValidator, depth = 0) {
   if (depth > MAX_NESTING_DEPTH) {
     throw new PostgRESTError(400, 'PGRST100',
       'Logical operator nesting exceeds maximum '
@@ -253,10 +252,10 @@ function buildLogicalCondition(
   for (const cond of group.conditions) {
     if (cond.type === 'logicalGroup') {
       parts.push(buildLogicalCondition(
-        cond, schema, table, values, depth + 1));
+        cond, values, columnValidator, depth + 1));
     } else {
       parts.push(
-        buildSingleCondition(cond, schema, table, values));
+        buildSingleCondition(cond, values, columnValidator));
     }
   }
 
@@ -268,15 +267,15 @@ function buildLogicalCondition(
   return group.negate ? `NOT ${wrapped}` : wrapped;
 }
 
-function buildFilterConditions(filters, schema, table, values) {
+function buildFilterConditions(filters, values, columnValidator) {
   const conditions = [];
   for (const f of filters) {
     if (f.type === 'logicalGroup') {
       conditions.push(
-        buildLogicalCondition(f, schema, table, values));
+        buildLogicalCondition(f, values, columnValidator));
     } else {
       conditions.push(
-        buildSingleCondition(f, schema, table, values));
+        buildSingleCondition(f, values, columnValidator));
     }
   }
   return conditions;
@@ -288,10 +287,10 @@ function whereClause(conditions) {
     : '';
 }
 
-function orderClause(order, schema, table) {
+function orderClause(order, columnValidator) {
   if (!order || order.length === 0) return '';
   const parts = order.map((o) => {
-    validateCol(schema, table, o.column);
+    columnValidator(o.column);
     let sql = `"${o.column}" ${o.direction.toUpperCase()}`;
     if (o.nulls) {
       sql += ` NULLS ${o.nulls === 'nullsfirst' ? 'FIRST' : 'LAST'}`;
@@ -316,6 +315,8 @@ function limitOffsetClause(limit, offset, values) {
 
 export function buildSelect(table, parsed, schema, authzConditions) {
   const values = [];
+  const columnValidator = (col) => validateCol(schema, table, col);
+  const allColumns = Object.keys(schema.tables[table].columns);
   const hasEmbeds = parsed.select.some(
     n => n.type === 'embed');
 
@@ -323,13 +324,11 @@ export function buildSelect(table, parsed, schema, authzConditions) {
   const innerJoinConds = [];
 
   if (hasEmbeds) {
-    // Build select expressions from tree
     const expressions = [];
     for (const node of parsed.select) {
       if (node.type === 'column') {
         if (node.name === '*') {
-          for (const c of Object.keys(
-              schema.tables[table].columns)) {
+          for (const c of allColumns) {
             expressions.push(`"${table}"."${c}"`);
           }
         } else {
@@ -350,16 +349,13 @@ export function buildSelect(table, parsed, schema, authzConditions) {
           authzConditions?.embeds);
         expressions.push(`${subquery} AS "${alias}"`);
 
-        // Inner join conditions
         if (node.inner) {
           if (rel.fromTable === table) {
-            // Many-to-one inner: FK column IS NOT NULL
             innerJoinConds.push(
               rel.fromColumns.map(fc =>
                 `"${table}"."${fc}" IS NOT NULL`
               ).join(' AND '));
           } else {
-            // One-to-many inner: EXISTS subquery
             const existsCond = rel.fromColumns.map((fc, i) =>
               `"${rel.fromTable}"."${fc}" = `
               + `"${table}"."${rel.toColumns[i]}"`
@@ -373,15 +369,14 @@ export function buildSelect(table, parsed, schema, authzConditions) {
     }
     colList = expressions.join(', ');
   } else {
-    // Flat select — backward compatible path
     const cols = parsed.select.filter(
       n => typeof n === 'string' || n.type === 'column');
     const names = cols.map(n => typeof n === 'string' ? n : n.name);
     if (names.length === 1 && names[0] === '*') {
-      colList = Object.keys(schema.tables[table].columns)
+      colList = allColumns
         .map(c => `"${c}"`).join(', ');
     } else {
-      for (const c of names) validateCol(schema, table, c);
+      for (const c of names) columnValidator(c);
       colList = cols.map(n => {
         const name = typeof n === 'string' ? n : n.name;
         const alias = typeof n === 'string' ? undefined : n.alias;
@@ -391,16 +386,13 @@ export function buildSelect(table, parsed, schema, authzConditions) {
     }
   }
 
-  // Build WHERE conditions
   const conds = buildFilterConditions(
-    parsed.filters, schema, table, values);
+    parsed.filters, values, columnValidator);
 
-  // Add inner join conditions
   for (const ijc of innerJoinConds) {
     conds.push(ijc);
   }
 
-  // Add parent authz conditions
   const parentAuthz = authzConditions?.parent
     || authzConditions;
   if (parentAuthz?.conditions?.length > 0) {
@@ -414,7 +406,7 @@ export function buildSelect(table, parsed, schema, authzConditions) {
 
   let sql = `SELECT ${colList} FROM "${table}"`;
   sql += whereClause(conds);
-  sql += orderClause(parsed.order, schema, table);
+  sql += orderClause(parsed.order, columnValidator);
   sql += limitOffsetClause(parsed.limit, parsed.offset, values);
 
   return { text: sql, values };
@@ -496,8 +488,10 @@ export function buildUpdate(table, body, parsed, schema, authzConditions) {
     setClauses.push(`"${col}" = $${values.length}`);
   }
 
+  const columnValidator = (col) =>
+    validateCol(schema, table, col);
   const conds = buildFilterConditions(
-    parsed.filters, schema, table, values,
+    parsed.filters, values, columnValidator,
   );
   if (authzConditions?.conditions?.length > 0) {
     const renumbered = renumberConditions(
@@ -524,8 +518,10 @@ export function buildDelete(table, parsed, schema, authzConditions) {
   }
 
   const values = [];
+  const columnValidator = (col) =>
+    validateCol(schema, table, col);
   const conds = buildFilterConditions(
-    parsed.filters, schema, table, values,
+    parsed.filters, values, columnValidator,
   );
   if (authzConditions?.conditions?.length > 0) {
     const renumbered = renumberConditions(
@@ -545,8 +541,10 @@ export function buildDelete(table, parsed, schema, authzConditions) {
 
 export function buildCount(table, parsed, schema, authzConditions) {
   const values = [];
+  const columnValidator = (col) =>
+    validateCol(schema, table, col);
   const conds = buildFilterConditions(
-    parsed.filters, schema, table, values,
+    parsed.filters, values, columnValidator,
   );
   if (authzConditions?.conditions?.length > 0) {
     const renumbered = renumberConditions(
@@ -561,6 +559,99 @@ export function buildCount(table, parsed, schema, authzConditions) {
   sql += whereClause(conds);
 
   return { text: sql, values };
+}
+
+export function makeRpcColumnValidator(fnSchema) {
+  if (fnSchema.returnColumns) {
+    const valid = new Set(
+      fnSchema.returnColumns.map(c => c.name));
+    return (col) => {
+      if (!valid.has(col)) {
+        throw new PostgRESTError(400, 'PGRST204',
+          `Column '${col}' does not exist `
+          + `in function result`);
+      }
+    };
+  }
+  const IDENT = /^[A-Za-z_][A-Za-z0-9_]*$/;
+  return (col) => {
+    if (!IDENT.test(col)) {
+      throw new PostgRESTError(400, 'PGRST204',
+        `'${col}' is not a valid column name`);
+    }
+  };
+}
+
+export function buildRpcCall(fnName, args, fnSchema, parsed) {
+  const values = [];
+
+  const argEntries = fnSchema.args
+    .filter(a => a.name in args)
+    .map(a => {
+      values.push(args[a.name]);
+      return `"${a.name}" := $${values.length}`;
+    });
+  const argList = argEntries.join(', ');
+
+  if (fnSchema.returnType === 'void') {
+    return {
+      text: `SELECT "${fnName}"(${argList})`,
+      values,
+      resultMode: 'void',
+    };
+  }
+
+  if (fnSchema.isScalar && !fnSchema.returnsSet) {
+    return {
+      text: `SELECT "${fnName}"(${argList}) AS "${fnName}"`,
+      values,
+      resultMode: 'scalar',
+    };
+  }
+
+  let selectPart = '*';
+
+  if (parsed && fnSchema.returnsSet) {
+    const columnValidator = makeRpcColumnValidator(fnSchema);
+    const allColumns = fnSchema.returnColumns?.map(c => c.name);
+
+    const selectNodes = parsed.select
+      .filter(s => typeof s === 'string' || s.type === 'column');
+    const selectNames = selectNodes
+      .map(s => typeof s === 'string' ? s : s.name);
+
+    if (selectNames.length === 1 && selectNames[0] === '*') {
+      if (allColumns) {
+        selectPart = allColumns.map(c => `"${c}"`).join(', ');
+      }
+    } else {
+      for (const col of selectNames) {
+        columnValidator(col);
+      }
+      selectPart = selectNodes.map(s => {
+        const name = typeof s === 'string' ? s : s.name;
+        const alias = typeof s === 'string' ? undefined : s.alias;
+        if (alias) return `"${name}" AS "${alias}"`;
+        return `"${name}"`;
+      }).join(', ');
+    }
+
+    let sql = `SELECT ${selectPart} FROM "${fnName}"(${argList})`;
+
+    const conds = buildFilterConditions(
+      parsed.filters, values, columnValidator);
+    sql += whereClause(conds);
+    sql += orderClause(parsed.order, columnValidator);
+    sql += limitOffsetClause(parsed.limit, parsed.offset, values);
+
+    return { text: sql, values, resultMode: 'set' };
+  }
+
+  return {
+    text: `SELECT * FROM "${fnName}"(${argList})`,
+    values,
+    resultMode: 'set',
+  };
 }
 
 export { buildFilterConditions as _buildFilterConditions };

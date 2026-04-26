@@ -36,6 +36,47 @@ function pgTypeToJsonSchema(pgType) {
   return { type: 'string' };
 }
 
+function buildFnArgSchema(fnSchema) {
+  const properties = {};
+  const required = [];
+  const numRequired = fnSchema.args.length - fnSchema.numDefaults;
+  for (let i = 0; i < fnSchema.args.length; i++) {
+    const arg = fnSchema.args[i];
+    properties[arg.name] = pgTypeToJsonSchema(arg.type);
+    if (i < numRequired) {
+      required.push(arg.name);
+    }
+  }
+  const schema = { type: 'object', properties };
+  if (required.length > 0) {
+    schema.required = required;
+  }
+  return schema;
+}
+
+function buildFnResponseSchema(fnSchema) {
+  if (fnSchema.returnType === 'void') {
+    return {};
+  }
+  if (fnSchema.isScalar) {
+    return pgTypeToJsonSchema(fnSchema.returnType);
+  }
+  if (fnSchema.returnColumns) {
+    const properties = {};
+    for (const col of fnSchema.returnColumns) {
+      properties[col.name] = pgTypeToJsonSchema(col.type);
+    }
+    return {
+      type: 'array',
+      items: { type: 'object', properties },
+    };
+  }
+  if (fnSchema.returnsSet) {
+    return { type: 'array', items: { type: 'object' } };
+  }
+  return { type: 'object' };
+}
+
 function buildTableSchema(tableDef) {
   const properties = {};
   const required = [];
@@ -216,6 +257,46 @@ export function generateSpec(schema, apiUrl, contributions = []) {
       if (op && typeof op === 'object' && op.summary) {
         op.tags = ['Data'];
       }
+    }
+  }
+
+  if (schema.functions) {
+    for (const [fnName, fnSchema]
+         of Object.entries(schema.functions)) {
+      if (fnSchema.overloaded) continue;
+      paths[`/rpc/${fnName}`] = {
+        post: {
+          summary: `Call ${fnName}`,
+          tags: ['Functions'],
+          requestBody: {
+            content: {
+              'application/json': {
+                schema: buildFnArgSchema(fnSchema),
+              },
+            },
+          },
+          responses: {
+            200: {
+              description: 'Function result',
+              content: {
+                'application/json': {
+                  schema: buildFnResponseSchema(fnSchema),
+                },
+              },
+            },
+            default: {
+              description: 'Error',
+              content: {
+                'application/json': {
+                  schema: {
+                    $ref: '#/components/schemas/PostgRESTError',
+                  },
+                },
+              },
+            },
+          },
+        },
+      };
     }
   }
 

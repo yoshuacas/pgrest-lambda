@@ -63,6 +63,23 @@ const PG_ERROR_MAP = {
 //     `use 'ilike' or a separate search index, `
 //     + `or deploy on standard PostgreSQL`,
 //   );
+//
+// PGRST101 — Unsupported HTTP method for RPC.
+//            HTTP 405. Only GET, POST, HEAD allowed.
+//
+// PGRST202 — Function not found in schema cache.
+//            HTTP 404.
+//
+// PGRST203 — Overloaded function. HTTP 300.
+//
+// PGRST207 — Unknown function argument. HTTP 400.
+//            pgrest-lambda-specific.
+//
+// PGRST208 — Type coercion failure. HTTP 400.
+//            pgrest-lambda-specific.
+//
+// PGRST209 — Missing required function argument.
+//            HTTP 400. pgrest-lambda-specific.
 
 export function mapPgError(pgError) {
   const statusCode = PG_ERROR_MAP[pgError.code] || 500;

@@ -186,6 +186,7 @@ export function createPgrest(config = {}) {
     // Expose subsystems for advanced use and testing
     _db: db,
     _dbCapabilities: dbCapabilities,
+    _ctx: ctx,
     _schemaCache: schemaCache,
     _cedar: cedar,
     _jwt: jwt,
