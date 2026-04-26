@@ -8,6 +8,25 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
 
 ## Unreleased
 
+### Added
+
+- **Database capabilities interface.** Each DB provider
+  (`src/rest/db/postgres.mjs`, `src/rest/db/dsql.mjs`) now
+  declares a frozen `capabilities` object with static flags
+  describing what the underlying database supports: foreign
+  keys, full-text search, range types, array containment,
+  planned counts, regex operators, RLS, RPC, GIN indexes.
+  The REST engine reads `ctx.dbCapabilities` instead of
+  try/catch-and-fallback. First consumer: schema-cache's
+  FK introspection now checks `supportsForeignKeys` instead
+  of catching query failures. Foundation for the upcoming
+  FTS / range / RPC / planned-count features that have
+  real DSQL differences.
+- **`PGRST501` error code** for "feature requires a
+  capability this database doesn't support." Used when a
+  REST request hits an unsupported capability (e.g. an
+  `fts.*` filter on DSQL once FTS lands). Maps to HTTP 501.
+
 ### Changed
 
 - **Default auth provider is now `better-auth`** for the library

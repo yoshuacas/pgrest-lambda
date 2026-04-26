@@ -26,23 +26,6 @@ function createMockPool(columnRows, pkRows, fkRows = []) {
   };
 }
 
-function createThrowingFkPool(columnRows, pkRows) {
-  let queryCount = 0;
-  return {
-    query: async (sql) => {
-      queryCount++;
-      if (sql.includes("contype = 'f'")) {
-        throw new Error('DSQL does not support LATERAL');
-      }
-      if (sql.includes("contype = 'p'")) {
-        return { rows: pkRows };
-      }
-      return { rows: columnRows };
-    },
-    getQueryCount: () => queryCount,
-  };
-}
-
 const columnRows = [
   {
     table_name: 'todos',
@@ -241,16 +224,17 @@ describe('FK introspection', () => {
     assert.equal(schema.relationships.length, 0);
   });
 
-  it('treats FK query error as zero rows', async () => {
-    const pool = createThrowingFkPool(columnRows, pkRows);
-    const sc = createSchemaCache({ schemaCacheTtl: 300000 });
+  it('skips FK query when supportsForeignKeys is false', async () => {
+    const pool = createMockPool(columnRows, pkRows, []);
+    const sc = createSchemaCache({
+      schemaCacheTtl: 300000,
+      capabilities: { supportsForeignKeys: false },
+    });
     const schema = await sc.getSchema(pool);
     assert.ok(schema.tables.todos,
       'tables should still be populated');
     assert.ok(Array.isArray(schema.relationships),
       'relationships should be an array');
-    // Convention fallback runs; todos/categories have no _id
-    // columns so result is empty.
     assert.equal(schema.relationships.length, 0);
   });
 });

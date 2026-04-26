@@ -10,6 +10,18 @@ function resolveSsl(ssl) {
   return { rejectUnauthorized: true, ...ssl };
 }
 
+const POSTGRES_CAPABILITIES = Object.freeze({
+  supportsForeignKeys: true,
+  supportsFullTextSearch: true,
+  supportsRangeTypes: true,
+  supportsArrayContainment: true,
+  supportsPlannedCount: true,
+  supportsRegex: true,
+  supportsRowLevelSecurity: true,
+  supportsRpc: true,
+  supportsGinIndex: true,
+});
+
 /** @returns {import('./interface.mjs').DatabaseProvider} */
 export function createPostgresProvider(config) {
   let pool = null;
@@ -50,5 +62,5 @@ export function createPostgresProvider(config) {
     }
   }
 
-  return { getPool, _setPool, close };
+  return { getPool, _setPool, close, capabilities: () => POSTGRES_CAPABILITIES };
 }

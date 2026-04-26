@@ -5,6 +5,48 @@ import pg from 'pg';
 const { Pool } = pg;
 const TOKEN_LIFETIME_MS = 10 * 60 * 1000; // 10 minutes
 
+// DSQL capability research — verified against
+// docs.aws.amazon.com/aurora-dsql/ (2025-05):
+//
+// supportsForeignKeys: false
+//   DSQL drops FK constraints for distributed consistency.
+//   pg_constraint has no contype='f' rows.
+//
+// supportsFullTextSearch: false
+//   tsvector/tsquery not in supported data types list.
+//
+// supportsRangeTypes: false
+//   Range types not in supported data types list.
+//
+// supportsArrayContainment: true
+//   Array types supported; @>, <@, && expected to work.
+//
+// supportsPlannedCount: false
+//   pg_class.reltuples accuracy undocumented on DSQL.
+//
+// supportsRegex: true
+//   LIKE/ILIKE confirmed; POSIX ~ assumed (text type supported).
+//
+// supportsRowLevelSecurity: false
+//   CREATE POLICY / SET ROLE not in supported SQL commands.
+//
+// supportsRpc: true
+//   SQL-language functions only, no PL/pgSQL.
+//
+// supportsGinIndex: false
+//   B-tree only; GIN/GiST/HASH/BRIN not supported.
+const DSQL_CAPABILITIES = Object.freeze({
+  supportsForeignKeys: false,
+  supportsFullTextSearch: false,
+  supportsRangeTypes: false,
+  supportsArrayContainment: true,
+  supportsPlannedCount: false,
+  supportsRegex: true,
+  supportsRowLevelSecurity: false,
+  supportsRpc: true,
+  supportsGinIndex: false,
+});
+
 /** @returns {import('./interface.mjs').DatabaseProvider} */
 export function createDsqlProvider(config) {
   let pool = null;
@@ -55,5 +97,5 @@ export function createDsqlProvider(config) {
     }
   }
 
-  return { getPool, _setPool, close };
+  return { getPool, _setPool, close, capabilities: () => DSQL_CAPABILITIES };
 }

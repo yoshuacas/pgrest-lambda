@@ -120,9 +120,11 @@ export function createPgrest(config = {}) {
 
   // Create subsystems
   const db = createDb(resolved.database);
+  const dbCapabilities = db.capabilities();
   const schemaCache = createSchemaCache({
     schemaCacheTtl: resolved.schemaCacheTtl,
     introspect: db.introspect || null,
+    capabilities: dbCapabilities,
   });
   const cedar = createCedar({
     policiesPath: resolved.policiesPath,
@@ -140,6 +142,14 @@ export function createPgrest(config = {}) {
   ctx.apiBaseUrl = resolved.apiBaseUrl;
   ctx.cors = resolved.cors;
   ctx.production = resolved.production;
+  ctx.dbCapabilities = dbCapabilities;
+
+  if (!resolved.production) {
+    console.info(
+      '[pgrest-lambda] db capabilities:',
+      JSON.stringify(dbCapabilities),
+    );
+  }
 
   // Create auth handler first (needed for OpenAPI contributions)
   let auth = null;
@@ -175,6 +185,7 @@ export function createPgrest(config = {}) {
     handler,
     // Expose subsystems for advanced use and testing
     _db: db,
+    _dbCapabilities: dbCapabilities,
     _schemaCache: schemaCache,
     _cedar: cedar,
     _jwt: jwt,

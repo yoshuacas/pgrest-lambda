@@ -44,6 +44,25 @@ const PG_ERROR_MAP = {
 // PGRST204 — Column not found (already used by sql-builder
 //            for flat selects; also applies to columns inside
 //            embed select lists)
+//
+// PGRST501 — Feature requires unsupported database
+//            capability. HTTP 501. Thrown when a REST
+//            request uses a feature (FTS, range ops,
+//            etc.) that the current database provider
+//            does not support. Response includes a
+//            message naming the feature and provider,
+//            and a hint suggesting alternatives.
+//
+// Usage pattern (for future feature loops):
+//
+//   throw new PostgRESTError(
+//     501, 'PGRST501',
+//     `operator '${op}' requires full-text search `
+//     + `support, which Aurora DSQL does not provide`,
+//     null,
+//     `use 'ilike' or a separate search index, `
+//     + `or deploy on standard PostgreSQL`,
+//   );
 
 export function mapPgError(pgError) {
   const statusCode = PG_ERROR_MAP[pgError.code] || 500;

@@ -110,7 +110,7 @@ function inferConventionRelationships(tables) {
   return relationships;
 }
 
-async function pgIntrospect(pool) {
+async function pgIntrospect(pool, capabilities) {
   const [colResult, pkResult] = await Promise.all([
     pool.query(COLUMNS_SQL),
     pool.query(PK_SQL),
@@ -135,14 +135,10 @@ async function pgIntrospect(pool) {
     }
   }
 
-  // FK introspection (may fail on DSQL)
   let fkRows = [];
-  try {
+  if (!capabilities || capabilities.supportsForeignKeys) {
     const fkResult = await pool.query(FK_SQL);
     fkRows = fkResult.rows;
-  } catch {
-    // DSQL or other DB that rejects the FK query
-    fkRows = [];
   }
 
   let relationships = fkRows.map(row => ({
@@ -163,7 +159,9 @@ async function pgIntrospect(pool) {
 
 export function createSchemaCache(config) {
   const ttl = config.schemaCacheTtl || 30000;
-  const introspect = config.introspect || pgIntrospect;
+  const capabilities = config.capabilities || null;
+  const introspect = config.introspect
+    || ((pool) => pgIntrospect(pool, capabilities));
   let cache = null;
   let lastRefreshAt = 0;
 

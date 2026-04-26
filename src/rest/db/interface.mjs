@@ -14,6 +14,28 @@
  */
 
 /**
+ * @typedef {Object} DatabaseCapabilities
+ * @property {boolean} supportsForeignKeys
+ *   Read by: schema-cache.mjs FK introspection.
+ * @property {boolean} supportsFullTextSearch
+ *   Read by: fts-operators feature.
+ * @property {boolean} supportsRangeTypes
+ *   Read by: embedded-filtering feature.
+ * @property {boolean} supportsArrayContainment
+ *   Read by: embedded-filtering feature.
+ * @property {boolean} supportsPlannedCount
+ *   Read by: count=planned strategy.
+ * @property {boolean} supportsRegex
+ *   Read by: query-parser regex operators.
+ * @property {boolean} supportsRowLevelSecurity
+ *   Documentation only — not used by engine.
+ * @property {boolean} supportsRpc
+ *   Read by: rpc-endpoint feature.
+ * @property {boolean} supportsGinIndex
+ *   Read by: FTS and array performance hints.
+ */
+
+/**
  * @typedef {Object} DatabaseProvider
  * @property {() => Promise<Pool>} getPool
  *   Return a connection pool (or pool-like object). Called on every request.
@@ -21,6 +43,9 @@
  *
  * @property {(pool: Pool) => void} _setPool
  *   Test injection hook — pre-set the pool to skip real connections.
+ *
+ * @property {() => DatabaseCapabilities} capabilities
+ *   Return the frozen capability set for this provider.
  *
  * @property {((pool: Pool) => Promise<Schema>)?} [introspect]
  *   Optional. Override the default pg_catalog schema introspection.
