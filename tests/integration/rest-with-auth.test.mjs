@@ -76,6 +76,78 @@ describe('REST + auth integration', () => {
     assert.equal(rows[0].body, 'hello');
   });
 
+  describe('select column aliases', () => {
+    it('aliases a column in the response JSON', async () => {
+      const s = await signUpAndGetUser('alias1@example.com');
+      await handler(event({
+        method: 'POST',
+        path: '/rest/v1/notes',
+        headers: { apikey: anon, 'Content-Type': 'application/json' },
+        body: { user_id: s.user.id, body: 'alias test' },
+        authorizer: asUser(s),
+      }));
+
+      const sel = await handler(event({
+        method: 'GET',
+        path: '/rest/v1/notes',
+        headers: { apikey: anon },
+        query: { select: 'id,content:body', user_id: `eq.${s.user.id}` },
+        authorizer: asUser(s),
+      }));
+      assert.equal(sel.statusCode, 200);
+      const rows = JSON.parse(sel.body);
+      assert.equal(rows.length, 1);
+      assert.ok('content' in rows[0], 'should have aliased key "content"');
+      assert.ok(!('body' in rows[0]), 'should not have raw column key "body"');
+      assert.equal(rows[0].content, 'alias test');
+    });
+
+    it('rejects duplicate select keys', async () => {
+      const s = await signUpAndGetUser('alias2@example.com');
+      const sel = await handler(event({
+        method: 'GET',
+        path: '/rest/v1/notes',
+        headers: { apikey: anon },
+        query: { select: 'a:id,a:user_id' },
+        authorizer: asUser(s),
+      }));
+      assert.equal(sel.statusCode, 400);
+      const err = JSON.parse(sel.body);
+      assert.equal(err.code, 'PGRST100');
+      assert.ok(err.message.includes('Duplicate select key'));
+    });
+
+    it('rejects an alias that is not a valid identifier', async () => {
+      const s = await signUpAndGetUser('alias3@example.com');
+      const sel = await handler(event({
+        method: 'GET',
+        path: '/rest/v1/notes',
+        headers: { apikey: anon },
+        query: { select: '123bad:body' },
+        authorizer: asUser(s),
+      }));
+      assert.equal(sel.statusCode, 400);
+      const err = JSON.parse(sel.body);
+      assert.equal(err.code, 'PGRST100');
+      assert.ok(err.message.includes('not a valid identifier'));
+    });
+
+    it('rejects an alias referencing a nonexistent column', async () => {
+      const s = await signUpAndGetUser('alias4@example.com');
+      const sel = await handler(event({
+        method: 'GET',
+        path: '/rest/v1/notes',
+        headers: { apikey: anon },
+        query: { select: 'id,firstName:nonexistent' },
+        authorizer: asUser(s),
+      }));
+      assert.equal(sel.statusCode, 400);
+      const err = JSON.parse(sel.body);
+      assert.equal(err.code, 'PGRST204');
+      assert.ok(err.message.includes('does not exist'));
+    });
+  });
+
   it('two users do not see each other\'s rows via filter', async () => {
     const alice = await signUpAndGetUser('alice@example.com');
     const bob = await signUpAndGetUser('bob@example.com');

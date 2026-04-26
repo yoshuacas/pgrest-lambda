@@ -60,7 +60,33 @@ export function parseSelectList(input) {
       // Plain column token
       const name = input.slice(tokenStart, i).trim();
       if (name) {
-        nodes.push({ type: 'column', name });
+        let colonIdx = -1;
+        for (let j = 0; j < name.length; j++) {
+          if (name[j] === ':') {
+            if (j + 1 < name.length && name[j + 1] === ':') {
+              j++;
+            } else {
+              colonIdx = j;
+              break;
+            }
+          }
+        }
+        if (colonIdx !== -1) {
+          const alias = name.slice(0, colonIdx).trim();
+          const column = name.slice(colonIdx + 1).trim();
+          if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(alias)) {
+            throw new PostgRESTError(400, 'PGRST100',
+              `'${alias}' is not a valid identifier`
+              + ` for an alias`);
+          }
+          if (!column) {
+            throw new PostgRESTError(400, 'PGRST100',
+              `Empty column name after alias '${alias}'`);
+          }
+          nodes.push({ type: 'column', name: column, alias });
+        } else {
+          nodes.push({ type: 'column', name });
+        }
       }
     } else {
       // Embed token: text before '(' is the embed descriptor
@@ -84,6 +110,25 @@ export function parseSelectList(input) {
 
     // Skip comma separator
     if (i < len && input[i] === ',') i++;
+  }
+
+  const keys = new Set();
+  for (const node of nodes) {
+    if (node.type === 'column' && node.name !== '*') {
+      const key = node.alias || node.name;
+      if (keys.has(key)) {
+        throw new PostgRESTError(400, 'PGRST100',
+          `Duplicate select key '${key}'`);
+      }
+      keys.add(key);
+    } else if (node.type === 'embed') {
+      const key = node.alias || node.name;
+      if (keys.has(key)) {
+        throw new PostgRESTError(400, 'PGRST100',
+          `Duplicate select key '${key}'`);
+      }
+      keys.add(key);
+    }
   }
 
   return nodes;

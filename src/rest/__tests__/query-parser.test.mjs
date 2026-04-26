@@ -374,6 +374,194 @@ describe('parseSelectList', () => {
         { type: 'column', name: 'name' },
       ]);
     });
+
+  describe('column alias parsing', () => {
+    it('parses alias:column as column node with alias', () => {
+      const result = parseSelectList('firstName:first_name');
+      assert.deepStrictEqual(result, [
+        { type: 'column', name: 'first_name', alias: 'firstName' },
+      ]);
+    });
+
+    it('parses multiple aliased columns alongside unaliased', () => {
+      const result = parseSelectList(
+        'id,firstName:first_name,lastName:last_name');
+      assert.equal(result.length, 3);
+      assert.deepStrictEqual(result[0],
+        { type: 'column', name: 'id' });
+      assert.deepStrictEqual(result[1],
+        { type: 'column', name: 'first_name', alias: 'firstName' });
+      assert.deepStrictEqual(result[2],
+        { type: 'column', name: 'last_name', alias: 'lastName' });
+    });
+
+    it('parses mixed aliased and unaliased columns', () => {
+      const result = parseSelectList(
+        'id,displayName:first_name,email');
+      assert.equal(result.length, 3);
+      assert.deepStrictEqual(result[0],
+        { type: 'column', name: 'id' });
+      assert.deepStrictEqual(result[1],
+        { type: 'column', name: 'first_name', alias: 'displayName' });
+      assert.deepStrictEqual(result[2],
+        { type: 'column', name: 'email' });
+    });
+
+    it('does not add alias property to unaliased columns', () => {
+      const result = parseSelectList('id,first_name');
+      assert.equal(result[0].alias, undefined,
+        'id should not have an alias');
+      assert.equal(result[1].alias, undefined,
+        'first_name should not have an alias');
+    });
+
+    it('rejects column alias with single quote', () => {
+      assert.throws(
+        () => parseSelectList("x'injection:first_name"),
+        (err) => err.code === 'PGRST100'
+          && err.message.includes('not a valid identifier'),
+        'single quote in column alias should throw PGRST100',
+      );
+    });
+
+    it('rejects column alias with double quote', () => {
+      assert.throws(
+        () => parseSelectList('x"injection:first_name'),
+        (err) => err.code === 'PGRST100'
+          && err.message.includes('not a valid identifier'),
+        'double quote in column alias should throw PGRST100',
+      );
+    });
+
+    it('rejects column alias with space', () => {
+      assert.throws(
+        () => parseSelectList('x injection:first_name'),
+        (err) => err.code === 'PGRST100'
+          && err.message.includes('not a valid identifier'),
+        'space in column alias should throw PGRST100',
+      );
+    });
+
+    it('rejects column alias with leading digit', () => {
+      assert.throws(
+        () => parseSelectList('123bad:first_name'),
+        (err) => err.code === 'PGRST100'
+          && err.message.includes('not a valid identifier'),
+        'leading digit in column alias should throw PGRST100',
+      );
+    });
+
+    it('accepts column alias with leading underscore', () => {
+      const result = parseSelectList('_valid:first_name');
+      assert.equal(result.length, 1);
+      assert.deepStrictEqual(result[0],
+        { type: 'column', name: 'first_name', alias: '_valid' });
+    });
+
+    it('accepts camelCase column alias with digits', () => {
+      const result = parseSelectList('camelCase123:first_name');
+      assert.equal(result.length, 1);
+      assert.deepStrictEqual(result[0],
+        { type: 'column', name: 'first_name',
+          alias: 'camelCase123' });
+    });
+
+    it('detects duplicate alias keys', () => {
+      assert.throws(
+        () => parseSelectList('a:col1,a:col2'),
+        (err) => err.code === 'PGRST100'
+          && err.message.includes("Duplicate select key 'a'"),
+        'duplicate alias should throw PGRST100',
+      );
+    });
+
+    it('detects alias colliding with plain column name', () => {
+      assert.throws(
+        () => parseSelectList('email,email:user_email'),
+        (err) => err.code === 'PGRST100'
+          && err.message.includes("Duplicate select key 'email'"),
+        'alias colliding with column name should throw PGRST100',
+      );
+    });
+
+    it('detects duplicate plain column names', () => {
+      assert.throws(
+        () => parseSelectList('id,name,id'),
+        (err) => err.code === 'PGRST100'
+          && err.message.includes("Duplicate select key 'id'"),
+        'duplicate column names should throw PGRST100',
+      );
+    });
+
+    it('existing embed alias still works', () => {
+      const result = parseSelectList('id,buyer:customers(name)');
+      assert.equal(result[1].type, 'embed');
+      assert.equal(result[1].name, 'customers');
+      assert.equal(result[1].alias, 'buyer');
+    });
+
+    it('parses column aliases inside embed', () => {
+      const result = parseSelectList(
+        'id,customers(displayName:name,mail:email)');
+      assert.equal(result.length, 2);
+      assert.equal(result[1].type, 'embed');
+      assert.equal(result[1].name, 'customers');
+      assert.deepStrictEqual(result[1].select, [
+        { type: 'column', name: 'name', alias: 'displayName' },
+        { type: 'column', name: 'email', alias: 'mail' },
+      ]);
+    });
+
+    it('parses embed alias + column alias inside embed', () => {
+      const result = parseSelectList(
+        'id,buyer:customers(displayName:name)');
+      assert.equal(result[1].type, 'embed');
+      assert.equal(result[1].name, 'customers');
+      assert.equal(result[1].alias, 'buyer');
+      assert.deepStrictEqual(result[1].select, [
+        { type: 'column', name: 'name', alias: 'displayName' },
+      ]);
+    });
+
+    it('rejects empty column name after alias', () => {
+      assert.throws(
+        () => parseSelectList('alias:'),
+        (err) => err.code === 'PGRST100',
+        'empty column name after alias should throw PGRST100',
+      );
+    });
+
+    it('wildcard has no alias', () => {
+      const result = parseSelectList('*');
+      assert.equal(result.length, 1);
+      assert.deepStrictEqual(result[0],
+        { type: 'column', name: '*' });
+    });
+
+    it('does not treat :: as alias separator', () => {
+      const result = parseSelectList('col::text');
+      assert.equal(result.length, 1);
+      assert.equal(result[0].name, 'col::text');
+      assert.equal(result[0].alias, undefined,
+        'double colon should not produce an alias');
+    });
+
+    it('parses alias before column with cast', () => {
+      const result = parseSelectList('alias:col::text');
+      assert.equal(result.length, 1);
+      assert.equal(result[0].alias, 'alias');
+      assert.equal(result[0].name, 'col::text');
+    });
+
+    it('rejects invalid alias from :: prefix pattern', () => {
+      assert.throws(
+        () => parseSelectList('a::b:c'),
+        (err) => err.code === 'PGRST100'
+          && err.message.includes('not a valid identifier'),
+        'a::b as alias should fail validation',
+      );
+    });
+  });
 });
 
 describe('select validation', () => {

@@ -26,6 +26,15 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
   capability this database doesn't support." Used when a
   REST request hits an unsupported capability (e.g. an
   `fts.*` filter on DSQL once FTS lands). Maps to HTTP 501.
+- **Select column aliases** (PostgREST-compatible). Use
+  `?select=firstName:first_name,lastName:last_name` to
+  rename columns in the response. Emits SQL
+  `"first_name" AS "firstName"`. Works with
+  `@supabase/supabase-js` calls like
+  `.select('firstName:first_name')` — the most common
+  supabase-js pattern for mapping snake_case DB columns
+  to camelCase client fields. Duplicate aliases or
+  collisions with other select keys return `PGRST100`.
 
 ### Changed
 

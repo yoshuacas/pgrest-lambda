@@ -118,6 +118,30 @@ describe('e2e: supabase-js against dev-server', () => {
     assert.equal(rows[0].body, 'hello from supabase-js');
   });
 
+  it('select with column alias returns aliased keys', async () => {
+    const supabase = makeClient();
+    const { data: signup } = await supabase.auth.signUp({
+      email: 'sb-alias@example.com', password: 'Passw0rd!',
+    });
+    await supabase.auth.setSession({
+      access_token: signup.session.access_token,
+      refresh_token: signup.session.refresh_token,
+    });
+
+    await supabase
+      .from('notes')
+      .insert({ user_id: signup.user.id, body: 'alias e2e' });
+
+    const { data, error } = await supabase
+      .from('notes')
+      .select('id, author:user_id')
+      .eq('user_id', signup.user.id);
+    assert.equal(error, null, error?.message);
+    assert.ok(data.length > 0, 'should have at least one row');
+    assert.ok(data[0].author !== undefined, 'should have aliased key');
+    assert.ok(data[0].user_id === undefined, 'should not have raw column key');
+  });
+
   it('signOut ends the session', async () => {
     const supabase = makeClient();
     const { data: signup } = await supabase.auth.signUp({

@@ -186,8 +186,9 @@ function buildJsonBuildObject(
         }
       } else {
         validateCol(schema, table, node.name);
+        const jsonKey = node.alias || node.name;
         pairs.push(
-          `'${node.name}', "${table}"."${node.name}"`);
+          `'${jsonKey}', "${table}"."${node.name}"`);
       }
     } else if (node.type === 'embed') {
       const rel = resolveRelationship(
@@ -333,7 +334,12 @@ export function buildSelect(table, parsed, schema, authzConditions) {
           }
         } else {
           validateCol(schema, table, node.name);
-          expressions.push(`"${table}"."${node.name}"`);
+          if (node.alias) {
+            expressions.push(
+              `"${table}"."${node.name}" AS "${node.alias}"`);
+          } else {
+            expressions.push(`"${table}"."${node.name}"`);
+          }
         }
       } else if (node.type === 'embed') {
         const rel = resolveRelationship(
@@ -368,14 +374,20 @@ export function buildSelect(table, parsed, schema, authzConditions) {
     colList = expressions.join(', ');
   } else {
     // Flat select — backward compatible path
-    const cols = parsed.select.map(n =>
-      typeof n === 'string' ? n : n.name);
-    if (cols.length === 1 && cols[0] === '*') {
+    const cols = parsed.select.filter(
+      n => typeof n === 'string' || n.type === 'column');
+    const names = cols.map(n => typeof n === 'string' ? n : n.name);
+    if (names.length === 1 && names[0] === '*') {
       colList = Object.keys(schema.tables[table].columns)
         .map(c => `"${c}"`).join(', ');
     } else {
-      for (const c of cols) validateCol(schema, table, c);
-      colList = cols.map(c => `"${c}"`).join(', ');
+      for (const c of names) validateCol(schema, table, c);
+      colList = cols.map(n => {
+        const name = typeof n === 'string' ? n : n.name;
+        const alias = typeof n === 'string' ? undefined : n.alias;
+        if (alias) return `"${name}" AS "${alias}"`;
+        return `"${name}"`;
+      }).join(', ');
     }
   }
 

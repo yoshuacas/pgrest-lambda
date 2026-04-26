@@ -27,6 +27,15 @@ const schema = {
       },
       primaryKey: ['id'],
     },
+    people: {
+      columns: {
+        id: { type: 'text', nullable: false, defaultValue: null },
+        first_name: { type: 'text', nullable: true, defaultValue: null },
+        last_name: { type: 'text', nullable: true, defaultValue: null },
+        email: { type: 'text', nullable: true, defaultValue: null },
+      },
+      primaryKey: ['id'],
+    },
   },
 };
 
@@ -1105,6 +1114,164 @@ describe('sql-builder', () => {
         assert.equal(values[parseInt(userMatch[1], 10) - 1],
           'alice', 'authz $N should point to alice');
       });
+    });
+  });
+
+  describe('column alias SQL generation', () => {
+    function norm(s) {
+      return s.replace(/\s+/g, ' ').trim();
+    }
+
+    function baseParsed(select) {
+      return {
+        select,
+        filters: [],
+        order: [],
+        limit: null,
+        offset: 0,
+        onConflict: null,
+      };
+    }
+
+    it('generates AS clauses for aliased columns (flat)', () => {
+      const parsed = baseParsed([
+        { type: 'column', name: 'first_name', alias: 'firstName' },
+        { type: 'column', name: 'last_name', alias: 'lastName' },
+      ]);
+      const { text } = buildSelect('people', parsed, schema);
+      assert.ok(
+        norm(text).includes(
+          '"first_name" AS "firstName", "last_name" AS "lastName"'),
+        'should generate AS clauses for aliased columns',
+      );
+    });
+
+    it('generates AS only for aliased columns (mixed)', () => {
+      const parsed = baseParsed([
+        { type: 'column', name: 'id' },
+        { type: 'column', name: 'first_name', alias: 'firstName' },
+      ]);
+      const { text } = buildSelect('people', parsed, schema);
+      const expected = norm(
+        'SELECT "id", "first_name" AS "firstName" FROM "people"');
+      assert.equal(norm(text), expected);
+    });
+
+    it('no aliases produces unchanged SQL (regression)', () => {
+      const parsed = baseParsed([
+        { type: 'column', name: 'id' },
+        { type: 'column', name: 'title' },
+      ]);
+      const { text } = buildSelect('todos', parsed, schema);
+      assert.equal(norm(text),
+        norm('SELECT "id", "title" FROM "todos"'));
+    });
+
+    it('generates AS in embed path for aliased column', () => {
+      const embedSchema = {
+        tables: {
+          orders: {
+            columns: {
+              id: { type: 'bigint', nullable: false, defaultValue: null },
+              customer_id: { type: 'bigint', nullable: true, defaultValue: null },
+              amount: { type: 'numeric', nullable: false, defaultValue: null },
+            },
+            primaryKey: ['id'],
+          },
+          customers: {
+            columns: {
+              id: { type: 'bigint', nullable: false, defaultValue: null },
+              name: { type: 'text', nullable: false, defaultValue: null },
+              email: { type: 'text', nullable: true, defaultValue: null },
+            },
+            primaryKey: ['id'],
+          },
+        },
+        relationships: [
+          {
+            constraint: 'orders_customer_id_fkey',
+            fromTable: 'orders',
+            fromColumns: ['customer_id'],
+            toTable: 'customers',
+            toColumns: ['id'],
+          },
+        ],
+      };
+
+      const parsed = baseParsed([
+        { type: 'column', name: 'id' },
+        { type: 'column', name: 'amount', alias: 'total' },
+        {
+          type: 'embed', name: 'customers', alias: null,
+          hint: null, inner: false,
+          select: [{ type: 'column', name: 'name' }],
+        },
+      ]);
+      const { text } = buildSelect(
+        'orders', parsed, embedSchema);
+      const n = norm(text);
+      assert.ok(n.includes('"orders"."amount" AS "total"'),
+        'aliased column in embed path should have AS clause');
+    });
+
+    it('uses alias as JSON key in json_build_object', () => {
+      const embedSchema = {
+        tables: {
+          orders: {
+            columns: {
+              id: { type: 'bigint', nullable: false, defaultValue: null },
+              customer_id: { type: 'bigint', nullable: true, defaultValue: null },
+              amount: { type: 'numeric', nullable: false, defaultValue: null },
+            },
+            primaryKey: ['id'],
+          },
+          customers: {
+            columns: {
+              id: { type: 'bigint', nullable: false, defaultValue: null },
+              name: { type: 'text', nullable: false, defaultValue: null },
+              email: { type: 'text', nullable: true, defaultValue: null },
+            },
+            primaryKey: ['id'],
+          },
+        },
+        relationships: [
+          {
+            constraint: 'orders_customer_id_fkey',
+            fromTable: 'orders',
+            fromColumns: ['customer_id'],
+            toTable: 'customers',
+            toColumns: ['id'],
+          },
+        ],
+      };
+
+      const parsed = baseParsed([
+        { type: 'column', name: 'id' },
+        {
+          type: 'embed', name: 'customers', alias: null,
+          hint: null, inner: false,
+          select: [
+            { type: 'column', name: 'name', alias: 'displayName' },
+          ],
+        },
+      ]);
+      const { text } = buildSelect(
+        'orders', parsed, embedSchema);
+      const n = norm(text);
+      assert.ok(
+        n.includes("'displayName', \"customers\".\"name\""),
+        'json_build_object should use alias as JSON key',
+      );
+    });
+
+    it('wildcard expansion has no AS clauses', () => {
+      const parsed = baseParsed([
+        { type: 'column', name: '*' },
+      ]);
+      const { text } = buildSelect('todos', parsed, schema);
+      const n = norm(text);
+      assert.ok(!n.includes(' AS '),
+        'wildcard expansion should not have AS clauses');
     });
   });
 
