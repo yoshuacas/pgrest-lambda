@@ -105,6 +105,9 @@ export function parseSelectList(input) {
         hint: embed.hint,
         inner: embed.inner,
         select: childNodes,
+        filters: [],
+        order: [],
+        limit: null,
       });
     }
 
@@ -132,6 +135,61 @@ export function parseSelectList(input) {
   }
 
   return nodes;
+}
+
+function buildEmbedAliasMap(selectNodes) {
+  const map = new Map();
+  for (const node of selectNodes) {
+    if (node.type === 'embed') {
+      const key = node.alias || node.name;
+      map.set(key, node);
+    }
+  }
+  return map;
+}
+
+function routeEmbedParam(embedNode, prefix, rest, rawValue) {
+  if (rest === 'order') {
+    embedNode.order = parseOrder(rawValue);
+    return;
+  }
+  if (rest === 'limit') {
+    embedNode.limit = parseInt(rawValue, 10);
+    return;
+  }
+  if (rest === 'offset') {
+    embedNode.offset = parseInt(rawValue, 10);
+    return;
+  }
+
+  let logicalOp = null;
+  let negate = false;
+  if (LOGICAL_OPS.has(rest)) {
+    logicalOp = rest;
+  } else if (rest.startsWith('not.')) {
+    const sub = rest.slice(4);
+    if (LOGICAL_OPS.has(sub)) {
+      logicalOp = sub;
+      negate = true;
+    }
+  }
+  if (logicalOp) {
+    embedNode.filters.push(
+      parseLogicalGroup(logicalOp, negate, rawValue));
+    return;
+  }
+
+  if (rest.includes('.')) {
+    throw new PostgRESTError(400, 'PGRST100',
+      `Filter nesting deeper than one level is `
+      + `not supported: '${prefix}.${rest}'`);
+  }
+
+  embedNode.filters.push(parseFilter(rest, rawValue));
+}
+
+function hasAnyEmbed(selectNodes) {
+  return selectNodes.some(n => n.type === 'embed');
 }
 
 function parseEmbedToken(token) {
@@ -175,6 +233,8 @@ export function parseQuery(params, method, multiValueParams) {
     ? parseSelectList(params.select)
     : [{ type: 'column', name: '*' }];
 
+  const embedMap = buildEmbedAliasMap(select);
+
   const filters = [];
   const processedKeys = new Set();
 
@@ -217,6 +277,22 @@ export function parseQuery(params, method, multiValueParams) {
     if (logicalOp) {
       filters.push(parseLogicalGroup(logicalOp, negate, rawValue));
     } else {
+      const dotIdx = key.indexOf('.');
+      if (dotIdx !== -1) {
+        const prefix = key.slice(0, dotIdx);
+        const rest = key.slice(dotIdx + 1);
+        const embedNode = embedMap.get(prefix);
+        if (embedNode) {
+          routeEmbedParam(embedNode, prefix, rest, rawValue);
+          continue;
+        }
+        if (hasAnyEmbed(select) && !LOGICAL_OPS.has(prefix)
+            && prefix !== 'not') {
+          throw new PostgRESTError(400, 'PGRST100',
+            `Cannot filter on '${key}' -- no embed `
+            + `named '${prefix}' in select`);
+        }
+      }
       filters.push(parseFilter(key, rawValue));
     }
   }

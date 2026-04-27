@@ -135,6 +135,15 @@ function buildManyToOneSubquery(
   ).join(' AND ');
 
   let where = joinCond;
+
+  if (node.filters?.length > 0) {
+    const childValidator = (col) =>
+      validateCol(schema, childTable, col);
+    const filterConds = buildFilterConditions(
+      node.filters, values, childValidator);
+    where += ' AND ' + filterConds.join(' AND ');
+  }
+
   const childAuthz = authzFilters?.[childTable];
   if (childAuthz?.conditions?.length > 0) {
     const renumbered = renumberConditions(
@@ -159,6 +168,15 @@ function buildOneToManySubquery(
   ).join(' AND ');
 
   let where = joinCond;
+
+  if (node.filters?.length > 0) {
+    const childValidator = (col) =>
+      validateCol(schema, childTable, col);
+    const filterConds = buildFilterConditions(
+      node.filters, values, childValidator);
+    where += ' AND ' + filterConds.join(' AND ');
+  }
+
   const childAuthz = authzFilters?.[childTable];
   if (childAuthz?.conditions?.length > 0) {
     const renumbered = renumberConditions(
@@ -351,18 +369,43 @@ export function buildSelect(table, parsed, schema, authzConditions) {
 
         if (node.inner) {
           if (rel.fromTable === table) {
-            innerJoinConds.push(
-              rel.fromColumns.map(fc =>
-                `"${table}"."${fc}" IS NOT NULL`
-              ).join(' AND '));
+            if (node.filters?.length > 0) {
+              const childTable = rel.toTable;
+              const existsCond = rel.fromColumns.map((fc, i) =>
+                `"${childTable}"."${rel.toColumns[i]}" = `
+                + `"${table}"."${fc}"`
+              ).join(' AND ');
+              const childValidator = (col) =>
+                validateCol(schema, childTable, col);
+              const filterConds = buildFilterConditions(
+                node.filters, values, childValidator);
+              innerJoinConds.push(
+                `EXISTS (SELECT 1 FROM "${childTable}"`
+                + ` WHERE ${existsCond}`
+                + ` AND ${filterConds.join(' AND ')})`);
+            } else {
+              innerJoinConds.push(
+                rel.fromColumns.map(fc =>
+                  `"${table}"."${fc}" IS NOT NULL`
+                ).join(' AND '));
+            }
           } else {
             const existsCond = rel.fromColumns.map((fc, i) =>
               `"${rel.fromTable}"."${fc}" = `
               + `"${table}"."${rel.toColumns[i]}"`
             ).join(' AND ');
+            let existsWhere = existsCond;
+            if (node.filters?.length > 0) {
+              const childValidator = (col) =>
+                validateCol(schema, rel.fromTable, col);
+              const filterConds = buildFilterConditions(
+                node.filters, values, childValidator);
+              existsWhere += ' AND '
+                + filterConds.join(' AND ');
+            }
             innerJoinConds.push(
               `EXISTS (SELECT 1 FROM "${rel.fromTable}"`
-              + ` WHERE ${existsCond})`);
+              + ` WHERE ${existsWhere})`);
           }
         }
       }

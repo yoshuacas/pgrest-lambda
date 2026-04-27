@@ -12,7 +12,7 @@ import { JWT_SECRET, makeEvent } from './helpers.mjs';
 
 const DATABASE_URL = process.env.TEST_DATABASE_URL;
 
-const EMBEDDING_SCHEMA_SQL = `
+export const EMBEDDING_SCHEMA_SQL = `
   DROP TABLE IF EXISTS order_product_notes CASCADE;
   DROP TABLE IF EXISTS order_items CASCADE;
   DROP TABLE IF EXISTS products CASCADE;
@@ -70,7 +70,7 @@ const EMBEDDING_SCHEMA_SQL = `
 //   - Customer 3 (Charlie) with no orders — for empty-array test
 //   - Order 4 with NULL customer_id — for null-FK and inner-join tests
 //   - Order 2 with NULL billing/shipping address FKs
-const EMBEDDING_SEED_SQL = `
+export const EMBEDDING_SEED_SQL = `
   DELETE FROM order_product_notes;
   DELETE FROM order_items;
   DELETE FROM orders;
@@ -123,7 +123,7 @@ const EMBEDDING_SEED_SQL = `
     (3, 1, 'Bulk order');
 `;
 
-const EMBEDDING_DROP_SQL = `
+export const EMBEDDING_DROP_SQL = `
   DROP TABLE IF EXISTS order_product_notes CASCADE;
   DROP TABLE IF EXISTS order_items CASCADE;
   DROP TABLE IF EXISTS products CASCADE;

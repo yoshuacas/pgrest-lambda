@@ -35,6 +35,22 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
   supabase-js pattern for mapping snake_case DB columns
   to camelCase client fields. Duplicate aliases or
   collisions with other select keys return `PGRST100`.
+- **Embedded resource filtering.** Dot-notation filters on
+  embedded tables in a single request — e.g.
+  `?select=*,customers(*)&customers.name=eq.Alice`. The
+  filter predicates are routed into the embed's
+  correlated subquery, not the parent WHERE clause.
+  Works on many-to-one and one-to-many embeds, honors
+  embed aliases (`buyer:customers(*)` → filter with
+  `buyer.name=eq.X`), and combines with `!inner` joins
+  — the parent row is excluded when the embed's filter
+  matches zero children. Nested-beyond-one-level
+  filtering (`orders.items.status=eq.paid`) returns
+  `PGRST100`. Unknown embed prefixes return `PGRST100`.
+  `supabase-js` calls like
+  `.select('*, customers(*)').eq('customers.name','Alice')`
+  now produce the expected results.
+
 - **RPC endpoint** (`POST/GET/HEAD /rest/v1/rpc/:fn`).
   Calls stored PostgreSQL functions, matching the
   PostgREST surface used by `supabase-js` `.rpc()`.

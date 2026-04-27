@@ -7,7 +7,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import jwt from 'jsonwebtoken';
 
-export const JWT_SECRET = 'integration-test-secret';
+export const JWT_SECRET = 'integration-test-secret-padding-32';
 
 export const SCHEMA_SQL = `
   DROP TABLE IF EXISTS comments CASCADE;
