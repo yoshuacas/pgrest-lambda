@@ -142,6 +142,95 @@ describe('e2e: supabase-js against dev-server', () => {
     assert.ok(data[0].user_id === undefined, 'should not have raw column key');
   });
 
+  it('select with cast: bigint id to text', async () => {
+    const supabase = makeClient();
+    const { data: signup } = await supabase.auth.signUp({
+      email: 'sb-cast1@example.com', password: 'Passw0rd!',
+    });
+    await supabase.auth.setSession({
+      access_token: signup.session.access_token,
+      refresh_token: signup.session.refresh_token,
+    });
+
+    await supabase
+      .from('notes')
+      .insert({ user_id: signup.user.id, body: 'cast test' });
+
+    const { data, error } = await supabase
+      .from('notes')
+      .select('id::text, body')
+      .eq('user_id', signup.user.id);
+    assert.equal(error, null, error?.message);
+    assert.ok(data.length > 0, 'should have rows');
+    assert.equal(typeof data[0].id, 'string',
+      'bigint id should be a string after cast');
+  });
+
+  it('select with alias + cast', async () => {
+    const supabase = makeClient();
+    const { data: signup } = await supabase.auth.signUp({
+      email: 'sb-cast2@example.com', password: 'Passw0rd!',
+    });
+    await supabase.auth.setSession({
+      access_token: signup.session.access_token,
+      refresh_token: signup.session.refresh_token,
+    });
+
+    await supabase
+      .from('notes')
+      .insert({ user_id: signup.user.id, body: 'alias cast' });
+
+    const { data, error } = await supabase
+      .from('notes')
+      .select('noteId:id::text, body')
+      .eq('user_id', signup.user.id);
+    assert.equal(error, null, error?.message);
+    assert.ok(data.length > 0, 'should have rows');
+    assert.ok(data[0].noteId !== undefined,
+      'should have aliased key');
+    assert.ok(data[0].id === undefined,
+      'should not have raw column key');
+    assert.equal(typeof data[0].noteId, 'string',
+      'noteId should be a string');
+  });
+
+  it('select with timestamp to date cast', async () => {
+    const supabase = makeClient();
+    const { data: signup } = await supabase.auth.signUp({
+      email: 'sb-cast3@example.com', password: 'Passw0rd!',
+    });
+    await supabase.auth.setSession({
+      access_token: signup.session.access_token,
+      refresh_token: signup.session.refresh_token,
+    });
+
+    await supabase
+      .from('notes')
+      .insert({ user_id: signup.user.id, body: 'date cast' });
+
+    const { data, error } = await supabase
+      .from('notes')
+      .select('id, created_at::date')
+      .eq('user_id', signup.user.id);
+    assert.equal(error, null, error?.message);
+    assert.ok(data.length > 0, 'should have rows');
+    // The cast ran server-side: `created_at::date` produces a
+    // `date` value. The pg driver parses Postgres `date` into a
+    // JS Date at local midnight, which ISO-serializes with the
+    // local TZ offset (e.g., 00:00 PT → 07:00Z). Verify the
+    // cast produced a midnight-in-some-tz value rather than
+    // matching an exact string shape.
+    const parsed = new Date(data[0].created_at);
+    const isUtcMidnight = parsed.getUTCHours() === 0
+      && parsed.getUTCMinutes() === 0
+      && parsed.getUTCSeconds() === 0;
+    const isLocalMidnight = parsed.getHours() === 0
+      && parsed.getMinutes() === 0
+      && parsed.getSeconds() === 0;
+    assert.ok(isUtcMidnight || isLocalMidnight,
+      `expected midnight in UTC or local TZ; got ${data[0].created_at}`);
+  });
+
   it('signOut ends the session', async () => {
     const supabase = makeClient();
     const { data: signup } = await supabase.auth.signUp({

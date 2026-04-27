@@ -1275,6 +1275,234 @@ describe('sql-builder', () => {
     });
   });
 
+  describe('column cast SQL generation', () => {
+    function norm(s) {
+      return s.replace(/\s+/g, ' ').trim();
+    }
+
+    function baseParsed(select) {
+      return {
+        select,
+        filters: [],
+        order: [],
+        limit: null,
+        offset: 0,
+        onConflict: null,
+      };
+    }
+
+    it('emits CAST for flat select with cast', () => {
+      const parsed = baseParsed([
+        { type: 'column', name: 'status', cast: 'text' },
+      ]);
+      const { text } = buildSelect('todos', parsed, schema);
+      assert.ok(norm(text).includes('CAST("status" AS text)'),
+        `expected CAST("status" AS text), got: ${text}`);
+    });
+
+    it('emits CAST with AS for cast + alias', () => {
+      const parsed = baseParsed([
+        { type: 'column', name: 'status', alias: 's',
+          cast: 'text' },
+      ]);
+      const { text } = buildSelect('todos', parsed, schema);
+      assert.ok(
+        norm(text).includes('CAST("status" AS text) AS "s"'),
+        `expected CAST with alias, got: ${text}`);
+    });
+
+    it('handles mixed cast, alias, and plain columns', () => {
+      const parsed = baseParsed([
+        { type: 'column', name: 'id' },
+        { type: 'column', name: 'status', cast: 'text' },
+        { type: 'column', name: 'title', alias: 't' },
+      ]);
+      const { text } = buildSelect('todos', parsed, schema);
+      const n = norm(text);
+      assert.equal(n, norm(
+        'SELECT "id", CAST("status" AS text),'
+        + ' "title" AS "t" FROM "todos"'));
+    });
+
+    it('no casts produces unchanged SQL (regression)', () => {
+      const parsed = baseParsed([
+        { type: 'column', name: 'id' },
+        { type: 'column', name: 'title' },
+      ]);
+      const { text } = buildSelect('todos', parsed, schema);
+      assert.equal(norm(text),
+        norm('SELECT "id", "title" FROM "todos"'));
+    });
+
+    it('emits CAST in embed path for column alongside embed', () => {
+      const embedSchema = {
+        tables: {
+          orders: {
+            columns: {
+              id: { type: 'bigint', nullable: false,
+                defaultValue: null },
+              customer_id: { type: 'bigint', nullable: true,
+                defaultValue: null },
+              amount: { type: 'numeric', nullable: false,
+                defaultValue: null },
+            },
+            primaryKey: ['id'],
+          },
+          customers: {
+            columns: {
+              id: { type: 'bigint', nullable: false,
+                defaultValue: null },
+              name: { type: 'text', nullable: false,
+                defaultValue: null },
+            },
+            primaryKey: ['id'],
+          },
+        },
+        relationships: [
+          {
+            constraint: 'orders_customer_id_fkey',
+            fromTable: 'orders',
+            fromColumns: ['customer_id'],
+            toTable: 'customers',
+            toColumns: ['id'],
+          },
+        ],
+      };
+
+      const parsed = baseParsed([
+        { type: 'column', name: 'id' },
+        { type: 'column', name: 'amount', cast: 'text' },
+        {
+          type: 'embed', name: 'customers', alias: null,
+          hint: null, inner: false,
+          select: [{ type: 'column', name: 'name' }],
+        },
+      ]);
+      const { text } = buildSelect(
+        'orders', parsed, embedSchema);
+      const n = norm(text);
+      assert.ok(
+        n.includes(
+          'CAST("orders"."amount" AS text) AS "amount"'),
+        `expected table-qualified CAST with AS, got: ${text}`);
+    });
+
+    it('emits CAST inside embed json_build_object', () => {
+      const embedSchema = {
+        tables: {
+          orders: {
+            columns: {
+              id: { type: 'bigint', nullable: false,
+                defaultValue: null },
+              customer_id: { type: 'bigint', nullable: true,
+                defaultValue: null },
+            },
+            primaryKey: ['id'],
+          },
+          customers: {
+            columns: {
+              id: { type: 'bigint', nullable: false,
+                defaultValue: null },
+              name: { type: 'text', nullable: false,
+                defaultValue: null },
+            },
+            primaryKey: ['id'],
+          },
+        },
+        relationships: [
+          {
+            constraint: 'orders_customer_id_fkey',
+            fromTable: 'orders',
+            fromColumns: ['customer_id'],
+            toTable: 'customers',
+            toColumns: ['id'],
+          },
+        ],
+      };
+
+      const parsed = baseParsed([
+        { type: 'column', name: 'id' },
+        {
+          type: 'embed', name: 'customers', alias: null,
+          hint: null, inner: false,
+          select: [
+            { type: 'column', name: 'name', cast: 'text' },
+          ],
+        },
+      ]);
+      const { text } = buildSelect(
+        'orders', parsed, embedSchema);
+      const n = norm(text);
+      assert.ok(
+        n.includes(
+          "'name', CAST(\"customers\".\"name\" AS text)"),
+        `expected cast in json_build_object, got: ${text}`);
+    });
+
+    it('emits CAST + alias inside embed json_build_object', () => {
+      const embedSchema = {
+        tables: {
+          orders: {
+            columns: {
+              id: { type: 'bigint', nullable: false,
+                defaultValue: null },
+              customer_id: { type: 'bigint', nullable: true,
+                defaultValue: null },
+            },
+            primaryKey: ['id'],
+          },
+          customers: {
+            columns: {
+              id: { type: 'bigint', nullable: false,
+                defaultValue: null },
+              name: { type: 'text', nullable: false,
+                defaultValue: null },
+            },
+            primaryKey: ['id'],
+          },
+        },
+        relationships: [
+          {
+            constraint: 'orders_customer_id_fkey',
+            fromTable: 'orders',
+            fromColumns: ['customer_id'],
+            toTable: 'customers',
+            toColumns: ['id'],
+          },
+        ],
+      };
+
+      const parsed = baseParsed([
+        { type: 'column', name: 'id' },
+        {
+          type: 'embed', name: 'customers', alias: null,
+          hint: null, inner: false,
+          select: [
+            { type: 'column', name: 'name',
+              alias: 'displayName', cast: 'text' },
+          ],
+        },
+      ]);
+      const { text } = buildSelect(
+        'orders', parsed, embedSchema);
+      const n = norm(text);
+      assert.ok(
+        n.includes(
+          "'displayName', CAST(\"customers\".\"name\" AS text)"),
+        `expected aliased cast in json_build_object, got: ${text}`);
+    });
+
+    it('wildcard ignores casts (regression)', () => {
+      const parsed = baseParsed([
+        { type: 'column', name: '*' },
+      ]);
+      const { text } = buildSelect('todos', parsed, schema);
+      const n = norm(text);
+      assert.ok(!n.includes('CAST'),
+        'wildcard expansion should not have CAST');
+    });
+  });
+
   describe('general', () => {
     it('double-quotes all table and column names in output SQL', () => {
       const parsed = {

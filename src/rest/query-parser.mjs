@@ -14,6 +14,38 @@ const VALID_IS_VALUES = new Set(['null', 'true', 'false', 'unknown']);
 
 const LOGICAL_OPS = new Set(['or', 'and']);
 
+const ALLOWED_CAST_TYPES = new Set([
+  'text', 'integer', 'int', 'int4', 'int2',
+  'bigint', 'int8', 'smallint',
+  'numeric', 'real', 'float4', 'float8',
+  'double precision',
+  'boolean', 'bool',
+  'date', 'timestamp', 'timestamptz',
+  'time', 'timetz',
+  'uuid', 'json', 'jsonb',
+  'varchar', 'char',
+]);
+
+function parseCast(column) {
+  const idx = column.indexOf('::');
+  if (idx === -1) return { colName: column, cast: undefined };
+  const colName = column.slice(0, idx).trim();
+  const castType = column.slice(idx + 2).trim().toLowerCase();
+  if (!colName) {
+    throw new PostgRESTError(400, 'PGRST100',
+      "Empty column name before '::'");
+  }
+  if (!castType) {
+    throw new PostgRESTError(400, 'PGRST100',
+      "Empty cast type after '::'");
+  }
+  if (!ALLOWED_CAST_TYPES.has(castType)) {
+    throw new PostgRESTError(400, 'PGRST100',
+      `Unsupported cast type '${castType}'`);
+  }
+  return { colName, cast: castType };
+}
+
 const MAX_NESTING_DEPTH = 10;
 
 export function parseSelectList(input) {
@@ -83,9 +115,15 @@ export function parseSelectList(input) {
             throw new PostgRESTError(400, 'PGRST100',
               `Empty column name after alias '${alias}'`);
           }
-          nodes.push({ type: 'column', name: column, alias });
+          const { colName, cast } = parseCast(column);
+          const node = { type: 'column', name: colName, alias };
+          if (cast) node.cast = cast;
+          nodes.push(node);
         } else {
-          nodes.push({ type: 'column', name });
+          const { colName, cast } = parseCast(name);
+          const node = { type: 'column', name: colName };
+          if (cast) node.cast = cast;
+          nodes.push(node);
         }
       }
     } else {

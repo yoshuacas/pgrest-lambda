@@ -34,6 +34,10 @@ function validateCol(schema, table, column) {
   }
 }
 
+function castExpr(colExpr, cast) {
+  return cast ? `CAST(${colExpr} AS ${cast})` : colExpr;
+}
+
 function resolveSelectCols(selectList, columnValidator, allColumns) {
   const cols = selectList
     .filter(s => typeof s === 'string' || s.type === 'column')
@@ -204,8 +208,9 @@ function buildJsonBuildObject(
       } else {
         validateCol(schema, table, node.name);
         const jsonKey = node.alias || node.name;
-        pairs.push(
-          `'${jsonKey}', "${table}"."${node.name}"`);
+        const ref = castExpr(
+          `"${table}"."${node.name}"`, node.cast);
+        pairs.push(`'${jsonKey}', ${ref}`);
       }
     } else if (node.type === 'embed') {
       const rel = resolveRelationship(
@@ -351,11 +356,13 @@ export function buildSelect(table, parsed, schema, authzConditions) {
           }
         } else {
           validateCol(schema, table, node.name);
-          if (node.alias) {
-            expressions.push(
-              `"${table}"."${node.name}" AS "${node.alias}"`);
+          const ref = castExpr(
+            `"${table}"."${node.name}"`, node.cast);
+          const alias = node.alias || (node.cast ? node.name : null);
+          if (alias) {
+            expressions.push(`${ref} AS "${alias}"`);
           } else {
-            expressions.push(`"${table}"."${node.name}"`);
+            expressions.push(ref);
           }
         }
       } else if (node.type === 'embed') {
@@ -423,8 +430,10 @@ export function buildSelect(table, parsed, schema, authzConditions) {
       colList = cols.map(n => {
         const name = typeof n === 'string' ? n : n.name;
         const alias = typeof n === 'string' ? undefined : n.alias;
-        if (alias) return `"${name}" AS "${alias}"`;
-        return `"${name}"`;
+        const cast = typeof n === 'string' ? undefined : n.cast;
+        const ref = castExpr(`"${name}"`, cast);
+        if (alias) return `${ref} AS "${alias}"`;
+        return ref;
       }).join(', ');
     }
   }
@@ -674,8 +683,10 @@ export function buildRpcCall(fnName, args, fnSchema, parsed) {
       selectPart = selectNodes.map(s => {
         const name = typeof s === 'string' ? s : s.name;
         const alias = typeof s === 'string' ? undefined : s.alias;
-        if (alias) return `"${name}" AS "${alias}"`;
-        return `"${name}"`;
+        const cast = typeof s === 'string' ? undefined : s.cast;
+        const ref = castExpr(`"${name}"`, cast);
+        if (alias) return `${ref} AS "${alias}"`;
+        return ref;
       }).join(', ');
     }
 

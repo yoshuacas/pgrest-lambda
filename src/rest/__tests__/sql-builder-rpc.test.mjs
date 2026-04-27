@@ -222,6 +222,20 @@ describe('sql-builder: buildRpcCall', () => {
         `expected "name" AS "label", got: ${result.text}`,
       );
     });
+
+    it('emits CAST for column with cast in select', () => {
+      const parsed = baseParsed({
+        select: [
+          { type: 'column', name: 'name', cast: 'text' },
+        ],
+      });
+      const result = buildRpcCall(
+        'get_items', { user_id: 'u-1' }, setReturningSchema, parsed);
+      assert.ok(
+        result.text.includes('CAST("name" AS text)'),
+        `expected CAST("name" AS text), got: ${result.text}`,
+      );
+    });
   });
 
   describe('set-returning (no returnColumns)', () => {

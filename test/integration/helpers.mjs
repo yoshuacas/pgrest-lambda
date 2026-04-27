@@ -548,6 +548,88 @@ export function sharedTests(getPgrest, getPool) {
     });
   });
 
+  describe('select casts', () => {
+    it('casts bigint id to text', async () => {
+      const res = await getPgrest().rest(makeEvent({
+        path: '/rest/v1/todos',
+        query: { select: 'id::text,title' },
+      }));
+      assert.equal(res.statusCode, 200);
+      const rows = JSON.parse(res.body);
+      assert.ok(rows.length > 0, 'should have rows');
+      for (const row of rows) {
+        assert.equal(typeof row.id, 'string',
+          'id should be a string after cast to text');
+      }
+    });
+
+    it('casts timestamp to date', async () => {
+      const res = await getPgrest().rest(makeEvent({
+        path: '/rest/v1/todos',
+        query: { select: 'id,created_at::date' },
+      }));
+      assert.equal(res.statusCode, 200);
+      const rows = JSON.parse(res.body);
+      assert.ok(rows.length > 0, 'should have rows');
+      for (const row of rows) {
+        assert.match(row.created_at, /^\d{4}-\d{2}-\d{2}$/,
+          'created_at should be a date string');
+      }
+    });
+
+    it('alias + cast', async () => {
+      const res = await getPgrest().rest(makeEvent({
+        path: '/rest/v1/todos',
+        query: { select: 'todoId:id::text,title' },
+      }));
+      assert.equal(res.statusCode, 200);
+      const rows = JSON.parse(res.body);
+      assert.ok(rows.length > 0, 'should have rows');
+      assert.ok(rows[0].todoId !== undefined,
+        'should have aliased key todoId');
+      assert.ok(rows[0].id === undefined,
+        'should not have raw column key id');
+      assert.equal(typeof rows[0].todoId, 'string',
+        'todoId should be a string');
+    });
+
+    it('unknown cast type returns 400', async () => {
+      const res = await getPgrest().rest(makeEvent({
+        path: '/rest/v1/todos',
+        query: { select: 'id::xml' },
+      }));
+      assert.equal(res.statusCode, 400);
+      const body = JSON.parse(res.body);
+      assert.equal(body.code, 'PGRST100');
+    });
+
+    it('cast + filter on raw column', async () => {
+      const res = await getPgrest().rest(makeEvent({
+        path: '/rest/v1/todos',
+        query: { select: 'id::text,title', id: 'gt.0' },
+      }));
+      assert.equal(res.statusCode, 200);
+      const rows = JSON.parse(res.body);
+      assert.ok(rows.length > 0, 'should have filtered rows');
+      for (const row of rows) {
+        assert.equal(typeof row.id, 'string',
+          'id should be a string after cast');
+      }
+    });
+
+    it('cast preserves JSON key name', async () => {
+      const res = await getPgrest().rest(makeEvent({
+        path: '/rest/v1/todos',
+        query: { select: 'id::text' },
+      }));
+      assert.equal(res.statusCode, 200);
+      const rows = JSON.parse(res.body);
+      assert.ok(rows.length > 0, 'should have rows');
+      assert.ok('id' in rows[0],
+        'JSON key should be "id"');
+    });
+  });
+
   describe('CORS', () => {
     it('OPTIONS returns 200 with CORS headers', async () => {
       const res = await getPgrest().rest(makeEvent({ method: 'OPTIONS' }));

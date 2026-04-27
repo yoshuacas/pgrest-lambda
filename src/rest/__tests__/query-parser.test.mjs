@@ -541,7 +541,8 @@ describe('parseSelectList', () => {
     it('does not treat :: as alias separator', () => {
       const result = parseSelectList('col::text');
       assert.equal(result.length, 1);
-      assert.equal(result[0].name, 'col::text');
+      assert.equal(result[0].name, 'col');
+      assert.equal(result[0].cast, 'text');
       assert.equal(result[0].alias, undefined,
         'double colon should not produce an alias');
     });
@@ -550,7 +551,8 @@ describe('parseSelectList', () => {
       const result = parseSelectList('alias:col::text');
       assert.equal(result.length, 1);
       assert.equal(result[0].alias, 'alias');
-      assert.equal(result[0].name, 'col::text');
+      assert.equal(result[0].name, 'col');
+      assert.equal(result[0].cast, 'text');
     });
 
     it('rejects invalid alias from :: prefix pattern', () => {
@@ -560,6 +562,216 @@ describe('parseSelectList', () => {
           && err.message.includes('not a valid identifier'),
         'a::b as alias should fail validation',
       );
+    });
+  });
+
+  describe('column cast parsing', () => {
+    it('parses select=amount::text', () => {
+      const result = parseSelectList('amount::text');
+      assert.deepStrictEqual(result, [
+        { type: 'column', name: 'amount', cast: 'text' },
+      ]);
+    });
+
+    it('parses cast in mixed column list', () => {
+      const result = parseSelectList('id,amount::text,name');
+      assert.equal(result.length, 3);
+      assert.deepStrictEqual(result[0],
+        { type: 'column', name: 'id' });
+      assert.equal(result[1].name, 'amount');
+      assert.equal(result[1].cast, 'text');
+      assert.deepStrictEqual(result[2],
+        { type: 'column', name: 'name' });
+    });
+
+    it('parses select=created_at::date', () => {
+      const result = parseSelectList('created_at::date');
+      assert.deepStrictEqual(result, [
+        { type: 'column', name: 'created_at', cast: 'date' },
+      ]);
+    });
+
+    it('accepts all allowed cast types', () => {
+      const types = [
+        'text', 'integer', 'int', 'int4', 'int2',
+        'bigint', 'int8', 'smallint',
+        'numeric', 'real', 'float4', 'float8',
+        'double precision',
+        'boolean', 'bool',
+        'date', 'timestamp', 'timestamptz',
+        'time', 'timetz',
+        'uuid', 'json', 'jsonb',
+        'varchar', 'char',
+      ];
+      for (const type of types) {
+        const result = parseSelectList(`col::${type}`);
+        assert.equal(result[0].cast, type,
+          `cast type '${type}' should be accepted`);
+      }
+    });
+
+    it('normalizes cast type to lowercase', () => {
+      const r1 = parseSelectList('col::TEXT');
+      assert.equal(r1[0].cast, 'text');
+      const r2 = parseSelectList('col::Text');
+      assert.equal(r2[0].cast, 'text');
+    });
+
+    it('parses alias + cast', () => {
+      const r1 = parseSelectList('price:amount::text');
+      assert.deepStrictEqual(r1, [
+        { type: 'column', name: 'amount', alias: 'price',
+          cast: 'text' },
+      ]);
+      const r2 = parseSelectList('d:created_at::date');
+      assert.deepStrictEqual(r2, [
+        { type: 'column', name: 'created_at', alias: 'd',
+          cast: 'date' },
+      ]);
+    });
+
+    it('cast without alias has no alias field', () => {
+      const result = parseSelectList('amount::text');
+      assert.equal(result[0].name, 'amount');
+      assert.equal(result[0].cast, 'text');
+      assert.equal(result[0].alias, undefined);
+    });
+
+    it('alias without cast has no cast field', () => {
+      const result = parseSelectList('price:amount');
+      assert.equal(result[0].name, 'amount');
+      assert.equal(result[0].alias, 'price');
+      assert.equal(result[0].cast, undefined);
+    });
+
+    it('rejects unknown cast type xml', () => {
+      assert.throws(
+        () => parseSelectList('col::xml'),
+        (err) => err.code === 'PGRST100'
+          && err.message.includes("Unsupported cast type 'xml'"),
+        'xml should be rejected',
+      );
+    });
+
+    it('rejects unknown cast type money', () => {
+      assert.throws(
+        () => parseSelectList('col::money'),
+        (err) => err.code === 'PGRST100',
+        'money should be rejected',
+      );
+    });
+
+    it('rejects unknown cast type custom_type', () => {
+      assert.throws(
+        () => parseSelectList('col::custom_type'),
+        (err) => err.code === 'PGRST100',
+        'custom_type should be rejected',
+      );
+    });
+
+    it('rejects array cast type int[]', () => {
+      assert.throws(
+        () => parseSelectList('col::int[]'),
+        (err) => err.code === 'PGRST100',
+        'int[] should be rejected',
+      );
+    });
+
+    it('rejects empty cast type', () => {
+      assert.throws(
+        () => parseSelectList('amount::'),
+        (err) => err.code === 'PGRST100'
+          && err.message.includes("Empty cast type after '::'"),
+        'empty cast type should be rejected',
+      );
+    });
+
+    it('rejects empty column name before cast', () => {
+      assert.throws(
+        () => parseSelectList('::text'),
+        (err) => err.code === 'PGRST100'
+          && err.message.includes("Empty column name before '::'"),
+        'empty column before :: should be rejected',
+      );
+    });
+
+    it('rejects double cast', () => {
+      assert.throws(
+        () => parseSelectList('col::text::int'),
+        (err) => err.code === 'PGRST100'
+          && err.message.includes("Unsupported cast type 'text::int'"),
+        'double cast should be rejected',
+      );
+    });
+
+    it('detects duplicate keys with casts', () => {
+      assert.throws(
+        () => parseSelectList('amount::text,amount::int'),
+        (err) => err.code === 'PGRST100'
+          && err.message.includes("Duplicate select key 'amount'"),
+        'same column with different casts should be duplicate',
+      );
+    });
+
+    it('detects duplicate alias keys with casts', () => {
+      assert.throws(
+        () => parseSelectList('a:amount::text,a:col::int'),
+        (err) => err.code === 'PGRST100'
+          && err.message.includes("Duplicate select key 'a'"),
+        'same alias with different casts should be duplicate',
+      );
+    });
+
+    it('allows different keys for same column with alias', () => {
+      const result = parseSelectList(
+        'amount::text,price:amount::int');
+      assert.equal(result.length, 2);
+      assert.equal(result[0].name, 'amount');
+      assert.equal(result[0].cast, 'text');
+      assert.equal(result[1].name, 'amount');
+      assert.equal(result[1].alias, 'price');
+      assert.equal(result[1].cast, 'int');
+    });
+
+    it('parses cast inside embed', () => {
+      const result = parseSelectList('id,customers(age::int)');
+      assert.equal(result.length, 2);
+      assert.equal(result[1].type, 'embed');
+      assert.equal(result[1].name, 'customers');
+      assert.equal(result[1].select[0].name, 'age');
+      assert.equal(result[1].select[0].cast, 'int');
+    });
+
+    it('parses embed alias + cast inside embed', () => {
+      const result = parseSelectList(
+        'id,buyer:customers(age::text)');
+      assert.equal(result[1].type, 'embed');
+      assert.equal(result[1].name, 'customers');
+      assert.equal(result[1].alias, 'buyer');
+      assert.equal(result[1].select[0].name, 'age');
+      assert.equal(result[1].select[0].cast, 'text');
+    });
+
+    it('alias without cast still works (regression)', () => {
+      const result = parseSelectList('firstName:first_name');
+      assert.deepStrictEqual(result, [
+        { type: 'column', name: 'first_name',
+          alias: 'firstName' },
+      ]);
+    });
+
+    it('embed alias still works (regression)', () => {
+      const result = parseSelectList('buyer:customers(name)');
+      assert.equal(result[0].type, 'embed');
+      assert.equal(result[0].name, 'customers');
+      assert.equal(result[0].alias, 'buyer');
+    });
+
+    it('wildcard has no cast (regression)', () => {
+      const result = parseSelectList('*');
+      assert.deepStrictEqual(result, [
+        { type: 'column', name: '*' },
+      ]);
     });
   });
 });

@@ -35,6 +35,19 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
   supabase-js pattern for mapping snake_case DB columns
   to camelCase client fields. Duplicate aliases or
   collisions with other select keys return `PGRST100`.
+- **Select column casts.** `?select=col::type` syntax
+  casts values server-side: `?select=id, amount::text`
+  returns `amount` as a string (useful for bigints that
+  lose precision in JavaScript), `?select=created_at::date`
+  zeroes the time component, etc. Cast types are
+  allowlisted (text, integer, int, bigint, smallint,
+  numeric, real, double precision, boolean, date,
+  timestamp, timestamptz, time, uuid, json, jsonb).
+  Unknown casts return `PGRST100` at parse time.
+  Works alongside aliases: `?select=price:amount::text`
+  returns `{ price: "99.99" }`. Also works inside
+  embeds and RPC result selections.
+
 - **Embedded resource filtering.** Dot-notation filters on
   embedded tables in a single request — e.g.
   `?select=*,customers(*)&customers.name=eq.Alice`. The
