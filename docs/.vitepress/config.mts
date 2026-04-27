@@ -8,6 +8,7 @@ export default defineConfig({
   title: 'pgrest-lambda',
   description:
     'A serverless REST API and auth layer for any PostgreSQL database — PostgREST-compatible, Supabase-client-compatible, Cedar-authorized.',
+  base: '/pgrest-lambda/',
   cleanUrls: true,
   lastUpdated: true,
   sitemap: { hostname: HOSTNAME },
