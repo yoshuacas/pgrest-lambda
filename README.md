@@ -13,6 +13,7 @@
   <a href="#use-as-a-library">Library</a> &middot;
   <a href="./docs/configuration.md">Configuration</a> &middot;
   <a href="./docs/authorization.md">Authorization</a> &middot;
+  <a href="./docs/rpc.md">RPC</a> &middot;
   <a href="./deploy/aws-sam">Deploy</a>
 </p>
 
@@ -285,6 +286,7 @@ More targets are welcome &mdash; the pattern is in
 
 - [Configuration reference](./docs/configuration.md) &mdash; every config key and env var, plus secret-management patterns.
 - [Authorization guide](./docs/authorization.md) &mdash; Cedar policies with recipes and a syntax cheatsheet.
+- [RPC guide](./docs/rpc.md) &mdash; calling PostgreSQL functions from clients, with a section on how to do the same work on Aurora DSQL (which doesn't support RPC).
 - [AWS SAM deploy runbook](./deploy/aws-sam/README.md) &mdash; end-to-end live-on-AWS walkthrough.
 - [Changelog](./CHANGELOG.md) &mdash; what's shipped and what's coming.
 - [Agent integration guide](./AGENTS.md) &mdash; notes for AI coding agents working in this repo.
