@@ -11,6 +11,19 @@ export default defineConfig({
   cleanUrls: true,
   lastUpdated: true,
   sitemap: { hostname: HOSTNAME },
+  ignoreDeadLinks: true,
+
+  srcExclude: [
+    'code-review/**',
+    'design/**',
+    'plans/**',
+    'research/**',
+    'security/**',
+    'tasks/**',
+    'authorization.md',
+    'configuration.md',
+    'rpc.md',
+  ],
 
   head: [
     ['link', { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' }],

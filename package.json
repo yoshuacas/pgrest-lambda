@@ -56,9 +56,14 @@
     "test:integration": "node --test --test-concurrency=1 'tests/integration/**/*.test.mjs'",
     "test:e2e": "node --test --test-concurrency=1 'tests/e2e/**/*.test.mjs'",
     "test:all": "npm test && npm run test:integration && npm run test:e2e",
-    "test:bump-better-auth": "echo 'Usage: npm i better-auth@<version> && npm run test:all' && exit 1"
+    "test:bump-better-auth": "echo 'Usage: npm i better-auth@<version> && npm run test:all' && exit 1",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
   },
   "devDependencies": {
-    "@supabase/supabase-js": "^2.104.1"
+    "@supabase/supabase-js": "^2.104.1",
+    "vitepress": "^1.5.0",
+    "vitepress-plugin-llms": "^1.12.1"
   }
 }

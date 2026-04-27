@@ -43,7 +43,7 @@ aws ssm put-parameter \
   --region us-east-1
 ```
 
-The template resolves these at deploy time via `{{resolve:ssm:/pgrest/jwt-secret}}`. See the existing [configuration guide](../configuration.md) for the full rotation procedure and the `SecureString` caveat.
+The template resolves these at deploy time via <code v-pre>{{resolve:ssm:/pgrest/jwt-secret}}</code>. See the existing [configuration guide](../configuration.md) for the full rotation procedure and the `SecureString` caveat.
 
 ## Step 3 — Build
 
