@@ -474,12 +474,14 @@ describe('Cedar integration — policy refresh', () => {
     assert.equal(res1.statusCode, 403,
       'anon should be denied before policy refresh');
 
-    // Trigger refresh (reloads schema + policies from disk)
+    // Trigger refresh (reloads schema + policies from disk).
+    // _refresh is gated to service_role (sec H-6).
     ctx.schemaCache._resetCache();
     ctx.db._setPool(createMockPool());
     const refreshEvent = makeEvent({
       method: 'POST',
       path: '/rest/v1/_refresh',
+      role: 'service_role',
     });
     const refreshRes = await handler(refreshEvent);
     assert.equal(refreshRes.statusCode, 200,

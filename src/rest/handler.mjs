@@ -235,6 +235,9 @@ export function createRestHandler(ctx, contributions = []) {
         if (method !== 'POST') {
           throw new PostgRESTError(405, 'PGRST000', 'Method not allowed on _refresh');
         }
+        if (role !== 'service_role') {
+          throw new PostgRESTError(401, 'PGRST301', 'Refresh requires service_role');
+        }
         const newSchema = await schemaCache.refresh(pool);
         await cedar.refreshPolicies();
         const apiUrl = resolveApiUrl(ctx, headers);
