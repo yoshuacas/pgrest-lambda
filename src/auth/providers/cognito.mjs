@@ -21,6 +21,19 @@ function mapError(err) {
   throw mapped;
 }
 
+// SAFETY: this function does NOT verify the JWT signature. It only
+// base64url-decodes the payload segment. That is acceptable *only*
+// because every caller in this file receives `idToken` directly from
+// the Cognito SDK (InitiateAuthCommand / SignUpCommand response) on
+// the same request, so the token is already trusted — it travelled
+// over TLS from an authenticated AWS SDK call, not from the end user.
+//
+// Do NOT pass an attacker-controlled token to this function. For
+// user-submitted tokens, use src/auth/verify-token.mjs, which
+// validates the signature against the Cognito JWKS.
+//
+// This path is part of the legacy Cognito provider; new projects
+// should use the better-auth provider.
 function parseIdToken(idToken) {
   try {
     const payload = JSON.parse(
