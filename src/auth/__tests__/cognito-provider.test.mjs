@@ -98,7 +98,11 @@ describe('CognitoProvider', () => {
   let _setClient;
 
   beforeEach(() => {
-    const result = createCognitoProvider({ region: 'us-east-1', clientId: 'test-client-id' });
+    const result = createCognitoProvider({
+      region: 'us-east-1',
+      clientId: 'test-client-id',
+      userPoolId: 'us-east-1_testPool',
+    });
     provider = result.provider;
     _setClient = result._setClient;
     _setClient(createMockClient());
@@ -304,16 +308,44 @@ describe('CognitoProvider', () => {
   });
 
   describe('signOut', () => {
-    it('returns void without calling Cognito SDK', async () => {
-      const result = await provider.signOut(
-        'valid-cognito-access-token'
-      );
+    it('calls AdminUserGlobalSignOutCommand with the username (sec L-17)', async () => {
+      const mockClient = createMockClient();
+      _setClient(mockClient);
 
-      assert.equal(
-        result,
-        undefined,
-        'signOut should return undefined'
+      await provider.signOut('fake-uuid-alice');
+
+      const calls = mockClient.send.mock.calls;
+      const signOutCall = calls.find(
+        c => c.arguments[0].constructor.name === 'AdminUserGlobalSignOutCommand'
       );
+      assert.ok(signOutCall,
+        'signOut should dispatch AdminUserGlobalSignOutCommand');
+      assert.equal(signOutCall.arguments[0].input.Username, 'fake-uuid-alice');
+      assert.equal(signOutCall.arguments[0].input.UserPoolId, 'us-east-1_testPool');
+    });
+
+    it('returns undefined even if Cognito rejects (best-effort)', async () => {
+      const mockClient = {
+        send: mock.fn(async () => {
+          throw cognitoError('UserNotFoundException');
+        }),
+      };
+      _setClient(mockClient);
+
+      const result = await provider.signOut('fake-uuid-bob');
+      assert.equal(result, undefined,
+        'signOut returns undefined even when Cognito throws');
+    });
+
+    it('no-ops when sub is empty (no token to revoke)', async () => {
+      const mockClient = {
+        send: mock.fn(async () => { throw new Error('should not be called'); }),
+      };
+      _setClient(mockClient);
+
+      await provider.signOut('');
+      assert.equal(mockClient.send.mock.calls.length, 0,
+        'no SDK call when sub is empty');
     });
   });
 
