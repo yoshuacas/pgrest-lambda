@@ -238,7 +238,7 @@ interactive explorer at `GET /rest/v1/_docs`. The high-level shape:
 | Method | Path | Purpose |
 |---|---|---|
 | `GET` / `POST` / `PATCH` / `DELETE` | `/rest/v1/:table` | CRUD on any table in the `public` schema |
-| `POST` | `/rest/v1/_refresh` | Reload schema cache and Cedar policies |
+| `POST` | `/rest/v1/_refresh` | Reload schema cache and Cedar policies (requires `role=service_role`; 401 PGRST301 otherwise) |
 | `POST` | `/auth/v1/signup` | Register a new user |
 | `POST` | `/auth/v1/token` | Password or refresh-token grant |
 | `GET` | `/auth/v1/user` | Current user profile |

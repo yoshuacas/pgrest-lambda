@@ -126,7 +126,7 @@ pgrest-lambda provides the Lambda handler code. Your agent creates the infrastru
    - Routes:
      - `/{proxy+}` → Lambda function (with authorizer)
      - `/auth/v1/{proxy+}` → Lambda function (no authorizer — auth endpoints are public)
-   - CORS: enable for all origins or your specific domain
+   - CORS: configure `cors.allowedOrigins` with an explicit array (e.g. `['https://app.example.com']`) in `createPgrest()`. The library emits `Access-Control-Allow-Origin: <request origin>` + `Vary: Origin` on match and nothing on miss. `allowedOrigins: '*'` is rejected in production mode via `assertCorsConfig()`.
 
 5. **Lambda authorizer** — REQUEST type, caching enabled
    - Handler: `pgrest.authorizer` from the same `createPgrest()` call
@@ -253,7 +253,7 @@ Policies are evaluated via Cedar partial evaluation and translated to SQL WHERE 
 - Standard PostgreSQL types (text, integer, boolean, uuid, timestamp, json/jsonb, etc.)
 - **For resource embedding on DSQL:** since DSQL does not support foreign key constraints, pgrest-lambda infers relationships from column naming. Name your foreign key columns as `{table_name_singular}_id` — for example, `customer_id` to reference the `customers` table, `category_id` for `categories`, `address_id` for `addresses`. The convention handles common English plurals (add `s`, add `es`, `y` → `ies`). On standard PostgreSQL with real foreign keys, this naming convention is not required but still recommended for clarity.
 
-pgrest-lambda discovers the schema automatically. No migration files, no schema definitions, no code generation. Add a table to your database and it appears as an API endpoint within 5 minutes (or immediately via `POST /rest/v1/_refresh`).
+pgrest-lambda discovers the schema automatically. No migration files, no schema definitions, no code generation. Add a table to your database and it appears as an API endpoint within 5 minutes (or immediately via `POST /rest/v1/_refresh` with a `service_role` apikey — anon/authenticated requests get 401 PGRST301).
 
 ### Writing DDL for DSQL vs standard PostgreSQL
 
@@ -356,7 +356,7 @@ Example response structure:
    - Paginate: `?limit=20&offset=40`
 4. **Auth**: pass `apikey` header on every request, plus `Authorization: Bearer <token>` for authenticated users
 5. **Mutate**: POST (insert), PATCH (update with filters), DELETE (with filters)
-6. **Refresh**: if you create new tables, call `POST /rest/v1/_refresh` to update the schema cache
+6. **Refresh**: if you create new tables, call `POST /rest/v1/_refresh` with the `service_role` apikey to update the schema cache. Anon and authenticated requests return 401 PGRST301.
 
 ### Interactive docs (for humans)
 

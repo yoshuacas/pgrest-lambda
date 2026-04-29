@@ -155,10 +155,12 @@ pgrest-lambda introspects `pg_catalog` on boot and caches the result. When you a
 
 ```bash
 curl -X POST http://localhost:3000/rest/v1/_refresh \
-  -H "apikey: $ANON_KEY"
+  -H "apikey: $SERVICE_ROLE_KEY"
 ```
 
-Or programmatically, from inside your own process, reuse the CLI's `refresh` command — see the [CLI reference](../reference/cli).
+The endpoint requires `role=service_role` on the apikey (see [authorization — admin endpoints](../authorization.md#admin-endpoints)); anon and authenticated requests return 401 PGRST301.
+
+Or programmatically, from inside your own process, reuse the CLI's `refresh` command — it mints a service-role apikey from `JWT_SECRET` automatically. See the [CLI reference](../reference/cli).
 
 ## Related
 

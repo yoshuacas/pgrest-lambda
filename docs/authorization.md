@@ -84,8 +84,10 @@ for 5 minutes. To force a reload:
 pgrest-lambda refresh
 ```
 
-(or hit `POST /rest/v1/_refresh` directly with the `apikey` header,
-which is what `pgrest-lambda refresh` does under the hood.)
+(or hit `POST /rest/v1/_refresh` directly with the `apikey` header
+set to a `service_role` key, which is what `pgrest-lambda refresh`
+does under the hood. Anon and authenticated requests get 401 PGRST301
+on this endpoint.)
 
 `pgrest-lambda dev` seeds a reasonable `policies/default.cedar` — read
 it before writing your own. It covers the common "users see their own
@@ -259,6 +261,24 @@ permit(
 Combine with the "public read" recipe above: readers are unrestricted,
 but only the author deletes.
 
+## Admin endpoints
+
+Some endpoints bypass the normal per-table Cedar evaluation and require
+a `service_role` apikey at the handler level:
+
+| Endpoint | Required role | On mismatch |
+|---|---|---|
+| `POST /rest/v1/_refresh` | `service_role` | `401 PGRST301 Refresh requires service_role` |
+
+The check happens before the database is touched — anon and
+authenticated callers get `401` with no schema introspection, no Cedar
+policy load, and no query. Use this for operational endpoints that
+should never be part of the public API surface.
+
+The `pgrest-lambda refresh` CLI mints a service-role apikey from
+`JWT_SECRET` automatically, so you rarely hit the endpoint directly
+from a shell.
+
 ## Errors
 
 ### `PGRST403: Not authorized to <action> on '<table>'`
@@ -276,8 +296,10 @@ docs/authorization.md for the policy model and recipes.
 Steps to unblock:
 
 1. Confirm the policies loaded. Run `pgrest-lambda refresh` (or hit
-   `POST /rest/v1/_refresh` directly). If the request itself returns
-   403, the Cedar engine found no `permit` anywhere.
+   `POST /rest/v1/_refresh` directly with a service-role apikey;
+   lower-privilege keys get 401 PGRST301). If the refresh itself
+   succeeds but the original request still returns 403, the Cedar
+   engine found no `permit` anywhere.
 2. Check you're keying on `context.table` (not `resource.table`) in
    row-level rules. `resource` exposes column values; the table name
    is on `context`.

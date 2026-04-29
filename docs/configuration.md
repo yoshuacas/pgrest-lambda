@@ -64,7 +64,7 @@ package (under `policies/`) or store them in S3 and set
 `POLICIES_PATH=s3://<bucket>/<prefix>/`. The S3 form lets you rotate
 policies without redeploying code. Policies are cached in-process for
 `policiesTtl` (default 5 minutes); to force a refresh, restart the
-Lambda or POST `/rest/v1/_refresh`.
+Lambda or POST `/rest/v1/_refresh` with a `service_role` apikey.
 
 ## Local development: secret persistence
 
@@ -159,6 +159,17 @@ unreadable. Rotate by:
 
 Existing user sessions will need to re-authenticate. Sign-up/sign-in
 resumes working as soon as the new key is in place.
+
+## Runtime limits
+
+| Limit | Default | What happens when exceeded |
+|---|---|---|
+| Request body size | **1 MB** (`MAX_BODY_BYTES = 1_048_576`) | `413 PGRST006 Request body exceeds maximum size of 1048576 bytes`. Checked before `JSON.parse` so oversize payloads never parse. Applies to every `/rest/v1/*` and `/auth/v1/*` endpoint. |
+| Admin endpoints | `service_role` apikey required | `401 PGRST301` for anon / authenticated. Currently covers `POST /rest/v1/_refresh`. |
+
+The body-size cap is defined in `src/shared/body-size.mjs` and is not
+currently configurable at runtime. If you need larger uploads, use the
+presigned-URL pattern (file goes to S3 directly, not through the API).
 
 ## What to commit
 

@@ -183,7 +183,10 @@ async function cmdRefresh(argv) {
       'JWT_SECRET must be set (check .env.local). `refresh` needs an apikey to hit the running server.',
     );
   }
-  const apikey = generateApikey({ secret, role: 'anon' });
+  // /rest/v1/_refresh requires role=service_role (sec H-6), so mint a
+  // service_role apikey here. JWT_SECRET matches what the Lambda is
+  // configured with, which is why this works against deployed targets.
+  const apikey = generateApikey({ secret, role: 'service_role' });
 
   log(`→ POST ${target}/rest/v1/_refresh`);
   let res;
