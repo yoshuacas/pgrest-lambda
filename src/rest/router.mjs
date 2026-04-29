@@ -3,6 +3,8 @@
 import { PostgRESTError } from './errors.mjs';
 import { hasTable } from './schema-cache.mjs';
 
+const IDENT = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
 export function route(path, schema) {
   const remaining = path.replace(/^\/rest\/v1/, '');
 
@@ -34,7 +36,7 @@ export function route(path, schema) {
 
   const tableName = remaining.replace(/^\//, '').replace(/\/.*$/, '');
 
-  if (!tableName || !hasTable(schema, tableName)) {
+  if (!tableName || !IDENT.test(tableName) || !hasTable(schema, tableName)) {
     throw new PostgRESTError(
       404,
       'PGRST205',

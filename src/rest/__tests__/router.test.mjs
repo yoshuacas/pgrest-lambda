@@ -53,4 +53,28 @@ describe('router', () => {
     assert.deepStrictEqual(result, { type: 'refresh' },
       '_refresh reserved route should take precedence');
   });
+
+  it('rejects table name with a dash (PGRST205)', () => {
+    assert.throws(
+      () => route('/rest/v1/bad-name', mockSchema),
+      (err) => err.code === 'PGRST205',
+      'identifier with dash must not reach schema lookup'
+    );
+  });
+
+  it('rejects table name starting with a digit (PGRST205)', () => {
+    assert.throws(
+      () => route('/rest/v1/1todos', mockSchema),
+      (err) => err.code === 'PGRST205',
+      'identifier starting with digit must not reach schema lookup'
+    );
+  });
+
+  it('rejects table name with a quote (PGRST205)', () => {
+    assert.throws(
+      () => route('/rest/v1/todos"', mockSchema),
+      (err) => err.code === 'PGRST205',
+      'identifier with quote must not reach schema lookup'
+    );
+  });
 });
