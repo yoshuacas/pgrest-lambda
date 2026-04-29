@@ -253,11 +253,15 @@ describe('handler integration', () => {
         'body should be an OpenAPI spec');
     });
 
-    it('POST /rest/v1/_refresh returns 200', async () => {
-      const event = makeEvent({ method: 'POST', path: '/rest/v1/_refresh' });
+    it('POST /rest/v1/_refresh returns 200 for service_role', async () => {
+      // Refresh is gated to service_role (sec H-6). Test with the
+      // default authenticated role lives in the H-6 describe block.
+      const event = makeEvent({
+        method: 'POST', path: '/rest/v1/_refresh', role: 'service_role',
+      });
       const res = await handler(event);
       assert.equal(res.statusCode, 200,
-        'refresh route should return 200');
+        'refresh route should return 200 for service_role');
     });
   });
 
@@ -740,6 +744,48 @@ describe('handler integration', () => {
         'https://app.com',
         'error response should include Allow-Origin for matching origin',
       );
+    });
+  });
+
+  describe('POST /rest/v1/_refresh authorization (sec H-6)', () => {
+    it('rejects anon with 401 PGRST301', async () => {
+      const event = makeEvent({
+        method: 'POST', path: '/rest/v1/_refresh', role: 'anon',
+      });
+      const res = await handler(event);
+      assert.equal(res.statusCode, 401,
+        'anon must not be allowed to trigger refresh');
+      const body = JSON.parse(res.body);
+      assert.equal(body.code, 'PGRST301');
+    });
+
+    it('rejects authenticated user with 401 PGRST301', async () => {
+      const event = makeEvent({
+        method: 'POST', path: '/rest/v1/_refresh', role: 'authenticated',
+      });
+      const res = await handler(event);
+      assert.equal(res.statusCode, 401,
+        'authenticated users must not refresh');
+      const body = JSON.parse(res.body);
+      assert.equal(body.code, 'PGRST301');
+    });
+
+    it('allows service_role with 200', async () => {
+      const event = makeEvent({
+        method: 'POST', path: '/rest/v1/_refresh', role: 'service_role',
+      });
+      const res = await handler(event);
+      assert.equal(res.statusCode, 200,
+        'service_role must be allowed to refresh');
+    });
+
+    it('returns 405 on GET even for service_role', async () => {
+      const event = makeEvent({
+        method: 'GET', path: '/rest/v1/_refresh', role: 'service_role',
+      });
+      const res = await handler(event);
+      assert.equal(res.statusCode, 405,
+        'GET remains blocked by existing method guard');
     });
   });
 });
