@@ -11,6 +11,7 @@ import { success, error } from './response.mjs';
 import { route } from './router.mjs';
 import { generateSpec } from './openapi.mjs';
 import { buildCorsHeaders } from '../shared/cors.mjs';
+import { randomBytes } from 'node:crypto';
 
 function parsePrefer(raw) {
   const prefer = {};
@@ -441,10 +442,21 @@ export function createRestHandler(ctx, contributions = []) {
           && /^[0-9A-Z]{5}$/.test(err.code)) {
         return error(mapPgError(err), corsHeaders);
       }
+      // Catch-all: never echo err.message. It can contain SQL
+      // fragments, schema names, or internal paths. Log the details
+      // server-side against a short random id and return that id to
+      // the client for support correlation.
+      const errorId = randomBytes(4).toString('hex');
+      console.error(JSON.stringify({
+        level: 'error',
+        errorId,
+        message: err.message,
+        stack: err.stack,
+      }));
       return error(
         new PostgRESTError(
           500, 'PGRST000',
-          err.message || 'Internal server error',
+          `Internal server error (errorId: ${errorId})`,
         ),
         corsHeaders,
       );

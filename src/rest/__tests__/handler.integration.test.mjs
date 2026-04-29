@@ -332,6 +332,30 @@ describe('handler integration', () => {
       assert.equal(body.code, 'PGRST100',
         'error code should be PGRST100');
     });
+
+    it('catch-all 500 returns a generic message and errorId (sec L-20)', async () => {
+      // Force an unexpected throw deep in the handler path by
+      // installing a pool that always throws a raw Error.
+      const badPool = {
+        query: async () => { throw new Error('raw error with SELECT secret_col FROM internal_stuff'); },
+      };
+      const badCtx = createTestContext(badPool);
+      badCtx.schemaCache._resetCache();
+      badCtx.cedar._setPolicies({ staticPolicies: DEFAULT_POLICIES });
+      const badHandler = createRestHandler(badCtx).handler;
+
+      const event = makeEvent({ method: 'GET', path: '/rest/v1/todos' });
+      const res = await badHandler(event);
+      assert.equal(res.statusCode, 500);
+      const body = JSON.parse(res.body);
+      assert.equal(body.code, 'PGRST000');
+      assert.match(body.message, /^Internal server error \(errorId: [0-9a-f]{8}\)$/,
+        'message must be generic and include an errorId');
+      assert.ok(!body.message.includes('secret_col'),
+        'raw err.message must not leak into the response');
+      assert.ok(!body.message.includes('internal_stuff'),
+        'raw err.message must not leak into the response');
+    });
   });
 
   describe('user isolation', () => {
