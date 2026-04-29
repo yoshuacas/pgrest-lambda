@@ -6,6 +6,7 @@ import {
   errorResponse,
 } from './gotrue-response.mjs';
 import { buildCorsHeaders } from '../shared/cors.mjs';
+import { assertBodySize, MAX_BODY_BYTES } from '../shared/body-size.mjs';
 import { isSafeRedirect } from '../shared/url.mjs';
 import { createTokenVerifier } from './verify-token.mjs';
 
@@ -92,6 +93,18 @@ export function createAuthHandler(config, ctx) {
 
     if (method === 'OPTIONS') {
       return { statusCode: 200, headers: corsHeaders };
+    }
+
+    if (event.body) {
+      try {
+        assertBodySize(event.body);
+      } catch {
+        return errorResponse(
+          413, 'payload_too_large',
+          `Request body exceeds maximum size of ${MAX_BODY_BYTES} bytes`,
+          undefined, corsHeaders,
+        );
+      }
     }
 
     const path = event.path || '';

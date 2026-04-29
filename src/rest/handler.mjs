@@ -11,6 +11,7 @@ import { success, error } from './response.mjs';
 import { route } from './router.mjs';
 import { generateSpec } from './openapi.mjs';
 import { buildCorsHeaders } from '../shared/cors.mjs';
+import { assertBodySize } from '../shared/body-size.mjs';
 
 function parsePrefer(raw) {
   const prefer = {};
@@ -195,6 +196,7 @@ export function createRestHandler(ctx, contributions = []) {
 
       let body = null;
       if (event.body) {
+        assertBodySize(event.body);
         try {
           body = JSON.parse(event.body);
         } catch {
