@@ -3,6 +3,22 @@
 import { PostgRESTError } from './errors.mjs';
 import { hasColumn } from './schema-cache.mjs';
 
+// Defense-in-depth identifier guard. Every raw identifier that
+// reaches a template literal must pass through q(). The schema
+// cache still validates up-front; this catches any future code
+// path that forgets to.
+const IDENT = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+function q(name) {
+  if (typeof name !== 'string' || !IDENT.test(name)) {
+    throw new PostgRESTError(
+      400, 'PGRST204',
+      `'${name}' is not a valid identifier`,
+    );
+  }
+  return `"${name}"`;
+}
+
 const OP_SQL = {
   eq: '=',
   neq: '!=',
@@ -134,8 +150,8 @@ function buildManyToOneSubquery(
   const childCols = buildJsonBuildObject(
     node.select, childTable, schema, values, authzFilters);
   const joinCond = rel.fromColumns.map((fc, i) =>
-    `"${childTable}"."${rel.toColumns[i]}" = `
-    + `"${parentTable}"."${fc}"`
+    `${q(childTable)}.${q(rel.toColumns[i])} = `
+    + `${q(parentTable)}.${q(fc)}`
   ).join(' AND ');
 
   let where = joinCond;
@@ -157,7 +173,7 @@ function buildManyToOneSubquery(
   }
 
   return `(SELECT json_build_object(${childCols})`
-    + ` FROM "${childTable}" WHERE ${where})`;
+    + ` FROM ${q(childTable)} WHERE ${where})`;
 }
 
 function buildOneToManySubquery(
@@ -167,8 +183,8 @@ function buildOneToManySubquery(
   const childCols = buildJsonBuildObject(
     node.select, childTable, schema, values, authzFilters);
   const joinCond = rel.fromColumns.map((fc, i) =>
-    `"${childTable}"."${fc}" = `
-    + `"${parentTable}"."${rel.toColumns[i]}"`
+    `${q(childTable)}.${q(fc)} = `
+    + `${q(parentTable)}.${q(rel.toColumns[i])}`
   ).join(' AND ');
 
   let where = joinCond;
@@ -190,7 +206,7 @@ function buildOneToManySubquery(
   }
 
   return `COALESCE((SELECT json_agg(json_build_object(`
-    + `${childCols})) FROM "${childTable}" WHERE ${where})`
+    + `${childCols})) FROM ${q(childTable)} WHERE ${where})`
     + `, '[]'::json)`;
 }
 
@@ -203,13 +219,13 @@ function buildJsonBuildObject(
       if (node.name === '*') {
         for (const c of Object.keys(
             schema.tables[table].columns)) {
-          pairs.push(`'${c}', "${table}"."${c}"`);
+          pairs.push(`'${c}', ${q(table)}.${q(c)}`);
         }
       } else {
         validateCol(schema, table, node.name);
         const jsonKey = node.alias || node.name;
         const ref = castExpr(
-          `"${table}"."${node.name}"`, node.cast);
+          `${q(table)}.${q(node.name)}`, node.cast);
         pairs.push(`'${jsonKey}', ${ref}`);
       }
     } else if (node.type === 'embed') {
@@ -245,19 +261,19 @@ function buildSingleCondition(f, values, columnValidator) {
       );
     }
     const not = f.negate ? ' NOT' : '';
-    return `"${f.column}" IS${not} ${keyword.toUpperCase()}`;
+    return `${q(f.column)} IS${not} ${keyword.toUpperCase()}`;
   } else if (f.operator === 'in') {
     const placeholders = f.value.map((v) => {
       values.push(v);
       return `$${values.length}`;
     });
     const not = f.negate ? 'NOT ' : '';
-    return `"${f.column}" ${not}IN (${placeholders.join(', ')})`;
+    return `${q(f.column)} ${not}IN (${placeholders.join(', ')})`;
   } else {
     values.push(f.value);
     const base = OP_SQL[f.operator];
     const op = f.negate ? NEGATE_OP[base] : base;
-    return `"${f.column}" ${op} $${values.length}`;
+    return `${q(f.column)} ${op} $${values.length}`;
   }
 }
 
@@ -314,7 +330,7 @@ function orderClause(order, columnValidator) {
   if (!order || order.length === 0) return '';
   const parts = order.map((o) => {
     columnValidator(o.column);
-    let sql = `"${o.column}" ${o.direction.toUpperCase()}`;
+    let sql = `${q(o.column)} ${o.direction.toUpperCase()}`;
     if (o.nulls) {
       sql += ` NULLS ${o.nulls === 'nullsfirst' ? 'FIRST' : 'LAST'}`;
     }
@@ -352,15 +368,15 @@ export function buildSelect(table, parsed, schema, authzConditions) {
       if (node.type === 'column') {
         if (node.name === '*') {
           for (const c of allColumns) {
-            expressions.push(`"${table}"."${c}"`);
+            expressions.push(`${q(table)}.${q(c)}`);
           }
         } else {
           validateCol(schema, table, node.name);
           const ref = castExpr(
-            `"${table}"."${node.name}"`, node.cast);
+            `${q(table)}.${q(node.name)}`, node.cast);
           const alias = node.alias || (node.cast ? node.name : null);
           if (alias) {
-            expressions.push(`${ref} AS "${alias}"`);
+            expressions.push(`${ref} AS ${q(alias)}`);
           } else {
             expressions.push(ref);
           }
@@ -372,34 +388,34 @@ export function buildSelect(table, parsed, schema, authzConditions) {
         const subquery = buildEmbedSubquery(
           node, rel, table, schema, values,
           authzConditions?.embeds);
-        expressions.push(`${subquery} AS "${alias}"`);
+        expressions.push(`${subquery} AS ${q(alias)}`);
 
         if (node.inner) {
           if (rel.fromTable === table) {
             if (node.filters?.length > 0) {
               const childTable = rel.toTable;
               const existsCond = rel.fromColumns.map((fc, i) =>
-                `"${childTable}"."${rel.toColumns[i]}" = `
-                + `"${table}"."${fc}"`
+                `${q(childTable)}.${q(rel.toColumns[i])} = `
+                + `${q(table)}.${q(fc)}`
               ).join(' AND ');
               const childValidator = (col) =>
                 validateCol(schema, childTable, col);
               const filterConds = buildFilterConditions(
                 node.filters, values, childValidator);
               innerJoinConds.push(
-                `EXISTS (SELECT 1 FROM "${childTable}"`
+                `EXISTS (SELECT 1 FROM ${q(childTable)}`
                 + ` WHERE ${existsCond}`
                 + ` AND ${filterConds.join(' AND ')})`);
             } else {
               innerJoinConds.push(
                 rel.fromColumns.map(fc =>
-                  `"${table}"."${fc}" IS NOT NULL`
+                  `${q(table)}.${q(fc)} IS NOT NULL`
                 ).join(' AND '));
             }
           } else {
             const existsCond = rel.fromColumns.map((fc, i) =>
-              `"${rel.fromTable}"."${fc}" = `
-              + `"${table}"."${rel.toColumns[i]}"`
+              `${q(rel.fromTable)}.${q(fc)} = `
+              + `${q(table)}.${q(rel.toColumns[i])}`
             ).join(' AND ');
             let existsWhere = existsCond;
             if (node.filters?.length > 0) {
@@ -411,7 +427,7 @@ export function buildSelect(table, parsed, schema, authzConditions) {
                 + filterConds.join(' AND ');
             }
             innerJoinConds.push(
-              `EXISTS (SELECT 1 FROM "${rel.fromTable}"`
+              `EXISTS (SELECT 1 FROM ${q(rel.fromTable)}`
               + ` WHERE ${existsWhere})`);
           }
         }
@@ -424,15 +440,15 @@ export function buildSelect(table, parsed, schema, authzConditions) {
     const names = cols.map(n => typeof n === 'string' ? n : n.name);
     if (names.length === 1 && names[0] === '*') {
       colList = allColumns
-        .map(c => `"${c}"`).join(', ');
+        .map(c => q(c)).join(', ');
     } else {
       for (const c of names) columnValidator(c);
       colList = cols.map(n => {
         const name = typeof n === 'string' ? n : n.name;
         const alias = typeof n === 'string' ? undefined : n.alias;
         const cast = typeof n === 'string' ? undefined : n.cast;
-        const ref = castExpr(`"${name}"`, cast);
-        if (alias) return `${ref} AS "${alias}"`;
+        const ref = castExpr(q(name), cast);
+        if (alias) return `${ref} AS ${q(alias)}`;
         return ref;
       }).join(', ');
     }
@@ -456,7 +472,7 @@ export function buildSelect(table, parsed, schema, authzConditions) {
     values.push(...parentAuthz.values);
   }
 
-  let sql = `SELECT ${colList} FROM "${table}"`;
+  let sql = `SELECT ${colList} FROM ${q(table)}`;
   sql += whereClause(conds);
   sql += orderClause(parsed.order, columnValidator);
   sql += limitOffsetClause(parsed.limit, parsed.offset, values);
@@ -494,8 +510,8 @@ export function buildInsert(table, body, schema, parsed) {
     return `(${placeholders.join(', ')})`;
   });
 
-  const colList = columns.map((c) => `"${c}"`).join(', ');
-  let sql = `INSERT INTO "${table}" (${colList}) VALUES ${tuples.join(', ')}`;
+  const colList = columns.map((c) => q(c)).join(', ');
+  let sql = `INSERT INTO ${q(table)} (${colList}) VALUES ${tuples.join(', ')}`;
 
   if (parsed.onConflict) {
     const conflictCols = parsed.onConflict
@@ -503,7 +519,7 @@ export function buildInsert(table, body, schema, parsed) {
       .map((c) => {
         const col = c.trim();
         validateCol(schema, table, col);
-        return `"${col}"`;
+        return q(col);
       })
       .join(', ');
     const pk = schema.tables[table]?.primaryKey || [];
@@ -512,7 +528,7 @@ export function buildInsert(table, body, schema, parsed) {
     );
     if (updateCols.length > 0) {
       const sets = updateCols
-        .map((c) => `"${c}" = EXCLUDED."${c}"`)
+        .map((c) => `${q(c)} = EXCLUDED.${q(c)}`)
         .join(', ');
       sql += ` ON CONFLICT (${conflictCols}) DO UPDATE SET ${sets}`;
     } else {
@@ -537,7 +553,7 @@ export function buildUpdate(table, body, parsed, schema, authzConditions) {
   for (const [col, val] of Object.entries(body)) {
     validateCol(schema, table, col);
     values.push(val);
-    setClauses.push(`"${col}" = $${values.length}`);
+    setClauses.push(`${q(col)} = $${values.length}`);
   }
 
   const columnValidator = (col) =>
@@ -554,7 +570,7 @@ export function buildUpdate(table, body, parsed, schema, authzConditions) {
     values.push(...authzConditions.values);
   }
 
-  let sql = `UPDATE "${table}" SET ${setClauses.join(', ')}`;
+  let sql = `UPDATE ${q(table)} SET ${setClauses.join(', ')}`;
   sql += whereClause(conds);
   sql += ' RETURNING *';
 
@@ -584,7 +600,7 @@ export function buildDelete(table, parsed, schema, authzConditions) {
     values.push(...authzConditions.values);
   }
 
-  let sql = `DELETE FROM "${table}"`;
+  let sql = `DELETE FROM ${q(table)}`;
   sql += whereClause(conds);
   sql += ' RETURNING *';
 
@@ -607,7 +623,7 @@ export function buildCount(table, parsed, schema, authzConditions) {
     values.push(...authzConditions.values);
   }
 
-  let sql = `SELECT COUNT(*) FROM "${table}"`;
+  let sql = `SELECT COUNT(*) FROM ${q(table)}`;
   sql += whereClause(conds);
 
   return { text: sql, values };
@@ -625,7 +641,6 @@ export function makeRpcColumnValidator(fnSchema) {
       }
     };
   }
-  const IDENT = /^[A-Za-z_][A-Za-z0-9_]*$/;
   return (col) => {
     if (!IDENT.test(col)) {
       throw new PostgRESTError(400, 'PGRST204',
@@ -641,13 +656,13 @@ export function buildRpcCall(fnName, args, fnSchema, parsed) {
     .filter(a => a.name in args)
     .map(a => {
       values.push(args[a.name]);
-      return `"${a.name}" := $${values.length}`;
+      return `${q(a.name)} := $${values.length}`;
     });
   const argList = argEntries.join(', ');
 
   if (fnSchema.returnType === 'void') {
     return {
-      text: `SELECT "${fnName}"(${argList})`,
+      text: `SELECT ${q(fnName)}(${argList})`,
       values,
       resultMode: 'void',
     };
@@ -655,7 +670,7 @@ export function buildRpcCall(fnName, args, fnSchema, parsed) {
 
   if (fnSchema.isScalar && !fnSchema.returnsSet) {
     return {
-      text: `SELECT "${fnName}"(${argList}) AS "${fnName}"`,
+      text: `SELECT ${q(fnName)}(${argList}) AS ${q(fnName)}`,
       values,
       resultMode: 'scalar',
     };
@@ -674,7 +689,7 @@ export function buildRpcCall(fnName, args, fnSchema, parsed) {
 
     if (selectNames.length === 1 && selectNames[0] === '*') {
       if (allColumns) {
-        selectPart = allColumns.map(c => `"${c}"`).join(', ');
+        selectPart = allColumns.map(c => q(c)).join(', ');
       }
     } else {
       for (const col of selectNames) {
@@ -684,13 +699,13 @@ export function buildRpcCall(fnName, args, fnSchema, parsed) {
         const name = typeof s === 'string' ? s : s.name;
         const alias = typeof s === 'string' ? undefined : s.alias;
         const cast = typeof s === 'string' ? undefined : s.cast;
-        const ref = castExpr(`"${name}"`, cast);
-        if (alias) return `${ref} AS "${alias}"`;
+        const ref = castExpr(q(name), cast);
+        if (alias) return `${ref} AS ${q(alias)}`;
         return ref;
       }).join(', ');
     }
 
-    let sql = `SELECT ${selectPart} FROM "${fnName}"(${argList})`;
+    let sql = `SELECT ${selectPart} FROM ${q(fnName)}(${argList})`;
 
     const conds = buildFilterConditions(
       parsed.filters, values, columnValidator);
@@ -702,7 +717,7 @@ export function buildRpcCall(fnName, args, fnSchema, parsed) {
   }
 
   return {
-    text: `SELECT * FROM "${fnName}"(${argList})`,
+    text: `SELECT * FROM ${q(fnName)}(${argList})`,
     values,
     resultMode: 'set',
   };
