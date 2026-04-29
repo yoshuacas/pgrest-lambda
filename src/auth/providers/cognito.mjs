@@ -3,6 +3,7 @@ import {
   SignUpCommand,
   InitiateAuthCommand,
   GetUserCommand,
+  AdminUserGlobalSignOutCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 
 const ERROR_MAP = {
@@ -165,8 +166,24 @@ export function createCognitoProvider(config) {
       }
     },
 
-    async signOut() {
-      // No-op: JWTs expire naturally
+    async signOut(sub) {
+      // Revoke every outstanding refresh token for this user.
+      // Access tokens stay valid until their 1h expiry — Cognito
+      // (as of 2026-04) only supports access-token-level revocation
+      // via GlobalSignOut (user-attested); AdminUserGlobalSignOut
+      // lets a trusted backend do the same without the user's
+      // access token in hand.
+      if (!sub) return;
+      try {
+        await getClient().send(new AdminUserGlobalSignOutCommand({
+          UserPoolId: config.userPoolId,
+          Username: sub,
+        }));
+      } catch {
+        // Best-effort revocation. Logout still returns 204 even if
+        // Cognito rejects the call (user missing, pool missing, etc.)
+        // — matches the handler's existing expectation.
+      }
     },
   };
 
