@@ -1,20 +1,35 @@
+// Request headers the @supabase/* SDK family (auth-js, postgrest-js,
+// storage-js, functions-js) sends on outbound requests. Any header not
+// listed here will cause a browser to fail the CORS preflight and
+// block the actual request — even if Access-Control-Allow-Origin is
+// correct. Verified against @supabase/supabase-js@2.105 by grepping
+// every package's compiled sources for outbound header sets.
+export const ALLOW_HEADERS =
+  'Accept, Accept-Profile, Authorization, Content-Profile, '
+  + 'Content-Type, Prefer, Range, apikey, X-Client-Info, '
+  + 'X-Metadata, X-Region, X-Retry-Count, X-Supabase-Api-Version, X-Upsert';
+
+// Response headers the SDK reads via response.headers.get(...). Must
+// be enumerated in Access-Control-Expose-Headers or cross-origin
+// readers see null.
+export const EXPOSE_HEADERS =
+  'Content-Range, X-Relay-Error, X-Total-Count';
+
 export const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers':
-    'Accept, Authorization, Content-Type, Prefer, apikey, X-Client-Info',
+  'Access-Control-Allow-Headers': ALLOW_HEADERS,
   'Access-Control-Allow-Methods':
     'GET,POST,PUT,PATCH,DELETE,OPTIONS',
-  'Access-Control-Expose-Headers': 'Content-Range',
+  'Access-Control-Expose-Headers': EXPOSE_HEADERS,
   'Cache-Control': 'no-store',
   'Content-Type': 'application/json',
 };
 
 const STATIC_HEADERS = {
-  'Access-Control-Allow-Headers':
-    'Accept, Authorization, Content-Type, Prefer, apikey, X-Client-Info',
+  'Access-Control-Allow-Headers': ALLOW_HEADERS,
   'Access-Control-Allow-Methods':
     'GET,POST,PUT,PATCH,DELETE,OPTIONS',
-  'Access-Control-Expose-Headers': 'Content-Range',
+  'Access-Control-Expose-Headers': EXPOSE_HEADERS,
   'Cache-Control': 'no-store',
   'Content-Type': 'application/json',
 };

@@ -1,12 +1,28 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildCorsHeaders, assertCorsConfig, CORS_HEADERS } from '../cors.mjs';
+import {
+  buildCorsHeaders, assertCorsConfig, CORS_HEADERS,
+  ALLOW_HEADERS, EXPOSE_HEADERS,
+} from '../cors.mjs';
 
-const EXPECTED_ALLOW_HEADERS =
-  'Accept, Authorization, Content-Type, Prefer, apikey, X-Client-Info';
+const EXPECTED_ALLOW_HEADERS = ALLOW_HEADERS;
 const EXPECTED_ALLOW_METHODS =
   'GET,POST,PUT,PATCH,DELETE,OPTIONS';
-const EXPECTED_EXPOSE_HEADERS = 'Content-Range';
+const EXPECTED_EXPOSE_HEADERS = EXPOSE_HEADERS;
+
+// Pin the specific headers the @supabase/* SDK family sends so a
+// future trim of ALLOW_HEADERS can't silently re-break CORS preflight
+// for browsers using supabase-js. Update this list only when you've
+// verified the SDK no longer sends the removed header.
+const REQUIRED_ALLOW_HEADERS = [
+  'Accept', 'Accept-Profile', 'Authorization', 'Content-Profile',
+  'Content-Type', 'Prefer', 'Range', 'apikey', 'X-Client-Info',
+  'X-Metadata', 'X-Region', 'X-Retry-Count',
+  'X-Supabase-Api-Version', 'X-Upsert',
+];
+const REQUIRED_EXPOSE_HEADERS = [
+  'Content-Range', 'X-Relay-Error', 'X-Total-Count',
+];
 
 function assertStaticHeaders(headers) {
   assert.equal(
@@ -316,5 +332,39 @@ describe('assertCorsConfig', () => {
       result, undefined,
       'should return undefined (no error)',
     );
+  });
+});
+
+describe('supabase-js compatibility', () => {
+  it('allows every request header the @supabase/* SDKs send', () => {
+    const headers = buildCorsHeaders(
+      { allowedOrigins: '*', allowCredentials: false },
+    );
+    const allowed = headers['Access-Control-Allow-Headers']
+      .toLowerCase()
+      .split(/\s*,\s*/);
+    for (const h of REQUIRED_ALLOW_HEADERS) {
+      assert.ok(
+        allowed.includes(h.toLowerCase()),
+        `Access-Control-Allow-Headers must include "${h}" — the supabase-js SDK `
+        + 'sends it and browsers will fail the CORS preflight without it.',
+      );
+    }
+  });
+
+  it('exposes every response header the @supabase/* SDKs read', () => {
+    const headers = buildCorsHeaders(
+      { allowedOrigins: '*', allowCredentials: false },
+    );
+    const exposed = headers['Access-Control-Expose-Headers']
+      .toLowerCase()
+      .split(/\s*,\s*/);
+    for (const h of REQUIRED_EXPOSE_HEADERS) {
+      assert.ok(
+        exposed.includes(h.toLowerCase()),
+        `Access-Control-Expose-Headers must include "${h}" — the supabase-js SDK `
+        + 'reads it via response.headers.get() and browsers block unexposed headers.',
+      );
+    }
   });
 });
