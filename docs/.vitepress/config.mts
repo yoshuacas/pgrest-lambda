@@ -112,6 +112,7 @@ export default defineConfig({
             { text: 'CLI', link: '/reference/cli' },
             { text: 'Configuration', link: '/reference/configuration' },
             { text: 'HTTP API', link: '/reference/http-api' },
+            { text: 'Authorization', link: '/reference/authorization' },
           ],
         },
       ],
