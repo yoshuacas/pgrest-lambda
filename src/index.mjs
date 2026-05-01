@@ -104,6 +104,8 @@ function resolveConfig(config) {
     contributions: config.contributions || [],
     cors,
     production,
+    errorsVerbose: config.errors?.verbose
+      ?? (process.env.PGREST_ERRORS_VERBOSE === 'true'),
   };
 }
 
@@ -142,6 +144,7 @@ export function createPgrest(config = {}) {
   ctx.apiBaseUrl = resolved.apiBaseUrl;
   ctx.cors = resolved.cors;
   ctx.production = resolved.production;
+  ctx.errorsVerbose = resolved.errorsVerbose;
   ctx.dbCapabilities = dbCapabilities;
 
   if (!resolved.production) {

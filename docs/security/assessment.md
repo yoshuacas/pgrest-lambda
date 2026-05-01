@@ -40,7 +40,7 @@ Rule: when a finding's fix relies on a capability not present on all supported b
 | [V-06](findings/V-06-no-rls.md) | High | Cedar is the only authz layer (no RLS) | Open | Backend-specific; DSQL cannot satisfy. Flag: possible fail-open at `cedar.mjs:386-388` |
 | [V-07](findings/V-07-provider-refresh-in-jwt.md) | High | Provider refresh token in JWT `prt` claim | Fixed | Session-ID indirection; prt claim removed from JWT |
 | [V-08](findings/V-08-presignup-autoconfirm.md) | Medium | Cognito presignup auto-confirm | Open | Cognito provider only; GoTrue analog at `schema.mjs:8` |
-| [V-09](findings/V-09-error-leaks.md) | Medium | PG error details forwarded to client | Open | Confirmed at HEAD |
+| [V-09](findings/V-09-error-leaks.md) | Medium | PG error details forwarded to client | Fixed | Sanitized mode default; verbose opt-in via config |
 | [V-10](findings/V-10-openapi-exposes-schema.md) | Medium | OpenAPI exposes full schema to anon | Open | Confirmed; no role check |
 | [V-11](findings/V-11-refresh-no-authz.md) | Medium | `/_refresh` has no authz check | Open | Confirmed at HEAD |
 | [V-12](findings/V-12-auth-no-rate-limit.md) | Medium | No rate limiting on auth endpoints | Open | Infra-layer fix |

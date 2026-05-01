@@ -86,6 +86,17 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
   `PGRST203` (HTTP 300) in v1 — resolution by
   argument count is deferred.
 
+### Security
+
+- **Sanitize PG error details (V-09).** `mapPgError` now
+  returns generic per-SQLSTATE messages by default. Raw
+  `message`, `detail`, and `hint` fields are stripped from
+  responses; the SQLSTATE `code` is preserved for
+  supabase-js compatibility. Verbose mode
+  (`PGREST_ERRORS_VERBOSE=true`) restores raw text for
+  local debugging. Raw error details are logged server-side
+  at `warn` level in sanitized mode.
+
 ### Changed
 
 - **Default auth provider is now `better-auth`** for the library

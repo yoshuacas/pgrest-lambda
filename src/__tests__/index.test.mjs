@@ -171,3 +171,71 @@ describe('createPgrest CORS production guardrail', () => {
     }
   });
 });
+
+describe('resolveConfig errorsVerbose', () => {
+  const jwtSecret = 'a'.repeat(32);
+  const database = { host: 'localhost' };
+
+  it('defaults to false when no config and no env var', () => {
+    const prev = process.env.PGREST_ERRORS_VERBOSE;
+    delete process.env.PGREST_ERRORS_VERBOSE;
+    try {
+      const pgrest = createPgrest({ jwtSecret, database });
+      assert.equal(pgrest._ctx.errorsVerbose, false,
+        'errorsVerbose should default to false');
+    } finally {
+      if (prev === undefined) {
+        delete process.env.PGREST_ERRORS_VERBOSE;
+      } else {
+        process.env.PGREST_ERRORS_VERBOSE = prev;
+      }
+    }
+  });
+
+  it('config.errors.verbose = true enables verbose', () => {
+    const pgrest = createPgrest({
+      jwtSecret,
+      database,
+      errors: { verbose: true },
+    });
+    assert.equal(pgrest._ctx.errorsVerbose, true,
+      'errorsVerbose should be true from config');
+  });
+
+  it('env var PGREST_ERRORS_VERBOSE=true enables verbose', () => {
+    const prev = process.env.PGREST_ERRORS_VERBOSE;
+    process.env.PGREST_ERRORS_VERBOSE = 'true';
+    try {
+      const pgrest = createPgrest({ jwtSecret, database });
+      assert.equal(pgrest._ctx.errorsVerbose, true,
+        'errorsVerbose should be true from env var');
+    } finally {
+      if (prev === undefined) {
+        delete process.env.PGREST_ERRORS_VERBOSE;
+      } else {
+        process.env.PGREST_ERRORS_VERBOSE = prev;
+      }
+    }
+  });
+
+  it('config false wins over env var true', () => {
+    const prev = process.env.PGREST_ERRORS_VERBOSE;
+    process.env.PGREST_ERRORS_VERBOSE = 'true';
+    try {
+      const pgrest = createPgrest({
+        jwtSecret,
+        database,
+        errors: { verbose: false },
+      });
+      assert.equal(pgrest._ctx.errorsVerbose, false,
+        'config false should override env var true '
+        + '(nullish coalescing, not logical OR)');
+    } finally {
+      if (prev === undefined) {
+        delete process.env.PGREST_ERRORS_VERBOSE;
+      } else {
+        process.env.PGREST_ERRORS_VERBOSE = prev;
+      }
+    }
+  });
+});

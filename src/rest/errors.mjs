@@ -27,6 +27,17 @@ const PG_ERROR_MAP = {
   '42703': 400, // undefined column
 };
 
+const PG_SAFE_MESSAGE = {
+  '23505': 'Uniqueness violation.',
+  '23503': 'Foreign key violation.',
+  '23502': 'Not-null constraint violation.',
+  '42P01': 'Undefined table.',
+  '42703': 'Undefined column.',
+};
+
+const PG_SAFE_FALLBACK =
+  'Request failed with a database error.';
+
 // PostgREST-compatible error codes used by resource embedding
 // (thrown directly via PostgRESTError, not mapped from PG):
 //
@@ -81,13 +92,33 @@ const PG_ERROR_MAP = {
 // PGRST209 — Missing required function argument.
 //            HTTP 400. pgrest-lambda-specific.
 
-export function mapPgError(pgError) {
+export function _getMapKeys() {
+  return {
+    errorMap: Object.keys(PG_ERROR_MAP).sort(),
+    safeMessage: Object.keys(PG_SAFE_MESSAGE).sort(),
+  };
+}
+
+export function mapPgError(pgError, { verbose = false } = {}) {
   const statusCode = PG_ERROR_MAP[pgError.code] || 500;
+
+  if (verbose) {
+    return new PostgRESTError(
+      statusCode,
+      pgError.code,
+      pgError.message,
+      pgError.detail || null,
+      pgError.hint || null,
+    );
+  }
+
+  const safeMessage =
+    PG_SAFE_MESSAGE[pgError.code] || PG_SAFE_FALLBACK;
   return new PostgRESTError(
     statusCode,
     pgError.code,
-    pgError.message,
-    pgError.detail || null,
-    pgError.hint || null,
+    safeMessage,
+    null,
+    null,
   );
 }

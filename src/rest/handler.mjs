@@ -442,7 +442,19 @@ export function createRestHandler(ctx, contributions = []) {
       }
       if (err.code && typeof err.code === 'string'
           && /^[0-9A-Z]{5}$/.test(err.code)) {
-        return error(mapPgError(err), corsHeaders);
+        if (!ctx.errorsVerbose) {
+          console.warn(JSON.stringify({
+            level: 'warn',
+            pgCode: err.code,
+            message: err.message,
+            detail: err.detail || null,
+            hint: err.hint || null,
+          }));
+        }
+        return error(
+          mapPgError(err, { verbose: ctx.errorsVerbose }),
+          corsHeaders,
+        );
       }
       // Catch-all: never echo err.message. It can contain SQL
       // fragments, schema names, or internal paths. Log the details
