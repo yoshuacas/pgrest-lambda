@@ -125,43 +125,18 @@ Sign in as a user, then retry the insert. With the posts rule above, it should s
 
 ## Step 5 — Lint the policy
 
-Run the linter to catch permissiveness and correctness
-issues before deploying:
+Run the linter to catch permissiveness and correctness issues before deploying:
 
 ```bash
 npx pgrest-lambda lint-policies
 ```
-
-The linter checks 8 rules — 4 errors (unconditional
-permits, tautological conditions, syntax errors, unknown
-actions) and 4 warnings (missing principal/resource type
-narrowing, missing `has` guards, unscoped forbids).
-
-Example output when a policy has issues:
 
 ```text
 policies/posts.cedar:3 error E001 Unconditional permit — no conditions and no principal/action/resource narrowing. Add a when clause or narrow the scope.
 1 policy scanned, 1 error, 0 warnings
 ```
 
-To suppress a rule on a specific policy, add a
-`@lint_allow` annotation before the `permit`/`forbid`
-keyword:
-
-```cedar
-@lint_allow("W001")
-permit(
-    principal,
-    action == PgrestLambda::Action::"select",
-    resource is PgrestLambda::Row
-) when {
-    context.table == "posts"
-};
-```
-
-For the full flag reference (`--format`, `--max-severity`,
-`--quiet`), see the
-[CLI reference](../reference/cli.md#pgrest-lambda-lint-policies).
+For the full rule catalog, suppression syntax, and CI integration, see the [lint Cedar policies guide](./lint-cedar-policies) and the [lint rules reference](../reference/lint-rules).
 
 ## Debugging
 

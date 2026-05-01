@@ -13,6 +13,7 @@ Reference pages are austere and neutral — they document what exists, not how t
 - **[Configuration](./configuration)** — every config key and environment variable accepted by `createPgrest(config)` and the CLI. The existing [configuration guide](../configuration.md) has the same material with more narrative.
 - **[HTTP API](./http-api)** — path, method, and header contract for `/rest/v1/*` and `/auth/v1/*`.
 - **[Authorization](./authorization)** — Cedar principal/action/resource model, the translatable subset, error codes, and worked policy examples.
+- **[Lint rules](./lint-rules)** — Every rule checked by `pgrest-lambda lint-policies`, with example, fix, and suppression for each.
 
 ## Repo-rooted references
 

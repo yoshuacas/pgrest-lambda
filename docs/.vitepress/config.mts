@@ -99,6 +99,10 @@ export default defineConfig({
               text: 'How to write Cedar row-level policies',
               link: '/guide/write-cedar-policies',
             },
+            {
+              text: 'How to lint Cedar policies',
+              link: '/guide/lint-cedar-policies',
+            },
           ],
         },
       ],
@@ -113,6 +117,7 @@ export default defineConfig({
             { text: 'Configuration', link: '/reference/configuration' },
             { text: 'HTTP API', link: '/reference/http-api' },
             { text: 'Authorization', link: '/reference/authorization' },
+            { text: 'Lint rules', link: '/reference/lint-rules' },
           ],
         },
       ],

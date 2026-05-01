@@ -150,6 +150,8 @@ missing `has` guards) before you deploy.
 | `W003` | warn | Column access without `resource has <col>` guard. |
 | `W004` | warn | Unscoped `forbid` — denies every principal, action, and resource. |
 
+See [lint rules reference](./lint-rules) for each rule's example, fix, and exceptions. See the [lint Cedar policies guide](../guide/lint-cedar-policies) for CI integration and workflow.
+
 Suppress a rule on a specific policy with the
 `@lint_allow` Cedar annotation:
 
