@@ -367,6 +367,7 @@ The same call rebuilds the schema cache from `pg_catalog`. `_refresh` always ret
 
 - [How to write Cedar row-level policies](../guide/write-cedar-policies) — goal-oriented walkthrough for adding a new policy.
 - [How authorization works](../explanation/how-authorization-works) — why Cedar, the partial-evaluation pipeline, the caching model.
+- [Cedar policy linter](cli.md#pgrest-lambda-lint-policies) — validate policies before deployment.
 - [HTTP API reference](./http-api) — status codes and endpoint contracts.
 - [Configuration reference](./configuration) — `POLICIES_PATH` forms, `policiesTtl`, `production` flag.
 - [`policies/default.cedar`](https://github.com/yoshuacas/pgrest-lambda/blob/main/policies/default.cedar) — the starter bundle.

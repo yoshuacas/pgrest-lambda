@@ -14,12 +14,14 @@ import {
   startBundledPostgres,
   generateApikey,
 } from '../src/index.mjs';
+import { lintPolicies } from '../src/policies/linter.mjs';
 
 const COMMANDS = {
   dev: cmdDev,
   refresh: cmdRefresh,
   'migrate-auth': cmdMigrateAuth,
   'generate-key': cmdGenerateKey,
+  'lint-policies': cmdLintPolicies,
   help: cmdHelp,
   '--help': cmdHelp,
   '-h': cmdHelp,
@@ -223,6 +225,79 @@ async function cmdGenerateKey(argv) {
   console.log(generateApikey({ secret, role }));
 }
 
+async function cmdLintPolicies(argv) {
+  const opts = parseFlags(argv, {
+    path: { type: 'string', default: null },
+    format: { type: 'string', default: 'text' },
+    'max-severity': { type: 'string', default: 'error' },
+    quiet: { type: 'boolean', default: false },
+  });
+
+  const format = opts.format;
+  if (format !== 'text' && format !== 'json') {
+    console.error(`Invalid --format '${format}'. Use 'text' or 'json'.`);
+    process.exit(2);
+  }
+
+  const maxSeverity = opts['max-severity'];
+  if (!['error', 'warn', 'off'].includes(maxSeverity)) {
+    console.error(
+      `Invalid --max-severity '${maxSeverity}'. Use 'error', 'warn', or 'off'.`,
+    );
+    process.exit(2);
+  }
+
+  const policyPath = opts.path || process.env.POLICIES_PATH || './policies';
+
+  let result;
+  try {
+    result = await lintPolicies({ path: policyPath });
+  } catch (err) {
+    console.error(err.message);
+    process.exit(2);
+  }
+
+  const { findings, summary } = result;
+
+  if (format === 'json') {
+    if (!opts.quiet || findings.length > 0) {
+      console.log(JSON.stringify({
+        summary: {
+          policiesScanned: summary.policiesScanned,
+          errors: summary.errors,
+          warnings: summary.warnings,
+        },
+        findings,
+      }, null, 2));
+    }
+  } else {
+    for (const f of findings) {
+      console.log(`${f.file}:${f.line} ${f.severity} ${f.rule} ${f.message}`);
+    }
+    if (!opts.quiet || findings.length > 0) {
+      const policyWord = summary.policiesScanned === 1 ? 'policy' : 'policies';
+      const errorWord = summary.errors === 1 ? 'error' : 'errors';
+      const warnWord = summary.warnings === 1 ? 'warning' : 'warnings';
+      console.log(
+        `${summary.policiesScanned} ${policyWord} scanned, `
+        + `${summary.errors} ${errorWord}, `
+        + `${summary.warnings} ${warnWord}`,
+      );
+    }
+  }
+
+  if (maxSeverity === 'off') {
+    process.exit(0);
+  }
+
+  const threshold =
+    maxSeverity === 'warn'
+      ? (summary.errors > 0 || summary.warnings > 0)
+      : summary.errors > 0;
+
+  process.exit(threshold ? 1 : 0);
+}
+
 function cmdHelp() {
   console.log(`pgrest-lambda — serverless REST API for PostgreSQL
 
@@ -249,6 +324,12 @@ Commands:
 
   generate-key <anon|service_role>
       Mint an HS256 apikey JWT using JWT_SECRET. Prints to stdout.
+
+  lint-policies [--path DIR] [--format text|json]
+                [--max-severity error|warn|off] [--quiet]
+      Lint .cedar policy files for permissiveness and correctness.
+      Default path: ./policies (or $POLICIES_PATH). Exit 0 if clean,
+      1 if findings above threshold, 2 on usage error.
 
   help
       Show this message.

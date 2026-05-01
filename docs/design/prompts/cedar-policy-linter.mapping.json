@@ -1,0 +1,6 @@
+{
+  "prompt": "docs/design/prompts/cedar-policy-linter.md",
+  "designs": [
+    "docs/design/cedar-policy-linter-feedback-001.md"
+  ]
+}

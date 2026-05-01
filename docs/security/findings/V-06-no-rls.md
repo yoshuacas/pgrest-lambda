@@ -42,6 +42,15 @@ _Commit / test / doc link when fixed._
 - **RLS-capable deployments opting out of RLS:** same risk; documented.
 - **RLS-capable deployments opting in:** defense-in-depth achieved.
 
+## Partial Remediation — V-06a (Policy Linter)
+
+Shipped `pgrest-lambda lint-policies` in e98c5b3.
+The linter validates Cedar policies for permissiveness and
+correctness at authoring time (4 error rules, 4 warning
+rules). This closes the "policy linter/validator" limb of
+V-06 but does not address RLS (V-06b) or the INSERT
+fail-open branch (V-06c).
+
 ## Reviewer handoff
 
 _Two-sentence summary for the reviewer agent — emphasize that this finding has different dispositions per backend and that documentation is part of the mitigation for DSQL._
