@@ -110,6 +110,88 @@ Apply the `better_auth` schema to the database named by `DATABASE_URL`. Idempote
 
 ---
 
+### `pgrest-lambda lint-policies`
+
+Lint `.cedar` policy files for permissiveness and
+correctness issues. Reports errors (overly permissive rules,
+syntax problems) and warnings (missing type narrowing,
+missing `has` guards) before you deploy.
+
+**Flags**
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--path <path>` | `$POLICIES_PATH` or `./policies` | Directory containing `.cedar` files to lint. |
+| `--format <fmt>` | `text` | Output format: `text` or `json`. |
+| `--max-severity <lvl>` | `error` | Severity threshold that causes a non-zero exit. `error` (fail on errors only), `warn` (fail on errors or warnings), `off` (always exit 0). |
+| `--quiet` | `false` | Suppress output when there are no findings. |
+
+> Note: `parseFlags` uses space-separated `--flag value`
+> syntax, not `--flag=value`.
+
+**Exit codes**
+
+| Code | Meaning |
+|---|---|
+| `0` | No findings above the severity threshold (or `--max-severity off`). |
+| `1` | One or more findings at or above the severity threshold. |
+| `2` | Usage error: policy directory missing, unreadable, no `.cedar` files, or invalid flags. |
+
+**Lint rules**
+
+| Rule | Severity | Trigger |
+|---|---|---|
+| `E001` | error | Unconditional `permit` — no conditions and no principal/action/resource narrowing. |
+| `E002` | error | Tautological `when` clause — condition is always true. |
+| `E003` | error | Cedar syntax error. |
+| `E004` | error | Unknown action (not `select`, `insert`, `update`, `delete`, `call`). |
+| `W001` | warn | Principal type missing — policy applies to all principal types. |
+| `W002` | warn | Resource type missing — policy applies to all resource types. |
+| `W003` | warn | Column access without `resource has <col>` guard. |
+| `W004` | warn | Unscoped `forbid` — denies every principal, action, and resource. |
+
+See [lint rules reference](./lint-rules) for each rule's example, fix, and exceptions. See the [lint Cedar policies guide](../guide/lint-cedar-policies) for CI integration and workflow.
+
+Suppress a rule on a specific policy with the
+`@lint_allow` Cedar annotation:
+
+```cedar
+@lint_allow("E001,W001")
+permit(principal, action, resource);
+```
+
+**Examples**
+
+Clean run against the default policies directory:
+
+```bash
+pgrest-lambda lint-policies
+```
+
+```text
+3 policies scanned, 0 errors, 0 warnings
+```
+
+Run with findings:
+
+```bash
+pgrest-lambda lint-policies --path ./policies
+```
+
+```text
+policies/custom.cedar:3 error E001 Unconditional permit — no conditions and no principal/action/resource narrowing. Add a when clause or narrow the scope.
+policies/custom.cedar:10 warn W001 Principal type missing — policy applies to all principal types including anon. Add 'principal is PgrestLambda::User' or similar.
+2 policies scanned, 1 error, 1 warning
+```
+
+CI integration (fail on warnings too, JSON output):
+
+```bash
+pgrest-lambda lint-policies --max-severity warn --format json
+```
+
+---
+
 ### `pgrest-lambda help`
 
 Print the full command reference to stdout. Equivalent aliases: `--help`, `-h`.

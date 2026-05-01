@@ -8,6 +8,13 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
 
 ## Unreleased
 
+## 0.1.1 — 2026-05-01
+
+### Security
+- Add `pgrest-lambda lint-policies` CLI command — validates
+  Cedar policies for permissiveness and correctness issues
+  (8 rules). Partial remediation of V-06 (High). (V-06a)
+
 ### Added
 
 - **Database capabilities interface.** Each DB provider

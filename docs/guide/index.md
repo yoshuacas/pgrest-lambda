@@ -18,6 +18,7 @@ These guides assume you already have pgrest-lambda running locally (see the [Get
 ## Authorize
 
 - **[How to write Cedar row-level policies](./write-cedar-policies)** — Add policy files under `policies/` to control who can read and write which rows.
+- **[How to lint Cedar policies](./lint-cedar-policies)** — Run `pgrest-lambda lint-policies` to catch permissive or broken policies before deploy.
 
 ## Looking something up?
 

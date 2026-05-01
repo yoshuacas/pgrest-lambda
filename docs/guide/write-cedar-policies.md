@@ -123,6 +123,21 @@ Expected:
 
 Sign in as a user, then retry the insert. With the posts rule above, it should succeed.
 
+## Step 5 — Lint the policy
+
+Run the linter to catch permissiveness and correctness issues before deploying:
+
+```bash
+npx pgrest-lambda lint-policies
+```
+
+```text
+policies/posts.cedar:3 error E001 Unconditional permit — no conditions and no principal/action/resource narrowing. Add a when clause or narrow the scope.
+1 policy scanned, 1 error, 0 warnings
+```
+
+For the full rule catalog, suppression syntax, and CI integration, see the [lint Cedar policies guide](./lint-cedar-policies) and the [lint rules reference](../reference/lint-rules).
+
 ## Debugging
 
 ### "Not authorized" but you expected the rule to match
