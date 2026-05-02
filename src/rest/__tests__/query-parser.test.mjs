@@ -1004,6 +1004,14 @@ describe('embed depth limit', () => {
     ]);
   });
 
+  it('NaN maxEmbedDepth does not bypass limit', () => {
+    assert.throws(
+      () => parseSelectList(
+        'a(b(c(d(e(f(id))))))', NaN),
+      (err) => err.code === 'PGRST100',
+    );
+  });
+
   describe('parseQuery threading', () => {
     it('parseQuery passes maxEmbedDepth to parser', () => {
       assert.throws(

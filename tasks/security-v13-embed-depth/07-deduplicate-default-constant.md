@@ -49,7 +49,7 @@ add a new import line.
 
 Replace the literal `5` in the `maxEmbedDepth` fallback
 with `DEFAULT_MAX_EMBED_DEPTH`. After Task 05, the
-fallback may use a `parseIntOrDefault` helper — replace
+fallback may use a `parseIntOrDefault` helper -- replace
 the `5` argument to that helper:
 
 ```javascript

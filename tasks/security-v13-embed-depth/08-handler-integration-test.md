@@ -89,10 +89,10 @@ Use `makeEvent` from `./helpers.mjs` with:
 
 For the rejection test, use a select string that produces
 depth 3 using real table names from the embedding schema:
-`select=orders(order_items(products(name)))` — this is
+`select=orders(order_items(products(name)))` -- this is
 depth 3 and should fail with `maxEmbedDepth: 2`.
 
-For the pass test, use `select=id,orders(amount)` — this
+For the pass test, use `select=id,orders(amount)` -- this
 is depth 1 and should succeed.
 
 ### Assertions
@@ -136,4 +136,4 @@ it('allows embed depth within maxEmbedDepth', async () => {
   existing `{ skip: !DATABASE_URL }` mechanism on the
   parent describe block.
 - If `createPgrest` does not accept `maxEmbedDepth` in
-  config, escalate — Task 03 should have wired this.
+  config, escalate -- Task 03 should have wired this.

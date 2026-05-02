@@ -51,6 +51,9 @@ const DEFAULT_MAX_EMBED_DEPTH = 5;
 
 export function parseSelectList(
     input, maxEmbedDepth = DEFAULT_MAX_EMBED_DEPTH, depth = 0) {
+  if (Number.isNaN(maxEmbedDepth)) {
+    maxEmbedDepth = DEFAULT_MAX_EMBED_DEPTH;
+  }
   const nodes = [];
   let i = 0;
   const len = input.length;

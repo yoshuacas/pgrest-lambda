@@ -71,7 +71,7 @@ a predicate checking `err.code === 'PGRST100'` and
 `err.message` for the rejection tests. Use the existing
 test style in the file.
 
-No production code changes are needed — these are
+No production code changes are needed -- these are
 documentation tests for existing behavior.
 
 ## Acceptance Criteria

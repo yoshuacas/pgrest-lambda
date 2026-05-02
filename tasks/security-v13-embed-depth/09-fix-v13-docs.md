@@ -39,7 +39,7 @@ squash-merge:
 ```markdown
 ## Evidence
 
-Branch `fix/v13-embed-depth` — adds `depth` parameter to
+Branch `fix/v13-embed-depth` -- adds `depth` parameter to
 `parseSelectList` with a default limit of 5, throwing
 PGRST100 on overflow.
 ```
@@ -53,11 +53,11 @@ tense, making clear this describes the pre-fix state:
 **Status: fixed at HEAD.**
 
 Prior to the fix:
-- `src/rest/query-parser.mjs` — `parseSelectList(input)`
+- `src/rest/query-parser.mjs` -- `parseSelectList(input)`
   recursed with no depth argument. Unbounded.
 - `MAX_NESTING_DEPTH = 10` was enforced for logical groups
   (`parseLogicalGroup`) but not for embeds. Asymmetry.
-- `src/rest/sql-builder.mjs` — `buildEmbedSubquery` built
+- `src/rest/sql-builder.mjs` -- `buildEmbedSubquery` built
   correlated subqueries whose planner cost grew with depth.
 
 **Fix surface:** added `depth` and `maxEmbedDepth` params
@@ -68,7 +68,7 @@ configurable via factory.
 
 ## Target Tests
 
-No automated tests — documentation only.
+No automated tests -- documentation only.
 
 ## Acceptance Criteria
 

@@ -16,7 +16,7 @@ embed depth limit.
 `'abc'` is truthy, the ternary in `resolveConfig` takes the
 `parseInt` branch and stores `NaN` in `maxEmbedDepth`. The
 depth check `depth + 1 > NaN` is always `false`, so the
-limit is silently bypassed — the exact vulnerability V-13
+limit is silently bypassed -- the exact vulnerability V-13
 is meant to close.
 
 ## Target Tests
@@ -68,7 +68,7 @@ it('NaN maxEmbedDepth does not bypass limit', () => {
 });
 ```
 
-### src/index.mjs — resolveConfig
+### src/index.mjs -- resolveConfig
 
 Change the `maxEmbedDepth` line (line 109-112) from:
 
@@ -98,12 +98,12 @@ function parseIntOrDefault(value, fallback) {
 }
 ```
 
-This helper is local to `index.mjs` — do not export it.
+This helper is local to `index.mjs` -- do not export it.
 It handles the three cases: undefined/empty string returns
 fallback, non-numeric string returns fallback, valid
 numeric string returns the parsed integer.
 
-### src/rest/query-parser.mjs — parseSelectList
+### src/rest/query-parser.mjs -- parseSelectList
 
 Add a NaN guard at the top of `parseSelectList`, before
 the existing parsing logic:

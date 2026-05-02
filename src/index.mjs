@@ -17,6 +17,12 @@ export {
   resetBundledPostgres,
 } from './dev/docker-postgres.mjs';
 
+function parseIntOrDefault(value, fallback) {
+  if (!value) return fallback;
+  const parsed = parseInt(value, 10);
+  return Number.isNaN(parsed) ? fallback : parsed;
+}
+
 function resolveDatabase(config) {
   if (config.database) {
     const d = config.database;
@@ -107,9 +113,8 @@ function resolveConfig(config) {
     errorsVerbose: config.errors?.verbose
       ?? (process.env.PGREST_ERRORS_VERBOSE === 'true'),
     maxEmbedDepth: config.maxEmbedDepth
-      ?? (process.env.PGREST_MAX_EMBED_DEPTH
-        ? parseInt(process.env.PGREST_MAX_EMBED_DEPTH, 10)
-        : 5),
+      ?? parseIntOrDefault(
+        process.env.PGREST_MAX_EMBED_DEPTH, 5),
   };
 }
 

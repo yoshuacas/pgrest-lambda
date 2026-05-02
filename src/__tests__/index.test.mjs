@@ -296,6 +296,22 @@ describe('maxEmbedDepth config', () => {
     }
   });
 
+  it('non-numeric env var falls back to default', () => {
+    const prev = process.env.PGREST_MAX_EMBED_DEPTH;
+    process.env.PGREST_MAX_EMBED_DEPTH = 'abc';
+    try {
+      const pgrest = createPgrest({
+        jwtSecret,
+        database,
+        auth: false,
+      });
+      assert.equal(pgrest._ctx.maxEmbedDepth, 5);
+    } finally {
+      if (prev === undefined) delete process.env.PGREST_MAX_EMBED_DEPTH;
+      else process.env.PGREST_MAX_EMBED_DEPTH = prev;
+    }
+  });
+
   it('config wins over env var', () => {
     const prev = process.env.PGREST_MAX_EMBED_DEPTH;
     process.env.PGREST_MAX_EMBED_DEPTH = '8';
