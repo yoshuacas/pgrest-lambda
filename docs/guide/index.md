@@ -22,4 +22,4 @@ These guides assume you already have pgrest-lambda running locally (see the [Get
 
 ## Looking something up?
 
-If you want an exact option name, CLI flag, or error code, you probably want the [Reference section](../reference/) instead. If you want to understand *why* something is the way it is, see [Explanation](../explanation/).
+If you want an exact option name, CLI flag, or error code, you probably want the [Reference section](../reference/) instead — in particular, the [Error codes reference](../reference/errors) has every `PGRST*` code, PostgreSQL mapping, and auth error with handling guidance. If you want to understand *why* something is the way it is, see [Explanation](../explanation/).
