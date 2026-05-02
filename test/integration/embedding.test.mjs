@@ -711,6 +711,48 @@ describe('resource embedding', { skip: !DATABASE_URL }, () => {
     });
   });
 
+  describe('embed depth limit', () => {
+    let depthPgrest;
+
+    before(async () => {
+      depthPgrest = createPgrest({
+        database: { connectionString: DATABASE_URL },
+        jwtSecret: JWT_SECRET,
+        auth: false,
+        maxEmbedDepth: 2,
+      });
+      await depthPgrest.rest(makeEvent({
+        method: 'POST', path: '/rest/v1/_refresh',
+      }));
+    });
+
+    it('rejects embed depth exceeding maxEmbedDepth',
+      async () => {
+        const res = await depthPgrest.rest(makeEvent({
+          path: '/rest/v1/customers',
+          query: {
+            select: 'orders(order_items(products(name)))',
+          },
+        }));
+        assert.equal(res.statusCode, 400);
+        const body = JSON.parse(res.body);
+        assert.equal(body.code, 'PGRST100');
+        assert.match(body.message,
+          /Embedding depth exceeds maximum of 2/);
+      },
+    );
+
+    it('allows embed depth within maxEmbedDepth',
+      async () => {
+        const res = await depthPgrest.rest(makeEvent({
+          path: '/rest/v1/customers',
+          query: { select: 'id,orders(amount)' },
+        }));
+        assert.equal(res.statusCode, 200);
+      },
+    );
+  });
+
   describe('authorization on embeds', () => {
     // The default Cedar policies distinguish by user_id row
     // ownership, not by table. The embedding tables lack user_id
