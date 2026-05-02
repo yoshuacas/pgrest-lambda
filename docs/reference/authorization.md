@@ -346,6 +346,61 @@ permit(
 
 RPC always authorizes against `PgrestLambda::Function::"<fn-name>"`. `call` does not take a `Row` resource — filtering the returned set is the function's responsibility. See the [RPC guide](../rpc.md#authorization) for the full contract.
 
+## INSERT authorization
+
+INSERT uses a different authorization path from
+SELECT/UPDATE/DELETE because the row does not exist yet —
+there is no `WHERE` clause to append residual conditions to.
+
+### Two-phase evaluation
+
+1. **Phase 1 — table-level check.** The engine calls
+   `isAuthorized` against the concrete `Table` resource.
+   Unconditional permits (e.g.,
+   `permit(... resource == Table::"posts")`) and
+   service-role bypass are resolved here.
+
+2. **Phase 2 — residual evaluation.** The engine calls
+   Cedar's partial evaluator with `resource = null`. Any
+   row-conditioned `permit` or `forbid` policy produces a
+   residual. Each residual's `when` conditions are evaluated
+   against the proposed row data in-process — no SQL is
+   involved.
+
+### Row-conditioned policies
+
+- A `permit` residual must have all its `when` conditions
+  satisfied by the proposed row for the permit to
+  contribute. At least one permit must contribute (either
+  from a residual or from Phase 1).
+- A `forbid` residual denies the INSERT if all its `when`
+  conditions match the proposed row, regardless of any
+  permits.
+
+### Missing columns
+
+If the proposed row omits a column referenced by a policy
+(e.g., the policy checks `resource.owner_id` but the row
+has no `owner_id` field), the comparison returns `false`
+(fail-closed). This mirrors SQL behavior where
+`NULL = <value>` is falsy.
+
+### Bulk inserts
+
+When the request body is a JSON array, each row is checked
+independently against the residuals. If any row fails
+authorization, the entire batch is rejected with `PGRST403`.
+The error detail includes the zero-based index of the first
+failing row.
+
+### Service-role bypass
+
+The default service-role policy has no `when` clause.
+Phase 1 returns a decided allow, Phase 2 produces no
+residuals, and the INSERT proceeds. Service-role inserts are
+never evaluated against the row. Behavior is unchanged from
+the SELECT/UPDATE/DELETE path.
+
 ## Refresh
 
 Policies are cached in-process. To pick up a `.cedar` edit without restarting:

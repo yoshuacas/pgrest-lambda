@@ -138,6 +138,41 @@ policies/posts.cedar:3 error E001 Unconditional permit — no conditions and no 
 
 For the full rule catalog, suppression syntax, and CI integration, see the [lint Cedar policies guide](./lint-cedar-policies) and the [lint rules reference](../reference/lint-rules).
 
+## Row-conditioned INSERT policies
+
+Row-conditioned INSERT policies (e.g.,
+`resource.owner_id == principal`) are enforced at the
+application layer against the proposed row data. Unlike
+SELECT/UPDATE/DELETE — where residuals are translated to SQL
+`WHERE` fragments — INSERT residuals are evaluated in-process
+before the query is built.
+
+Key differences from row-level read/write policies:
+
+- `resource.<col>` in a `when` clause refers to the value
+  being inserted, not an existing database row.
+- If the proposed row omits a column referenced by the
+  policy, the INSERT is denied (fail-closed).
+- Bulk inserts (JSON array body) are checked per-row. If
+  any row fails, the entire batch is rejected.
+
+Example — only allow users to insert rows they own:
+
+```cedar
+permit(
+    principal is PgrestLambda::User,
+    action == PgrestLambda::Action::"insert",
+    resource is PgrestLambda::Row
+) when {
+    context.table == "orders"
+    && resource.owner_id == principal
+};
+```
+
+A `POST /rest/v1/orders` with `{ "owner_id": "<other-user>" }`
+is denied with `PGRST403`. The `owner_id` in the body must
+match the caller's uid.
+
 ## Debugging
 
 ### "Not authorized" but you expected the rule to match

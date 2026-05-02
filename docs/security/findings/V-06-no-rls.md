@@ -51,6 +51,36 @@ rules). This closes the "policy linter/validator" limb of
 V-06 but does not address RLS (V-06b) or the INSERT
 fail-open branch (V-06c).
 
+## Partial Remediation — V-06c (INSERT Fail-Open)
+
+The fail-open in `authorize()` for INSERT residuals is closed.
+When partial evaluation produced non-trivial residuals for an
+INSERT, the old code at `cedar.mjs:386-388` returned `true`
+(allow) without checking the proposed row against the policy
+condition. This was a full bypass of row-conditioned INSERT
+policies on DSQL deployments where Cedar is the only
+authorization layer.
+
+INSERT now uses `authorizeInsert()`, which evaluates
+row-conditioned policies against the proposed row data
+in-process (Option A from the design). The fix runs two
+phases: a table-level `isAuthorized` check, then partial
+evaluation with residual conditions evaluated against the
+proposed row via `evaluateExprAgainstRow()`. Missing columns
+fail-closed. Bulk inserts are checked per-row.
+
+The fix is DSQL-compatible — it has no SQL dependency. The
+authorization decision is made entirely in JavaScript before
+the INSERT query is built.
+
+The `authorize()` function itself has been tightened: the
+residual branch now returns `false` (deny) instead of `true`
+for any undecided residual, closing the theoretical gap for
+all callers.
+
+See `docs/design/security-v06c-insert-fail-open.md` for the
+full design, threat model, and testing strategy.
+
 ## Reviewer handoff
 
 _Two-sentence summary for the reviewer agent — emphasize that this finding has different dispositions per backend and that documentation is part of the mitigation for DSQL._
