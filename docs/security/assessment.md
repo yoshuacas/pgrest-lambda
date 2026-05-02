@@ -45,7 +45,7 @@ Rule: when a finding's fix relies on a capability not present on all supported b
 | [V-11](findings/V-11-refresh-no-authz.md) | Medium | `/_refresh` has no authz check | Open | Confirmed at HEAD |
 | [V-12](findings/V-12-auth-no-rate-limit.md) | Medium | No rate limiting on auth endpoints | Open | Infra-layer fix |
 | [V-13](findings/V-13-embed-depth.md) | Medium | Unbounded resource embedding depth | Open | Confirmed; no depth arg |
-| [V-14](findings/V-14-order-direction.md) | Medium | Order direction not validated | Open | **Real injection:** `order=col.asc;DROP…` survives dot-split |
+| [V-14](findings/V-14-order-direction.md) | Medium | Order direction not validated | Fixed | Allowlist validation in `parseOrder()`; SQL injection path closed |
 | [V-15](findings/V-15-schema-cache-race.md) | Low | Schema cache TOCTOU race | Open | Confirmed; TTL now 30s |
 | [V-16](findings/V-16-cedar-observability.md) | Low | No Cedar authz logging | Open | Pairs with V-23 |
 | [V-17](findings/V-17-cognito-id-unverified.md) | Low | Cognito ID token parsed without sig verify | Open | Cognito provider only |

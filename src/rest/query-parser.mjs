@@ -484,13 +484,28 @@ function parseLogicalGroup(op, negate, raw, depth = 0) {
   return { type: 'logicalGroup', logicalOp: op, negate, conditions };
 }
 
+const VALID_ORDER_DIRECTIONS = new Set(['asc', 'desc']);
+const VALID_ORDER_NULLS = new Set(['nullsfirst', 'nullslast']);
+
 function parseOrder(raw) {
   return raw.split(',').map((entry) => {
     const parts = entry.split('.');
+    const direction = parts[1] || 'asc';
+    const nulls = parts[2] || null;
+    if (!VALID_ORDER_DIRECTIONS.has(direction)) {
+      throw new PostgRESTError(
+        400, 'PGRST100',
+        `Invalid order direction '${direction}'. Must be 'asc' or 'desc'`);
+    }
+    if (nulls && !VALID_ORDER_NULLS.has(nulls)) {
+      throw new PostgRESTError(
+        400, 'PGRST100',
+        `Invalid nulls option '${nulls}'. Must be 'nullsfirst' or 'nullslast'`);
+    }
     return {
       column: parts[0],
-      direction: parts[1] || 'asc',
-      nulls: parts[2] || null,
+      direction,
+      nulls,
     };
   });
 }

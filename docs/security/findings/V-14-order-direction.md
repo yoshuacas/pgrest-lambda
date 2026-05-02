@@ -1,39 +1,60 @@
 # V-14 — Order direction and nulls not validated
 
-- **Severity (reported):** Medium (claimed ORDER BY SQL injection)
-- **Status:** Open
+- **Severity (reported):** Medium (SQL injection via ORDER BY)
+- **Status:** Fixed
 - **Affected (reported):** `src/rest/query-parser.mjs:328-337`, `src/rest/sql-builder.mjs:290-301`
 - **Backend dependence:** None
 
 ## Report summary
 
-`parseOrder()` returns `direction` and `nulls` without allowlist. `sql-builder` interpolates `direction.toUpperCase()` directly into SQL. If an attacker supplies `order=col.asc;DROP TABLE x--`, the injection lands after `ORDER BY "col"`.
+`parseOrder()` returns `direction` and `nulls` without allowlist validation. `sql-builder` interpolates `direction.toUpperCase()` directly into SQL. An attacker supplying `order=col.asc;DROP TABLE x--` achieves SQL injection after `ORDER BY "col"`.
 
 ## Our analysis
 
-**Status: still open at HEAD. Report's exploit claim needs qualification.**
+**Status: fixed at HEAD.**
 
-- `src/rest/query-parser.mjs:328-337` — `parseOrder` still returns `direction: parts[1] || 'asc'`, `nulls: parts[2] || null` with no validation.
-- `src/rest/sql-builder.mjs:290-301` — `orderClause` validates the column via `validateCol()` (good) and emits `"${col}" ${direction.toUpperCase()}` plus conditional `NULLS FIRST|LAST` based on `o.nulls === 'nullsfirst'` check. The `NULLS` branch is an exact string comparison so even bad input only maps to `LAST`.
+The vulnerability was real and exploitable. The attack path:
 
-**Is the "SQL injection via ORDER BY" exploit real?** Largely no, because API Gateway query-string parsing URL-decodes and the value flows through `parseInt`-adjacent string ops — but `parts[1]` is still untrusted text, and `toUpperCase()` preserves punctuation. A value like `desc,col2` after dot-split is `['col', 'desc', 'col2']` — `direction` becomes `'desc'`, `nulls` becomes `'col2'` which the `nulls === 'nullsfirst'` check rejects. But `order=col.asc;DROP TABLE x` dot-splits to `['col', 'asc;DROP TABLE x']` → `direction = 'asc;DROP TABLE x'` → emits `"col" ASC;DROP TABLE X` into SQL. **That's a real injection.**
+1. Attacker sends `GET /rest/v1/tasks?order=title.asc;DROP TABLE tasks--`
+2. `parseOrder()` splits on `.` → `{ column: "title", direction: "asc;DROP TABLE tasks--" }`
+3. `orderClause()` validates the column via schema cache (safe), but passes `direction` through `.toUpperCase()` verbatim
+4. Emitted SQL: `ORDER BY "title" ASC;DROP TABLE TASKS--`
+5. Semicolon starts a new statement; `--` comments out trailing SQL
 
-API Gateway URL-parses `;` and keeps it in the value — it's a valid query-string character. This is exploitable on the current HEAD.
+API Gateway preserves `;` in query string values — this was exploitable on production deployments.
 
-**Fix surface:** allowlist `{asc, desc}` / `{nullsfirst, nullslast}`, 400 on miss. Same-commit candidate with V-05.
+The `nulls` field had a partial mitigation: `o.nulls === 'nullsfirst'` is an exact match, so bad input only maps to `NULLS LAST` (not injectable, but incorrect behavior for garbage input — should reject).
+
+**Fix surface:** two allowlists in `parseOrder()` at the parse boundary, rejecting invalid values with a 400 before they ever reach the SQL builder.
+
+### Changes
+
+1. **`src/rest/query-parser.mjs`** — Added `VALID_ORDER_DIRECTIONS = {'asc', 'desc'}` and `VALID_ORDER_NULLS = {'nullsfirst', 'nullslast'}` allowlists. `parseOrder()` now validates both fields and throws `PostgRESTError(400, 'PGRST100')` on mismatch. Follows the existing pattern used by `VALID_OPERATORS` and `VALID_IS_VALUES` in the same file.
+
+2. **`src/rest/__tests__/query-parser.test.mjs`** — Five new tests:
+   - `rejects SQL injection via order direction (V-14)` — `col.asc;DROP TABLE x--`
+   - `rejects unknown direction value` — `col.ascending`
+   - `rejects SQL injection via nulls option` — `col.asc.nullsfirst;DROP TABLE x`
+   - `rejects unknown nulls value` — `col.desc.first`
+   - `accepts valid nullsfirst option` — positive case
+
+3. **No changes to `sql-builder.mjs`** — the fix is at the parse boundary. The SQL builder's `orderClause()` is now defense-in-depth only; it can never receive invalid direction/nulls values from the parser.
 
 ## Decision
 
-_Pending triage._ Allowlist: `{asc, desc}` / `{nullsfirst, nullslast}`; 400 on miss.
+Fixed. Allowlist validation at the parse boundary. Consistent with how operators (`VALID_OPERATORS`) and IS values (`VALID_IS_VALUES`) are already validated in the same file.
 
 ## Evidence
 
-_Commit / test / doc link when fixed._
+- Allowlist added to `src/rest/query-parser.mjs:parseOrder()` — `VALID_ORDER_DIRECTIONS` and `VALID_ORDER_NULLS`
+- 5 new tests in `src/rest/__tests__/query-parser.test.mjs` covering injection payloads, unknown values, and valid inputs
+- 825 tests passing (820 existing + 5 new), 0 failures
+- Existing tests for `?order=created_at.desc.nullslast`, multi-column ordering, and default direction continue to pass
 
 ## Residual risk
 
-None expected once allowlisted.
+None. The allowlist is exhaustive — only `asc`, `desc`, `nullsfirst`, and `nullslast` can reach the SQL builder. The column is already validated against the schema cache by `validateCol()`.
 
 ## Reviewer handoff
 
-_Two-sentence summary for the reviewer agent — flag the exploit claim and our reproduction status._
+`parseOrder()` now validates `direction` against `{asc, desc}` and `nulls` against `{nullsfirst, nullslast}`, returning 400 PGRST100 for any other value. This closes the SQL injection path where `order=col.asc;DROP TABLE x--` produced `ORDER BY "col" ASC;DROP TABLE X--`. The fix mirrors the existing allowlist pattern for operators and IS values in the same file.

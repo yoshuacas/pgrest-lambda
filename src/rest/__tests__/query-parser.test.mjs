@@ -184,6 +184,47 @@ describe('query-parser', () => {
       assert.equal(result.order[0].direction, 'asc',
         'direction should default to asc');
     });
+
+    it('rejects SQL injection via order direction (V-14)', () => {
+      assert.throws(
+        () => parseQuery({ order: 'col.asc;DROP TABLE x--' }, 'GET'),
+        (err) => err.code === 'PGRST100'
+          && err.message.includes('Invalid order direction'),
+        'should reject injection payload in direction'
+      );
+    });
+
+    it('rejects unknown direction value', () => {
+      assert.throws(
+        () => parseQuery({ order: 'col.ascending' }, 'GET'),
+        (err) => err.code === 'PGRST100'
+          && err.message.includes('Invalid order direction'),
+        'should reject non-asc/desc direction'
+      );
+    });
+
+    it('rejects SQL injection via nulls option', () => {
+      assert.throws(
+        () => parseQuery({ order: 'col.asc.nullsfirst;DROP TABLE x' }, 'GET'),
+        (err) => err.code === 'PGRST100'
+          && err.message.includes('Invalid nulls option'),
+        'should reject injection payload in nulls'
+      );
+    });
+
+    it('rejects unknown nulls value', () => {
+      assert.throws(
+        () => parseQuery({ order: 'col.desc.first' }, 'GET'),
+        (err) => err.code === 'PGRST100'
+          && err.message.includes('Invalid nulls option'),
+        'should reject non-nullsfirst/nullslast value'
+      );
+    });
+
+    it('accepts valid nullsfirst option', () => {
+      const result = parseQuery({ order: 'col.asc.nullsfirst' }, 'GET');
+      assert.equal(result.order[0].nulls, 'nullsfirst');
+    });
   });
 
   describe('pagination', () => {
