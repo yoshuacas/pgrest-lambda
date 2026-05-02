@@ -1,4 +1,4 @@
-# Task 01 — End-to-End Tests for INSERT Authorization
+# Task 01 -- End-to-End Tests for INSERT Authorization
 
 **Agent:** implementer
 **Design:** docs/design/security-v06c-insert-fail-open.md
@@ -20,7 +20,7 @@ Lambda API Gateway proxy event, and calls the handler.
 
 Reuse the `createMockPool`, `createTestContext`, `makeEvent`,
 and `findDataQuery` helpers from the existing integration test
-file — extract them into a shared helper or duplicate them as
+file -- extract them into a shared helper or duplicate them as
 appropriate.
 
 ## Policies
@@ -85,7 +85,7 @@ schema/column rows alongside the existing tables:
 
 ## Test Cases
 
-### Test 1: Exploit Regression — Owner Mismatch (DENY)
+### Test 1: Exploit Regression -- Owner Mismatch (DENY)
 
 - **Given:** authenticated user with uid `user-A`.
 - **When:** POST `/rest/v1/orders` with body
@@ -97,17 +97,17 @@ schema/column rows alongside the existing tables:
 > returns 201. After the fix it must return 403. If the
 > mismatch case already returns 403 before any code
 > changes, investigate whether the test is exercising
-> the right code path — the design expects the current
+> the right code path -- the design expects the current
 > code to fail-open here.
 
-### Test 2: Exploit Regression — Owner Match (ALLOW)
+### Test 2: Exploit Regression -- Owner Match (ALLOW)
 
 - **Given:** authenticated user with uid `user-A`.
 - **When:** POST `/rest/v1/orders` with body
   `{ "owner_id": "user-A", "amount": 100 }`.
 - **Then:** 201. The INSERT query is executed.
 
-### Test 3: Bulk Insert — Mixed Ownership (DENY)
+### Test 3: Bulk Insert -- Mixed Ownership (DENY)
 
 - **Given:** authenticated user with uid `user-A`.
 - **When:** POST `/rest/v1/orders` with body
@@ -124,14 +124,14 @@ schema/column rows alongside the existing tables:
   `{ "owner_id": "anyone", "amount": 999 }`.
 - **Then:** 201. The INSERT query is executed.
 
-### Test 5: Decided Allow — No Row Conditions (ALLOW)
+### Test 5: Decided Allow -- No Row Conditions (ALLOW)
 
 - **Given:** authenticated user.
 - **When:** POST `/rest/v1/posts` with body
   `{ "title": "Hello" }`.
 - **Then:** 201. The INSERT query is executed.
 
-### Test 6: Forbid Residual — restricted=true (DENY)
+### Test 6: Forbid Residual -- restricted=true (DENY)
 
 - **Given:** authenticated user.
 - **When:** POST `/rest/v1/items` with body
@@ -145,7 +145,7 @@ schema/column rows alongside the existing tables:
 > instead of 403, verify that Phase 2 partial evaluation
 > is running and `evaluateResiduals` receives the forbid.
 
-### Test 7: Forbid Residual — restricted=false (ALLOW)
+### Test 7: Forbid Residual -- restricted=false (ALLOW)
 
 - **Given:** authenticated user.
 - **When:** POST `/rest/v1/items` with body
@@ -165,14 +165,14 @@ schema/column rows alongside the existing tables:
 - All tests that exercise the new `authorizeInsert` behavior
   fail with clear assertion messages (since the method does
   not exist yet). Tests 2, 4, 5, 7 may pass or fail depending
-  on the current `authorize()` behavior — either outcome is
+  on the current `authorize()` behavior -- either outcome is
   acceptable at this stage.
 - No changes to production code.
 
 ## Conflict Criteria
 
 - If any test that is expected to fail instead passes (in
-  particular Tests 1, 3, 6, 8 — the DENY cases), first
+  particular Tests 1, 3, 6, 8 -- the DENY cases), first
   diagnose why by following the "Unexpected test results"
   guidance: investigate the code path, verify the assertion
   targets the right behavior, and attempt to rewrite the test

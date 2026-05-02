@@ -1,4 +1,4 @@
-# Task 03 — Add evaluateResiduals and authorizeInsert
+# Task 03 -- Add evaluateResiduals and authorizeInsert
 
 **Agent:** implementer
 **Design:** docs/design/security-v06c-insert-fail-open.md
@@ -13,13 +13,13 @@ policies against the proposed INSERT data.
 
 ## Target Tests (from Task 01)
 
-- Test 1: Exploit Regression — Owner Mismatch (DENY)
-- Test 2: Exploit Regression — Owner Match (ALLOW)
-- Test 3: Bulk Insert — Mixed Ownership (DENY)
+- Test 1: Exploit Regression -- Owner Mismatch (DENY)
+- Test 2: Exploit Regression -- Owner Match (ALLOW)
+- Test 3: Bulk Insert -- Mixed Ownership (DENY)
 - Test 4: Service-Role Bypass (ALLOW)
-- Test 5: Decided Allow — No Row Conditions (ALLOW)
-- Test 6: Forbid Residual — restricted=true (DENY)
-- Test 7: Forbid Residual — restricted=false (ALLOW)
+- Test 5: Decided Allow -- No Row Conditions (ALLOW)
+- Test 6: Forbid Residual -- restricted=true (DENY)
+- Test 7: Forbid Residual -- restricted=false (ALLOW)
 - Test 8: Missing Column on Row (DENY)
 
 Note: These tests won't fully pass until Task 04 wires the
@@ -65,11 +65,11 @@ function authorizeInsert({
 
 Two-phase logic:
 
-**Phase 1** — `isAuthorized()` against the concrete
+**Phase 1** -- `isAuthorized()` against the concrete
 `PgrestLambda::Table` resource. Records whether a table-level
 permit was granted.
 
-**Phase 2** — `isAuthorizedPartial()` with `resource: null`.
+**Phase 2** -- `isAuthorizedPartial()` with `resource: null`.
 Always runs, even when Phase 1 granted. This catches
 row-level forbids that `isAuthorized` cannot see.
 
@@ -85,7 +85,7 @@ Decision flow:
    bulk inserts.
 
 The `PostgRESTError` constructor accepts a 4th argument
-(`details`) — see `src/rest/errors.mjs:4`. For bulk inserts,
+(`details`) -- see `src/rest/errors.mjs:4`. For bulk inserts,
 pass `Row N of the batch violates the insert policy` where
 N is the zero-based index. For single-row inserts, pass
 `null` as details.
@@ -137,37 +137,37 @@ items: {
 
 ### Unit test cases
 
-1. **Decided allow** — Use the unconditional INSERT policy
+1. **Decided allow** -- Use the unconditional INSERT policy
    (`permit ... resource == Table::"posts"`). Call
    `authorizeInsert` with `{ title: 'Hello' }` as
    authenticated user. Expect `true`.
 
-2. **Residual evaluated — matching row** — Use the
+2. **Residual evaluated -- matching row** -- Use the
    owner-conditioned policy. Call with
    `{ owner_id: 'user-A' }` as user `user-A`.
    Expect `true`.
 
-3. **Residual evaluated — non-matching row** — Same policy.
+3. **Residual evaluated -- non-matching row** -- Same policy.
    Call with `{ owner_id: 'user-B' }` as user `user-A`.
    Expect `PGRST403` thrown.
 
-4. **Bulk: all rows match** — Same policy. Call with
+4. **Bulk: all rows match** -- Same policy. Call with
    `[{ owner_id: 'user-A' }, { owner_id: 'user-A' }]`.
    Expect `true`.
 
-5. **Bulk: one row fails** — Same policy. Call with
+5. **Bulk: one row fails** -- Same policy. Call with
    `[{ owner_id: 'user-A' }, { owner_id: 'user-B' }]`.
    Expect `PGRST403`. Verify `details` includes `Row 1`.
 
-6. **No policies loaded** — Create a fresh cedar instance
+6. **No policies loaded** -- Create a fresh cedar instance
    without calling `_setPolicies`. Call `authorizeInsert`.
    Expect `PGRST403`.
 
-7. **Forbid residual fires** — Use the table-permit +
+7. **Forbid residual fires** -- Use the table-permit +
    row-forbid policy. Call with `{ restricted: true }`.
    Expect `PGRST403`.
 
-8. **Forbid residual does not fire** — Same policy. Call
+8. **Forbid residual does not fire** -- Same policy. Call
    with `{ restricted: false }`. Expect `true`.
 
 ## Acceptance Criteria
@@ -181,7 +181,7 @@ items: {
 
 - If `isAuthorized` or `isAuthorizedPartial` are not
   imported from `@cedar-policy/cedar-wasm/nodejs` at the
-  top of cedar.mjs, do not add them — they should already
+  top of cedar.mjs, do not add them -- they should already
   exist (line 4-6). If missing, escalate.
 - If the `createCedar()` return object has changed from what
   is shown at line 610-618, adapt the new entry accordingly.

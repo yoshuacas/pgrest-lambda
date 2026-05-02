@@ -1,4 +1,4 @@
-# Task 04 — Wire Handler POST Case and Tighten authorize()
+# Task 04 -- Wire Handler POST Case and Tighten authorize()
 
 **Agent:** implementer
 **Design:** docs/design/security-v06c-insert-fail-open.md
@@ -13,13 +13,13 @@ the existing `authorize()` function.
 ## Target Tests (from Task 01)
 
 All eight tests from Task 01 should now pass:
-- Test 1: Exploit Regression — Owner Mismatch (DENY)
-- Test 2: Exploit Regression — Owner Match (ALLOW)
-- Test 3: Bulk Insert — Mixed Ownership (DENY)
+- Test 1: Exploit Regression -- Owner Mismatch (DENY)
+- Test 2: Exploit Regression -- Owner Match (ALLOW)
+- Test 3: Bulk Insert -- Mixed Ownership (DENY)
 - Test 4: Service-Role Bypass (ALLOW)
-- Test 5: Decided Allow — No Row Conditions (ALLOW)
-- Test 6: Forbid Residual — restricted=true (DENY)
-- Test 7: Forbid Residual — restricted=false (ALLOW)
+- Test 5: Decided Allow -- No Row Conditions (ALLOW)
+- Test 6: Forbid Residual -- restricted=true (DENY)
+- Test 7: Forbid Residual -- restricted=false (ALLOW)
 - Test 8: Missing Column on Row (DENY)
 
 ## Implementation
@@ -94,7 +94,7 @@ the unit tests from Tasks 02–03 cover the behavior.
 Run `npm test` to verify:
 - All new tests pass.
 - All existing tests pass, including:
-  - The existing `Cedar integration — INSERT` test
+  - The existing `Cedar integration -- INSERT` test
     (`cedar.integration.test.mjs` line 293-331) that
     currently calls `cedar.authorize()` for table-level
     INSERT permits. That test uses an unconditional
@@ -102,7 +102,7 @@ Run `npm test` to verify:
     `authorizeInsert` will grant it in Phase 1
     (the decided-allow path).
   - The existing `authorize (table-level)` unit tests in
-    `cedar.test.mjs` — these exercise `authorize()` for
+    `cedar.test.mjs` -- these exercise `authorize()` for
     RPC-style paths and must continue to pass after the
     residual branch tightening.
 
@@ -115,7 +115,7 @@ Run `npm test` to verify:
 
 ## Conflict Criteria
 
-- If the existing `Cedar integration — INSERT` test
+- If the existing `Cedar integration -- INSERT` test
   (`cedar.integration.test.mjs` line 293-331) starts failing,
   investigate. That test uses a table-level permit with no
   row conditions, so `authorizeInsert` should handle it via

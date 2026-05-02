@@ -1,4 +1,4 @@
-# Task 05 — Documentation Updates
+# Task 05 -- Documentation Updates
 
 **Agent:** implementer
 **Design:** docs/design/security-v06c-insert-fail-open.md
@@ -11,7 +11,7 @@ reflect the V-06c fix.
 
 ## Target Tests
 
-None — documentation-only task.
+None -- documentation-only task.
 
 ## Implementation
 
@@ -63,7 +63,7 @@ Add an entry under `Unreleased` → `Security`:
 ```markdown
 ### Security
 
-- **V-06c**: Close Cedar INSERT fail-open — row-conditioned
+- **V-06c**: Close Cedar INSERT fail-open -- row-conditioned
   INSERT policies are now evaluated against the proposed row
   data in-process, preventing authorization bypass on DSQL
   deployments where Cedar is the only authorization layer.

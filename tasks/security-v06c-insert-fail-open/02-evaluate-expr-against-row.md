@@ -1,4 +1,4 @@
-# Task 02 — Add evaluateExprAgainstRow Function
+# Task 02 -- Add evaluateExprAgainstRow Function
 
 **Agent:** implementer
 **Design:** docs/design/security-v06c-insert-fail-open.md
@@ -12,7 +12,7 @@ returning `true` or `false`.
 
 ## Target Tests
 
-None from Task 01 directly — this is a foundation for
+None from Task 01 directly -- this is a foundation for
 Tasks 03–04. The unit tests below verify correctness.
 
 ## Implementation
@@ -27,23 +27,23 @@ and `resolveValue` (line 258) helpers. It mirrors
 instead of SQL strings.
 
 Supported expression shapes:
-- `Value` — return the boolean value directly
-- `null` — return `true` (no condition)
-- `is` — return `true` if entity_type is `PgrestLambda::Row`
-- `has` — return `true` if `row[attr]` is not null/undefined
-- `&&` — short-circuit AND
-- `||` — short-circuit OR
-- `!` — logical NOT
-- Comparison operators (`==`, `!=`, `>`, `>=`, `<`, `<=`) —
+- `Value` -- return the boolean value directly
+- `null` -- return `true` (no condition)
+- `is` -- return `true` if entity_type is `PgrestLambda::Row`
+- `has` -- return `true` if `row[attr]` is not null/undefined
+- `&&` -- short-circuit AND
+- `||` -- short-circuit OR
+- `!` -- logical NOT
+- Comparison operators (`==`, `!=`, `>`, `>=`, `<`, `<=`) --
   resolve column from `resolveColumn`, resolve value from
   `resolveValue`. If the row value is null/undefined, return
   `false` (fail-closed). Otherwise apply the JS comparator.
   Check both `(left=col, right=val)` and `(left=val, right=col)`
   orderings, matching how `translateExpr` handles both.
-- `if-then-else` — evaluate the condition, then the
+- `if-then-else` -- evaluate the condition, then the
   appropriate branch
 - Anything else (including `in`, `contains`, `like`, etc.)
-  — return `false` (fail-closed) and log a warning via
+  -- return `false` (fail-closed) and log a warning via
   `console.warn` in non-production mode. The warning should
   include the expression shape for debugging (e.g.,
   `Cedar INSERT authz: untranslatable expression 'in'`)
