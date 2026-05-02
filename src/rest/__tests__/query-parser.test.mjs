@@ -911,3 +911,125 @@ describe('select validation', () => {
     });
   });
 });
+
+describe('embed depth limit', () => {
+  it('depth 1 embed passes with default limit', () => {
+    const result = parseSelectList('id,customers(name)');
+    assert.equal(result.length, 2);
+    assert.deepStrictEqual(result[0], { type: 'column', name: 'id' });
+    assert.equal(result[1].type, 'embed');
+    assert.equal(result[1].name, 'customers');
+    assert.deepStrictEqual(result[1].select, [
+      { type: 'column', name: 'name' },
+    ]);
+  });
+
+  it('depth 2 embed passes with default limit', () => {
+    const result = parseSelectList('id,items(id,products(name))');
+    assert.equal(result.length, 2);
+    assert.deepStrictEqual(result[0], { type: 'column', name: 'id' });
+    const items = result[1];
+    assert.equal(items.type, 'embed');
+    assert.equal(items.name, 'items');
+    const products = items.select[1];
+    assert.equal(products.type, 'embed');
+    assert.equal(products.name, 'products');
+  });
+
+  it('depth 5 embed passes with default limit', () => {
+    const result = parseSelectList('a(b(c(d(e(id)))))');
+    assert.equal(result.length, 1);
+    assert.equal(result[0].type, 'embed');
+    assert.equal(result[0].name, 'a');
+  });
+
+  it('depth 6 embed throws PGRST100 with default limit', () => {
+    assert.throws(
+      () => parseSelectList('a(b(c(d(e(f(id))))))'),
+      (err) => err.code === 'PGRST100'
+        && err.message === 'Embedding depth exceeds maximum of 5',
+      'depth 6 should throw PGRST100',
+    );
+  });
+
+  it('custom maxEmbedDepth=3 allows depth 3', () => {
+    const result = parseSelectList('a(b(c(id)))', 3);
+    assert.equal(result.length, 1);
+    assert.equal(result[0].type, 'embed');
+    assert.equal(result[0].name, 'a');
+  });
+
+  it('custom maxEmbedDepth=3 rejects depth 4', () => {
+    assert.throws(
+      () => parseSelectList('a(b(c(d(id))))', 3),
+      (err) => err.code === 'PGRST100'
+        && err.message === 'Embedding depth exceeds maximum of 3',
+      'depth 4 with limit 3 should throw PGRST100',
+    );
+  });
+
+  it('maxEmbedDepth=1 allows single embed', () => {
+    const result = parseSelectList('id,customers(name)', 1);
+    assert.equal(result.length, 2);
+    assert.equal(result[1].type, 'embed');
+    assert.equal(result[1].name, 'customers');
+  });
+
+  it('maxEmbedDepth=1 rejects nested embed', () => {
+    assert.throws(
+      () => parseSelectList('id,items(id,products(name))', 1),
+      (err) => err.code === 'PGRST100'
+        && err.message === 'Embedding depth exceeds maximum of 1',
+      'depth 2 with limit 1 should throw PGRST100',
+    );
+  });
+
+  it('multiple embeds at same depth pass', () => {
+    const result = parseSelectList('id,customers(name),items(id)');
+    assert.equal(result.length, 3);
+    assert.equal(result[0].type, 'column');
+    assert.equal(result[1].type, 'embed');
+    assert.equal(result[1].name, 'customers');
+    assert.equal(result[2].type, 'embed');
+    assert.equal(result[2].name, 'items');
+  });
+
+  it('depth check does not affect non-embed selects', () => {
+    const result = parseSelectList('id,name,amount');
+    assert.equal(result.length, 3);
+    assert.deepStrictEqual(result, [
+      { type: 'column', name: 'id' },
+      { type: 'column', name: 'name' },
+      { type: 'column', name: 'amount' },
+    ]);
+  });
+
+  describe('parseQuery threading', () => {
+    it('parseQuery passes maxEmbedDepth to parser', () => {
+      assert.throws(
+        () => parseQuery({ select: 'a(b(c(d(id))))' }, 'GET', null, 3),
+        (err) => err.code === 'PGRST100'
+          && err.message === 'Embedding depth exceeds maximum of 3',
+        'parseQuery should forward maxEmbedDepth to parseSelectList',
+      );
+    });
+
+    it('parseQuery default maxEmbedDepth is 5', () => {
+      const result = parseQuery(
+        { select: 'a(b(c(d(e(id)))))' }, 'GET');
+      assert.equal(result.select.length, 1);
+      assert.equal(result.select[0].type, 'embed');
+      assert.equal(result.select[0].name, 'a');
+    });
+
+    it('parseQuery default rejects depth 6', () => {
+      assert.throws(
+        () => parseQuery(
+          { select: 'a(b(c(d(e(f(id))))))' }, 'GET'),
+        (err) => err.code === 'PGRST100'
+          && err.message === 'Embedding depth exceeds maximum of 5',
+        'parseQuery should reject depth 6 with default limit',
+      );
+    });
+  });
+});

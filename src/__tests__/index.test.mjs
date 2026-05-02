@@ -239,3 +239,80 @@ describe('resolveConfig errorsVerbose', () => {
     }
   });
 });
+
+describe('maxEmbedDepth config', () => {
+  const jwtSecret = 'a'.repeat(32);
+  const database = { host: 'localhost' };
+
+  it('defaults to 5 when no config and no env var', () => {
+    const prev = process.env.PGREST_MAX_EMBED_DEPTH;
+    delete process.env.PGREST_MAX_EMBED_DEPTH;
+    try {
+      const pgrest = createPgrest({ jwtSecret, database });
+      assert.equal(pgrest._ctx.maxEmbedDepth, 5,
+        'maxEmbedDepth should default to 5');
+    } finally {
+      if (prev === undefined) {
+        delete process.env.PGREST_MAX_EMBED_DEPTH;
+      } else {
+        process.env.PGREST_MAX_EMBED_DEPTH = prev;
+      }
+    }
+  });
+
+  it('config overrides default', () => {
+    const prev = process.env.PGREST_MAX_EMBED_DEPTH;
+    delete process.env.PGREST_MAX_EMBED_DEPTH;
+    try {
+      const pgrest = createPgrest({
+        jwtSecret,
+        database,
+        maxEmbedDepth: 3,
+      });
+      assert.equal(pgrest._ctx.maxEmbedDepth, 3,
+        'maxEmbedDepth should be 3 from config');
+    } finally {
+      if (prev === undefined) {
+        delete process.env.PGREST_MAX_EMBED_DEPTH;
+      } else {
+        process.env.PGREST_MAX_EMBED_DEPTH = prev;
+      }
+    }
+  });
+
+  it('env var overrides default', () => {
+    const prev = process.env.PGREST_MAX_EMBED_DEPTH;
+    process.env.PGREST_MAX_EMBED_DEPTH = '8';
+    try {
+      const pgrest = createPgrest({ jwtSecret, database });
+      assert.equal(pgrest._ctx.maxEmbedDepth, 8,
+        'maxEmbedDepth should be 8 from env var');
+    } finally {
+      if (prev === undefined) {
+        delete process.env.PGREST_MAX_EMBED_DEPTH;
+      } else {
+        process.env.PGREST_MAX_EMBED_DEPTH = prev;
+      }
+    }
+  });
+
+  it('config wins over env var', () => {
+    const prev = process.env.PGREST_MAX_EMBED_DEPTH;
+    process.env.PGREST_MAX_EMBED_DEPTH = '8';
+    try {
+      const pgrest = createPgrest({
+        jwtSecret,
+        database,
+        maxEmbedDepth: 3,
+      });
+      assert.equal(pgrest._ctx.maxEmbedDepth, 3,
+        'config maxEmbedDepth should override env var');
+    } finally {
+      if (prev === undefined) {
+        delete process.env.PGREST_MAX_EMBED_DEPTH;
+      } else {
+        process.env.PGREST_MAX_EMBED_DEPTH = prev;
+      }
+    }
+  });
+});
