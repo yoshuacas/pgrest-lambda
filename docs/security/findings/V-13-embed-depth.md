@@ -13,11 +13,18 @@ Logical-operator nesting is capped at 10 but resource embedding has no depth lim
 
 **Status: fixed at HEAD.**
 
-- `src/rest/query-parser.mjs:19-90` — `parseSelectList(input)` recurses into `input.slice(parenStart + 1, i - 1)` (line 68-69) with no depth argument. Unbounded.
-- `src/rest/query-parser.mjs:17, 306-311` — `MAX_NESTING_DEPTH = 10` is enforced for logical groups (`parseLogicalGroup`) but not for embeds. Asymmetry.
-- `src/rest/sql-builder.mjs:115-174` — `buildEmbedSubquery` (+ many-to-one / one-to-many variants) builds correlated subqueries whose planner cost grows with depth.
+Prior to the fix:
+- `src/rest/query-parser.mjs` -- `parseSelectList(input)`
+  recursed with no depth argument. Unbounded.
+- `MAX_NESTING_DEPTH = 10` was enforced for logical groups
+  (`parseLogicalGroup`) but not for embeds. Asymmetry.
+- `src/rest/sql-builder.mjs` -- `buildEmbedSubquery` built
+  correlated subqueries whose planner cost grew with depth.
 
-**Fix surface:** add `depth` param to `parseSelectList`, increment on embed recursion (line 69), throw PGRST100 at `depth > maxEmbedDepth`. Default 5; configurable via factory.
+**Fix surface:** added `depth` and `maxEmbedDepth` params
+to `parseSelectList`, increment on embed recursion, throw
+PGRST100 at `depth > maxEmbedDepth`. Default 5;
+configurable via factory.
 
 ## Decision
 
@@ -25,8 +32,9 @@ Fixed. Default `maxEmbedDepth = 5`, configurable via factory.
 
 ## Evidence
 
-Commit `0e7d775` — adds `depth` parameter to `parseSelectList`
-with a default limit of 5, throwing PGRST100 on overflow.
+Branch `fix/v13-embed-depth` -- adds `depth` parameter to
+`parseSelectList` with a default limit of 5, throwing
+PGRST100 on overflow.
 
 ## Residual risk
 
