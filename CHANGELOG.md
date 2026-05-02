@@ -8,6 +8,13 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
 
 ## Unreleased
 
+### Security
+
+- **V-06c**: Close Cedar INSERT fail-open -- row-conditioned
+  INSERT policies are now evaluated against the proposed row
+  data in-process, preventing authorization bypass on DSQL
+  deployments where Cedar is the only authorization layer.
+
 ## 0.1.1 — 2026-05-01
 
 ### Security

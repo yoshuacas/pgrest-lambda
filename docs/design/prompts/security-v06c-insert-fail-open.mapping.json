@@ -1,0 +1,6 @@
+{
+  "prompt": "docs/design/prompts/security-v06c-insert-fail-open.md",
+  "designs": [
+    "docs/design/security-v06c-insert-fail-open.md"
+  ]
+}

@@ -7,6 +7,7 @@ import {
   translateExpr,
   createCedar,
   parsePolicySource,
+  evaluateExprAgainstRow,
 } from '../cedar.mjs';
 
 // Helper: create a cedar instance with test defaults
@@ -43,6 +44,29 @@ const schema = {
         id: { type: 'text', nullable: false, defaultValue: null },
         title: { type: 'text', nullable: true, defaultValue: null },
         body: { type: 'text', nullable: true, defaultValue: null },
+      },
+      primaryKey: ['id'],
+    },
+    posts: {
+      columns: {
+        id: { type: 'text', nullable: false, defaultValue: null },
+        title: { type: 'text', nullable: true, defaultValue: null },
+      },
+      primaryKey: ['id'],
+    },
+    orders: {
+      columns: {
+        id: { type: 'text', nullable: false, defaultValue: null },
+        owner_id: { type: 'text', nullable: false, defaultValue: null },
+        amount: { type: 'integer', nullable: true, defaultValue: null },
+      },
+      primaryKey: ['id'],
+    },
+    items: {
+      columns: {
+        id: { type: 'text', nullable: false, defaultValue: null },
+        name: { type: 'text', nullable: true, defaultValue: null },
+        restricted: { type: 'boolean', nullable: true, defaultValue: null },
       },
       primaryKey: ['id'],
     },
@@ -86,6 +110,15 @@ permit(
 ) when {
     context.table == "public_posts"
 };
+`;
+
+const PUBLIC_POSTS_TABLE_POLICY = `${DEFAULT_POLICIES}
+
+permit(
+    principal,
+    action == PgrestLambda::Action::"select",
+    resource == PgrestLambda::Table::"public_posts"
+);
 `;
 
 const FORBID_DELETE_ARCHIVED_POLICY = `${DEFAULT_POLICIES}
@@ -706,13 +739,11 @@ describe('policy loading', () => {
     );
     const cedar = makeCedar({ policiesPath: tempDir });
     await cedar.loadPolicies();
-    // Write updated policy that grants anon access to public_posts
     await writeFile(
       join(tempDir, 'default.cedar'),
-      PUBLIC_POSTS_POLICY,
+      PUBLIC_POSTS_TABLE_POLICY,
     );
     await cedar.refreshPolicies();
-    // After refresh, anon should be allowed on public_posts
     assert.doesNotThrow(
       () => cedar.authorize({
         principal: { role: 'anon', userId: '', email: '' },
@@ -726,7 +757,7 @@ describe('policy loading', () => {
 
   it('_setPolicies replaces compiled policies', () => {
     const cedar = makeCedar();
-    cedar._setPolicies({ staticPolicies: PUBLIC_POSTS_POLICY });
+    cedar._setPolicies({ staticPolicies: PUBLIC_POSTS_TABLE_POLICY });
     assert.doesNotThrow(
       () => cedar.authorize({
         principal: { role: 'anon', userId: '', email: '' },
@@ -800,16 +831,16 @@ describe('authorize (table-level)', () => {
     );
   });
 
-  it('custom policy allows anon select on specific table', () => {
+  it('row-level policy produces residuals — authorize() denies (fail-closed)', () => {
     cedar._setPolicies({ staticPolicies: PUBLIC_POSTS_POLICY });
-    assert.doesNotThrow(
+    assert.throws(
       () => cedar.authorize({
         principal: { role: 'anon', userId: '', email: '' },
         action: 'select',
         resource: 'public_posts',
         schema,
       }),
-      'custom policy should allow anon select on public_posts',
+      (err) => err.code === 'PGRST403',
     );
   });
 });
@@ -938,6 +969,461 @@ describe('buildAuthzFilter (row-level)', () => {
       'should contain parameter placeholders');
     assert.ok(parseInt(paramMatch[1], 10) >= 5,
       'parameter numbers should start at 5 or higher');
+  });
+});
+
+// ================================================================
+// evaluateExprAgainstRow -- in-process residual evaluation
+// ================================================================
+
+describe('evaluateExprAgainstRow', () => {
+  function res(attr) {
+    return { '.': { left: { Var: 'resource' }, attr } };
+  }
+  function val(v) {
+    return { Value: v };
+  }
+
+  it('Value true returns true', () => {
+    assert.equal(evaluateExprAgainstRow({ Value: true }, {}, null), true);
+  });
+
+  it('Value false returns false', () => {
+    assert.equal(evaluateExprAgainstRow({ Value: false }, {}, null), false);
+  });
+
+  it('null expression returns true', () => {
+    assert.equal(evaluateExprAgainstRow(null, {}, null), true);
+  });
+
+  it('is PgrestLambda::Row returns true', () => {
+    assert.equal(
+      evaluateExprAgainstRow(
+        { is: { entity_type: 'PgrestLambda::Row' } }, {}, null,
+      ),
+      true,
+    );
+  });
+
+  it('is PgrestLambda::Table returns false', () => {
+    assert.equal(
+      evaluateExprAgainstRow(
+        { is: { entity_type: 'PgrestLambda::Table' } }, {}, null,
+      ),
+      false,
+    );
+  });
+
+  it('has attr present returns true', () => {
+    assert.equal(
+      evaluateExprAgainstRow({ has: { attr: 'x' } }, { x: 1 }, null),
+      true,
+    );
+  });
+
+  it('has attr missing returns false', () => {
+    assert.equal(
+      evaluateExprAgainstRow({ has: { attr: 'x' } }, { y: 1 }, null),
+      false,
+    );
+  });
+
+  it('has attr null returns false', () => {
+    assert.equal(
+      evaluateExprAgainstRow({ has: { attr: 'x' } }, { x: null }, null),
+      false,
+    );
+  });
+
+  it('== match returns true', () => {
+    assert.equal(
+      evaluateExprAgainstRow(
+        { '==': { left: res('a'), right: val(5) } }, { a: 5 }, null,
+      ),
+      true,
+    );
+  });
+
+  it('== mismatch returns false', () => {
+    assert.equal(
+      evaluateExprAgainstRow(
+        { '==': { left: res('a'), right: val(5) } }, { a: 6 }, null,
+      ),
+      false,
+    );
+  });
+
+  it('== missing column returns false', () => {
+    assert.equal(
+      evaluateExprAgainstRow(
+        { '==': { left: res('a'), right: val('x') } }, {}, null,
+      ),
+      false,
+    );
+  });
+
+  it('!= returns true on mismatch', () => {
+    assert.equal(
+      evaluateExprAgainstRow(
+        { '!=': { left: res('a'), right: val(5) } }, { a: 6 }, null,
+      ),
+      true,
+    );
+  });
+
+  it('> returns true when greater', () => {
+    assert.equal(
+      evaluateExprAgainstRow(
+        { '>': { left: res('a'), right: val(5) } }, { a: 6 }, null,
+      ),
+      true,
+    );
+  });
+
+  it('> returns false when equal', () => {
+    assert.equal(
+      evaluateExprAgainstRow(
+        { '>': { left: res('a'), right: val(5) } }, { a: 5 }, null,
+      ),
+      false,
+    );
+  });
+
+  it('>= returns true when equal', () => {
+    assert.equal(
+      evaluateExprAgainstRow(
+        { '>=': { left: res('a'), right: val(5) } }, { a: 5 }, null,
+      ),
+      true,
+    );
+  });
+
+  it('< returns true when less', () => {
+    assert.equal(
+      evaluateExprAgainstRow(
+        { '<': { left: res('a'), right: val(5) } }, { a: 4 }, null,
+      ),
+      true,
+    );
+  });
+
+  it('<= returns true when equal', () => {
+    assert.equal(
+      evaluateExprAgainstRow(
+        { '<=': { left: res('a'), right: val(5) } }, { a: 5 }, null,
+      ),
+      true,
+    );
+  });
+
+  it('&& true+true returns true', () => {
+    assert.equal(
+      evaluateExprAgainstRow(
+        { '&&': { left: val(true), right: val(true) } }, {}, null,
+      ),
+      true,
+    );
+  });
+
+  it('&& true+false returns false', () => {
+    assert.equal(
+      evaluateExprAgainstRow(
+        { '&&': { left: val(true), right: val(false) } }, {}, null,
+      ),
+      false,
+    );
+  });
+
+  it('|| false+true returns true', () => {
+    assert.equal(
+      evaluateExprAgainstRow(
+        { '||': { left: val(false), right: val(true) } }, {}, null,
+      ),
+      true,
+    );
+  });
+
+  it('|| false+false returns false', () => {
+    assert.equal(
+      evaluateExprAgainstRow(
+        { '||': { left: val(false), right: val(false) } }, {}, null,
+      ),
+      false,
+    );
+  });
+
+  it('! true returns false', () => {
+    assert.equal(
+      evaluateExprAgainstRow({ '!': { arg: val(true) } }, {}, null),
+      false,
+    );
+  });
+
+  it('! false returns true', () => {
+    assert.equal(
+      evaluateExprAgainstRow({ '!': { arg: val(false) } }, {}, null),
+      true,
+    );
+  });
+
+  it('if-then-else true branch', () => {
+    assert.equal(
+      evaluateExprAgainstRow(
+        { 'if-then-else': {
+          if: val(true), then: val(true), else: val(false),
+        } },
+        {}, null,
+      ),
+      true,
+    );
+  });
+
+  it('if-then-else false branch', () => {
+    assert.equal(
+      evaluateExprAgainstRow(
+        { 'if-then-else': {
+          if: val(false), then: val(true), else: val(false),
+        } },
+        {}, null,
+      ),
+      false,
+    );
+  });
+
+  it('untranslatable expression (in) returns false', () => {
+    assert.equal(
+      evaluateExprAgainstRow({ in: {} }, {}, null),
+      false,
+    );
+  });
+
+  it('entity UID match returns true', () => {
+    assert.equal(
+      evaluateExprAgainstRow(
+        { '==': {
+          left: res('owner_id'),
+          right: { Value: {
+            __entity: { type: 'PgrestLambda::User', id: 'u1' },
+          } },
+        } },
+        { owner_id: 'u1' }, null,
+      ),
+      true,
+    );
+  });
+
+  it('entity UID mismatch returns false', () => {
+    assert.equal(
+      evaluateExprAgainstRow(
+        { '==': {
+          left: res('owner_id'),
+          right: { Value: {
+            __entity: { type: 'PgrestLambda::User', id: 'u1' },
+          } },
+        } },
+        { owner_id: 'u2' }, null,
+      ),
+      false,
+    );
+  });
+});
+
+// ================================================================
+// authorizeInsert — INSERT authorization with residual evaluation
+// ================================================================
+
+const UNCONDITIONAL_INSERT_POLICY = `
+permit(
+    principal is PgrestLambda::User,
+    action == PgrestLambda::Action::"insert",
+    resource == PgrestLambda::Table::"posts"
+);
+permit(
+    principal is PgrestLambda::ServiceRole,
+    action, resource
+);
+`;
+
+const OWNER_CONDITIONED_INSERT_POLICY = `
+permit(
+    principal is PgrestLambda::User,
+    action == PgrestLambda::Action::"insert",
+    resource is PgrestLambda::Row
+) when {
+    context.table == "orders"
+    && resource.owner_id == principal
+};
+permit(
+    principal is PgrestLambda::ServiceRole,
+    action, resource
+);
+`;
+
+const TABLE_PERMIT_ROW_FORBID_POLICY = `
+permit(
+    principal is PgrestLambda::User,
+    action == PgrestLambda::Action::"insert",
+    resource == PgrestLambda::Table::"items"
+);
+forbid(
+    principal,
+    action == PgrestLambda::Action::"insert",
+    resource is PgrestLambda::Row
+) when {
+    context.table == "items"
+    && resource.restricted == true
+};
+`;
+
+describe('authorizeInsert', () => {
+  it('decided allow — unconditional table permit', () => {
+    const cedar = makeCedar();
+    cedar._setPolicies({
+      staticPolicies: UNCONDITIONAL_INSERT_POLICY,
+    });
+    const result = cedar.authorizeInsert({
+      principal: {
+        role: 'authenticated',
+        userId: 'user-A',
+        email: 'a@test.com',
+      },
+      resource: 'posts',
+      schema,
+      rows: [{ title: 'Hello' }],
+    });
+    assert.equal(result, true);
+  });
+
+  it('residual evaluated — matching row', () => {
+    const cedar = makeCedar();
+    cedar._setPolicies({
+      staticPolicies: OWNER_CONDITIONED_INSERT_POLICY,
+    });
+    const result = cedar.authorizeInsert({
+      principal: {
+        role: 'authenticated',
+        userId: 'user-A',
+        email: 'a@test.com',
+      },
+      resource: 'orders',
+      schema,
+      rows: [{ owner_id: 'user-A' }],
+    });
+    assert.equal(result, true);
+  });
+
+  it('residual evaluated — non-matching row', () => {
+    const cedar = makeCedar();
+    cedar._setPolicies({
+      staticPolicies: OWNER_CONDITIONED_INSERT_POLICY,
+    });
+    assert.throws(
+      () => cedar.authorizeInsert({
+        principal: {
+          role: 'authenticated',
+          userId: 'user-A',
+          email: 'a@test.com',
+        },
+        resource: 'orders',
+        schema,
+        rows: [{ owner_id: 'user-B' }],
+      }),
+      (err) => err.code === 'PGRST403',
+    );
+  });
+
+  it('bulk: all rows match', () => {
+    const cedar = makeCedar();
+    cedar._setPolicies({
+      staticPolicies: OWNER_CONDITIONED_INSERT_POLICY,
+    });
+    const result = cedar.authorizeInsert({
+      principal: {
+        role: 'authenticated',
+        userId: 'user-A',
+        email: 'a@test.com',
+      },
+      resource: 'orders',
+      schema,
+      rows: [{ owner_id: 'user-A' }, { owner_id: 'user-A' }],
+    });
+    assert.equal(result, true);
+  });
+
+  it('bulk: one row fails — includes row index in details', () => {
+    const cedar = makeCedar();
+    cedar._setPolicies({
+      staticPolicies: OWNER_CONDITIONED_INSERT_POLICY,
+    });
+    assert.throws(
+      () => cedar.authorizeInsert({
+        principal: {
+          role: 'authenticated',
+          userId: 'user-A',
+          email: 'a@test.com',
+        },
+        resource: 'orders',
+        schema,
+        rows: [{ owner_id: 'user-A' }, { owner_id: 'user-B' }],
+      }),
+      (err) => err.code === 'PGRST403'
+        && err.details && err.details.includes('Row 1'),
+    );
+  });
+
+  it('no policies loaded — throws PGRST403', () => {
+    const cedar = makeCedar();
+    assert.throws(
+      () => cedar.authorizeInsert({
+        principal: {
+          role: 'authenticated',
+          userId: 'user-A',
+          email: 'a@test.com',
+        },
+        resource: 'orders',
+        schema,
+        rows: [{ owner_id: 'user-A' }],
+      }),
+      (err) => err.code === 'PGRST403',
+    );
+  });
+
+  it('forbid residual fires — restricted=true denied', () => {
+    const cedar = makeCedar();
+    cedar._setPolicies({
+      staticPolicies: TABLE_PERMIT_ROW_FORBID_POLICY,
+    });
+    assert.throws(
+      () => cedar.authorizeInsert({
+        principal: {
+          role: 'authenticated',
+          userId: 'user-A',
+          email: 'a@test.com',
+        },
+        resource: 'items',
+        schema,
+        rows: [{ restricted: true }],
+      }),
+      (err) => err.code === 'PGRST403',
+    );
+  });
+
+  it('forbid residual does not fire — restricted=false allowed', () => {
+    const cedar = makeCedar();
+    cedar._setPolicies({
+      staticPolicies: TABLE_PERMIT_ROW_FORBID_POLICY,
+    });
+    const result = cedar.authorizeInsert({
+      principal: {
+        role: 'authenticated',
+        userId: 'user-A',
+        email: 'a@test.com',
+      },
+      resource: 'items',
+      schema,
+      rows: [{ restricted: false }],
+    });
+    assert.equal(result, true);
   });
 });
 
