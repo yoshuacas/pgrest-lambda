@@ -1004,6 +1004,47 @@ describe('embed depth limit', () => {
     ]);
   });
 
+  it('maxEmbedDepth=0 rejects all embeds', () => {
+    assert.throws(
+      () => parseSelectList('id,customers(name)', 0),
+      (err) => err.code === 'PGRST100'
+        && err.message === 'Embedding depth exceeds maximum of 0',
+      'any embed should be rejected with limit 0',
+    );
+  });
+
+  it('maxEmbedDepth=0 allows flat selects', () => {
+    const result = parseSelectList('id,name', 0);
+    assert.equal(result.length, 2);
+    assert.deepStrictEqual(result[0], { type: 'column', name: 'id' });
+    assert.deepStrictEqual(result[1], { type: 'column', name: 'name' });
+  });
+
+  it('maxEmbedDepth=2 allows depth-2 nesting', () => {
+    const result = parseSelectList('a(b(id))', 2);
+    assert.equal(result.length, 1);
+    assert.equal(result[0].type, 'embed');
+    assert.equal(result[0].name, 'a');
+  });
+
+  it('maxEmbedDepth=2 rejects depth-3 nesting', () => {
+    assert.throws(
+      () => parseSelectList('a(b(c(id)))', 2),
+      (err) => err.code === 'PGRST100'
+        && err.message === 'Embedding depth exceeds maximum of 2',
+      'depth 3 with limit 2 should throw PGRST100',
+    );
+  });
+
+  it('negative maxEmbedDepth rejects all embeds', () => {
+    assert.throws(
+      () => parseSelectList('id,customers(name)', -1),
+      (err) => err.code === 'PGRST100'
+        && err.message === 'Embedding depth exceeds maximum of -1',
+      'any embed should be rejected with negative limit',
+    );
+  });
+
   it('NaN maxEmbedDepth does not bypass limit', () => {
     assert.throws(
       () => parseSelectList(
