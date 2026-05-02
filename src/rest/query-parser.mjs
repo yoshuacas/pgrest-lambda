@@ -47,8 +47,10 @@ function parseCast(column) {
 }
 
 const MAX_NESTING_DEPTH = 10;
+const DEFAULT_MAX_EMBED_DEPTH = 5;
 
-export function parseSelectList(input) {
+export function parseSelectList(
+    input, maxEmbedDepth = DEFAULT_MAX_EMBED_DEPTH, depth = 0) {
   const nodes = [];
   let i = 0;
   const len = input.length;
@@ -60,22 +62,22 @@ export function parseSelectList(input) {
 
     // Scan token up to ',' or '(' at depth 0
     let tokenStart = i;
-    let depth = 0;
+    let parenDepth = 0;
     let parenStart = -1;
 
     while (i < len) {
       const ch = input[i];
-      if (depth === 0 && ch === ',') break;
+      if (parenDepth === 0 && ch === ',') break;
       if (ch === '(') {
-        if (depth === 0) parenStart = i;
-        depth++;
+        if (parenDepth === 0) parenStart = i;
+        parenDepth++;
       } else if (ch === ')') {
-        if (depth === 0) {
+        if (parenDepth === 0) {
           throw new PostgRESTError(400, 'PGRST100',
             'Unbalanced parentheses in select parameter');
         }
-        depth--;
-        if (depth === 0) {
+        parenDepth--;
+        if (parenDepth === 0) {
           i++; // move past closing ')'
           break;
         }
@@ -83,7 +85,7 @@ export function parseSelectList(input) {
       i++;
     }
 
-    if (depth > 0) {
+    if (parenDepth > 0) {
       throw new PostgRESTError(400, 'PGRST100',
         'Unbalanced parentheses in select parameter');
     }
@@ -130,7 +132,12 @@ export function parseSelectList(input) {
       // Embed token: text before '(' is the embed descriptor
       const embedToken = input.slice(tokenStart, parenStart).trim();
       const innerContent = input.slice(parenStart + 1, i - 1);
-      const childNodes = parseSelectList(innerContent);
+      if (depth + 1 > maxEmbedDepth) {
+        throw new PostgRESTError(400, 'PGRST100',
+          `Embedding depth exceeds maximum of ${maxEmbedDepth}`);
+      }
+      const childNodes = parseSelectList(
+        innerContent, maxEmbedDepth, depth + 1);
       const embed = parseEmbedToken(embedToken);
       if (childNodes.length === 0) {
         throw new PostgRESTError(400, 'PGRST100',
@@ -264,11 +271,13 @@ function parseEmbedToken(token) {
   return { name, alias, hint, inner };
 }
 
-export function parseQuery(params, method, multiValueParams) {
+export function parseQuery(
+    params, method, multiValueParams,
+    maxEmbedDepth = DEFAULT_MAX_EMBED_DEPTH) {
   params = params || {};
 
   const select = params.select
-    ? parseSelectList(params.select)
+    ? parseSelectList(params.select, maxEmbedDepth)
     : [{ type: 'column', name: '*' }];
 
   const embedMap = buildEmbedAliasMap(select);
