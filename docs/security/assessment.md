@@ -44,7 +44,7 @@ Rule: when a finding's fix relies on a capability not present on all supported b
 | [V-10](findings/V-10-openapi-exposes-schema.md) | Medium | OpenAPI exposes full schema to anon | Open | Confirmed; no role check |
 | [V-11](findings/V-11-refresh-no-authz.md) | Medium | `/_refresh` has no authz check | Open | Confirmed at HEAD |
 | [V-12](findings/V-12-auth-no-rate-limit.md) | Medium | No rate limiting on auth endpoints | Open | Infra-layer fix |
-| [V-13](findings/V-13-embed-depth.md) | Medium | Unbounded resource embedding depth | Open | Confirmed; no depth arg |
+| [V-13](findings/V-13-embed-depth.md) | Medium | Unbounded resource embedding depth | Fixed | Depth limit added to parseSelectList |
 | [V-14](findings/V-14-order-direction.md) | Medium | Order direction not validated | Fixed | Allowlist validation in `parseOrder()`; SQL injection path closed |
 | [V-15](findings/V-15-schema-cache-race.md) | Low | Schema cache TOCTOU race | Open | Confirmed; TTL now 30s |
 | [V-16](findings/V-16-cedar-observability.md) | Low | No Cedar authz logging | Open | Pairs with V-23 |

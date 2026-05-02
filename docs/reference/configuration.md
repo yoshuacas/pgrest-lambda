@@ -17,6 +17,7 @@ For production secret management patterns (SSM, Secrets Manager, rotation), see 
 | `database.dsqlEndpoint` | `DSQL_ENDPOINT` | no | — | Switch to Aurora DSQL with IAM auth. |
 | `jwtSecret` | `JWT_SECRET` | yes | generated on first `dev` run | HS256 secret for apikey JWTs. Must be ≥ 32 chars. |
 | `production` | — | no | `false` (for `dev`), `true` (when embedded) | When `true`, suppresses verbose error detail and disallows `cors.allowedOrigins: '*'`. |
+| `maxEmbedDepth` | `PGREST_MAX_EMBED_DEPTH` | no | `5` | Maximum embed nesting depth in select parameters. |
 
 ## Auth
 
