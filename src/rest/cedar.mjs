@@ -451,6 +451,41 @@ export function evaluateExprAgainstRow(expr, row, principal) {
   return false;
 }
 
+function evaluateResiduals(
+  response, row, principalUid, tablePermitGranted,
+) {
+  let anyPermitGranted = tablePermitGranted;
+
+  if (response.decision === 'allow') {
+    anyPermitGranted = true;
+  }
+
+  for (const policyId of response.nontrivialResiduals) {
+    const residual = response.residuals[policyId];
+    const effect = residual.effect;
+
+    let allCondsMet = true;
+    for (const cond of residual.conditions || []) {
+      if (cond.kind !== 'when') continue;
+      if (!evaluateExprAgainstRow(
+        cond.body, row, principalUid,
+      )) {
+        allCondsMet = false;
+        break;
+      }
+    }
+
+    if (allCondsMet && effect === 'forbid') {
+      return false;
+    }
+    if (allCondsMet && effect === 'permit') {
+      anyPermitGranted = true;
+    }
+  }
+
+  return anyPermitGranted;
+}
+
 // --- Factory ---
 
 export function createCedar(config) {
@@ -574,6 +609,102 @@ export function createCedar(config) {
     );
   }
 
+  function authorizeInsert({
+    principal, resource, schema, rows,
+  }) {
+    if (!cachedPolicies) {
+      throw new PostgRESTError(
+        403, 'PGRST403',
+        denyMessage(principal, 'insert', resource),
+      );
+    }
+
+    const principalUid = buildPrincipalUid(
+      principal.role, principal.userId);
+    const entities = buildEntities(
+      principalUid, principal, schema);
+    const actionUid = {
+      type: 'PgrestLambda::Action', id: 'insert',
+    };
+    const resourceUid = {
+      type: 'PgrestLambda::Table', id: resource,
+    };
+
+    const tableResult = isAuthorized({
+      principal: principalUid,
+      action: actionUid,
+      resource: resourceUid,
+      context: {
+        table: resource, resource_type: 'Table',
+      },
+      policies: cachedPolicies,
+      entities,
+    });
+
+    const tablePermitGranted =
+      tableResult.type === 'success'
+      && tableResult.response.decision === 'allow';
+
+    const partial = isAuthorizedPartial({
+      principal: principalUid,
+      action: actionUid,
+      resource: null,
+      context: {
+        table: resource, resource_type: 'Table',
+      },
+      policies: cachedPolicies,
+      entities,
+    });
+
+    if (partial.type !== 'residuals') {
+      if (tablePermitGranted) return true;
+      throw new PostgRESTError(
+        403, 'PGRST403',
+        denyMessage(principal, 'insert', resource),
+      );
+    }
+
+    const resp = partial.response;
+
+    if (resp.nontrivialResiduals.length === 0) {
+      if (tablePermitGranted
+          || resp.decision === 'allow') {
+        return true;
+      }
+      throw new PostgRESTError(
+        403, 'PGRST403',
+        denyMessage(principal, 'insert', resource),
+      );
+    }
+
+    if (resp.decision === 'deny'
+        && !tablePermitGranted) {
+      throw new PostgRESTError(
+        403, 'PGRST403',
+        denyMessage(principal, 'insert', resource),
+      );
+    }
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      if (!evaluateResiduals(
+        resp, row, principalUid, tablePermitGranted,
+      )) {
+        const detail = rows.length > 1
+          ? `Row ${i} of the batch violates the`
+            + ` insert policy`
+          : null;
+        throw new PostgRESTError(
+          403, 'PGRST403',
+          denyMessage(principal, 'insert', resource),
+          detail,
+        );
+      }
+    }
+
+    return true;
+  }
+
   function buildAuthzFilter({
     principal, action, context, schema, startParam,
   }) {
@@ -690,6 +821,7 @@ export function createCedar(config) {
     refreshPolicies,
     _setPolicies,
     authorize,
+    authorizeInsert,
     buildAuthzFilter,
     generateCedarSchema,
   };
