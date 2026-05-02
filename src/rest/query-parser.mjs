@@ -47,7 +47,7 @@ function parseCast(column) {
 }
 
 const MAX_NESTING_DEPTH = 10;
-const DEFAULT_MAX_EMBED_DEPTH = 5;
+export const DEFAULT_MAX_EMBED_DEPTH = 5;
 
 export function parseSelectList(
     input, maxEmbedDepth = DEFAULT_MAX_EMBED_DEPTH, depth = 0) {

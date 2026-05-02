@@ -4,6 +4,7 @@ import { createDb } from './rest/db/index.mjs';
 import { createSchemaCache } from './rest/schema-cache.mjs';
 import { createCedar } from './rest/cedar.mjs';
 import { createRestHandler } from './rest/handler.mjs';
+import { DEFAULT_MAX_EMBED_DEPTH } from './rest/query-parser.mjs';
 import { createAuthHandler } from './auth/handler.mjs';
 import { createJwt, assertJwtSecret } from './auth/jwt.mjs';
 import { assertCorsConfig } from './shared/cors.mjs';
@@ -114,7 +115,7 @@ function resolveConfig(config) {
       ?? (process.env.PGREST_ERRORS_VERBOSE === 'true'),
     maxEmbedDepth: config.maxEmbedDepth
       ?? parseIntOrDefault(
-        process.env.PGREST_MAX_EMBED_DEPTH, 5),
+        process.env.PGREST_MAX_EMBED_DEPTH, DEFAULT_MAX_EMBED_DEPTH),
   };
 }
 
