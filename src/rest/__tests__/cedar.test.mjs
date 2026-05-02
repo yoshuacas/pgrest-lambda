@@ -7,6 +7,7 @@ import {
   translateExpr,
   createCedar,
   parsePolicySource,
+  evaluateExprAgainstRow,
 } from '../cedar.mjs';
 
 // Helper: create a cedar instance with test defaults
@@ -938,6 +939,262 @@ describe('buildAuthzFilter (row-level)', () => {
       'should contain parameter placeholders');
     assert.ok(parseInt(paramMatch[1], 10) >= 5,
       'parameter numbers should start at 5 or higher');
+  });
+});
+
+// ================================================================
+// evaluateExprAgainstRow -- in-process residual evaluation
+// ================================================================
+
+describe('evaluateExprAgainstRow', () => {
+  function res(attr) {
+    return { '.': { left: { Var: 'resource' }, attr } };
+  }
+  function val(v) {
+    return { Value: v };
+  }
+
+  it('Value true returns true', () => {
+    assert.equal(evaluateExprAgainstRow({ Value: true }, {}, null), true);
+  });
+
+  it('Value false returns false', () => {
+    assert.equal(evaluateExprAgainstRow({ Value: false }, {}, null), false);
+  });
+
+  it('null expression returns true', () => {
+    assert.equal(evaluateExprAgainstRow(null, {}, null), true);
+  });
+
+  it('is PgrestLambda::Row returns true', () => {
+    assert.equal(
+      evaluateExprAgainstRow(
+        { is: { entity_type: 'PgrestLambda::Row' } }, {}, null,
+      ),
+      true,
+    );
+  });
+
+  it('is PgrestLambda::Table returns false', () => {
+    assert.equal(
+      evaluateExprAgainstRow(
+        { is: { entity_type: 'PgrestLambda::Table' } }, {}, null,
+      ),
+      false,
+    );
+  });
+
+  it('has attr present returns true', () => {
+    assert.equal(
+      evaluateExprAgainstRow({ has: { attr: 'x' } }, { x: 1 }, null),
+      true,
+    );
+  });
+
+  it('has attr missing returns false', () => {
+    assert.equal(
+      evaluateExprAgainstRow({ has: { attr: 'x' } }, { y: 1 }, null),
+      false,
+    );
+  });
+
+  it('has attr null returns false', () => {
+    assert.equal(
+      evaluateExprAgainstRow({ has: { attr: 'x' } }, { x: null }, null),
+      false,
+    );
+  });
+
+  it('== match returns true', () => {
+    assert.equal(
+      evaluateExprAgainstRow(
+        { '==': { left: res('a'), right: val(5) } }, { a: 5 }, null,
+      ),
+      true,
+    );
+  });
+
+  it('== mismatch returns false', () => {
+    assert.equal(
+      evaluateExprAgainstRow(
+        { '==': { left: res('a'), right: val(5) } }, { a: 6 }, null,
+      ),
+      false,
+    );
+  });
+
+  it('== missing column returns false', () => {
+    assert.equal(
+      evaluateExprAgainstRow(
+        { '==': { left: res('a'), right: val('x') } }, {}, null,
+      ),
+      false,
+    );
+  });
+
+  it('!= returns true on mismatch', () => {
+    assert.equal(
+      evaluateExprAgainstRow(
+        { '!=': { left: res('a'), right: val(5) } }, { a: 6 }, null,
+      ),
+      true,
+    );
+  });
+
+  it('> returns true when greater', () => {
+    assert.equal(
+      evaluateExprAgainstRow(
+        { '>': { left: res('a'), right: val(5) } }, { a: 6 }, null,
+      ),
+      true,
+    );
+  });
+
+  it('> returns false when equal', () => {
+    assert.equal(
+      evaluateExprAgainstRow(
+        { '>': { left: res('a'), right: val(5) } }, { a: 5 }, null,
+      ),
+      false,
+    );
+  });
+
+  it('>= returns true when equal', () => {
+    assert.equal(
+      evaluateExprAgainstRow(
+        { '>=': { left: res('a'), right: val(5) } }, { a: 5 }, null,
+      ),
+      true,
+    );
+  });
+
+  it('< returns true when less', () => {
+    assert.equal(
+      evaluateExprAgainstRow(
+        { '<': { left: res('a'), right: val(5) } }, { a: 4 }, null,
+      ),
+      true,
+    );
+  });
+
+  it('<= returns true when equal', () => {
+    assert.equal(
+      evaluateExprAgainstRow(
+        { '<=': { left: res('a'), right: val(5) } }, { a: 5 }, null,
+      ),
+      true,
+    );
+  });
+
+  it('&& true+true returns true', () => {
+    assert.equal(
+      evaluateExprAgainstRow(
+        { '&&': { left: val(true), right: val(true) } }, {}, null,
+      ),
+      true,
+    );
+  });
+
+  it('&& true+false returns false', () => {
+    assert.equal(
+      evaluateExprAgainstRow(
+        { '&&': { left: val(true), right: val(false) } }, {}, null,
+      ),
+      false,
+    );
+  });
+
+  it('|| false+true returns true', () => {
+    assert.equal(
+      evaluateExprAgainstRow(
+        { '||': { left: val(false), right: val(true) } }, {}, null,
+      ),
+      true,
+    );
+  });
+
+  it('|| false+false returns false', () => {
+    assert.equal(
+      evaluateExprAgainstRow(
+        { '||': { left: val(false), right: val(false) } }, {}, null,
+      ),
+      false,
+    );
+  });
+
+  it('! true returns false', () => {
+    assert.equal(
+      evaluateExprAgainstRow({ '!': { arg: val(true) } }, {}, null),
+      false,
+    );
+  });
+
+  it('! false returns true', () => {
+    assert.equal(
+      evaluateExprAgainstRow({ '!': { arg: val(false) } }, {}, null),
+      true,
+    );
+  });
+
+  it('if-then-else true branch', () => {
+    assert.equal(
+      evaluateExprAgainstRow(
+        { 'if-then-else': {
+          if: val(true), then: val(true), else: val(false),
+        } },
+        {}, null,
+      ),
+      true,
+    );
+  });
+
+  it('if-then-else false branch', () => {
+    assert.equal(
+      evaluateExprAgainstRow(
+        { 'if-then-else': {
+          if: val(false), then: val(true), else: val(false),
+        } },
+        {}, null,
+      ),
+      false,
+    );
+  });
+
+  it('untranslatable expression (in) returns false', () => {
+    assert.equal(
+      evaluateExprAgainstRow({ in: {} }, {}, null),
+      false,
+    );
+  });
+
+  it('entity UID match returns true', () => {
+    assert.equal(
+      evaluateExprAgainstRow(
+        { '==': {
+          left: res('owner_id'),
+          right: { Value: {
+            __entity: { type: 'PgrestLambda::User', id: 'u1' },
+          } },
+        } },
+        { owner_id: 'u1' }, null,
+      ),
+      true,
+    );
+  });
+
+  it('entity UID mismatch returns false', () => {
+    assert.equal(
+      evaluateExprAgainstRow(
+        { '==': {
+          left: res('owner_id'),
+          right: { Value: {
+            __entity: { type: 'PgrestLambda::User', id: 'u1' },
+          } },
+        } },
+        { owner_id: 'u2' }, null,
+      ),
+      false,
+    );
   });
 });
 

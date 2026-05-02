@@ -373,6 +373,84 @@ export function translateExpr(expr, values, tableName, schema) {
   );
 }
 
+// --- In-process residual evaluation for INSERT authz ---
+
+export function evaluateExprAgainstRow(expr, row, principal) {
+  if (expr == null) return true;
+
+  if ('Value' in expr) {
+    return expr.Value === true;
+  }
+
+  if ('is' in expr) {
+    return expr.is.entity_type === 'PgrestLambda::Row';
+  }
+
+  if ('has' in expr) {
+    const attr = expr.has.attr;
+    return row[attr] !== undefined && row[attr] !== null;
+  }
+
+  if ('&&' in expr) {
+    return evaluateExprAgainstRow(expr['&&'].left, row, principal)
+        && evaluateExprAgainstRow(expr['&&'].right, row, principal);
+  }
+
+  if ('||' in expr) {
+    return evaluateExprAgainstRow(expr['||'].left, row, principal)
+        || evaluateExprAgainstRow(expr['||'].right, row, principal);
+  }
+
+  if ('!' in expr) {
+    return !evaluateExprAgainstRow(expr['!'].arg, row, principal);
+  }
+
+  const COMP_OPS = {
+    '==': (a, b) => a === b,
+    '!=': (a, b) => a !== b,
+    '>':  (a, b) => a > b,
+    '>=': (a, b) => a >= b,
+    '<':  (a, b) => a < b,
+    '<=': (a, b) => a <= b,
+  };
+  for (const [cedarOp, comparator] of Object.entries(COMP_OPS)) {
+    if (cedarOp in expr) {
+      const { left, right } = expr[cedarOp];
+      const col = resolveColumn(left);
+      const val = resolveValue(right);
+      if (col !== null && val !== undefined) {
+        const rowVal = row[col];
+        if (rowVal === undefined || rowVal === null) return false;
+        return comparator(rowVal, val);
+      }
+      const col2 = resolveColumn(right);
+      const val2 = resolveValue(left);
+      if (col2 !== null && val2 !== undefined) {
+        const rowVal = row[col2];
+        if (rowVal === undefined || rowVal === null) return false;
+        return comparator(val2, rowVal);
+      }
+      return false;
+    }
+  }
+
+  if ('if-then-else' in expr) {
+    const ite = expr['if-then-else'];
+    const cond = evaluateExprAgainstRow(ite.if, row, principal);
+    return cond
+      ? evaluateExprAgainstRow(ite.then, row, principal)
+      : evaluateExprAgainstRow(ite.else, row, principal);
+  }
+
+  if (process.env.NODE_ENV !== 'production') {
+    const shape = Object.keys(expr)[0] || 'unknown';
+    console.warn(
+      `Cedar INSERT authz: untranslatable expression '${shape}'`,
+    );
+  }
+  return false;
+}
+
 // --- Factory ---
 
 export function createCedar(config) {
