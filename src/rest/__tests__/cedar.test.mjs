@@ -112,6 +112,15 @@ permit(
 };
 `;
 
+const PUBLIC_POSTS_TABLE_POLICY = `${DEFAULT_POLICIES}
+
+permit(
+    principal,
+    action == PgrestLambda::Action::"select",
+    resource == PgrestLambda::Table::"public_posts"
+);
+`;
+
 const FORBID_DELETE_ARCHIVED_POLICY = `${DEFAULT_POLICIES}
 
 forbid(
@@ -730,13 +739,11 @@ describe('policy loading', () => {
     );
     const cedar = makeCedar({ policiesPath: tempDir });
     await cedar.loadPolicies();
-    // Write updated policy that grants anon access to public_posts
     await writeFile(
       join(tempDir, 'default.cedar'),
-      PUBLIC_POSTS_POLICY,
+      PUBLIC_POSTS_TABLE_POLICY,
     );
     await cedar.refreshPolicies();
-    // After refresh, anon should be allowed on public_posts
     assert.doesNotThrow(
       () => cedar.authorize({
         principal: { role: 'anon', userId: '', email: '' },
@@ -750,7 +757,7 @@ describe('policy loading', () => {
 
   it('_setPolicies replaces compiled policies', () => {
     const cedar = makeCedar();
-    cedar._setPolicies({ staticPolicies: PUBLIC_POSTS_POLICY });
+    cedar._setPolicies({ staticPolicies: PUBLIC_POSTS_TABLE_POLICY });
     assert.doesNotThrow(
       () => cedar.authorize({
         principal: { role: 'anon', userId: '', email: '' },
@@ -824,16 +831,16 @@ describe('authorize (table-level)', () => {
     );
   });
 
-  it('custom policy allows anon select on specific table', () => {
+  it('row-level policy produces residuals — authorize() denies (fail-closed)', () => {
     cedar._setPolicies({ staticPolicies: PUBLIC_POSTS_POLICY });
-    assert.doesNotThrow(
+    assert.throws(
       () => cedar.authorize({
         principal: { role: 'anon', userId: '', email: '' },
         action: 'select',
         resource: 'public_posts',
         schema,
       }),
-      'custom policy should allow anon select on public_posts',
+      (err) => err.code === 'PGRST403',
     );
   });
 });

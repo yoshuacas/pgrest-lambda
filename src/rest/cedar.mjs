@@ -597,8 +597,8 @@ export function createCedar(config) {
 
     if (partial.type === 'residuals') {
       const resp = partial.response;
-      if (resp.decision === 'allow') return true;
-      if (resp.decision !== 'deny' && resp.nontrivialResiduals.length > 0) {
+      if (resp.decision === 'allow'
+          && resp.nontrivialResiduals.length === 0) {
         return true;
       }
     }
