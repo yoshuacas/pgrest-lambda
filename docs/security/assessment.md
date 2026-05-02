@@ -42,7 +42,7 @@ Rule: when a finding's fix relies on a capability not present on all supported b
 | [V-08](findings/V-08-presignup-autoconfirm.md) | Medium | Cognito presignup auto-confirm | Fixed | PreSignUp trigger removed from SAM template; default changed to better-auth |
 | [V-09](findings/V-09-error-leaks.md) | Medium | PG error details forwarded to client | Fixed | Sanitized mode default; verbose opt-in via config |
 | [V-10](findings/V-10-openapi-exposes-schema.md) | Medium | OpenAPI exposes full schema to anon | Open | Confirmed; no role check |
-| [V-11](findings/V-11-refresh-no-authz.md) | Medium | `/_refresh` has no authz check | Open | Confirmed at HEAD |
+| [V-11](findings/V-11-refresh-no-authz.md) | Medium | `/_refresh` has no authz check | Fixed | Gated on `service_role` (commit 620442a); 401 PGRST301 for anon/authenticated |
 | [V-12](findings/V-12-auth-no-rate-limit.md) | Medium | No rate limiting on auth endpoints | Open | Infra-layer fix |
 | [V-13](findings/V-13-embed-depth.md) | Medium | Unbounded resource embedding depth | Open | Confirmed; no depth arg |
 | [V-14](findings/V-14-order-direction.md) | Medium | Order direction not validated | Fixed | Allowlist validation in `parseOrder()`; SQL injection path closed |
