@@ -1,19 +1,18 @@
 # Deploy pgrest-lambda with AWS SAM
 
-Live deployment on AWS using the SAM template in this directory. End state: a working REST API behind API Gateway, backed by a PostgreSQL-compatible database and (by default) a Cognito user pool.
+Live deployment on AWS using the SAM template in this directory. End state: a working REST API behind API Gateway, backed by a PostgreSQL-compatible database with optional Cognito user pool support.
 
 The steps below have been executed against a real AWS account and the template as it ships.
 
 ## What gets created
 
-With defaults (`AuthProvider=cognito`, `DatabaseMode=dsql`):
+With defaults (`AuthProvider=better-auth`, `DatabaseMode=dsql`):
 
 | Resource | Purpose |
 |---|---|
 | `AWS::Serverless::Api` | REST API Gateway (stage `v1`) |
-| `AWS::Serverless::Function` × 3 | REST handler, authorizer, Cognito pre-signup trigger |
-| `AWS::Cognito::UserPool` + `UserPoolClient` | Auth backend |
-| `AWS::Lambda::Permission` | Lets Cognito invoke the pre-signup trigger |
+| `AWS::Serverless::Function` × 2 | REST handler, authorizer |
+| `AWS::Cognito::UserPool` + `UserPoolClient` | Auth backend (Cognito mode only) |
 | IAM roles | Execution roles for each Lambda (DSQL mode also grants `dsql:DbConnect`) |
 | CloudWatch log groups | Auto-created on first invoke per Lambda |
 
@@ -82,7 +81,7 @@ sam build
 
 The build respects the `files` list in `package.json`, so the Lambda package includes `src/`, `deploy/`, `policies/`, and `node_modules/` — roughly 32 MB. If you omit `files` from `package.json` the package balloons to include everything in the repo and `policies/` may be dropped entirely (causing every request to 403).
 
-### Deploy — DSQL + Cognito (defaults)
+### Deploy — DSQL + better-auth (defaults)
 
 ```bash
 sam deploy \
@@ -95,7 +94,7 @@ sam deploy \
     DsqlEndpoint=<clusterId>.dsql.us-east-1.on.aws
 ```
 
-### Deploy — standard Postgres + Cognito
+### Deploy — standard Postgres + better-auth
 
 ```bash
 sam deploy \
@@ -109,7 +108,7 @@ sam deploy \
     "DatabaseUrl=postgres://user:pass@host:5432/db?sslmode=require"
 ```
 
-### Deploy — GoTrue-native auth (no Cognito)
+### Deploy — with Cognito auth
 
 ```bash
 sam deploy \
@@ -119,7 +118,7 @@ sam deploy \
   --resolve-s3 \
   --no-confirm-changeset \
   --parameter-overrides \
-    AuthProvider=gotrue \
+    AuthProvider=cognito \
     DatabaseMode=standard \
     "DatabaseUrl=postgres://user:pass@host:5432/db?sslmode=require"
 ```
@@ -172,7 +171,7 @@ ANON_KEY=$(S="$JWT_SECRET" node -e "
     { issuer: 'pgrest-lambda', algorithm: 'HS256' }));
 ")
 
-# Signup (Cognito path — no auth.sessions DB write)
+# Signup
 EMAIL="test-$(date +%s)@example.com"
 SIGNUP=$(curl -s -X POST "$API_URL/auth/v1/signup" \
   -H "apikey: $ANON_KEY" -H "Content-Type: application/json" \
@@ -191,7 +190,7 @@ curl -s "$API_URL/rest/v1/tasks" \
   -H "apikey: $ANON_KEY" -H "Authorization: Bearer $ACCESS" | jq
 ```
 
-A successful signup returns `access_token` (pgrest-lambda HS256 JWT) and `refresh_token` (the raw Cognito refresh token for the Cognito path; a pgrest-lambda session-ID JWT for the GoTrue path).
+A successful signup returns `access_token` (pgrest-lambda HS256 JWT) and `refresh_token` (a session-ID JWT).
 
 ## Tear down
 
@@ -203,16 +202,6 @@ aws dsql delete-cluster --identifier <clusterId> --region us-east-1
 
 # SSM parameter — only if nothing else uses it
 aws ssm delete-parameter --name /pgrest/jwt-secret --region us-east-1
-```
-
-Cognito user pools with users cannot be deleted via CloudFormation by default. Delete users first:
-
-```bash
-for user in $(aws cognito-idp list-users --user-pool-id <UserPoolId> \
-  --region us-east-1 --query 'Users[].Username' --output text); do
-  aws cognito-idp admin-delete-user --user-pool-id <UserPoolId> \
-    --username "$user" --region us-east-1
-done
 ```
 
 DSQL clusters with deletion protection on must have it disabled first:
@@ -227,10 +216,8 @@ aws dsql delete-cluster --identifier <clusterId> --region us-east-1
 | Symptom | Cause |
 |---|---|
 | `sam deploy` fails: `Non-secure ssm prefix was used for secure parameter` | SSM parameter is a `SecureString`. Recreate as plain `String` (CloudFormation does not support `ssm-secure` in Lambda env vars) |
-| Signup returns `500 {"error":"unexpected_failure"}` and Cognito `admin-get-user` shows `InvalidLambdaResponseException` | PreSignUp Lambda returning `null` — usually because `createPgrest()` was evaluated at import time. Fixed by the lazy-import pattern in `deploy/aws-sam/lambda.mjs` (v0.2.0+) |
 | Every REST request returns `403 PGRST403` | `policies/` directory not shipped with the Lambda. The `files` list in `package.json` must include `"policies"` |
 | `500 {"code":"42P01"}` on `/rest/v1/<table>` | Schema not applied to the database. Re-run the schema-apply step |
-| `500 {"code":"42P01"}` on `/auth/v1/signup` with `AUTH_PROVIDER=gotrue` | GoTrue provider auto-creates its `auth` schema on first request; if it fails, check Lambda IAM has `CREATE SCHEMA` permission on the database |
 | `401 Unauthorized` on every REST request with `apikey` set | API Gateway CORS adds an `OPTIONS` method with no auth, but `ANY` requires the Bearer token too. Pass `Authorization: Bearer <anon_key>` alongside `apikey` for anon traffic, or use supabase-js which handles this automatically |
 | Lambda times out hitting DSQL | Template grants `dsql:DbConnect` only when `DatabaseMode=dsql`. Verify the parameter |
 
@@ -247,10 +234,10 @@ aws dsql delete-cluster --identifier <clusterId> --region us-east-1
 
 ## What was verified
 
-This guide reflects a verified end-to-end deployment (Cognito + DSQL + us-east-1). The following were exercised against the live stack:
+This guide reflects a verified end-to-end deployment (better-auth + DSQL + us-east-1). The following were exercised against the live stack:
 
-- `POST /auth/v1/signup` — returns access_token + Cognito refresh_token, no `auth.sessions` DB write (confirms v0.2.0 Cognito-no-session fix on real infrastructure).
-- `POST /auth/v1/token?grant_type=refresh_token` — exchanges Cognito refresh token for new access token.
+- `POST /auth/v1/signup` — returns access_token + session-ID refresh_token.
+- `POST /auth/v1/token?grant_type=refresh_token` — exchanges refresh token for new access token.
 - `GET /auth/v1/user` — returns the authenticated profile.
 - `POST /rest/v1/tasks` with Bearer token — Cedar allows when `user_id == principal`.
 - `GET /rest/v1/tasks` — returns the authenticated user's row.

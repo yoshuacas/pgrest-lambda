@@ -4,7 +4,7 @@ import {
   userResponse,
   logoutResponse,
   errorResponse,
-} from './gotrue-response.mjs';
+} from './supabase-response.mjs';
 import { buildCorsHeaders } from '../shared/cors.mjs';
 import { assertBodySize, MAX_BODY_BYTES } from '../shared/body-size.mjs';
 import { isSafeRedirect } from '../shared/url.mjs';

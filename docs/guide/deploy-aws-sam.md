@@ -5,7 +5,7 @@ description: Deploy the reference AWS SAM template — API Gateway, Lambda, and 
 
 # How to deploy to AWS Lambda with SAM
 
-The `deploy/aws-sam/` directory ships a working SAM template that provisions API Gateway, three Lambda functions (REST handler, authorizer, Cognito pre-signup trigger), and an optional Cognito user pool. This guide covers the happy path.
+The `deploy/aws-sam/` directory ships a working SAM template that provisions API Gateway, two Lambda functions (REST handler, authorizer), with optional Cognito user pool support. This guide covers the happy path.
 
 **Prerequisites**
 
@@ -65,7 +65,7 @@ Key parameters the template exposes:
 
 | Parameter | Values | Meaning |
 |---|---|---|
-| `AuthProvider` | `cognito` (default), `better-auth` | Which auth backend Lambdas use. |
+| `AuthProvider` | `better-auth` (default), `cognito` | Which auth backend Lambdas use. |
 | `DatabaseMode` | `dsql` (default), `aurora`, `rds`, `direct` | Where the REST handler connects. |
 | `DatabaseUrl` | Postgres URI | Required when `DatabaseMode` is `aurora`, `rds`, or `direct`. |
 | `DsqlEndpoint` | `<cluster>.dsql.<region>.on.aws` | Required when `DatabaseMode=dsql`. |
@@ -123,21 +123,13 @@ If you get a `401`, the apikey was minted with a different `JWT_SECRET` than the
 
 ## Step 7 — (Optional) Use Cognito as the auth provider
 
-The default `AuthProvider=cognito` wires up:
-
-- A `Cognito::UserPool` with email sign-in.
-- A `UserPoolClient` for the SAM-generated frontend flow.
-- A pre-signup trigger Lambda that enforces the Cedar `PreSignUp` policy, if present.
-
-Clients use `@supabase/supabase-js` unchanged; the pgrest-lambda auth layer translates `/auth/v1/*` calls to Cognito API calls.
-
-Switch the auth provider at deploy time:
+The default auth provider is `better-auth`, which runs entirely in PostgreSQL with no external dependencies. If your deployment is already standardized on Amazon Cognito, you can switch by setting the `AuthProvider` parameter:
 
 ```bash
-sam deploy --parameter-overrides AuthProvider=better-auth
+sam deploy --parameter-overrides AuthProvider=cognito
 ```
 
-`better-auth` runs entirely in Postgres — no Cognito user pool — at the cost of managing the signing key yourself.
+When `AuthProvider=cognito`, the template provisions a `Cognito::UserPool` with email sign-in and a `UserPoolClient`. Clients use `@supabase/supabase-js` unchanged; the pgrest-lambda auth layer translates `/auth/v1/*` calls to Cognito API calls.
 
 ## Cleaning up
 
@@ -145,7 +137,7 @@ sam deploy --parameter-overrides AuthProvider=better-auth
 sam delete
 ```
 
-Deletes the API Gateway, the Lambdas, the user pool (if Cognito was used), the execution roles, and the CloudWatch log groups. The database and the SSM parameters are independent and stay behind.
+Deletes the API Gateway, the Lambdas, the Cognito user pool (if `AuthProvider=cognito` was used), the execution roles, and the CloudWatch log groups. The database and the SSM parameters are independent and stay behind.
 
 ## Related
 

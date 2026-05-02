@@ -25,10 +25,10 @@ pgrest-lambda/
 │   │   ├── openapi.mjs        # OpenAPI 3.0.3 spec generation
 │   │   ├── response.mjs       # HTTP response formatting
 │   │   └── errors.mjs         # PostgREST error codes
-│   ├── auth/                   # Auth layer (GoTrue-compatible responses)
+│   ├── auth/                   # Auth layer (Supabase-compatible responses)
 │   │   ├── handler.mjs        # Auth endpoint handler
 │   │   ├── jwt.mjs            # JWT signing/verification
-│   │   ├── gotrue-response.mjs # GoTrue response formatting
+│   │   ├── supabase-response.mjs # Supabase-compatible response envelope
 │   │   └── providers/         # Swappable auth backends
 │   │       ├── interface.mjs  # Provider contract (typedef)
 │   │       ├── better-auth.mjs # better-auth (default, DB-only)

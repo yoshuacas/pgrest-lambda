@@ -5,7 +5,7 @@ import {
   userResponse,
   logoutResponse,
   errorResponse,
-} from '../gotrue-response.mjs';
+} from '../supabase-response.mjs';
 import { SESSION_EXPIRY_SECONDS } from '../constants.mjs';
 import { createJwt } from '../jwt.mjs';
 
@@ -36,7 +36,7 @@ function assertCorsHeaders(headers) {
   );
 }
 
-describe('gotrue-response.mjs', () => {
+describe('supabase-response.mjs', () => {
   describe('sessionResponse', () => {
     it('returns 200 with access_token, token_type, expires_in, refresh_token, user', () => {
       const user = {

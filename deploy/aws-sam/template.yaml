@@ -22,7 +22,7 @@ Parameters:
     Default: us-east-1
   AuthProvider:
     Type: String
-    Default: cognito
+    Default: better-auth
     AllowedValues: [better-auth, cognito]
   BetterAuthSecret:
     Type: String
@@ -78,8 +78,6 @@ Resources:
           AttributeDataType: String
           Required: true
           Mutable: true
-      LambdaConfig:
-        PreSignUp: !GetAtt PreSignUpFunction.Arn
 
   UserPoolClient:
     Condition: IsCognito
@@ -93,24 +91,6 @@ Resources:
         - ALLOW_REFRESH_TOKEN_AUTH
         - ALLOW_USER_PASSWORD_AUTH
       PreventUserExistenceErrors: ENABLED
-
-  PreSignUpFunction:
-    Condition: IsCognito
-    Type: AWS::Serverless::Function
-    Properties:
-      Handler: deploy/aws-sam/lambda.presignup
-      CodeUri: ../../
-      MemorySize: 128
-      Timeout: 5
-
-  PreSignUpPermission:
-    Condition: IsCognito
-    Type: AWS::Lambda::Permission
-    Properties:
-      Action: lambda:InvokeFunction
-      FunctionName: !Ref PreSignUpFunction
-      Principal: cognito-idp.amazonaws.com
-      SourceArn: !GetAtt UserPool.Arn
 
   Api:
     Type: AWS::Serverless::Api

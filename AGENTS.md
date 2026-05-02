@@ -34,6 +34,19 @@ const pgrest = createPgrest({
     database: 'mydb',
   },
   jwtSecret: process.env.JWT_SECRET,
+});
+```
+
+The default auth provider is **better-auth** — no additional auth config is needed. better-auth stores users directly in your PostgreSQL database (in the `auth_users` table it creates automatically).
+
+### Opt-in: Cognito auth provider
+
+To use Amazon Cognito instead of the built-in better-auth provider:
+
+```javascript
+const pgrest = createPgrest({
+  database: { connectionString: process.env.DATABASE_URL },
+  jwtSecret: process.env.JWT_SECRET,
   auth: {
     provider: 'cognito',
     region: 'us-east-1',
@@ -134,15 +147,17 @@ pgrest-lambda provides the Lambda handler code. Your agent creates the infrastru
    - TTL: 300 seconds recommended
    - The authorizer validates the `apikey` header and optional `Authorization: Bearer` token
 
-### Required for auth (if not disabled)
+### Required for Cognito auth (only if `AuthProvider=cognito`)
 
-6. **Amazon Cognito User Pool** — for user registration and authentication
+6. **Amazon Cognito User Pool** — only needed when using the Cognito auth provider (opt-in)
    - Password policy: min 8 chars, uppercase + lowercase + numbers
    - Auth flows: `USER_PASSWORD_AUTH`, `REFRESH_TOKEN_AUTH`
    - Auto-verify email recommended
 
-7. **Cognito User Pool Client** — app client with no secret
+7. **Cognito User Pool Client** — only needed when using the Cognito auth provider (opt-in)
    - Prevent user existence errors: enabled
+
+When using the default **better-auth** provider, no external auth service is required — users are stored directly in your PostgreSQL database.
 
 ### Optional
 
@@ -161,14 +176,17 @@ If you pass config explicitly to `createPgrest()`, you don't need env vars. If y
 | `DATABASE_URL` | PostgreSQL connection string (standard mode) |
 | `REGION_NAME` | AWS region (never use `AWS_REGION` — reserved by Lambda) |
 | `JWT_SECRET` | Secret for signing/verifying JWTs |
-| `USER_POOL_CLIENT_ID` | Cognito app client ID |
-| `AUTH_PROVIDER` | Auth backend, default `cognito` |
+| `USER_POOL_CLIENT_ID` | Cognito app client ID (only when `AUTH_PROVIDER=cognito`) |
+| `AUTH_PROVIDER` | Auth backend: `better-auth` (default) or `cognito` |
 | `POLICIES_PATH` | Local path to Cedar policies, default `./policies` |
 | `POLICIES_BUCKET` | S3 bucket for Cedar policies (overrides filesystem) |
 | `POLICIES_PREFIX` | S3 key prefix, default `policies/` |
 
 ## IAM permissions for the Lambda execution role
 
+The default better-auth provider requires no special IAM permissions beyond database access.
+
+If using the Cognito auth provider (`AUTH_PROVIDER=cognito`), add:
 ```json
 {
   "Effect": "Allow",
@@ -481,7 +499,7 @@ The convention fallback only runs when the FK query returns zero relationships. 
 
 1. Create PostgreSQL database with tables in `public` schema
 2. Generate JWT secret (32-byte random hex)
-3. Create Cognito User Pool + Client (if using auth)
+3. *(Only if using Cognito auth provider)* Create Cognito User Pool + Client
 4. `npm install pgrest-lambda` in your Lambda project
 5. Write Lambda handler that calls `createPgrest(config)` and exports handlers
 6. Create Lambda function, API Gateway, and Lambda authorizer

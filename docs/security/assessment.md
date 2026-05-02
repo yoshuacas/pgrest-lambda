@@ -39,7 +39,7 @@ Rule: when a finding's fix relies on a capability not present on all supported b
 | [V-05](findings/V-05-on-conflict-injection.md) | High | Identifier injection via `on_conflict` | Fixed | `on_conflict` columns validated via `validateCol` allowlist |
 | [V-06](findings/V-06-no-rls.md) | High | Cedar is the only authz layer (no RLS) | Open | Backend-specific; DSQL cannot satisfy. Flag: possible fail-open at `cedar.mjs:386-388` |
 | [V-07](findings/V-07-provider-refresh-in-jwt.md) | High | Provider refresh token in JWT `prt` claim | Fixed | Session-ID indirection; prt claim removed from JWT |
-| [V-08](findings/V-08-presignup-autoconfirm.md) | Medium | Cognito presignup auto-confirm | Open | Cognito provider only; GoTrue analog at `schema.mjs:8` |
+| [V-08](findings/V-08-presignup-autoconfirm.md) | Medium | Cognito presignup auto-confirm | Fixed | PreSignUp trigger removed from SAM template; default changed to better-auth |
 | [V-09](findings/V-09-error-leaks.md) | Medium | PG error details forwarded to client | Open | Confirmed at HEAD |
 | [V-10](findings/V-10-openapi-exposes-schema.md) | Medium | OpenAPI exposes full schema to anon | Open | Confirmed; no role check |
 | [V-11](findings/V-11-refresh-no-authz.md) | Medium | `/_refresh` has no authz check | Open | Confirmed at HEAD |
@@ -70,6 +70,6 @@ Read this section before reviewing any individual finding:
 
 - **Scope:** library + reference deployment. pgrest-lambda is consumed as an npm package; the reference SAM deployment in `docs/deploy/` is one example, not the product.
 - **DB targets are heterogeneous.** Treat the backend matrix above as authoritative. A fix that requires RLS is valid for Aurora consumers but cannot be the primary defense on DSQL — application-layer enforcement (Cedar) has to hold alone in that case.
-- **Auth is pluggable.** Findings scoped to Cognito (V-08, V-17) do not affect deployments using the GoTrue-native provider, and vice versa.
+- **Auth is pluggable.** Findings scoped to Cognito (V-17) do not affect deployments using the better-auth provider (the default). V-08 (presignup auto-confirm) has been fixed by removing the trigger from the reference deployment.
 - **Authoritative source of status is this tracker.** The HTML report in `research/` is a point-in-time audit snapshot; where it conflicts with a finding file here, the finding file wins.
 - **Not addressed != ignored.** For items marked Accepted or Deferred, the `Residual risk` section captures what the library consumer inherits and where it's documented.
