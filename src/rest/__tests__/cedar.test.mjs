@@ -47,6 +47,29 @@ const schema = {
       },
       primaryKey: ['id'],
     },
+    posts: {
+      columns: {
+        id: { type: 'text', nullable: false, defaultValue: null },
+        title: { type: 'text', nullable: true, defaultValue: null },
+      },
+      primaryKey: ['id'],
+    },
+    orders: {
+      columns: {
+        id: { type: 'text', nullable: false, defaultValue: null },
+        owner_id: { type: 'text', nullable: false, defaultValue: null },
+        amount: { type: 'integer', nullable: true, defaultValue: null },
+      },
+      primaryKey: ['id'],
+    },
+    items: {
+      columns: {
+        id: { type: 'text', nullable: false, defaultValue: null },
+        name: { type: 'text', nullable: true, defaultValue: null },
+        restricted: { type: 'boolean', nullable: true, defaultValue: null },
+      },
+      primaryKey: ['id'],
+    },
   },
 };
 
@@ -1195,6 +1218,205 @@ describe('evaluateExprAgainstRow', () => {
       ),
       false,
     );
+  });
+});
+
+// ================================================================
+// authorizeInsert — INSERT authorization with residual evaluation
+// ================================================================
+
+const UNCONDITIONAL_INSERT_POLICY = `
+permit(
+    principal is PgrestLambda::User,
+    action == PgrestLambda::Action::"insert",
+    resource == PgrestLambda::Table::"posts"
+);
+permit(
+    principal is PgrestLambda::ServiceRole,
+    action, resource
+);
+`;
+
+const OWNER_CONDITIONED_INSERT_POLICY = `
+permit(
+    principal is PgrestLambda::User,
+    action == PgrestLambda::Action::"insert",
+    resource is PgrestLambda::Row
+) when {
+    context.table == "orders"
+    && resource.owner_id == principal
+};
+permit(
+    principal is PgrestLambda::ServiceRole,
+    action, resource
+);
+`;
+
+const TABLE_PERMIT_ROW_FORBID_POLICY = `
+permit(
+    principal is PgrestLambda::User,
+    action == PgrestLambda::Action::"insert",
+    resource == PgrestLambda::Table::"items"
+);
+forbid(
+    principal,
+    action == PgrestLambda::Action::"insert",
+    resource is PgrestLambda::Row
+) when {
+    context.table == "items"
+    && resource.restricted == true
+};
+`;
+
+describe('authorizeInsert', () => {
+  it('decided allow — unconditional table permit', () => {
+    const cedar = makeCedar();
+    cedar._setPolicies({
+      staticPolicies: UNCONDITIONAL_INSERT_POLICY,
+    });
+    const result = cedar.authorizeInsert({
+      principal: {
+        role: 'authenticated',
+        userId: 'user-A',
+        email: 'a@test.com',
+      },
+      resource: 'posts',
+      schema,
+      rows: [{ title: 'Hello' }],
+    });
+    assert.equal(result, true);
+  });
+
+  it('residual evaluated — matching row', () => {
+    const cedar = makeCedar();
+    cedar._setPolicies({
+      staticPolicies: OWNER_CONDITIONED_INSERT_POLICY,
+    });
+    const result = cedar.authorizeInsert({
+      principal: {
+        role: 'authenticated',
+        userId: 'user-A',
+        email: 'a@test.com',
+      },
+      resource: 'orders',
+      schema,
+      rows: [{ owner_id: 'user-A' }],
+    });
+    assert.equal(result, true);
+  });
+
+  it('residual evaluated — non-matching row', () => {
+    const cedar = makeCedar();
+    cedar._setPolicies({
+      staticPolicies: OWNER_CONDITIONED_INSERT_POLICY,
+    });
+    assert.throws(
+      () => cedar.authorizeInsert({
+        principal: {
+          role: 'authenticated',
+          userId: 'user-A',
+          email: 'a@test.com',
+        },
+        resource: 'orders',
+        schema,
+        rows: [{ owner_id: 'user-B' }],
+      }),
+      (err) => err.code === 'PGRST403',
+    );
+  });
+
+  it('bulk: all rows match', () => {
+    const cedar = makeCedar();
+    cedar._setPolicies({
+      staticPolicies: OWNER_CONDITIONED_INSERT_POLICY,
+    });
+    const result = cedar.authorizeInsert({
+      principal: {
+        role: 'authenticated',
+        userId: 'user-A',
+        email: 'a@test.com',
+      },
+      resource: 'orders',
+      schema,
+      rows: [{ owner_id: 'user-A' }, { owner_id: 'user-A' }],
+    });
+    assert.equal(result, true);
+  });
+
+  it('bulk: one row fails — includes row index in details', () => {
+    const cedar = makeCedar();
+    cedar._setPolicies({
+      staticPolicies: OWNER_CONDITIONED_INSERT_POLICY,
+    });
+    assert.throws(
+      () => cedar.authorizeInsert({
+        principal: {
+          role: 'authenticated',
+          userId: 'user-A',
+          email: 'a@test.com',
+        },
+        resource: 'orders',
+        schema,
+        rows: [{ owner_id: 'user-A' }, { owner_id: 'user-B' }],
+      }),
+      (err) => err.code === 'PGRST403'
+        && err.details && err.details.includes('Row 1'),
+    );
+  });
+
+  it('no policies loaded — throws PGRST403', () => {
+    const cedar = makeCedar();
+    assert.throws(
+      () => cedar.authorizeInsert({
+        principal: {
+          role: 'authenticated',
+          userId: 'user-A',
+          email: 'a@test.com',
+        },
+        resource: 'orders',
+        schema,
+        rows: [{ owner_id: 'user-A' }],
+      }),
+      (err) => err.code === 'PGRST403',
+    );
+  });
+
+  it('forbid residual fires — restricted=true denied', () => {
+    const cedar = makeCedar();
+    cedar._setPolicies({
+      staticPolicies: TABLE_PERMIT_ROW_FORBID_POLICY,
+    });
+    assert.throws(
+      () => cedar.authorizeInsert({
+        principal: {
+          role: 'authenticated',
+          userId: 'user-A',
+          email: 'a@test.com',
+        },
+        resource: 'items',
+        schema,
+        rows: [{ restricted: true }],
+      }),
+      (err) => err.code === 'PGRST403',
+    );
+  });
+
+  it('forbid residual does not fire — restricted=false allowed', () => {
+    const cedar = makeCedar();
+    cedar._setPolicies({
+      staticPolicies: TABLE_PERMIT_ROW_FORBID_POLICY,
+    });
+    const result = cedar.authorizeInsert({
+      principal: {
+        role: 'authenticated',
+        userId: 'user-A',
+        email: 'a@test.com',
+      },
+      resource: 'items',
+      schema,
+      rows: [{ restricted: false }],
+    });
+    assert.equal(result, true);
   });
 });
 
