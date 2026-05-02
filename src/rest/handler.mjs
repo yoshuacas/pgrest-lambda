@@ -258,7 +258,7 @@ export function createRestHandler(ctx, contributions = []) {
       }
 
       const table = routeInfo.table;
-      const parsed = parseQuery(params, method, multiValueParams);
+      const parsed = parseQuery(params, method, multiValueParams, ctx.maxEmbedDepth);
       const hasEmbeds = parsed.select.some(
         n => n.type === 'embed');
 
@@ -519,7 +519,7 @@ export function createRestHandler(ctx, contributions = []) {
 
     if (method === 'POST') {
       args = body || {};
-      parsed = parseQuery(params, method, multiValueParams);
+      parsed = parseQuery(params, method, multiValueParams, ctx.maxEmbedDepth);
     } else {
       const argParams = {};
       const restParams = {};
@@ -531,7 +531,7 @@ export function createRestHandler(ctx, contributions = []) {
           restParams[key] = val;
         }
       }
-      parsed = parseQuery(restParams, method, multiValueParams);
+      parsed = parseQuery(restParams, method, multiValueParams, ctx.maxEmbedDepth);
       args = argParams;
     }
 

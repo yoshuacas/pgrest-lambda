@@ -106,6 +106,10 @@ function resolveConfig(config) {
     production,
     errorsVerbose: config.errors?.verbose
       ?? (process.env.PGREST_ERRORS_VERBOSE === 'true'),
+    maxEmbedDepth: config.maxEmbedDepth
+      ?? (process.env.PGREST_MAX_EMBED_DEPTH
+        ? parseInt(process.env.PGREST_MAX_EMBED_DEPTH, 10)
+        : 5),
   };
 }
 
@@ -145,6 +149,7 @@ export function createPgrest(config = {}) {
   ctx.cors = resolved.cors;
   ctx.production = resolved.production;
   ctx.errorsVerbose = resolved.errorsVerbose;
+  ctx.maxEmbedDepth = resolved.maxEmbedDepth;
   ctx.dbCapabilities = dbCapabilities;
 
   if (!resolved.production) {
