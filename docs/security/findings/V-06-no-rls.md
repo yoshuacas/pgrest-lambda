@@ -1,7 +1,7 @@
 # V-06 — Cedar is the only authorization layer (no RLS)
 
 - **Severity (reported):** High
-- **Status:** Open
+- **Status:** Open (partial) — V-06a Fixed, V-06c Fixed, V-06b remains
 - **Backend dependence:** **Yes — primary example of heterogeneous backend posture**
 
 ## Report summary
@@ -34,7 +34,41 @@ _Pending triage._
 
 ## Evidence
 
-_Commit / test / doc link when fixed._
+V-06 remains **Open** overall. Evidence below is per closed limb.
+
+### V-06a — Cedar policy linter (closed)
+
+- **Fix commits:** `2bec1e5` (linter), `5af5efc` (merge, PR #3).
+- **CLI:** `pgrest-lambda lint-policies` — see `docs/reference/cli.md` and `docs/guide/lint-cedar-policies.md`.
+- **Linter source:** `src/policies/linter.mjs` (4 error rules + 4 warning rules).
+- **Agent skill:** `.kiro/skills/cedar-policy-author/SKILL.md` mandates running the linter before finishing a policy edit.
+
+### V-06c — INSERT fail-open (closed)
+
+- **Fix commits (on branch `sec/V-06c-insert-fail-open`):**
+  - `28cc3e7` test(V-06c): add INSERT authorization integration tests
+  - `079a542` feat(V-06c): add evaluateExprAgainstRow for INSERT authz
+  - `1871828` feat(V-06c): add evaluateResiduals and authorizeInsert tests
+  - `aad080b` feat(V-06c): tighten authorize() and wire handler POST
+  - `63ff979` docs(V-06c): update security findings, reference, and changelog
+- **Design:** `docs/design/security-v06c-insert-fail-open.md` — two-phase authorization model, threat model, and explicit trade-off analysis between in-process residual evaluation (Option A, chosen) and SQL-side WITH...WHERE (Option B, rejected).
+- **Before:** `src/rest/cedar.mjs:486-491` returned `true` on any non-trivial residual with `decision !== 'deny'`. INSERT handler at `src/rest/handler.mjs` called `authorize()` without passing `body`, so row-conditioned `permit ... when { resource.<col> == ... }` policies were silently bypassed.
+- **After:**
+  - `src/rest/cedar.mjs:378-452` — `evaluateExprAgainstRow(expr, row, principal)` evaluates Cedar residual expressions against a concrete row object. Missing columns fail closed.
+  - `src/rest/cedar.mjs:454-505` — `evaluateResiduals(response, row, principal, tablePermitGranted)` AND-s all `when` conditions on each policy, requires at least one permit (table-level or row-conditioned), and honors any matching forbid.
+  - `src/rest/cedar.mjs:612-705` — `authorizeInsert({ principal, resource, rows, ... })` runs phase 1 (`isAuthorized` against `Table`) and phase 2 (partial eval + row evaluation). Bulk inserts checked per row; the failing row's index is included in the 403 detail (sanitized, consistent with V-09).
+  - `src/rest/cedar.mjs:486-497` — `authorize()` fail-open branch is deleted. Undecided residuals now deny.
+  - `src/rest/handler.mjs:323` — POST path calls `cedar.authorizeInsert({ principal, resource: table, rows: body, schema })` instead of `cedar.authorize(...)`.
+- **Tests:**
+  - `src/rest/__tests__/cedar-insert-authz.integration.test.mjs` (408 lines, 8 scenarios): owner-mismatch 403 / owner-match 201 / bulk mixed-ownership 403 with row index / service_role bypass / decided-allow unchanged / forbid residual true → 403 / forbid residual false → 201 / missing column → 403 fail-closed.
+  - `src/rest/__tests__/cedar.test.mjs` — expanded by ~500 lines with unit coverage for every `evaluateExprAgainstRow` shape (==, !=, <, <=, >, >=, &&, ||, !, `has`, `if/then/else`, principal attribute access) and `evaluateResiduals` permit/forbid combinations.
+  - Full suite: 891 pass / 0 fail at branch HEAD (was 847 at `main`; +44 tests from this work).
+- **Scope of fix:** INSERT only. SELECT / UPDATE / DELETE continue to translate residuals into SQL WHERE via `buildAuthzFilter()` — unchanged. RPC `call` remains `authorize()` (table-level decision only; row context does not apply).
+- **DSQL posture:** Pure JavaScript evaluation, no SQL dependency — works identically on DSQL and Aurora/standard PG.
+
+### V-06b — Optional RLS templates (remains open)
+
+No code change planned at this time. Library consumers on Aurora/RDS/standard Postgres are encouraged to enable RLS as defense-in-depth on top of Cedar; a templated `policies/` SQL set is a future deliverable. Documented in the backend matrix of `docs/security/assessment.md`.
 
 ## Residual risk
 
@@ -83,4 +117,6 @@ full design, threat model, and testing strategy.
 
 ## Reviewer handoff
 
-_Two-sentence summary for the reviewer agent — emphasize that this finding has different dispositions per backend and that documentation is part of the mitigation for DSQL._
+V-06 is a multi-limb finding: V-06a (policy linter) and V-06c (INSERT fail-open) are Fixed; V-06b (optional RLS templates) remains Open and is intentionally deferred because the primary universal gate is application-layer Cedar — RLS is documented defense-in-depth for RLS-capable backends only, not the fix.
+
+For V-06c specifically, verify: (1) `authorize()` no longer has a branch that returns `true` on a non-decided residual — see the deletion at `src/rest/cedar.mjs:486-497`; (2) INSERT requests exercise `authorizeInsert()` with the proposed row data — `src/rest/handler.mjs:323`; (3) the exploit regression at `src/rest/__tests__/cedar-insert-authz.integration.test.mjs:165` (owner-mismatch INSERT under an `owner_id == principal.uid` policy) returns 403, which it does on this branch and did not at the prior HEAD. Pay attention to missing-column fail-closed behavior (Test 8 at line 274) since that is the trap most likely to regress under future translator work.
