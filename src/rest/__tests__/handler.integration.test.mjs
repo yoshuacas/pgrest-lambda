@@ -145,7 +145,7 @@ function createTestContext(mockPool) {
   const cedar = createCedar({ policiesPath: './policies' });
   cedar._setPolicies({ staticPolicies: DEFAULT_POLICIES });
 
-  return { db, schemaCache, cedar };
+  return { db, schemaCache, cedar, errorsVerbose: false };
 }
 
 // Helper to build a Lambda API Gateway proxy event
@@ -768,6 +768,241 @@ describe('handler integration', () => {
         'https://app.com',
         'error response should include Allow-Origin for matching origin',
       );
+    });
+  });
+
+  describe('PG error sanitization (V-09)', () => {
+    function createPgErrorPool() {
+      const pgErr = new Error(
+        'duplicate key value violates unique constraint "users_email_key"',
+      );
+      pgErr.code = '23505';
+      pgErr.detail = 'Key (email)=(alice@example.com) already exists.';
+
+      return {
+        query: async (text) => {
+          if (text.includes('pg_catalog') && !text.includes('contype')) {
+            return { rows: mockColumnRows };
+          }
+          if (text.includes('contype')) {
+            return { rows: mockPkRows };
+          }
+          throw pgErr;
+        },
+      };
+    }
+
+    it('PG error through handler uses safe message', async () => {
+      const errCtx = createTestContext(createPgErrorPool());
+      const errHandler = createRestHandler(errCtx).handler;
+
+      const event = makeEvent({
+        method: 'POST',
+        path: '/rest/v1/todos',
+        body: { title: 'dup' },
+        headers: { Prefer: 'return=representation' },
+      });
+      const res = await errHandler(event);
+      const body = JSON.parse(res.body);
+
+      assert.equal(res.statusCode, 409,
+        'statusCode should be 409');
+      assert.equal(body.code, '23505',
+        'code should be 23505');
+      assert.equal(body.message, 'Uniqueness violation.',
+        'message should be the safe text');
+      assert.equal(body.details, null,
+        'details should be null');
+      assert.equal(body.hint, null,
+        'hint should be null');
+      assert.ok(!body.message.includes('duplicate'),
+        'message must not contain "duplicate"');
+      assert.ok(!body.message.includes('email'),
+        'message must not contain "email"');
+    });
+
+    it('PG error through handler with verbose ctx uses raw text', async () => {
+      const errCtx = createTestContext(createPgErrorPool());
+      errCtx.errorsVerbose = true;
+      const errHandler = createRestHandler(errCtx).handler;
+
+      const event = makeEvent({
+        method: 'POST',
+        path: '/rest/v1/todos',
+        body: { title: 'dup' },
+        headers: { Prefer: 'return=representation' },
+      });
+      const res = await errHandler(event);
+      const body = JSON.parse(res.body);
+
+      assert.equal(res.statusCode, 409,
+        'statusCode should be 409');
+      assert.equal(body.code, '23505',
+        'code should be 23505');
+      assert.ok(body.message.includes('duplicate key'),
+        'message should contain raw "duplicate key" text');
+      assert.ok(body.details.includes('Key (email)'),
+        'details should contain raw "Key (email)" text');
+    });
+
+    it('structured log emitted for sanitized PG error', async () => {
+      const errCtx = createTestContext(createPgErrorPool());
+      const errHandler = createRestHandler(errCtx).handler;
+
+      const warns = [];
+      const origWarn = console.warn;
+      console.warn = (...args) => warns.push(args);
+
+      try {
+        const event = makeEvent({
+          method: 'POST',
+          path: '/rest/v1/todos',
+          body: { title: 'dup' },
+          headers: { Prefer: 'return=representation' },
+        });
+        await errHandler(event);
+
+        const logEntry = warns.find((args) => {
+          try {
+            const parsed = JSON.parse(args[0]);
+            return parsed.pgCode && parsed.message && parsed.detail;
+          } catch { return false; }
+        });
+        assert.ok(logEntry,
+          'console.warn should have been called with a JSON '
+          + 'string containing pgCode, message, and detail');
+
+        const parsed = JSON.parse(logEntry[0]);
+        assert.equal(parsed.pgCode, '23505',
+          'pgCode should be 23505');
+        assert.ok(parsed.message.includes('duplicate'),
+          'logged message should contain raw PG text');
+        assert.ok(parsed.detail.includes('Key (email)'),
+          'logged detail should contain raw PG detail');
+      } finally {
+        console.warn = origWarn;
+      }
+    });
+
+    it('verbose mode does not emit structured PG log', async () => {
+      const errCtx = createTestContext(createPgErrorPool());
+      errCtx.errorsVerbose = true;
+      const errHandler = createRestHandler(errCtx).handler;
+
+      const warns = [];
+      const origWarn = console.warn;
+      console.warn = (...args) => warns.push(args);
+
+      try {
+        const event = makeEvent({
+          method: 'POST',
+          path: '/rest/v1/todos',
+          body: { title: 'dup' },
+          headers: { Prefer: 'return=representation' },
+        });
+        await errHandler(event);
+
+        const pgLogEntry = warns.find((args) => {
+          try {
+            const parsed = JSON.parse(args[0]);
+            return parsed.pgCode !== undefined;
+          } catch { return false; }
+        });
+        assert.equal(pgLogEntry, undefined,
+          'console.warn should not emit a structured PG error '
+          + 'log entry in verbose mode');
+      } finally {
+        console.warn = origWarn;
+      }
+    });
+
+    it('PG error with hint sanitized in handler', async () => {
+      function createHintErrorPool() {
+        const pgErr = new Error(
+          'could not obtain lock on relation "accounts"',
+        );
+        pgErr.code = '55P03';
+        pgErr.detail = 'Process 1234 waits for ...';
+        pgErr.hint = 'See server log for query details.';
+
+        return {
+          query: async (text) => {
+            if (text.includes('pg_catalog')
+                && !text.includes('contype')) {
+              return { rows: mockColumnRows };
+            }
+            if (text.includes('contype')) {
+              return { rows: mockPkRows };
+            }
+            throw pgErr;
+          },
+        };
+      }
+
+      const errCtx = createTestContext(createHintErrorPool());
+      const errHandler = createRestHandler(errCtx).handler;
+
+      const event = makeEvent({
+        method: 'POST',
+        path: '/rest/v1/todos',
+        body: { title: 'test' },
+        headers: { Prefer: 'return=representation' },
+      });
+      const res = await errHandler(event);
+      const body = JSON.parse(res.body);
+
+      assert.equal(body.hint, null,
+        'hint should be null in sanitized mode');
+      assert.equal(body.details, null,
+        'details should be null in sanitized mode');
+      assert.equal(body.code, '55P03',
+        'code should be preserved');
+    });
+
+    it('PG error with hint verbose in handler', async () => {
+      function createHintErrorPool() {
+        const pgErr = new Error(
+          'could not obtain lock on relation "accounts"',
+        );
+        pgErr.code = '55P03';
+        pgErr.detail = 'Process 1234 waits for ...';
+        pgErr.hint = 'See server log for query details.';
+
+        return {
+          query: async (text) => {
+            if (text.includes('pg_catalog')
+                && !text.includes('contype')) {
+              return { rows: mockColumnRows };
+            }
+            if (text.includes('contype')) {
+              return { rows: mockPkRows };
+            }
+            throw pgErr;
+          },
+        };
+      }
+
+      const errCtx = createTestContext(createHintErrorPool());
+      errCtx.errorsVerbose = true;
+      const errHandler = createRestHandler(errCtx).handler;
+
+      const event = makeEvent({
+        method: 'POST',
+        path: '/rest/v1/todos',
+        body: { title: 'test' },
+        headers: { Prefer: 'return=representation' },
+      });
+      const res = await errHandler(event);
+      const body = JSON.parse(res.body);
+
+      assert.equal(body.hint,
+        'See server log for query details.',
+        'hint should be preserved in verbose mode');
+      assert.equal(body.details,
+        'Process 1234 waits for ...',
+        'details should be preserved in verbose mode');
+      assert.equal(body.code, '55P03',
+        'code should be preserved');
     });
   });
 
