@@ -8,6 +8,12 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
 
 ## Unreleased
 
+### Fixed
+
+- Fix bind-parameter mismatch in Cedar policy-to-SQL
+  translation when branch operators discard sub-expressions
+  that already pushed values ([#4](https://github.com/yoshuacas/pgrest-lambda/issues/4))
+
 ### Security
 
 - **V-06c**: Close Cedar INSERT fail-open -- row-conditioned
