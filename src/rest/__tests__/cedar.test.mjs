@@ -507,6 +507,140 @@ describe('translateExpr', () => {
 });
 
 // ================================================================
+// translateExpr bind-parameter correctness
+// ================================================================
+
+describe('translateExpr bind-parameter correctness', () => {
+  it('Test 1: && with right pushed but left is FALSE', () => {
+    const expr = {
+      '&&': {
+        left: { has: { left: { Var: 'resource' }, attr: 'feature_id' } },
+        right: eqExpr('user_id', 'alice'),
+      },
+    };
+    const values = [];
+    const sql = translateExpr(expr, values, 'orders', schema);
+    assert.equal(sql, 'FALSE');
+    assert.deepEqual(values, []);
+  });
+
+  it('Test 2: && with left pushed but right is FALSE', () => {
+    const expr = {
+      '&&': {
+        left: eqExpr('user_id', 'alice'),
+        right: { has: { left: { Var: 'resource' }, attr: 'feature_id' } },
+      },
+    };
+    const values = [];
+    const sql = translateExpr(expr, values, 'orders', schema);
+    assert.equal(sql, 'FALSE');
+    assert.deepEqual(values, []);
+  });
+
+  it('Test 3: || with left pushed but right is null (TRUE)', () => {
+    const expr = {
+      '||': {
+        left: eqExpr('user_id', 'alice'),
+        right: { Value: true },
+      },
+    };
+    const values = [];
+    const sql = translateExpr(expr, values, 'todos', schema);
+    assert.equal(sql, null);
+    assert.deepEqual(values, []);
+  });
+
+  it('Test 4: || both sides survive -- values correctly numbered', () => {
+    const expr = {
+      '||': {
+        left: eqExpr('user_id', 'alice'),
+        right: eqExpr('status', 'active'),
+      },
+    };
+    const values = [];
+    const sql = translateExpr(expr, values, 'todos', schema);
+    assert.equal(sql, '("user_id" = $1 OR "status" = $2)');
+    assert.deepEqual(values, ['alice', 'active']);
+  });
+
+  it('Test 5: ! with inner pushed then collapsed', () => {
+    const expr = {
+      '!': {
+        arg: {
+          '&&': {
+            left: { has: { left: { Var: 'resource' }, attr: 'feature_id' } },
+            right: eqExpr('user_id', 'alice'),
+          },
+        },
+      },
+    };
+    const values = [];
+    const sql = translateExpr(expr, values, 'orders', schema);
+    assert.equal(sql, null);
+    assert.deepEqual(values, []);
+  });
+
+  it('Test 6: if-then-else discards else branch', () => {
+    const expr = {
+      'if-then-else': {
+        if: { Value: true },
+        then: eqExpr('user_id', 'alice'),
+        else: eqExpr('status', 'archived'),
+      },
+    };
+    const values = [];
+    const sql = translateExpr(expr, values, 'todos', schema);
+    assert.equal(sql, '"user_id" = $1');
+    assert.deepEqual(values, ['alice']);
+  });
+
+  it('Test 7: if-then-else discards then branch', () => {
+    const expr = {
+      'if-then-else': {
+        if: { Value: false },
+        then: eqExpr('user_id', 'alice'),
+        else: eqExpr('status', 'archived'),
+      },
+    };
+    const values = [];
+    const sql = translateExpr(expr, values, 'todos', schema);
+    assert.equal(sql, '"status" = $1');
+    assert.deepEqual(values, ['archived']);
+  });
+
+  it('Test 8: Issue #4 exact scenario (nested)', () => {
+    const expr = {
+      '&&': {
+        left: { has: { left: { Var: 'resource' }, attr: 'feature_id' } },
+        right: {
+          '&&': {
+            left: { has: { left: { Var: 'resource' }, attr: 'owner_id' } },
+            right: eqExpr('owner_id', 'alice'),
+          },
+        },
+      },
+    };
+    const values = [];
+    const sql = translateExpr(expr, values, 'orders', schema);
+    assert.equal(sql, 'FALSE');
+    assert.deepEqual(values, []);
+  });
+
+  it('Test 9: && right is null does not discard left values', () => {
+    const expr = {
+      '&&': {
+        left: eqExpr('user_id', 'alice'),
+        right: { Value: true },
+      },
+    };
+    const values = [];
+    const sql = translateExpr(expr, values, 'todos', schema);
+    assert.equal(sql, '"user_id" = $1');
+    assert.deepEqual(values, ['alice']);
+  });
+});
+
+// ================================================================
 // generateCedarSchema — PG-to-Cedar type mapping
 // ================================================================
 
@@ -969,6 +1103,45 @@ describe('buildAuthzFilter (row-level)', () => {
       'should contain parameter placeholders');
     assert.ok(parseInt(paramMatch[1], 10) >= 5,
       'parameter numbers should start at 5 or higher');
+  });
+
+  it('Test 10: Issue #4 policy -- partial collapse, placeholder count matches values', () => {
+    const ISSUE4_POLICY = `
+permit(
+    principal is PgrestLambda::User,
+    action == PgrestLambda::Action::"select",
+    resource is PgrestLambda::Row
+) when {
+    (resource has feature_id && resource.feature_id == "x")
+    || resource.user_id == principal
+};
+permit(
+    principal is PgrestLambda::ServiceRole,
+    action, resource
+);
+`;
+    cedar._setPolicies({ staticPolicies: ISSUE4_POLICY });
+    const result = cedar.buildAuthzFilter({
+      principal: {
+        role: 'authenticated',
+        userId: 'alice',
+        email: 'alice@test.com',
+      },
+      action: 'select',
+      context: { table: 'todos' },
+      schema,
+      startParam: 1,
+    });
+    const joined = result.conditions.join(' ');
+    const placeholders = joined.match(/\$\d+/g) || [];
+    assert.equal(
+      placeholders.length, result.values.length,
+      `placeholder count (${placeholders.length}) must equal values count (${result.values.length})`,
+    );
+    assert.ok(joined.includes('"user_id"'),
+      'surviving branch should reference user_id');
+    assert.ok(result.values.includes('alice'),
+      'values should contain alice from the surviving branch');
   });
 });
 

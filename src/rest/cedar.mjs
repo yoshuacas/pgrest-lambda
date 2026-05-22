@@ -289,30 +289,56 @@ export function translateExpr(expr, values, tableName, schema) {
   }
 
   if ('&&' in expr) {
+    const snap0 = values.length;
     const left = translateExpr(expr['&&'].left, values, tableName, schema);
+    const snap1 = values.length;
     const right = translateExpr(expr['&&'].right, values, tableName, schema);
     if (left === null && right === null) return null;
     if (left === null) return right;
-    if (right === null) return left;
-    if (left === 'FALSE' || right === 'FALSE') return 'FALSE';
+    if (right === null) {
+      values.length = snap1;
+      return left;
+    }
+    if (left === 'FALSE' || right === 'FALSE') {
+      values.length = snap0;
+      return 'FALSE';
+    }
     return `(${left} AND ${right})`;
   }
 
   if ('||' in expr) {
+    const snap0 = values.length;
     const left = translateExpr(expr['||'].left, values, tableName, schema);
-    if (left === null) return null;
+    if (left === null) {
+      values.length = snap0;
+      return null;
+    }
+    const snap1 = values.length;
     const right = translateExpr(expr['||'].right, values, tableName, schema);
-    if (right === null) return null;
-    if (left === 'FALSE' && right === 'FALSE') return 'FALSE';
+    if (right === null) {
+      values.length = snap0;
+      return null;
+    }
+    if (left === 'FALSE' && right === 'FALSE') {
+      values.length = snap0;
+      return 'FALSE';
+    }
     if (left === 'FALSE') return right;
-    if (right === 'FALSE') return left;
+    if (right === 'FALSE') {
+      values.length = snap1;
+      return left;
+    }
     return `(${left} OR ${right})`;
   }
 
   if ('!' in expr) {
+    const snap = values.length;
     const inner = translateExpr(expr['!'].arg, values, tableName, schema);
     if (inner === null) return 'FALSE';
-    if (inner === 'FALSE') return null;
+    if (inner === 'FALSE') {
+      values.length = snap;
+      return null;
+    }
     return `NOT (${inner})`;
   }
 
@@ -344,11 +370,18 @@ export function translateExpr(expr, values, tableName, schema) {
 
   if ('if-then-else' in expr) {
     const ite = expr['if-then-else'];
+    const snap0 = values.length;
     const ifSql = translateExpr(ite.if, values, tableName, schema);
+    if (ifSql === null) {
+      values.length = snap0;
+      return translateExpr(ite.then, values, tableName, schema);
+    }
+    if (ifSql === 'FALSE') {
+      values.length = snap0;
+      return translateExpr(ite.else, values, tableName, schema);
+    }
     const thenSql = translateExpr(ite.then, values, tableName, schema);
     const elseSql = translateExpr(ite.else, values, tableName, schema);
-    if (ifSql === null) return thenSql;
-    if (ifSql === 'FALSE') return elseSql;
     const thenStr = thenSql === null ? 'TRUE' : thenSql;
     const elseStr = elseSql === null ? 'TRUE' : elseSql;
     return `CASE WHEN ${ifSql} THEN ${thenStr} ELSE ${elseStr} END`;
