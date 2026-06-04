@@ -15,6 +15,30 @@ mock.module('pg', {
   },
 });
 
+// Mock the SSM client so the password-resolution path can be exercised
+// without real AWS calls. The captured request lets tests assert that
+// WithDecryption and the parameter name are passed correctly.
+let capturedSsmInput;
+let ssmSendCalls;
+let ssmParameterValue;
+
+mock.module('@aws-sdk/client-ssm', {
+  namedExports: {
+    SSMClient: function SSMClient() {
+      return {
+        send: async (command) => {
+          ssmSendCalls += 1;
+          capturedSsmInput = command.input;
+          return { Parameter: { Value: ssmParameterValue } };
+        },
+      };
+    },
+    GetParameterCommand: function GetParameterCommand(input) {
+      this.input = input;
+    },
+  },
+});
+
 const { createPostgresProvider } = await import('../postgres.mjs');
 
 describe('Standard Postgres adapter SSL', () => {
@@ -166,6 +190,93 @@ describe('Standard Postgres adapter SSL', () => {
         capturedConfig.ssl,
         { rejectUnauthorized: true },
         'ssl should be { rejectUnauthorized: true } alongside other config'
+      );
+    });
+  });
+
+  describe('SSM password resolution', () => {
+    beforeEach(() => {
+      capturedSsmInput = undefined;
+      ssmSendCalls = 0;
+      ssmParameterValue = 'secret-from-ssm';
+    });
+
+    it('P9: resolves password from SSM when only passwordSsmParam is set', async () => {
+      const provider = createPostgresProvider({
+        host: 'db.example.com',
+        user: 'boa_admin',
+        passwordSsmParam: '/my-app/db-master-password',
+        region: 'us-west-2',
+      });
+      await provider.getPool();
+
+      assert.ok(capturedConfig, 'Pool constructor should have been called');
+      assert.equal(ssmSendCalls, 1, 'SSM should be queried exactly once');
+      assert.equal(
+        capturedConfig.password,
+        'secret-from-ssm',
+        'password should come from the resolved SSM value'
+      );
+      assert.equal(
+        capturedSsmInput.Name,
+        '/my-app/db-master-password',
+        'the SSM parameter name should be requested'
+      );
+      assert.equal(
+        capturedSsmInput.WithDecryption,
+        true,
+        'SecureString resolution requires WithDecryption'
+      );
+    });
+
+    it('P10: explicit password takes precedence over SSM', async () => {
+      const provider = createPostgresProvider({
+        host: 'db.example.com',
+        user: 'boa_admin',
+        password: 'literal-pass',
+        passwordSsmParam: '/my-app/db-master-password',
+      });
+      await provider.getPool();
+
+      assert.equal(ssmSendCalls, 0, 'SSM should not be queried when a password is given');
+      assert.equal(capturedConfig.password, 'literal-pass');
+    });
+
+    it('P11: no password and no SSM param yields empty password', async () => {
+      const provider = createPostgresProvider({
+        host: 'db.example.com',
+        user: 'postgres',
+      });
+      await provider.getPool();
+
+      assert.equal(ssmSendCalls, 0, 'SSM should not be queried without a param name');
+      assert.equal(capturedConfig.password, '');
+    });
+
+    it('P12: SSM resolution happens lazily inside getPool, not at construction', async () => {
+      createPostgresProvider({
+        host: 'db.example.com',
+        passwordSsmParam: '/my-app/db-master-password',
+      });
+
+      assert.equal(
+        ssmSendCalls,
+        0,
+        'constructing the provider must not trigger an SSM call'
+      );
+    });
+
+    it('P13: an empty SSM value throws a clear error', async () => {
+      ssmParameterValue = '';
+      const provider = createPostgresProvider({
+        host: 'db.example.com',
+        passwordSsmParam: '/my-app/db-master-password',
+      });
+
+      await assert.rejects(
+        () => provider.getPool(),
+        /resolved to an empty value/,
+        'an empty SecureString should surface a descriptive error'
       );
     });
   });
