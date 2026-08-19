@@ -1,0 +1,2568 @@
+{
+  "source": "Feature/Query/UpdateSpec.hs",
+  "extractedCases": 64,
+  "skippedSites": 0,
+  "needsConfigCases": 0,
+  "cases": [
+    {
+      "id": "UpdateSpec:17",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 17,
+      "category": "update",
+      "description": "indicates no table found by returning 404",
+      "example": "UpdateSpec:it:16",
+      "request": {
+        "method": "PATCH",
+        "path": "/fake",
+        "query": "",
+        "headers": {},
+        "body": {
+          "real": false
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "code": "PGRST205",
+          "details": null,
+          "hint": null,
+          "message": "Could not find the table 'public.fake' in the schema cache"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Length": "115"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [
+        "expected body: schema \"test.\" rewritten to \"public.\" (the DSQL fixtures load upstream's test schema into public)"
+      ],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:28",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 28,
+      "category": "update",
+      "description": "succeeds with status code 204",
+      "example": "UpdateSpec:it:27",
+      "request": {
+        "method": "PATCH",
+        "path": "/empty_table",
+        "query": "",
+        "headers": {},
+        "body": {
+          "extra": 20
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {},
+        "headersAbsent": [
+          "Content-Type",
+          "Content-Length"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:39",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 39,
+      "category": "update",
+      "description": "fails with 400 and error",
+      "example": "UpdateSpec:it:38",
+      "request": {
+        "method": "PATCH",
+        "path": "/simple_pk",
+        "query": "",
+        "headers": {},
+        "body": "}{ x = 2",
+        "bodyFormat": "text"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "message": "Empty or invalid json",
+          "code": "PGRST102",
+          "details": null,
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Length": "80"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:49",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 49,
+      "category": "update",
+      "description": "fails with 400 and error",
+      "example": "UpdateSpec:it:48",
+      "request": {
+        "method": "PATCH",
+        "path": "/items",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "message": "Empty or invalid json",
+          "code": "PGRST102",
+          "details": null,
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:58",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 58,
+      "category": "update",
+      "description": "ignores it and successfuly updates with json payload",
+      "example": "UpdateSpec:it:57",
+      "request": {
+        "method": "PATCH",
+        "path": "/items",
+        "query": "id=eq.1",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": "\t \n \r { \"id\": 99 } \t \n \r ",
+        "bodyFormat": "text"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 99
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Length": "11"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:68",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 68,
+      "category": "update",
+      "description": "can update a single item",
+      "example": "UpdateSpec:it:67",
+      "request": {
+        "method": "PATCH",
+        "path": "/items",
+        "query": "id=eq.2",
+        "headers": {},
+        "body": {
+          "id": 42
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Range": "0-0/*"
+        },
+        "headersAbsent": [
+          "Content-Type",
+          "Content-Length"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:79",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 79,
+      "category": "update",
+      "description": "returns empty array when no rows updated and return=rep",
+      "example": "UpdateSpec:it:78",
+      "request": {
+        "method": "PATCH",
+        "path": "/items",
+        "query": "id=eq.999999",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "id": 999999
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {
+          "Preference-Applied": "return=representation",
+          "Content-Length": "2"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:89",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 89,
+      "category": "update",
+      "description": "returns status code 200 when no rows updated",
+      "example": "UpdateSpec:it:88",
+      "request": {
+        "method": "PATCH",
+        "path": "/items",
+        "query": "id=eq.99999999",
+        "headers": {},
+        "body": {
+          "id": 42
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:94",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 94,
+      "category": "update",
+      "description": "returns updated object as array when return=rep",
+      "example": "UpdateSpec:it:93",
+      "request": {
+        "method": "PATCH",
+        "path": "/items",
+        "query": "id=eq.2",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "id": 2
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 2
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "0-0/*",
+          "Preference-Applied": "return=representation"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:103",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 103,
+      "category": "update",
+      "description": "can update multiple items",
+      "example": "UpdateSpec:it:102",
+      "request": {
+        "method": "GET",
+        "path": "/no_pk",
+        "query": "select=a&b=eq.1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:107",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 107,
+      "category": "update",
+      "description": "can update multiple items",
+      "example": "UpdateSpec:it:102",
+      "request": {
+        "method": "PATCH",
+        "path": "/no_pk",
+        "query": "b=eq.0",
+        "headers": {
+          "Prefer": "tx=commit"
+        },
+        "body": {
+          "b": "1"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Range": "0-1/*",
+          "Preference-Applied": "tx=commit"
+        },
+        "headersAbsent": [
+          "Content-Type",
+          "Content-Length"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:120",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 120,
+      "category": "update",
+      "description": "can update multiple items",
+      "example": "UpdateSpec:it:102",
+      "request": {
+        "method": "GET",
+        "path": "/no_pk",
+        "query": "select=a&b=eq.1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "a": "1"
+          },
+          {
+            "a": "2"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:125",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 125,
+      "category": "update",
+      "description": "can update multiple items",
+      "example": "UpdateSpec:it:102",
+      "request": {
+        "method": "PATCH",
+        "path": "/no_pk",
+        "query": "b=eq.1",
+        "headers": {
+          "Prefer": "tx=commit"
+        },
+        "body": {
+          "b": "0"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {},
+        "headersAbsent": [
+          "Content-Type",
+          "Content-Length"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:136",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 136,
+      "category": "update",
+      "description": "can set a column to NULL",
+      "example": "UpdateSpec:it:135",
+      "request": {
+        "method": "PATCH",
+        "path": "/no_pk",
+        "query": "a=eq.1",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "b": null
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "a": "1",
+            "b": null
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:144",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 144,
+      "category": "update",
+      "description": "is successful",
+      "example": "UpdateSpec:it:143",
+      "request": {
+        "method": "PATCH",
+        "path": "/items",
+        "query": "is_first=eq.true",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "id": 100
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 100
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "0-0/*",
+          "Preference-Applied": "return=representation"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:156",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 156,
+      "category": "update",
+      "description": "returns empty array when no rows updated and return=rep",
+      "example": "UpdateSpec:it:155",
+      "request": {
+        "method": "PATCH",
+        "path": "/items",
+        "query": "always_true=eq.false",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "id": 100
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {
+          "Preference-Applied": "return=representation"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:169",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 169,
+      "category": "update",
+      "description": "can provide a representation",
+      "example": "UpdateSpec:it:166",
+      "request": {
+        "method": "PATCH",
+        "path": "/items",
+        "query": "id=eq.1",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "id": 99
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 99
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Preference-Applied": "return=representation"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:181",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 181,
+      "category": "update",
+      "description": "can return computed columns",
+      "example": "UpdateSpec:it:180",
+      "request": {
+        "method": "PATCH",
+        "path": "/items",
+        "query": "id=eq.1&select=id,always_true",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "id": 1
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "always_true": true
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Preference-Applied": "return=representation"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:191",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 191,
+      "category": "update",
+      "description": "can select overloaded computed columns",
+      "example": "UpdateSpec:it:190",
+      "request": {
+        "method": "PATCH",
+        "path": "/items",
+        "query": "id=eq.1&select=id,computed_overload",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "id": 1
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "computed_overload": true
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Preference-Applied": "return=representation"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:199",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 199,
+      "category": "update",
+      "description": "can select overloaded computed columns",
+      "example": "UpdateSpec:it:190",
+      "request": {
+        "method": "PATCH",
+        "path": "/items2",
+        "query": "id=eq.1&select=id,computed_overload",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "id": 1
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "computed_overload": true
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Preference-Applied": "return=representation"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:209",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 209,
+      "category": "update",
+      "description": "ignores ?select= when return not set or return=minimal",
+      "example": "UpdateSpec:it:208",
+      "request": {
+        "method": "PATCH",
+        "path": "/items",
+        "query": "id=eq.1&select=id",
+        "headers": {
+          "Prefer": "return=minimal"
+        },
+        "body": {
+          "id": 1
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Range": "0-0/*",
+          "Preference-Applied": "return=minimal"
+        },
+        "headersAbsent": [
+          "Content-Type",
+          "Content-Length"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:220",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 220,
+      "category": "update",
+      "description": "ignores ?select= when return not set or return=minimal",
+      "example": "UpdateSpec:it:208",
+      "request": {
+        "method": "PATCH",
+        "path": "/items",
+        "query": "id=eq.1&select=id",
+        "headers": {
+          "Prefer": "return=minimal"
+        },
+        "body": {
+          "id": 1
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Range": "0-0/*",
+          "Preference-Applied": "return=minimal"
+        },
+        "headersAbsent": [
+          "Content-Type",
+          "Content-Length"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:234",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 234,
+      "category": "update",
+      "description": "makes no updates and returns 204 without return= and without ?select=",
+      "example": "UpdateSpec:it:233",
+      "request": {
+        "method": "PATCH",
+        "path": "/items",
+        "query": "",
+        "headers": {},
+        "body": {},
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Range": "*/*"
+        },
+        "headersAbsent": [
+          "Content-Type",
+          "Content-Length"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:245",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 245,
+      "category": "update",
+      "description": "makes no updates and returns 204 without return= and without ?select=",
+      "example": "UpdateSpec:it:233",
+      "request": {
+        "method": "PATCH",
+        "path": "/items",
+        "query": "",
+        "headers": {},
+        "body": [],
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Range": "*/*"
+        },
+        "headersAbsent": [
+          "Content-Type",
+          "Content-Length"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:256",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 256,
+      "category": "update",
+      "description": "makes no updates and returns 204 without return= and without ?select=",
+      "example": "UpdateSpec:it:233",
+      "request": {
+        "method": "PATCH",
+        "path": "/items",
+        "query": "",
+        "headers": {},
+        "body": [
+          {}
+        ],
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Range": "*/*"
+        },
+        "headersAbsent": [
+          "Content-Type",
+          "Content-Length"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:268",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 268,
+      "category": "update",
+      "description": "makes no updates and returns 204 without return= and with ?select=",
+      "example": "UpdateSpec:it:267",
+      "request": {
+        "method": "PATCH",
+        "path": "/items",
+        "query": "select=id",
+        "headers": {},
+        "body": {},
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Range": "*/*"
+        },
+        "headersAbsent": [
+          "Content-Type",
+          "Content-Length"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:279",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 279,
+      "category": "update",
+      "description": "makes no updates and returns 204 without return= and with ?select=",
+      "example": "UpdateSpec:it:267",
+      "request": {
+        "method": "PATCH",
+        "path": "/items",
+        "query": "select=id",
+        "headers": {},
+        "body": [],
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Range": "*/*"
+        },
+        "headersAbsent": [
+          "Content-Type",
+          "Content-Length"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:290",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 290,
+      "category": "update",
+      "description": "makes no updates and returns 204 without return= and with ?select=",
+      "example": "UpdateSpec:it:267",
+      "request": {
+        "method": "PATCH",
+        "path": "/items",
+        "query": "select=id",
+        "headers": {},
+        "body": [
+          {}
+        ],
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Range": "*/*"
+        },
+        "headersAbsent": [
+          "Content-Type",
+          "Content-Length"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:302",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 302,
+      "category": "update",
+      "description": "makes no updates and returns 200 with return=rep and without ?select=",
+      "example": "UpdateSpec:it:301",
+      "request": {
+        "method": "PATCH",
+        "path": "/items",
+        "query": "",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {},
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "*/*",
+          "Preference-Applied": "return=representation"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:311",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 311,
+      "category": "update",
+      "description": "makes no updates and returns 200 with return=rep and with ?select=",
+      "example": "UpdateSpec:it:310",
+      "request": {
+        "method": "PATCH",
+        "path": "/items",
+        "query": "select=id",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {},
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "*/*",
+          "Preference-Applied": "return=representation"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:320",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 320,
+      "category": "update",
+      "description": "makes no updates and returns 200 with return=rep and with ?select= for overloaded computed columns",
+      "example": "UpdateSpec:it:319",
+      "request": {
+        "method": "PATCH",
+        "path": "/items",
+        "query": "select=id,computed_overload",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {},
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "*/*",
+          "Preference-Applied": "return=representation"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:330",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 330,
+      "category": "update",
+      "description": "succeeds and returns values intact",
+      "example": "UpdateSpec:it:329",
+      "request": {
+        "method": "PATCH",
+        "path": "/no_pk",
+        "query": "a=eq.1",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "a": "圍棋",
+          "b": "￥"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "a": "圍棋",
+            "b": "￥"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:338",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 338,
+      "category": "update",
+      "description": "ignores json keys not included in ?columns",
+      "example": "UpdateSpec:it:337",
+      "request": {
+        "method": "PATCH",
+        "path": "/articles",
+        "query": "id=eq.1&columns=body",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "body": "Some real content",
+          "smth": "here",
+          "other": "stuff",
+          "fake_id": 13
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "body": "Some real content",
+            "owner": "postgrest_test_anonymous"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:345",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 345,
+      "category": "update",
+      "description": "ignores json keys and gives 200 if no record updated",
+      "example": "UpdateSpec:it:344",
+      "request": {
+        "method": "PATCH",
+        "path": "/articles",
+        "query": "id=eq.2001&columns=body",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "body": "Some real content",
+          "smth": "here",
+          "other": "stuff",
+          "fake_id": 13
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:349",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 349,
+      "category": "update",
+      "description": "disallows ?columns which don't exist",
+      "example": "UpdateSpec:it:348",
+      "request": {
+        "method": "PATCH",
+        "path": "/articles",
+        "query": "id=eq.1&columns=helicopter",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "body": "yyy"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "code": "PGRST204",
+          "details": null,
+          "hint": null,
+          "message": "Could not find the 'helicopter' column of 'articles' in the schema cache"
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:359",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 359,
+      "category": "update",
+      "description": "returns missing table error even if also has invalid ?columns",
+      "example": "UpdateSpec:it:358",
+      "request": {
+        "method": "PATCH",
+        "path": "/garlic",
+        "query": "columns=helicopter",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": [
+          {
+            "id": 204,
+            "body": "yyy"
+          },
+          {
+            "id": 205,
+            "body": "zzz"
+          }
+        ],
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "code": "PGRST205",
+          "details": null,
+          "hint": null,
+          "message": "Could not find the table 'public.garlic' in the schema cache"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Length": "117"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [
+        "expected body: schema \"test.\" rewritten to \"public.\" (the DSQL fixtures load upstream's test schema into public)"
+      ],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:372",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 372,
+      "category": "update",
+      "description": "updates table using default values(field-with_sep) when json keys are undefined",
+      "example": "UpdateSpec:it:371",
+      "request": {
+        "method": "PATCH",
+        "path": "/complex_items",
+        "query": "id=eq.3&columns=name,field-with_sep",
+        "headers": {
+          "Prefer": "return=representation, missing=default"
+        },
+        "body": {
+          "name": "Tres"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 3,
+            "name": "Tres",
+            "settings": {
+              "foo": {
+                "int": 1,
+                "bar": "baz"
+              }
+            },
+            "arr_data": [
+              1,
+              2,
+              3
+            ],
+            "field-with_sep": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Preference-Applied": "missing=default, return=representation"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:384",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 384,
+      "category": "update",
+      "description": "updates table default values(field-with_sep) when json keys are undefined",
+      "example": "UpdateSpec:it:383",
+      "request": {
+        "method": "PATCH",
+        "path": "/complex_items",
+        "query": "id=eq.3&columns=name,field-with_sep",
+        "headers": {
+          "Prefer": "return=representation, missing=default"
+        },
+        "body": {
+          "name": "Tres"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 3,
+            "name": "Tres",
+            "settings": {
+              "foo": {
+                "int": 1,
+                "bar": "baz"
+              }
+            },
+            "arr_data": [
+              1,
+              2,
+              3
+            ],
+            "field-with_sep": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Preference-Applied": "missing=default, return=representation"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:396",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 396,
+      "category": "update",
+      "description": "updates view default values(field-with_sep) when json keys are undefined",
+      "example": "UpdateSpec:it:395",
+      "request": {
+        "method": "PATCH",
+        "path": "/complex_items_view",
+        "query": "id=eq.3&columns=arr_data,name",
+        "headers": {
+          "Prefer": "return=representation, missing=default"
+        },
+        "body": {
+          "arr_data": null
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 3,
+            "name": "Default",
+            "settings": {
+              "foo": {
+                "int": 1,
+                "bar": "baz"
+              }
+            },
+            "arr_data": null,
+            "field-with_sep": 3
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Preference-Applied": "missing=default, return=representation"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:412",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 412,
+      "category": "update",
+      "description": "should update a bit column with length",
+      "example": "UpdateSpec:it:411",
+      "request": {
+        "method": "PATCH",
+        "path": "/bitchar_with_length",
+        "query": "select=bit,char&char=eq.aaaaa",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "bit": "11100"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "bit": "11100",
+            "char": "aaaaa"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Preference-Applied": "return=representation"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:421",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 421,
+      "category": "update",
+      "description": "should update a char column with length",
+      "example": "UpdateSpec:it:420",
+      "request": {
+        "method": "PATCH",
+        "path": "/bitchar_with_length",
+        "query": "select=bit,char&bit=eq.00000",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "char": "zzzyy"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "bit": "00000",
+            "char": "zzzyy"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Preference-Applied": "return=representation"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:432",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 432,
+      "category": "update",
+      "description": "without filters",
+      "example": "UpdateSpec:it:431",
+      "request": {
+        "method": "PATCH",
+        "path": "/web_content",
+        "query": "id=eq.0&select=id,name,web_content(name)",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "name": "tardis-patched"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 0,
+            "name": "tardis-patched",
+            "web_content": [
+              {
+                "name": "fezz"
+              },
+              {
+                "name": "foo"
+              },
+              {
+                "name": "bar"
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Preference-Applied": "return=representation"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:444",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 444,
+      "category": "update",
+      "description": "with ordering on top-level resource",
+      "example": "UpdateSpec:it:443",
+      "request": {
+        "method": "PATCH",
+        "path": "/no_pk",
+        "query": "order=a.desc",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "b": "1"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "a": null,
+            "b": "1"
+          },
+          {
+            "a": "2",
+            "b": "1"
+          },
+          {
+            "a": "1",
+            "b": "1"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Preference-Applied": "return=representation"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:458",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 458,
+      "category": "update",
+      "description": "with filters",
+      "example": "UpdateSpec:it:457",
+      "request": {
+        "method": "PATCH",
+        "path": "/web_content",
+        "query": "id=eq.0&select=id,name,web_content(name)&web_content.name=like.f*",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "name": "tardis-patched"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 0,
+            "name": "tardis-patched",
+            "web_content": [
+              {
+                "name": "fezz"
+              },
+              {
+                "name": "foo"
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Preference-Applied": "return=representation"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:471",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 471,
+      "category": "update",
+      "description": "without filters",
+      "example": "UpdateSpec:it:470",
+      "request": {
+        "method": "PATCH",
+        "path": "/web_content",
+        "query": "id=eq.0&select=id,name,web_content(name,web_content(name)),parent_content:p_web_id(name)",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "name": "tardis-patched-2"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 0,
+            "name": "tardis-patched-2",
+            "parent_content": {
+              "name": "wat"
+            },
+            "web_content": [
+              {
+                "name": "fezz",
+                "web_content": [
+                  {
+                    "name": "wut"
+                  }
+                ]
+              },
+              {
+                "name": "foo",
+                "web_content": []
+              },
+              {
+                "name": "bar",
+                "web_content": []
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Preference-Applied": "return=representation"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:492",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 492,
+      "category": "update",
+      "description": "with filters",
+      "example": "UpdateSpec:it:491",
+      "request": {
+        "method": "PATCH",
+        "path": "/web_content",
+        "query": "id=eq.0&select=id,name,web_content(name,web_content(name)),parent_content:p_web_id(name)&web_content.name=like.f*&web_content.web_content.id=eq.4&parent_content.name=neq.wat",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "name": "tardis-patched-2"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 0,
+            "name": "tardis-patched-2",
+            "parent_content": null,
+            "web_content": [
+              {
+                "name": "fezz",
+                "web_content": [
+                  {
+                    "name": "wut"
+                  }
+                ]
+              },
+              {
+                "name": "foo",
+                "web_content": []
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Preference-Applied": "return=representation"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:513",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 513,
+      "category": "update",
+      "description": "without filters",
+      "example": "UpdateSpec:it:512",
+      "request": {
+        "method": "PATCH",
+        "path": "/web_content",
+        "query": "id=eq.0&select=name,web_content(name)",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "name": "tardis-patched"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "tardis-patched",
+            "web_content": [
+              {
+                "name": "fezz"
+              },
+              {
+                "name": "foo"
+              },
+              {
+                "name": "bar"
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Preference-Applied": "return=representation"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:525",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 525,
+      "category": "update",
+      "description": "with filters",
+      "example": "UpdateSpec:it:524",
+      "request": {
+        "method": "PATCH",
+        "path": "/web_content",
+        "query": "id=eq.0&select=name,web_content(name)&web_content.name=like.b*",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "name": "tardis-patched"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "tardis-patched",
+            "web_content": [
+              {
+                "name": "bar"
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Preference-Applied": "return=representation"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:539",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 539,
+      "category": "update",
+      "description": "without filters",
+      "example": "UpdateSpec:it:538",
+      "request": {
+        "method": "PATCH",
+        "path": "/users",
+        "query": "id=eq.1&select=name,tasks(name,project:projects(name))",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "name": "Kevin Malone"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Kevin Malone",
+            "tasks": [
+              {
+                "name": "Design w7",
+                "project": {
+                  "name": "Windows 7"
+                }
+              },
+              {
+                "name": "Code w7",
+                "project": {
+                  "name": "Windows 7"
+                }
+              },
+              {
+                "name": "Design w10",
+                "project": {
+                  "name": "Windows 10"
+                }
+              },
+              {
+                "name": "Code w10",
+                "project": {
+                  "name": "Windows 10"
+                }
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Preference-Applied": "return=representation"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:559",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 559,
+      "category": "update",
+      "description": "with filters",
+      "example": "UpdateSpec:it:558",
+      "request": {
+        "method": "PATCH",
+        "path": "/users",
+        "query": "id=eq.1&select=name,tasks(name,project:projects(name))&tasks.name=ilike.code*&tasks.project.name=like.*10",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "name": "Kevin Malone"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Kevin Malone",
+            "tasks": [
+              {
+                "name": "Code w7",
+                "project": null
+              },
+              {
+                "name": "Code w10",
+                "project": {
+                  "name": "Windows 10"
+                }
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Preference-Applied": "return=representation"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:579",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 579,
+      "category": "update",
+      "description": "without filters",
+      "example": "UpdateSpec:it:578",
+      "request": {
+        "method": "PATCH",
+        "path": "/students",
+        "query": "id=eq.1&select=name,students_info(address)",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "name": "Johnny Doe"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Johnny Doe",
+            "students_info": {
+              "address": "Street 1"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Preference-Applied": "return=representation"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:592",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 592,
+      "category": "update",
+      "description": "without filters",
+      "example": "UpdateSpec:it:578",
+      "request": {
+        "method": "PATCH",
+        "path": "/students_info",
+        "query": "id=eq.1&select=address,students(name)",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "address": "New Street 1"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "address": "New Street 1",
+            "students": {
+              "name": "John Doe"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Preference-Applied": "return=representation"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:607",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 607,
+      "category": "update",
+      "description": "with filters",
+      "example": "UpdateSpec:it:606",
+      "request": {
+        "method": "PATCH",
+        "path": "/students",
+        "query": "id=eq.1&select=name,students_info(address)&students_info.code=like.0002",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "name": "Johnny Doe"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Johnny Doe",
+            "students_info": null
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Preference-Applied": "return=representation"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:623",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 623,
+      "category": "update",
+      "description": "succeeds updating row and gives a 204 when using return=minimal",
+      "example": "UpdateSpec:it:622",
+      "request": {
+        "method": "PATCH",
+        "path": "/app_users",
+        "query": "id=eq.1",
+        "headers": {
+          "Prefer": "return=minimal"
+        },
+        "body": {
+          "password": "passxyz"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Preference-Applied": "return=minimal"
+        },
+        "headersAbsent": [
+          "Content-Type",
+          "Content-Length"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:635",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 635,
+      "category": "update",
+      "description": "can update without return=minimal and no explicit select",
+      "example": "UpdateSpec:it:634",
+      "request": {
+        "method": "PATCH",
+        "path": "/app_users",
+        "query": "id=eq.1",
+        "headers": {},
+        "body": {
+          "password": "passabc"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {},
+        "headersAbsent": [
+          "Content-Type",
+          "Content-Length"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:649",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 649,
+      "category": "update",
+      "description": "parses values in payload",
+      "example": "UpdateSpec:it:648",
+      "request": {
+        "method": "PATCH",
+        "path": "/datarep_todos_computed",
+        "query": "id=eq.2",
+        "headers": {
+          "Prefer": "return=headers-only"
+        },
+        "body": {
+          "label_color": "#221100",
+          "due_at": "2019-01-03T11:00:00Z"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Range": "0-0/*"
+        },
+        "headersAbsent": [
+          "Content-Type",
+          "Content-Length"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:660",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 660,
+      "category": "update",
+      "description": "parses values in payload and formats individually selected values in return=representation",
+      "example": "UpdateSpec:it:659",
+      "request": {
+        "method": "PATCH",
+        "path": "/datarep_todos_computed",
+        "query": "id=eq.2&select=id,label_color",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "label_color": "#221100",
+          "due_at": "2019-01-03T11:00:00Z"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 2,
+            "label_color": "#221100"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "0-0/*",
+          "Preference-Applied": "return=representation"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:671",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 671,
+      "category": "update",
+      "description": "parses values in payload and formats values in return=representation",
+      "example": "UpdateSpec:it:670",
+      "request": {
+        "method": "PATCH",
+        "path": "/datarep_todos_computed",
+        "query": "id=eq.2",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "label_color": "#221100",
+          "due_at": "2019-01-03T11:00:20Z"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 2,
+            "name": "Essay",
+            "label_color": "#221100",
+            "dark_color": "#110880",
+            "due_at": "2019-01-03T11:00:20Z"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "0-0/*",
+          "Preference-Applied": "return=representation"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:682",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 682,
+      "category": "update",
+      "description": "parses values in payload and formats individually selected values in return=representation",
+      "example": "UpdateSpec:it:681",
+      "request": {
+        "method": "PATCH",
+        "path": "/datarep_todos_computed",
+        "query": "id=lt.4&select=id,name,label_color,dark_color",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "label_color": "#221100",
+          "due_at": "2019-01-03T11:00:00Z"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "Report",
+            "label_color": "#221100",
+            "dark_color": "#110880"
+          },
+          {
+            "id": 2,
+            "name": "Essay",
+            "label_color": "#221100",
+            "dark_color": "#110880"
+          },
+          {
+            "id": 3,
+            "name": "Algebra",
+            "label_color": "#221100",
+            "dark_color": "#110880"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "0-2/*",
+          "Preference-Applied": "return=representation"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:697",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 697,
+      "category": "update",
+      "description": "parses values in payload and formats values in return=representation",
+      "example": "UpdateSpec:it:696",
+      "request": {
+        "method": "PATCH",
+        "path": "/datarep_todos_computed",
+        "query": "id=lt.4",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "label_color": "#221100",
+          "due_at": "2019-01-03T11:00:00Z"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "Report",
+            "label_color": "#221100",
+            "dark_color": "#110880",
+            "due_at": "2019-01-03T11:00:00Z"
+          },
+          {
+            "id": 2,
+            "name": "Essay",
+            "label_color": "#221100",
+            "dark_color": "#110880",
+            "due_at": "2019-01-03T11:00:00Z"
+          },
+          {
+            "id": 3,
+            "name": "Algebra",
+            "label_color": "#221100",
+            "dark_color": "#110880",
+            "due_at": "2019-01-03T11:00:00Z"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "0-2/*",
+          "Preference-Applied": "return=representation"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:712",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 712,
+      "category": "update",
+      "description": "ignores json keys not included in ?columns; parses only the ones specified",
+      "example": "UpdateSpec:it:711",
+      "request": {
+        "method": "PATCH",
+        "path": "/datarep_todos_computed",
+        "query": "id=eq.2&columns=due_at",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "due_at": "2019-01-03T11:00:00Z",
+          "smth": "here",
+          "label_color": "invalid",
+          "fake_id": 13
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 2,
+            "name": "Essay",
+            "label_color": "#000100",
+            "dark_color": "#000080",
+            "due_at": "2019-01-03T11:00:00Z"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "0-0/*",
+          "Preference-Applied": "return=representation"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:725",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 725,
+      "category": "update",
+      "description": "fails if at least one specified column doesn't exist",
+      "example": "UpdateSpec:it:724",
+      "request": {
+        "method": "PATCH",
+        "path": "/datarep_todos_computed",
+        "query": "id=eq.2&columns=label_color,helicopters",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "due_at": "2019-01-03T11:00:00Z",
+          "smth": "here",
+          "label_color": "invalid",
+          "fake_id": 13
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "code": "PGRST204",
+          "details": null,
+          "hint": null,
+          "message": "Could not find the 'helicopters' column of 'datarep_todos_computed' in the schema cache"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:734",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 734,
+      "category": "update",
+      "description": "ignores json keys and gives 200 if no record updated",
+      "example": "UpdateSpec:it:733",
+      "request": {
+        "method": "PATCH",
+        "path": "/datarep_todos_computed",
+        "query": "id=eq.2001&columns=label_color",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "due_at": "2019-01-03T11:00:00Z",
+          "smth": "here",
+          "label_color": "invalid",
+          "fake_id": 13
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "UpdateSpec:740",
+      "source": "Feature/Query/UpdateSpec.hs",
+      "line": 740,
+      "category": "update",
+      "description": "works with request method PATCH and embedded resource",
+      "example": "UpdateSpec:it:739",
+      "request": {
+        "method": "PATCH",
+        "path": "/web_content",
+        "query": "id=eq.0&select=id,name,web_content(name)&web_content.order=name.asc",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "name": "tardis-patched"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 0,
+            "name": "tardis-patched",
+            "web_content": [
+              {
+                "name": "bar"
+              },
+              {
+                "name": "fezz"
+              },
+              {
+                "name": "foo"
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Preference-Applied": "return=representation"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    }
+  ]
+}

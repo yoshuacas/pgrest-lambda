@@ -1,0 +1,1525 @@
+{
+  "relationships": [
+    {
+      "constraint": "public_orders_consumer_fkey",
+      "schema": "public",
+      "table": "public_orders",
+      "columns": [
+        "consumer"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "public_consumers",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "client",
+      "schema": "public",
+      "table": "projects",
+      "columns": [
+        "client_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "clients",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "competitors_sponsor_id_fkey",
+      "schema": "public",
+      "table": "competitors",
+      "columns": [
+        "sponsor_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "sponsors",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "users_projects_user_id_fkey",
+      "schema": "public",
+      "table": "users_projects",
+      "columns": [
+        "user_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "users",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "users_projects_project_id_fkey",
+      "schema": "public",
+      "table": "users_projects",
+      "columns": [
+        "project_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "projects",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "project",
+      "schema": "public",
+      "table": "tasks",
+      "columns": [
+        "project_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "projects",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "users_tasks_user_id_fkey",
+      "schema": "public",
+      "table": "users_tasks",
+      "columns": [
+        "user_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "users",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "users_tasks_task_id_fkey",
+      "schema": "public",
+      "table": "users_tasks",
+      "columns": [
+        "task_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "tasks",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "user",
+      "schema": "public",
+      "table": "comments",
+      "columns": [
+        "commenter_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "users",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "comments_task_id_fkey",
+      "schema": "public",
+      "table": "comments",
+      "columns": [
+        "task_id",
+        "user_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "users_tasks",
+      "foreignColumns": [
+        "task_id",
+        "user_id"
+      ]
+    },
+    {
+      "constraint": "fk_users_tasks",
+      "schema": "public",
+      "table": "touched_files",
+      "columns": [
+        "user_id",
+        "task_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "users_tasks",
+      "foreignColumns": [
+        "user_id",
+        "task_id"
+      ]
+    },
+    {
+      "constraint": "fk_upload",
+      "schema": "public",
+      "table": "touched_files",
+      "columns": [
+        "project_id",
+        "filename"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "files",
+      "foreignColumns": [
+        "project_id",
+        "filename"
+      ]
+    },
+    {
+      "constraint": "article",
+      "schema": "private",
+      "table": "article_stars",
+      "columns": [
+        "article_id"
+      ],
+      "foreignSchema": "private",
+      "foreignTable": "articles",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "user",
+      "schema": "private",
+      "table": "article_stars",
+      "columns": [
+        "user_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "users",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "ghostBusters_escapeId_fkey",
+      "schema": "public",
+      "table": "ghostBusters",
+      "columns": [
+        "escapeId"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "Escap3e;",
+      "foreignColumns": [
+        "so6meIdColumn"
+      ]
+    },
+    {
+      "constraint": "has_fk_fk_fkey",
+      "schema": "public",
+      "table": "has_fk",
+      "columns": [
+        "auto_inc_fk"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "auto_incrementing_pk",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "has_fk_simple_fk_fkey",
+      "schema": "public",
+      "table": "has_fk",
+      "columns": [
+        "simple_fk"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "simple_pk",
+      "foreignColumns": [
+        "k"
+      ]
+    },
+    {
+      "constraint": "billing",
+      "schema": "public",
+      "table": "orders",
+      "columns": [
+        "billing_address_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "addresses",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "shipping",
+      "schema": "public",
+      "table": "orders",
+      "columns": [
+        "shipping_address_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "addresses",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "child_entities_parent_id_fkey",
+      "schema": "public",
+      "table": "child_entities",
+      "columns": [
+        "parent_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "entities",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "grandchild_entities_parent_id_fkey",
+      "schema": "public",
+      "table": "grandchild_entities",
+      "columns": [
+        "parent_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "child_entities",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "descendant_being_fkey",
+      "schema": "public",
+      "table": "descendant",
+      "columns": [
+        "being"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "being",
+      "foreignColumns": [
+        "being"
+      ]
+    },
+    {
+      "constraint": "being_part_being_fkey",
+      "schema": "public",
+      "table": "being_part",
+      "columns": [
+        "being"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "being",
+      "foreignColumns": [
+        "being"
+      ]
+    },
+    {
+      "constraint": "being_part_part_fkey",
+      "schema": "public",
+      "table": "being_part",
+      "columns": [
+        "part"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "part",
+      "foreignColumns": [
+        "part"
+      ]
+    },
+    {
+      "constraint": "pptr",
+      "schema": "public",
+      "table": "family_tree",
+      "columns": [
+        "parent"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "family_tree",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "organizations_referee_fkey",
+      "schema": "public",
+      "table": "organizations",
+      "columns": [
+        "referee"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "organizations",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "organizations_auditor_fkey",
+      "schema": "public",
+      "table": "organizations",
+      "columns": [
+        "auditor"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "organizations",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "manager",
+      "schema": "public",
+      "table": "organizations",
+      "columns": [
+        "manager_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "managers",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "books_author_id_fkey",
+      "schema": "private",
+      "table": "books",
+      "columns": [
+        "author_id"
+      ],
+      "foreignSchema": "private",
+      "foreignTable": "authors",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "books_first_publisher_id_fkey",
+      "schema": "private",
+      "table": "books",
+      "columns": [
+        "first_publisher_id"
+      ],
+      "foreignSchema": "private",
+      "foreignTable": "publishers",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "message_sender_fkey",
+      "schema": "public",
+      "table": "message",
+      "columns": [
+        "sender"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "person",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "message_recipient_fkey",
+      "schema": "public",
+      "table": "message",
+      "columns": [
+        "recipient"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "person",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "zone_space_id_fkey",
+      "schema": "public",
+      "table": "zone",
+      "columns": [
+        "space_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "space",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "bar_fooId_fkey",
+      "schema": "public",
+      "table": "bar",
+      "columns": [
+        "fooId"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "Foo",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "contract_last_name_id_first_name_birth_date_fkey",
+      "schema": "public",
+      "table": "contract",
+      "columns": [
+        "last_name",
+        "id",
+        "first_name",
+        "birth_date"
+      ],
+      "foreignSchema": "private",
+      "foreignTable": "player",
+      "foreignColumns": [
+        "last_name",
+        "id",
+        "first_name",
+        "birth_date"
+      ]
+    },
+    {
+      "constraint": "web_content_p_web_id_fkey",
+      "schema": "public",
+      "table": "web_content",
+      "columns": [
+        "p_web_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "web_content",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "referrals_link_fkey",
+      "schema": "private",
+      "table": "referrals",
+      "columns": [
+        "link"
+      ],
+      "foreignSchema": "private",
+      "foreignTable": "pages",
+      "foreignColumns": [
+        "link"
+      ]
+    },
+    {
+      "constraint": "main_project",
+      "schema": "public",
+      "table": "sites",
+      "columns": [
+        "main_project_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "big_projects",
+      "foreignColumns": [
+        "big_project_id"
+      ]
+    },
+    {
+      "constraint": "jobs_site_id_fkey",
+      "schema": "public",
+      "table": "jobs",
+      "columns": [
+        "site_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "sites",
+      "foreignColumns": [
+        "site_id"
+      ]
+    },
+    {
+      "constraint": "jobs_big_project_id_fkey",
+      "schema": "public",
+      "table": "jobs",
+      "columns": [
+        "big_project_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "big_projects",
+      "foreignColumns": [
+        "big_project_id"
+      ]
+    },
+    {
+      "constraint": "whatev_jobs_site_id_1_fkey",
+      "schema": "public",
+      "table": "whatev_jobs",
+      "columns": [
+        "site_id_1"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "whatev_sites",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "whatev_jobs_project_id_1_fkey",
+      "schema": "public",
+      "table": "whatev_jobs",
+      "columns": [
+        "project_id_1"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "whatev_projects",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "whatev_jobs_site_id_2_fkey",
+      "schema": "public",
+      "table": "whatev_jobs",
+      "columns": [
+        "site_id_2"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "whatev_sites",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "whatev_jobs_project_id_2_fkey",
+      "schema": "public",
+      "table": "whatev_jobs",
+      "columns": [
+        "project_id_2"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "whatev_projects",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "departments_head_id_fkey",
+      "schema": "public",
+      "table": "departments",
+      "columns": [
+        "head_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "agents",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "agents_department_id_fkey",
+      "schema": "public",
+      "table": "agents",
+      "columns": [
+        "department_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "departments",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "schedule",
+      "schema": "public",
+      "table": "activities",
+      "columns": [
+        "schedule_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "schedules",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "fst_shift",
+      "schema": "public",
+      "table": "unit_workdays",
+      "columns": [
+        "fst_shift_activity_id",
+        "fst_shift_schedule_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "activities",
+      "foreignColumns": [
+        "id",
+        "schedule_id"
+      ]
+    },
+    {
+      "constraint": "snd_shift",
+      "schema": "public",
+      "table": "unit_workdays",
+      "columns": [
+        "snd_shift_activity_id",
+        "snd_shift_schedule_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "activities",
+      "foreignColumns": [
+        "id",
+        "schedule_id"
+      ]
+    },
+    {
+      "constraint": "parent",
+      "schema": "v1",
+      "table": "children",
+      "columns": [
+        "parent_id"
+      ],
+      "foreignSchema": "v1",
+      "foreignTable": "parents",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "parent",
+      "schema": "v2",
+      "table": "children",
+      "columns": [
+        "parent_id"
+      ],
+      "foreignSchema": "v2",
+      "foreignTable": "parents",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "label_screen_label_id_fkey",
+      "schema": "private",
+      "table": "label_screen",
+      "columns": [
+        "label_id"
+      ],
+      "foreignSchema": "private",
+      "foreignTable": "labels",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "label_screen_screen_id_fkey",
+      "schema": "private",
+      "table": "label_screen",
+      "columns": [
+        "screen_id"
+      ],
+      "foreignSchema": "private",
+      "foreignTable": "screens",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "personnages_film_id_fkey",
+      "schema": "private",
+      "table": "personnages",
+      "columns": [
+        "film_id"
+      ],
+      "foreignSchema": "private",
+      "foreignTable": "films",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "personnages_role_id_fkey",
+      "schema": "private",
+      "table": "personnages",
+      "columns": [
+        "role_id"
+      ],
+      "foreignSchema": "private",
+      "foreignTable": "actors",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "junction_end_1_id_fkey",
+      "schema": "private",
+      "table": "junction",
+      "columns": [
+        "end_1_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "end_1",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "junction_end_2_id_fkey",
+      "schema": "private",
+      "table": "junction",
+      "columns": [
+        "end_2_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "end_2",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "rollen_film_id_fkey",
+      "schema": "private",
+      "table": "rollen",
+      "columns": [
+        "film_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "filme",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "rollen_rolle_id_fkey",
+      "schema": "private",
+      "table": "rollen",
+      "columns": [
+        "rolle_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "schauspieler",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "car_racers_car_model_name_car_model_year_fkey",
+      "schema": "public",
+      "table": "car_racers",
+      "columns": [
+        "car_model_name",
+        "car_model_year"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "car_models",
+      "foreignColumns": [
+        "name",
+        "year"
+      ]
+    },
+    {
+      "constraint": "products_suppliers_product_id_fkey",
+      "schema": "public",
+      "table": "products_suppliers",
+      "columns": [
+        "product_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "products",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "products_suppliers_supplier_id_fkey",
+      "schema": "public",
+      "table": "products_suppliers",
+      "columns": [
+        "supplier_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "suppliers",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "suppliers_trade_unions_supplier_id_fkey",
+      "schema": "public",
+      "table": "suppliers_trade_unions",
+      "columns": [
+        "supplier_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "suppliers",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "suppliers_trade_unions_trade_union_id_fkey",
+      "schema": "public",
+      "table": "suppliers_trade_unions",
+      "columns": [
+        "trade_union_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "trade_unions",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "contact_clientid_fkey",
+      "schema": "public",
+      "table": "contact",
+      "columns": [
+        "clientid"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "client",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "clientinfo_clientid_fkey",
+      "schema": "public",
+      "table": "clientinfo",
+      "columns": [
+        "clientid"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "client",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "well_parent_well_id_fkey",
+      "schema": "public",
+      "table": "well",
+      "columns": [
+        "parent_well_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "well",
+      "foreignColumns": [
+        "well_id"
+      ]
+    },
+    {
+      "constraint": "well_plate_id_fkey",
+      "schema": "public",
+      "table": "well",
+      "columns": [
+        "plate_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "plate",
+      "foreignColumns": [
+        "plate_id"
+      ]
+    },
+    {
+      "constraint": "plate_plan_step_from_well_id_fkey",
+      "schema": "public",
+      "table": "plate_plan_step",
+      "columns": [
+        "from_well_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "well",
+      "foreignColumns": [
+        "well_id"
+      ]
+    },
+    {
+      "constraint": "plate_plan_step_to_plate_id_fkey",
+      "schema": "public",
+      "table": "plate_plan_step",
+      "columns": [
+        "to_plate_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "plate",
+      "foreignColumns": [
+        "plate_id"
+      ]
+    },
+    {
+      "constraint": "plate_plan_step_to_well_id_fkey",
+      "schema": "public",
+      "table": "plate_plan_step",
+      "columns": [
+        "to_well_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "well",
+      "foreignColumns": [
+        "well_id"
+      ]
+    },
+    {
+      "constraint": "parent_fk",
+      "schema": "private",
+      "table": "internal_job",
+      "columns": [
+        "parent_id"
+      ],
+      "foreignSchema": "private",
+      "foreignTable": "internal_job",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "adaptation_notifications_series_fkey",
+      "schema": "public",
+      "table": "adaptation_notifications",
+      "columns": [
+        "series"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "series",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "parent_test",
+      "schema": "public",
+      "table": "test",
+      "columns": [
+        "parent_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "test",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "shop_bles_shop_id_fkey",
+      "schema": "public",
+      "table": "shop_bles",
+      "columns": [
+        "shop_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "shops",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "names_language_id_fkey",
+      "schema": "SPECIAL \"@/\\#~_-",
+      "table": "names",
+      "columns": [
+        "language_id"
+      ],
+      "foreignSchema": "SPECIAL \"@/\\#~_-",
+      "foreignTable": "languages",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "videogames_designer_id_fkey",
+      "schema": "public",
+      "table": "videogames",
+      "columns": [
+        "designer_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "designers",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "students_info_code_id_fkey",
+      "schema": "public",
+      "table": "students_info",
+      "columns": [
+        "code",
+        "id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "students",
+      "foreignColumns": [
+        "code",
+        "id"
+      ]
+    },
+    {
+      "constraint": "capital_country_id_fkey",
+      "schema": "public",
+      "table": "capital",
+      "columns": [
+        "country_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "country",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "first_second_id_1_fkey",
+      "schema": "public",
+      "table": "first",
+      "columns": [
+        "second_id_1"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "second",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "first_second_id_2_fkey",
+      "schema": "public",
+      "table": "first",
+      "columns": [
+        "second_id_2"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "second",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "first_1_second_id_1_fkey",
+      "schema": "public",
+      "table": "first_1",
+      "columns": [
+        "second_id_1"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "second",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "first_1_second_id_2_fkey",
+      "schema": "public",
+      "table": "first_1",
+      "columns": [
+        "second_id_2"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "second",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "janedoe_baz_id_fkey",
+      "schema": "public",
+      "table": "janedoe",
+      "columns": [
+        "baz_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "baz",
+      "foreignColumns": [
+        "baz_id"
+      ]
+    },
+    {
+      "constraint": "johnsmith_fee_id_fkey",
+      "schema": "public",
+      "table": "johnsmith",
+      "columns": [
+        "fee_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "fee",
+      "foreignColumns": [
+        "fee_id"
+      ]
+    },
+    {
+      "constraint": "johnsmith_baz_id_fkey",
+      "schema": "public",
+      "table": "johnsmith",
+      "columns": [
+        "baz_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "baz",
+      "foreignColumns": [
+        "baz_id"
+      ]
+    },
+    {
+      "constraint": "b_c1_c2_fkey",
+      "schema": "public",
+      "table": "b",
+      "columns": [
+        "c1",
+        "c2"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "a",
+      "foreignColumns": [
+        "c1",
+        "c2"
+      ]
+    },
+    {
+      "constraint": "i2459_simple_t2_t1_id_fkey",
+      "schema": "public",
+      "table": "i2459_simple_t2",
+      "columns": [
+        "t1_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "i2459_simple_t1",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "i2459_composite_t2_t1_a_t1_b_fkey",
+      "schema": "public",
+      "table": "i2459_composite_t2",
+      "columns": [
+        "t1_a",
+        "t1_b"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "i2459_composite_t1",
+      "foreignColumns": [
+        "a",
+        "b"
+      ]
+    },
+    {
+      "constraint": "i2459_self_t_parent_fkey",
+      "schema": "public",
+      "table": "i2459_self_t",
+      "columns": [
+        "parent"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "i2459_self_t",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "tb_b1_fkey",
+      "schema": "public",
+      "table": "tb",
+      "columns": [
+        "b1"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "ta",
+      "foreignColumns": [
+        "a1"
+      ]
+    },
+    {
+      "constraint": "tb_b1_b2_fkey",
+      "schema": "public",
+      "table": "tb",
+      "columns": [
+        "b1",
+        "b2"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "ta",
+      "foreignColumns": [
+        "a1",
+        "a2"
+      ]
+    },
+    {
+      "constraint": "trash_details_id_fkey",
+      "schema": "public",
+      "table": "trash_details",
+      "columns": [
+        "id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "trash",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "group_yard_group_id_fkey",
+      "schema": "public",
+      "table": "group_yard",
+      "columns": [
+        "group_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "groups",
+      "foreignColumns": [
+        "name"
+      ]
+    },
+    {
+      "constraint": "group_yard_yard_id_fkey",
+      "schema": "public",
+      "table": "group_yard",
+      "columns": [
+        "yard_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "yards",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "subscriptions_subscriber_fkey",
+      "schema": "public",
+      "table": "subscriptions",
+      "columns": [
+        "subscriber"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "posters",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "subscriptions_subscribed_fkey",
+      "schema": "public",
+      "table": "subscriptions",
+      "columns": [
+        "subscribed"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "posters",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "datarep_next_two_todos_first_item_id_fkey",
+      "schema": "public",
+      "table": "datarep_next_two_todos",
+      "columns": [
+        "first_item_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "datarep_todos",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "datarep_next_two_todos_second_item_id_fkey",
+      "schema": "public",
+      "table": "datarep_next_two_todos",
+      "columns": [
+        "second_item_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "datarep_todos",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "user_friend_user1_fkey",
+      "schema": "public",
+      "table": "user_friend",
+      "columns": [
+        "user1"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "profiles",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "user_friend_user2_fkey",
+      "schema": "public",
+      "table": "user_friend",
+      "columns": [
+        "user2"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "profiles",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "tournaments_status_fkey",
+      "schema": "public",
+      "table": "tournaments",
+      "columns": [
+        "status"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "status",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "table_b_table_a_id_fkey",
+      "schema": "public",
+      "table": "table_b",
+      "columns": [
+        "table_a_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "table_a",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "project_invoices_project_id_fkey",
+      "schema": "public",
+      "table": "project_invoices",
+      "columns": [
+        "project_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "projects",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "budget_expenses_budget_category_id_fkey",
+      "schema": "public",
+      "table": "budget_expenses",
+      "columns": [
+        "budget_category_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "budget_categories",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "processes_factory_id_fkey",
+      "schema": "public",
+      "table": "processes",
+      "columns": [
+        "factory_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "factories",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "processes_category_id_fkey",
+      "schema": "public",
+      "table": "processes",
+      "columns": [
+        "category_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "process_categories",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "process_costs_process_id_fkey",
+      "schema": "public",
+      "table": "process_costs",
+      "columns": [
+        "process_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "processes",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "process_supervisor_process_id_fkey",
+      "schema": "public",
+      "table": "process_supervisor",
+      "columns": [
+        "process_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "processes",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "process_supervisor_supervisor_id_fkey",
+      "schema": "public",
+      "table": "process_supervisor",
+      "columns": [
+        "supervisor_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "supervisors",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "fk_artist",
+      "schema": "public",
+      "table": "albums",
+      "columns": [
+        "artist_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "artists",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "process_operator_process_id_fkey",
+      "schema": "public",
+      "table": "process_operator",
+      "columns": [
+        "process_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "processes",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "process_operator_operator_id_fkey",
+      "schema": "public",
+      "table": "process_operator",
+      "columns": [
+        "operator_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "operators",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "factory_buildings_factory_id_fkey",
+      "schema": "public",
+      "table": "factory_buildings",
+      "columns": [
+        "factory_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "factories",
+      "foreignColumns": [
+        "id"
+      ]
+    },
+    {
+      "constraint": "visits_place_id_fkey",
+      "schema": "public",
+      "table": "visits",
+      "columns": [
+        "place_id"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "places",
+      "foreignColumns": [
+        "id"
+      ]
+    }
+  ]
+}

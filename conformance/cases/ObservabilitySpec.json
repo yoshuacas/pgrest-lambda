@@ -1,0 +1,101 @@
+{
+  "source": "Feature/ObservabilitySpec.hs",
+  "extractedCases": 0,
+  "skippedSites": 3,
+  "needsConfigCases": 3,
+  "cases": [
+    {
+      "id": "ObservabilitySpec:18",
+      "source": "Feature/ObservabilitySpec.hs",
+      "line": 18,
+      "category": "observability",
+      "description": "includes the server trace header on the response",
+      "example": "ObservabilitySpec:it:17",
+      "request": {
+        "method": "HEAD",
+        "path": "/",
+        "query": "",
+        "headers": {
+          "X-Request-Id": "1"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "X-Request-Id": "1"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configServerTraceHeader)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "ObservabilitySpec:25",
+      "source": "Feature/ObservabilitySpec.hs",
+      "line": 25,
+      "category": "observability",
+      "description": "includes the server trace header on the response",
+      "example": "ObservabilitySpec:it:17",
+      "request": {
+        "method": "HEAD",
+        "path": "/projects",
+        "query": "",
+        "headers": {
+          "X-Request-Id": "2"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "X-Request-Id": "2"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configServerTraceHeader)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "ObservabilitySpec:32",
+      "source": "Feature/ObservabilitySpec.hs",
+      "line": 32,
+      "category": "observability",
+      "description": "includes the server trace header on the response",
+      "example": "ObservabilitySpec:it:17",
+      "request": {
+        "method": "HEAD",
+        "path": "/rpc/add_them",
+        "query": "a=2&b=4",
+        "headers": {
+          "X-Request-Id": "3"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "X-Request-Id": "3"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configServerTraceHeader)",
+      "skipClass": "needs-engine-config"
+    }
+  ]
+}

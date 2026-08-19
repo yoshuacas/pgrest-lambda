@@ -193,7 +193,13 @@ describe('RPC integration tests', () => {
     assert.equal(body.code, 'PGRST204');
   });
 
-  it('void function returns 200 with empty body', async () => {
+  // Upstream PostgREST asserts 204 with no Content-Type and no Content-Length
+  // for a function returning void (test/spec/Feature/Query/RpcSpec.hs:470,
+  // "returns 204, no Content-Type header and no content for void"). This test
+  // previously asserted 200; that was the engine's own behaviour, not
+  // PostgREST's, and it was corrected when the RPC result modes were aligned
+  // with the upstream spec.
+  it('void function returns 204 with no body and no Content-Type', async () => {
     const res = await handler(event({
       method: 'POST',
       path: '/rest/v1/rpc/do_nothing',
@@ -201,9 +207,13 @@ describe('RPC integration tests', () => {
       body: {},
       authorizer: { role: 'service_role' },
     }));
-    assert.equal(res.statusCode, 200);
-    assert.ok(!res.body || res.body === '' || res.body === 'null',
+    assert.equal(res.statusCode, 204);
+    assert.ok(!res.body || res.body === '',
       'void function should return empty body');
+    assert.equal(res.headers['Content-Type'], undefined,
+      'void function must not send Content-Type');
+    assert.equal(res.headers['Content-Length'], undefined,
+      'void function must not send Content-Length');
   });
 
   it('default arguments: omitted arg uses default value', async () => {
@@ -423,18 +433,21 @@ describe('RPC integration tests', () => {
     assert.equal(body.code, 'PGRST100');
   });
 
-  it('HEAD on void function returns 200 with empty body', async () => {
+  // Same upstream rule as the POST case above: void means 204 and no
+  // Content-Type. HEAD behaves as GET with the body dropped, so it inherits
+  // the void status rather than forcing a 200.
+  it('HEAD on void function returns 204 with empty body', async () => {
     const res = await handler(event({
       method: 'HEAD',
       path: '/rest/v1/rpc/do_nothing',
       headers: { apikey: service },
       authorizer: { role: 'service_role' },
     }));
-    assert.equal(res.statusCode, 200);
+    assert.equal(res.statusCode, 204);
     assert.ok(!res.body || res.body === '',
       'HEAD on void should return empty body');
-    assert.ok(res.headers['Content-Type'],
-      'Content-Type header should be present');
+    assert.equal(res.headers['Content-Type'], undefined,
+      'void function must not send Content-Type');
   });
 
   it('single object mode on non-set composite function', async () => {
@@ -514,7 +527,10 @@ describe('RPC integration tests', () => {
         body: {},
         authorizer: { role: 'service_role' },
       }));
-      assert.equal(res.statusCode, 200);
+      // 204 is the authorized outcome for a void function (see the void test
+      // above and upstream RpcSpec.hs:470); the point of this case is that the
+      // call is permitted, i.e. not 401/403.
+      assert.equal(res.statusCode, 204);
     });
   });
 });

@@ -1,0 +1,6699 @@
+{
+  "source": "Feature/Query/RpcSpec.hs",
+  "extractedCases": 193,
+  "skippedSites": 3,
+  "needsConfigCases": 1,
+  "cases": [
+    {
+      "id": "RpcSpec:26",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 26,
+      "category": "rpc",
+      "description": "using the Range header",
+      "example": "RpcSpec:it:25",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/getitemrange",
+        "query": "min=2&max=4",
+        "headers": {
+          "Range-Unit": "items",
+          "Range": "bytes=1-1"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 4
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "1-1/*"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:34",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 34,
+      "category": "rpc",
+      "description": "using limit and offset",
+      "example": "RpcSpec:it:33",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/getitemrange",
+        "query": "limit=1&offset=1",
+        "headers": {},
+        "body": {
+          "min": 2,
+          "max": 4
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 4
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "1-1/*",
+          "Content-Length": "10"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:40",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 40,
+      "category": "rpc",
+      "description": "using limit and offset",
+      "example": "RpcSpec:it:33",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/getitemrange",
+        "query": "min=2&max=4&limit=1&offset=1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 4
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "1-1/*",
+          "Content-Length": "10"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:46",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 46,
+      "category": "rpc",
+      "description": "using limit and offset",
+      "example": "RpcSpec:it:33",
+      "request": {
+        "method": "HEAD",
+        "path": "/rpc/getitemrange",
+        "query": "min=2&max=4&limit=1&offset=1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "1-1/*"
+        },
+        "headersAbsent": [
+          "Content-Length"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:57",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 57,
+      "category": "rpc",
+      "description": "using the Range header",
+      "example": "RpcSpec:it:56",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/getitemrange",
+        "query": "min=2&max=4",
+        "headers": {
+          "Prefer": "count=exact",
+          "Range-Unit": "items",
+          "Range": "bytes=1-1"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 206,
+        "body": [
+          {
+            "id": 4
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "1-1/2"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:65",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 65,
+      "category": "rpc",
+      "description": "using limit and offset",
+      "example": "RpcSpec:it:64",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/getitemrange",
+        "query": "limit=1&offset=1",
+        "headers": {
+          "Prefer": "count=exact"
+        },
+        "body": {
+          "min": 2,
+          "max": 4
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 206,
+        "body": [
+          {
+            "id": 4
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "1-1/2"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:72",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 72,
+      "category": "rpc",
+      "description": "using limit and offset",
+      "example": "RpcSpec:it:64",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/getitemrange",
+        "query": "min=2&max=4&limit=1&offset=1",
+        "headers": {
+          "Prefer": "count=exact"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 206,
+        "body": [
+          {
+            "id": 4
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "1-1/2"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:78",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 78,
+      "category": "rpc",
+      "description": "using limit and offset",
+      "example": "RpcSpec:it:64",
+      "request": {
+        "method": "HEAD",
+        "path": "/rpc/getitemrange",
+        "query": "min=2&max=4&limit=1&offset=1",
+        "headers": {
+          "Prefer": "count=exact"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 206,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "1-1/2"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:88",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 88,
+      "category": "rpc",
+      "description": "includes exact count if requested",
+      "example": "RpcSpec:it:87",
+      "request": {
+        "method": "HEAD",
+        "path": "/rpc/getallprojects",
+        "query": "",
+        "headers": {
+          "Prefer": "count=exact"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Range": "0-4/5"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:94",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 94,
+      "category": "rpc",
+      "description": "includes exact count if requested",
+      "example": "RpcSpec:it:87",
+      "request": {
+        "method": "HEAD",
+        "path": "/rpc/getallprojects",
+        "query": "select=*,clients!inner(*)&clients.id=eq.1",
+        "headers": {
+          "Prefer": "count=exact"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Range": "0-1/2"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:102",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 102,
+      "category": "rpc",
+      "description": "includes exact count of 1 for functions that return a single scalar, domain or composite",
+      "example": "RpcSpec:it:101",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/add_them",
+        "query": "a=3&b=4",
+        "headers": {
+          "Prefer": "count=exact"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": 7,
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "0-0/1"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:108",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 108,
+      "category": "rpc",
+      "description": "includes exact count of 1 for functions that return a single scalar, domain or composite",
+      "example": "RpcSpec:it:101",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/ret_domain",
+        "query": "val=8",
+        "headers": {
+          "Prefer": "count=exact"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": 8,
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "0-0/1"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:114",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 114,
+      "category": "rpc",
+      "description": "includes exact count of 1 for functions that return a single scalar, domain or composite",
+      "example": "RpcSpec:it:101",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/ret_point_2d",
+        "query": "",
+        "headers": {
+          "Prefer": "count=exact"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "x": 10,
+          "y": 5
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "0-0/1"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:123",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 123,
+      "category": "rpc",
+      "description": "returns proper json",
+      "example": "RpcSpec:it:122",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/getitemrange",
+        "query": "",
+        "headers": {},
+        "body": {
+          "min": 2,
+          "max": 4
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 3
+          },
+          {
+            "id": 4
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:126",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 126,
+      "category": "rpc",
+      "description": "returns proper json",
+      "example": "RpcSpec:it:122",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/getitemrange",
+        "query": "min=2&max=4",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 3
+          },
+          {
+            "id": 4
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:131",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 131,
+      "category": "rpc",
+      "description": "returns CSV",
+      "example": "RpcSpec:it:130",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/getitemrange",
+        "query": "",
+        "headers": {
+          "Accept": "text/csv"
+        },
+        "body": {
+          "min": 2,
+          "max": 4
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": "id\n3\n4",
+        "bodyFormat": "text",
+        "headers": {
+          "Content-Type": "text/csv; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:138",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 138,
+      "category": "rpc",
+      "description": "returns CSV",
+      "example": "RpcSpec:it:130",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/getitemrange",
+        "query": "min=2&max=4",
+        "headers": {
+          "Accept": "text/csv"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": "id\n3\n4",
+        "bodyFormat": "text",
+        "headers": {
+          "Content-Type": "text/csv; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:144",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 144,
+      "category": "rpc",
+      "description": "returns CSV",
+      "example": "RpcSpec:it:130",
+      "request": {
+        "method": "HEAD",
+        "path": "/rpc/getitemrange",
+        "query": "min=2&max=4",
+        "headers": {
+          "Accept": "text/csv"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Type": "text/csv; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:154",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 154,
+      "category": "rpc",
+      "description": "without limit and offset",
+      "example": "RpcSpec:it:153",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/getitemrange",
+        "query": "",
+        "headers": {
+          "Prefer": "count=exact",
+          "Range-Unit": "items",
+          "Range": "bytes=1-1"
+        },
+        "body": {
+          "min": 2,
+          "max": 4
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 3
+          },
+          {
+            "id": 4
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "0-1/2"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:161",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 161,
+      "category": "rpc",
+      "description": "without limit and offset",
+      "example": "RpcSpec:it:153",
+      "request": {
+        "method": "HEAD",
+        "path": "/rpc/getitemrange",
+        "query": "min=2&max=4",
+        "headers": {
+          "Prefer": "count=exact",
+          "Range-Unit": "items",
+          "Range": "bytes=1-1"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "0-1/2"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:171",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 171,
+      "category": "rpc",
+      "description": "with limit and offset",
+      "example": "RpcSpec:it:170",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/getitemrange",
+        "query": "limit=2&offset=1",
+        "headers": {
+          "Prefer": "count=exact",
+          "Range-Unit": "items",
+          "Range": "bytes=1-1"
+        },
+        "body": {
+          "min": 2,
+          "max": 5
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 206,
+        "body": [
+          {
+            "id": 4
+          },
+          {
+            "id": 5
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "1-2/3"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:178",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 178,
+      "category": "rpc",
+      "description": "with limit and offset",
+      "example": "RpcSpec:it:170",
+      "request": {
+        "method": "HEAD",
+        "path": "/rpc/getitemrange",
+        "query": "min=2&max=5&limit=2&offset=1",
+        "headers": {
+          "Prefer": "count=exact",
+          "Range-Unit": "items",
+          "Range": "bytes=1-1"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 206,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "1-2/3"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:188",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 188,
+      "category": "rpc",
+      "description": "does not throw an invalid range error",
+      "example": "RpcSpec:it:187",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/getitemrange",
+        "query": "limit=2&offset=1",
+        "headers": {
+          "Prefer": "count=exact",
+          "Range-Unit": "items",
+          "Range": "bytes=0-0"
+        },
+        "body": {
+          "min": 2,
+          "max": 5
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 206,
+        "body": [
+          {
+            "id": 4
+          },
+          {
+            "id": 5
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "1-2/3"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:195",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 195,
+      "category": "rpc",
+      "description": "does not throw an invalid range error",
+      "example": "RpcSpec:it:187",
+      "request": {
+        "method": "HEAD",
+        "path": "/rpc/getitemrange",
+        "query": "min=2&max=5&limit=2&offset=1",
+        "headers": {
+          "Prefer": "count=exact",
+          "Range-Unit": "items",
+          "Range": "bytes=0-0"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 206,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "1-2/3"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:206",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 206,
+      "category": "rpc",
+      "description": "returns 404",
+      "example": "RpcSpec:it:205",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/fakefunc",
+        "query": "",
+        "headers": {},
+        "body": {},
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 404,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:209",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 209,
+      "category": "rpc",
+      "description": "should fail with 404 on unknown proc name",
+      "example": "RpcSpec:it:208",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/fake",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 404,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:212",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 212,
+      "category": "rpc",
+      "description": "should fail with 404 and hint the closest proc on unknown proc name",
+      "example": "RpcSpec:it:211",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/sayhell",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "hint": "Perhaps you meant to call the function public.sayhello",
+          "message": "Could not find the function public.sayhell without parameters in the schema cache",
+          "code": "PGRST202",
+          "details": "Searched for the function public.sayhell without parameters, but no matches were found in the schema cache."
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Length": "291",
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [
+        "expected body: schema \"test.\" rewritten to \"public.\" (the DSQL fixtures load upstream's test schema into public)"
+      ],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:224",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 224,
+      "category": "rpc",
+      "description": "should fail with 404 on unknown proc args",
+      "example": "RpcSpec:it:223",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/sayhello",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 404,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:225",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 225,
+      "category": "rpc",
+      "description": "should fail with 404 on unknown proc args",
+      "example": "RpcSpec:it:223",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/sayhello",
+        "query": "any_arg=value",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 404,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:228",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 228,
+      "category": "rpc",
+      "description": "should fail with 404 and hint the closest args on unknown proc args",
+      "example": "RpcSpec:it:227",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/sayhello",
+        "query": "nam=Peter",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "hint": "Perhaps you meant to call the function public.sayhello(name)",
+          "message": "Could not find the function public.sayhello(nam) in the schema cache",
+          "code": "PGRST202",
+          "details": "Searched for the function public.sayhello with parameter nam, but no matches were found in the schema cache."
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [
+        "expected body: schema \"test.\" rewritten to \"public.\" (the DSQL fixtures load upstream's test schema into public)"
+      ],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:239",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 239,
+      "category": "rpc",
+      "description": "should not ignore unknown args and fail with 404",
+      "example": "RpcSpec:it:238",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/add_them",
+        "query": "a=1&b=2&smthelse=blabla",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "hint": "Perhaps you meant to call the function public.add_them(a, b)",
+          "message": "Could not find the function public.add_them(a, b, smthelse) in the schema cache",
+          "code": "PGRST202",
+          "details": "Searched for the function public.add_them with parameters a, b, smthelse, but no matches were found in the schema cache."
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [
+        "expected body: schema \"test.\" rewritten to \"public.\" (the DSQL fixtures load upstream's test schema into public)"
+      ],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:250",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 250,
+      "category": "rpc",
+      "description": "should fail with 404 for overloaded functions with unknown args",
+      "example": "RpcSpec:it:249",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/overloaded",
+        "query": "wrong_arg=value",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "hint": null,
+          "message": "Could not find the function public.overloaded(wrong_arg) in the schema cache",
+          "code": "PGRST202",
+          "details": "Searched for the function public.overloaded with parameter wrong_arg, but no matches were found in the schema cache."
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [
+        "expected body: schema \"test.\" rewritten to \"public.\" (the DSQL fixtures load upstream's test schema into public)"
+      ],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:259",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 259,
+      "category": "rpc",
+      "description": "should fail with 404 for overloaded functions with unknown args",
+      "example": "RpcSpec:it:249",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/overloaded",
+        "query": "a=1&b=2&wrong_arg=value",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "hint": "Perhaps you meant to call the function public.overloaded(a, b, c)",
+          "message": "Could not find the function public.overloaded(a, b, wrong_arg) in the schema cache",
+          "code": "PGRST202",
+          "details": "Searched for the function public.overloaded with parameters a, b, wrong_arg, but no matches were found in the schema cache."
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [
+        "expected body: schema \"test.\" rewritten to \"public.\" (the DSQL fixtures load upstream's test schema into public)"
+      ],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:271",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 271,
+      "category": "rpc",
+      "description": "should fail with 300 Multiple Choices without explicit type casts",
+      "example": "RpcSpec:it:270",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/overloaded_same_args",
+        "query": "arg=value",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 300,
+        "body": {
+          "hint": "Try renaming the parameters or the function itself in the database so function overloading can be resolved",
+          "message": "Could not choose the best candidate function between: public.overloaded_same_args(arg => integer), public.overloaded_same_args(arg => xml), public.overloaded_same_args(arg => text, num => integer)",
+          "code": "PGRST203",
+          "details": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Length": "353",
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [
+        "expected body: schema \"test.\" rewritten to \"public.\" (the DSQL fixtures load upstream's test schema into public)"
+      ],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:283",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 283,
+      "category": "rpc",
+      "description": "works when having uppercase identifiers",
+      "example": "RpcSpec:it:282",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/quotedFunction",
+        "query": "user=mscott&fullName=Michael Scott&SSN=401-32-XXXX",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "user": "mscott",
+          "fullName": "Michael Scott",
+          "SSN": "401-32-XXXX"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:286",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 286,
+      "category": "rpc",
+      "description": "works when having uppercase identifiers",
+      "example": "RpcSpec:it:282",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/quotedFunction",
+        "query": "",
+        "headers": {},
+        "body": {
+          "user": "dschrute",
+          "fullName": "Dwight Schrute",
+          "SSN": "030-18-XXXX"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "user": "dschrute",
+          "fullName": "Dwight Schrute",
+          "SSN": "030-18-XXXX"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:294",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 294,
+      "category": "rpc",
+      "description": "returns a project",
+      "example": "RpcSpec:it:293",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/getproject",
+        "query": "",
+        "headers": {},
+        "body": {
+          "id": 1
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "Windows 7",
+            "client_id": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:296",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 296,
+      "category": "rpc",
+      "description": "returns a project",
+      "example": "RpcSpec:it:293",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/getproject",
+        "query": "id=1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "Windows 7",
+            "client_id": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:300",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 300,
+      "category": "rpc",
+      "description": "can filter proc results",
+      "example": "RpcSpec:it:299",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/getallprojects",
+        "query": "id=gt.1&id=lt.5&select=id",
+        "headers": {},
+        "body": {},
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 2
+          },
+          {
+            "id": 3
+          },
+          {
+            "id": 4
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:303",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 303,
+      "category": "rpc",
+      "description": "can filter proc results",
+      "example": "RpcSpec:it:299",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/getallprojects",
+        "query": "id=gt.1&id=lt.5&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 2
+          },
+          {
+            "id": 3
+          },
+          {
+            "id": 4
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:308",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 308,
+      "category": "rpc",
+      "description": "can limit proc results",
+      "example": "RpcSpec:it:307",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/getallprojects",
+        "query": "id=gt.1&id=lt.5&select=id&limit=2&offset=1",
+        "headers": {},
+        "body": {},
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 3
+          },
+          {
+            "id": 4
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "1-2/*"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:312",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 312,
+      "category": "rpc",
+      "description": "can limit proc results",
+      "example": "RpcSpec:it:307",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/getallprojects",
+        "query": "id=gt.1&id=lt.5&select=id&limit=2&offset=1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 3
+          },
+          {
+            "id": 4
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "1-2/*"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:318",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 318,
+      "category": "rpc",
+      "description": "select works on the first level",
+      "example": "RpcSpec:it:317",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/getproject",
+        "query": "select=id,name",
+        "headers": {},
+        "body": {
+          "id": 1
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "Windows 7"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:320",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 320,
+      "category": "rpc",
+      "description": "select works on the first level",
+      "example": "RpcSpec:it:317",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/getproject",
+        "query": "id=1&select=id,name",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "Windows 7"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:325",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 325,
+      "category": "rpc",
+      "description": "can embed if related tables are in the exposed schema",
+      "example": "RpcSpec:it:324",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/getproject",
+        "query": "select=id,name,client:clients(id),tasks(id)",
+        "headers": {},
+        "body": {
+          "id": 1
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "Windows 7",
+            "client": {
+              "id": 1
+            },
+            "tasks": [
+              {
+                "id": 1
+              },
+              {
+                "id": 2
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:328",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 328,
+      "category": "rpc",
+      "description": "can embed if related tables are in the exposed schema",
+      "example": "RpcSpec:it:324",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/getproject",
+        "query": "id=1&select=id,name,client:clients(id),tasks(id)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "Windows 7",
+            "client": {
+              "id": 1
+            },
+            "tasks": [
+              {
+                "id": 1
+              },
+              {
+                "id": 2
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:333",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 333,
+      "category": "rpc",
+      "description": "cannot embed if the related table is not in the exposed schema",
+      "example": "RpcSpec:it:332",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/single_article",
+        "query": "select=*,article_stars(*)",
+        "headers": {},
+        "body": {
+          "id": 1
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 400,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:335",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 335,
+      "category": "rpc",
+      "description": "cannot embed if the related table is not in the exposed schema",
+      "example": "RpcSpec:it:332",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/single_article",
+        "query": "id=1&select=*,article_stars(*)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 400,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:339",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 339,
+      "category": "rpc",
+      "description": "can embed if the related tables are in a hidden schema but exposed as views",
+      "example": "RpcSpec:it:338",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/single_article",
+        "query": "select=id,articleStars(userId)",
+        "headers": {},
+        "body": {
+          "id": 2
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": 2,
+          "articleStars": [
+            {
+              "userId": 3
+            }
+          ]
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:343",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 343,
+      "category": "rpc",
+      "description": "can embed if the related tables are in a hidden schema but exposed as views",
+      "example": "RpcSpec:it:338",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/single_article",
+        "query": "id=2&select=id,articleStars(userId)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": 2,
+          "articleStars": [
+            {
+              "userId": 3
+            }
+          ]
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:348",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 348,
+      "category": "rpc",
+      "description": "can embed an M2M relationship table",
+      "example": "RpcSpec:it:347",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/getallusers",
+        "query": "select=name,tasks(name)&id=gt.1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Michael Scott",
+            "tasks": [
+              {
+                "name": "Design IOS"
+              },
+              {
+                "name": "Code IOS"
+              },
+              {
+                "name": "Design OSX"
+              }
+            ]
+          },
+          {
+            "name": "Dwight Schrute",
+            "tasks": [
+              {
+                "name": "Design w7"
+              },
+              {
+                "name": "Design IOS"
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:355",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 355,
+      "category": "rpc",
+      "description": "can embed an M2M relationship table",
+      "example": "RpcSpec:it:347",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/get_yards",
+        "query": "select=groups(*)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:360",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 360,
+      "category": "rpc",
+      "description": "can embed an M2M relationship table that has a parent relationship table",
+      "example": "RpcSpec:it:359",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/getallusers",
+        "query": "select=name,tasks(name,project:projects(name))&id=gt.1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Michael Scott",
+            "tasks": [
+              {
+                "name": "Design IOS",
+                "project": {
+                  "name": "IOS"
+                }
+              },
+              {
+                "name": "Code IOS",
+                "project": {
+                  "name": "IOS"
+                }
+              },
+              {
+                "name": "Design OSX",
+                "project": {
+                  "name": "OSX"
+                }
+              }
+            ]
+          },
+          {
+            "name": "Dwight Schrute",
+            "tasks": [
+              {
+                "name": "Design w7",
+                "project": {
+                  "name": "Windows 7"
+                }
+              },
+              {
+                "name": "Design IOS",
+                "project": {
+                  "name": "IOS"
+                }
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:375",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 375,
+      "category": "rpc",
+      "description": "can embed an O2O relationship",
+      "example": "RpcSpec:it:374",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/allcapitals",
+        "query": "select=name,country(name)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Kabul",
+            "country": {
+              "name": "Afghanistan"
+            }
+          },
+          {
+            "name": "Algiers",
+            "country": {
+              "name": "Algeria"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:381",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 381,
+      "category": "rpc",
+      "description": "can embed an O2O relationship",
+      "example": "RpcSpec:it:374",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/allcountries",
+        "query": "select=name,capital(name)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Afghanistan",
+            "capital": {
+              "name": "Kabul"
+            }
+          },
+          {
+            "name": "Algeria",
+            "capital": {
+              "name": "Algiers"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:389",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 389,
+      "category": "rpc",
+      "description": "can embed if rpc returns domain of table type",
+      "example": "RpcSpec:it:388",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/getproject_domain",
+        "query": "select=id,name,client:clients(id),tasks(id)",
+        "headers": {},
+        "body": {
+          "id": 1
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "Windows 7",
+            "client": {
+              "id": 1
+            },
+            "tasks": [
+              {
+                "id": 1
+              },
+              {
+                "id": 2
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:393",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 393,
+      "category": "rpc",
+      "description": "can embed if rpc returns domain of table type",
+      "example": "RpcSpec:it:388",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/getproject_domain",
+        "query": "id=1&select=id,name,client:clients(id),tasks(id)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "Windows 7",
+            "client": {
+              "id": 1
+            },
+            "tasks": [
+              {
+                "id": 1
+              },
+              {
+                "id": 2
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:399",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 399,
+      "category": "rpc",
+      "description": "returns empty json array",
+      "example": "RpcSpec:it:398",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/test_empty_rowset",
+        "query": "",
+        "headers": {},
+        "body": {},
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:402",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 402,
+      "category": "rpc",
+      "description": "returns empty json array",
+      "example": "RpcSpec:it:398",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/test_empty_rowset",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:409",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 409,
+      "category": "rpc",
+      "description": "returns proper json",
+      "example": "RpcSpec:it:408",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/sayhello",
+        "query": "",
+        "headers": {},
+        "body": {
+          "name": "world"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": "Hello, world",
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:414",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 414,
+      "category": "rpc",
+      "description": "can handle unicode",
+      "example": "RpcSpec:it:413",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/sayhello",
+        "query": "",
+        "headers": {},
+        "body": {
+          "name": "￥"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": "Hello, ￥",
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:419",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 419,
+      "category": "rpc",
+      "description": "returns array",
+      "example": "RpcSpec:it:418",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/ret_array",
+        "query": "",
+        "headers": {},
+        "body": {},
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          1,
+          2,
+          3
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:424",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 424,
+      "category": "rpc",
+      "description": "returns setof integers",
+      "example": "RpcSpec:it:423",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/ret_setof_integers",
+        "query": "",
+        "headers": {},
+        "body": {},
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          1,
+          2,
+          3
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:430",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 430,
+      "category": "rpc",
+      "description": "returns enum value",
+      "example": "RpcSpec:it:429",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/ret_enum",
+        "query": "",
+        "headers": {},
+        "body": {
+          "val": "foo"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": "foo",
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:435",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 435,
+      "category": "rpc",
+      "description": "returns domain value",
+      "example": "RpcSpec:it:434",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/ret_domain",
+        "query": "",
+        "headers": {},
+        "body": {
+          "val": "8"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": 8,
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:440",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 440,
+      "category": "rpc",
+      "description": "returns range",
+      "example": "RpcSpec:it:439",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/ret_range",
+        "query": "",
+        "headers": {},
+        "body": {
+          "low": 10,
+          "up": 20
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": "[10,20)",
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:445",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 445,
+      "category": "rpc",
+      "description": "returns row of scalars",
+      "example": "RpcSpec:it:444",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/ret_scalars",
+        "query": "",
+        "headers": {},
+        "body": {},
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "a": "scalars",
+            "b": "foo",
+            "c": 1,
+            "d": "[10,20)"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:450",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 450,
+      "category": "rpc",
+      "description": "returns composite type in exposed schema",
+      "example": "RpcSpec:it:449",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/ret_point_2d",
+        "query": "",
+        "headers": {},
+        "body": {},
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "x": 10,
+          "y": 5
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:456",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 456,
+      "category": "rpc",
+      "description": "cannot return composite type in hidden schema",
+      "example": "RpcSpec:it:455",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/ret_point_3d",
+        "query": "",
+        "headers": {},
+        "body": {},
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 401,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:459",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 459,
+      "category": "rpc",
+      "description": "returns domain of composite type",
+      "example": "RpcSpec:it:458",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/ret_composite_domain",
+        "query": "",
+        "headers": {},
+        "body": {},
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "x": 10,
+          "y": 5
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:465",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 465,
+      "category": "rpc",
+      "description": "returns single row from table",
+      "example": "RpcSpec:it:464",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/single_article",
+        "query": "select=id",
+        "headers": {},
+        "body": {
+          "id": 2
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": 2
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:471",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 471,
+      "category": "rpc",
+      "description": "returns 204, no Content-Type header and no content for void",
+      "example": "RpcSpec:it:470",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/ret_void",
+        "query": "",
+        "headers": {},
+        "body": {},
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {},
+        "headersAbsent": [
+          "Content-Type",
+          "Content-Length"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:481",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 481,
+      "category": "rpc",
+      "description": "returns null for an integer with null value",
+      "example": "RpcSpec:it:480",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/ret_null",
+        "query": "",
+        "headers": {},
+        "body": {},
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:487",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 487,
+      "category": "rpc",
+      "description": "returns a record type",
+      "example": "RpcSpec:it:486",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/returns_record",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": 1,
+          "name": "Windows 7",
+          "client_id": 1
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:491",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 491,
+      "category": "rpc",
+      "description": "returns a record type",
+      "example": "RpcSpec:it:486",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/returns_record_params",
+        "query": "",
+        "headers": {},
+        "body": {
+          "id": 1,
+          "name": "Windows%"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": 1,
+          "name": "Windows 7",
+          "client_id": 1
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:497",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 497,
+      "category": "rpc",
+      "description": "returns a setof record type",
+      "example": "RpcSpec:it:496",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/returns_setof_record",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "Windows 7",
+            "client_id": 1
+          },
+          {
+            "id": 2,
+            "name": "Windows 10",
+            "client_id": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:501",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 501,
+      "category": "rpc",
+      "description": "returns a setof record type",
+      "example": "RpcSpec:it:496",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/returns_setof_record_params",
+        "query": "",
+        "headers": {},
+        "body": {
+          "id": 1,
+          "name": "Windows%"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "Windows 7",
+            "client_id": 1
+          },
+          {
+            "id": 2,
+            "name": "Windows 10",
+            "client_id": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:508",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 508,
+      "category": "rpc",
+      "description": "returns composite type",
+      "example": "RpcSpec:it:507",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/ret_point_overloaded",
+        "query": "",
+        "headers": {},
+        "body": {
+          "x": 1,
+          "y": 2
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "x": 1,
+          "y": 2
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:515",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 515,
+      "category": "rpc",
+      "description": "accepts a variety of arguments (Postgres >= 10)",
+      "example": "RpcSpec:it:514",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/varied_arguments",
+        "query": "",
+        "headers": {},
+        "body": {
+          "double": 3.1,
+          "varchar": "hello",
+          "boolean": true,
+          "date": "20190101",
+          "money": 0,
+          "enum": "foo",
+          "arr": [
+            "a",
+            "b",
+            "c"
+          ],
+          "integer": 43,
+          "json": {
+            "some key": "some value"
+          },
+          "jsonb": {
+            "another key": [
+              1,
+              2,
+              "3"
+            ]
+          }
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "double": 3.1,
+          "varchar": "hello",
+          "boolean": true,
+          "date": "2019-01-01",
+          "money": "$0.00",
+          "enum": "foo",
+          "arr": [
+            "a",
+            "b",
+            "c"
+          ],
+          "integer": 43,
+          "json": {
+            "some key": "some value"
+          },
+          "jsonb": {
+            "another key": [
+              1,
+              2,
+              "3"
+            ]
+          }
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:545",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 545,
+      "category": "rpc",
+      "description": "accepts a variety of arguments with GET",
+      "example": "RpcSpec:it:543",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/varied_arguments",
+        "query": "double=3.1&varchar=hello&boolean=true&date=20190101&money=0&enum=foo&arr=%7Ba,b,c%7D&integer=43",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "double": 3.1,
+          "varchar": "hello",
+          "boolean": true,
+          "date": "2019-01-01",
+          "money": "$0.00",
+          "enum": "foo",
+          "arr": [
+            "a",
+            "b",
+            "c"
+          ],
+          "integer": 43,
+          "json": {},
+          "jsonb": {}
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:562",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 562,
+      "category": "rpc",
+      "description": "accepts a variety of arguments from an html form",
+      "example": "RpcSpec:it:561",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/varied_arguments",
+        "query": "",
+        "headers": {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        "body": "double=3.1&varchar=hello&boolean=true&date=20190101&money=0&enum=foo&arr=%7Ba,b,c%7D&integer=43",
+        "bodyFormat": "text"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "double": 3.1,
+          "varchar": "hello",
+          "boolean": true,
+          "date": "2019-01-01",
+          "money": "$0.00",
+          "enum": "foo",
+          "arr": [
+            "a",
+            "b",
+            "c"
+          ],
+          "integer": 43,
+          "json": {},
+          "jsonb": {}
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:581",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 581,
+      "category": "rpc",
+      "description": "parses embedded JSON arguments as JSON",
+      "example": "RpcSpec:it:580",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/json_argument",
+        "query": "",
+        "headers": {},
+        "body": {
+          "arg": {
+            "key": 3
+          }
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": "object",
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:588",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 588,
+      "category": "rpc",
+      "description": "parses quoted JSON arguments as JSON string (from Postgres 10.9, 11.4)",
+      "example": "RpcSpec:it:587",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/json_argument",
+        "query": "",
+        "headers": {},
+        "body": {
+          "arg": "{ \"key\": 3 }"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": "string",
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:596",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 596,
+      "category": "rpc",
+      "description": "rejects unknown content type even if payload is good",
+      "example": "RpcSpec:it:595",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/sayhello",
+        "query": "",
+        "headers": {
+          "Accept": "audio/mpeg3"
+        },
+        "body": {
+          "name": "world"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 406,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:599",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 599,
+      "category": "rpc",
+      "description": "rejects unknown content type even if payload is good",
+      "example": "RpcSpec:it:595",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/sayhello",
+        "query": "name=world",
+        "headers": {
+          "Accept": "audio/mpeg3"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 406,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:621",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 621,
+      "category": "rpc",
+      "description": "DELETE fails",
+      "example": "RpcSpec:it:620",
+      "request": {
+        "method": "DELETE",
+        "path": "/rpc/sayhello",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 405,
+        "body": {
+          "message": "Cannot use the DELETE method on RPC",
+          "code": "PGRST101",
+          "details": null,
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Length": "94",
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:629",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 629,
+      "category": "rpc",
+      "description": "PATCH fails",
+      "example": "RpcSpec:it:628",
+      "request": {
+        "method": "PATCH",
+        "path": "/rpc/sayhello",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 405,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:635",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 635,
+      "category": "rpc",
+      "description": "executes the proc exactly once per request",
+      "example": "RpcSpec:it:632",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/reset_sequence",
+        "query": "",
+        "headers": {
+          "Prefer": "tx=commit"
+        },
+        "body": {
+          "name": "callcounter_count",
+          "value": 1
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {},
+        "headersAbsent": [
+          "Content-Type",
+          "Content-Length"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:646",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 646,
+      "category": "rpc",
+      "description": "executes the proc exactly once per request",
+      "example": "RpcSpec:it:632",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/callcounter",
+        "query": "",
+        "headers": {},
+        "body": {},
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": 1,
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:651",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 651,
+      "category": "rpc",
+      "description": "executes the proc exactly once per request",
+      "example": "RpcSpec:it:632",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/callcounter",
+        "query": "",
+        "headers": {},
+        "body": {},
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": 2,
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:658",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 658,
+      "category": "rpc",
+      "description": "interprets empty string as empty json object on a post request",
+      "example": "RpcSpec:it:657",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/noparamsproc",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": "Return value of no parameters procedure.",
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:662",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 662,
+      "category": "rpc",
+      "description": "interprets empty string as a function with no args on a get request",
+      "example": "RpcSpec:it:661",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/noparamsproc",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": "Return value of no parameters procedure.",
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:667",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 667,
+      "category": "rpc",
+      "description": "returns proper output when having the same return col name as the proc name",
+      "example": "RpcSpec:it:666",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/test",
+        "query": "",
+        "headers": {},
+        "body": {},
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "test": "hello",
+            "value": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:669",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 669,
+      "category": "rpc",
+      "description": "returns proper output when having the same return col name as the proc name",
+      "example": "RpcSpec:it:666",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/test",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "test": "hello",
+            "value": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:674",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 674,
+      "category": "rpc",
+      "description": "returns an object result when there is a single OUT param",
+      "example": "RpcSpec:it:673",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/single_out_param",
+        "query": "num=5",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "num_plus_one": 6
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:678",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 678,
+      "category": "rpc",
+      "description": "returns an object result when there is a single OUT param",
+      "example": "RpcSpec:it:673",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/single_json_out_param",
+        "query": "a=1&b=two",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "my_json": {
+            "a": 1,
+            "b": "two"
+          }
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:683",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 683,
+      "category": "rpc",
+      "description": "returns an object result when there is a single INOUT param",
+      "example": "RpcSpec:it:682",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/single_inout_param",
+        "query": "num=2",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "num": 3
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:688",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 688,
+      "category": "rpc",
+      "description": "returns an object result when there are many OUT params",
+      "example": "RpcSpec:it:687",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/many_out_params",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "my_json": {
+            "a": 1,
+            "b": "two"
+          },
+          "num": 3,
+          "str": "four"
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:693",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 693,
+      "category": "rpc",
+      "description": "returns an object result when there are many INOUT params",
+      "example": "RpcSpec:it:692",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/many_inout_params",
+        "query": "num=1&str=two&b=false",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "num": 1,
+          "str": "two",
+          "b": false
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:699",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 699,
+      "category": "rpc",
+      "description": "returns an object result when there is a single-column TABLE return type",
+      "example": "RpcSpec:it:698",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/single_column_table_return",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "a": "A"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:704",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 704,
+      "category": "rpc",
+      "description": "returns an object result when there is a multi-column TABLE return type",
+      "example": "RpcSpec:it:703",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/multi_column_table_return",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "a": "A",
+            "b": "B"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:710",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 710,
+      "category": "rpc",
+      "description": "works with POST (Postgres >= 10)",
+      "example": "RpcSpec:it:709",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/variadic_param",
+        "query": "",
+        "headers": {},
+        "body": {
+          "v": [
+            "hi",
+            "hello",
+            "there"
+          ]
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          "hi",
+          "hello",
+          "there"
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:717",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 717,
+      "category": "rpc",
+      "description": "n=0 (through DEFAULT)",
+      "example": "RpcSpec:it:716",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/variadic_param",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:722",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 722,
+      "category": "rpc",
+      "description": "n=1",
+      "example": "RpcSpec:it:721",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/variadic_param",
+        "query": "v=hi",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          "hi"
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:727",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 727,
+      "category": "rpc",
+      "description": "n>1",
+      "example": "RpcSpec:it:726",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/variadic_param",
+        "query": "v=hi&v=there",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          "hi",
+          "there"
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:733",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 733,
+      "category": "rpc",
+      "description": "n=0 (through DEFAULT)",
+      "example": "RpcSpec:it:732",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/variadic_param",
+        "query": "",
+        "headers": {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:740",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 740,
+      "category": "rpc",
+      "description": "n=1",
+      "example": "RpcSpec:it:739",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/variadic_param",
+        "query": "",
+        "headers": {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        "body": "v=hi",
+        "bodyFormat": "text"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          "hi"
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:747",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 747,
+      "category": "rpc",
+      "description": "n>1",
+      "example": "RpcSpec:it:746",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/variadic_param",
+        "query": "",
+        "headers": {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        "body": "v=hi&v=there",
+        "bodyFormat": "text"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          "hi",
+          "there"
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:754",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 754,
+      "category": "rpc",
+      "description": "returns last value for repeated params without VARIADIC",
+      "example": "RpcSpec:it:753",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/sayhello",
+        "query": "name=ignored&name=world",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": "Hello, world",
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:759",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 759,
+      "category": "rpc",
+      "description": "returns last value for repeated non-variadic params in function with other VARIADIC arguments",
+      "example": "RpcSpec:it:758",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/sayhello_variadic",
+        "query": "name=ignored&name=world&v=unused",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": "Hello, world",
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:764",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 764,
+      "category": "rpc",
+      "description": "can handle procs with args that have a DEFAULT value",
+      "example": "RpcSpec:it:763",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/many_inout_params",
+        "query": "num=1&str=two",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "num": 1,
+          "str": "two",
+          "b": true
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:767",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 767,
+      "category": "rpc",
+      "description": "can handle procs with args that have a DEFAULT value",
+      "example": "RpcSpec:it:763",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/three_defaults",
+        "query": "b=4",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": 8,
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:772",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 772,
+      "category": "rpc",
+      "description": "can map a RAISE error code and message to a http status",
+      "example": "RpcSpec:it:771",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/raise_pt402",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 402,
+        "body": {
+          "hint": "Upgrade your plan",
+          "details": "Quota exceeded",
+          "code": "PT402",
+          "message": "Payment Required"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Length": "99",
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:780",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 780,
+      "category": "rpc",
+      "description": "defaults to status 500 if RAISE code is PT not followed by a number",
+      "example": "RpcSpec:it:779",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/raise_bad_pt",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 500,
+        "body": {
+          "hint": null,
+          "details": null,
+          "code": "PT40A",
+          "message": "Wrong"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Length": "61",
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:790",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 790,
+      "category": "rpc",
+      "description": "overloaded()",
+      "example": "RpcSpec:it:789",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/overloaded",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          1,
+          2,
+          3
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:795",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 795,
+      "category": "rpc",
+      "description": "overloaded(int, int)",
+      "example": "RpcSpec:it:794",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/overloaded",
+        "query": "a=1&b=2",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": "3",
+        "bodyFormat": "text",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:798",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 798,
+      "category": "rpc",
+      "description": "overloaded(text, text, text)",
+      "example": "RpcSpec:it:797",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/overloaded",
+        "query": "a=1&b=2&c=3",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": "123",
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:801",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 801,
+      "category": "rpc",
+      "description": "overloaded_html_form()",
+      "example": "RpcSpec:it:800",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/overloaded_html_form",
+        "query": "",
+        "headers": {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          1,
+          2,
+          3
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:808",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 808,
+      "category": "rpc",
+      "description": "overloaded_html_form(int, int)",
+      "example": "RpcSpec:it:807",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/overloaded_html_form",
+        "query": "",
+        "headers": {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        "body": "a=1&b=2",
+        "bodyFormat": "text"
+      },
+      "expected": {
+        "status": 200,
+        "body": "3",
+        "bodyFormat": "text",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:815",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 815,
+      "category": "rpc",
+      "description": "overloaded_html_form(text, text, text)",
+      "example": "RpcSpec:it:814",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/overloaded_html_form",
+        "query": "",
+        "headers": {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        "body": "a=1&b=2&c=3",
+        "bodyFormat": "text"
+      },
+      "expected": {
+        "status": 200,
+        "body": "123",
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:824",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 824,
+      "category": "rpc",
+      "description": "overloaded_default(text default)",
+      "example": "RpcSpec:it:823",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/overloaded_default",
+        "query": "select=id,name,users(name)",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {},
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 2,
+            "name": "Code w7",
+            "users": [
+              {
+                "name": "Angela Martin"
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:831",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 831,
+      "category": "rpc",
+      "description": "overloaded_default(int)",
+      "example": "RpcSpec:it:830",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/overloaded_default",
+        "query": "",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "must_param": 1
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "val": 1
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:838",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 838,
+      "category": "rpc",
+      "description": "overloaded_default(int, text default)",
+      "example": "RpcSpec:it:837",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/overloaded_default",
+        "query": "select=id,name,users(name)",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "a": 4
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 5,
+            "name": "Design IOS",
+            "users": [
+              {
+                "name": "Michael Scott"
+              },
+              {
+                "name": "Dwight Schrute"
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:845",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 845,
+      "category": "rpc",
+      "description": "overloaded_default(int, int)",
+      "example": "RpcSpec:it:844",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/overloaded_default",
+        "query": "",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "a": 2,
+          "must_param": 4
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "a": 2,
+          "val": 4
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:853",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 853,
+      "category": "rpc",
+      "description": "gives a parse filter error if GET style proc args are specified",
+      "example": "RpcSpec:it:852",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/sayhello",
+        "query": "name=John",
+        "headers": {},
+        "body": {
+          "name": "John"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 400,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:856",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 856,
+      "category": "rpc",
+      "description": "ignores json keys not included in ?columns",
+      "example": "RpcSpec:it:855",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/sayhello",
+        "query": "columns=name",
+        "headers": {},
+        "body": {
+          "name": "John",
+          "smth": "here",
+          "other": "stuff",
+          "fake_id": 13
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": "Hello, John",
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:863",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 863,
+      "category": "rpc",
+      "description": "only takes the first object in case of array of objects payload",
+      "example": "RpcSpec:it:862",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/add_them",
+        "query": "",
+        "headers": {},
+        "body": [
+          {
+            "a": 1,
+            "b": 2
+          },
+          {
+            "a": 4,
+            "b": 6
+          },
+          {
+            "a": 100,
+            "b": 200
+          }
+        ],
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": 3,
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:873",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 873,
+      "category": "rpc",
+      "description": "custom header is set",
+      "example": "RpcSpec:it:872",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/get_guc_value",
+        "query": "",
+        "headers": {
+          "Custom-Header": "test"
+        },
+        "body": {
+          "prefix": "request.headers",
+          "name": "custom-header"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": "test",
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:882",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 882,
+      "category": "rpc",
+      "description": "standard header is set",
+      "example": "RpcSpec:it:881",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/get_guc_value",
+        "query": "",
+        "headers": {
+          "Origin": "http://example.com"
+        },
+        "body": {
+          "prefix": "request.headers",
+          "name": "origin"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": "http://example.com",
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:891",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 891,
+      "category": "rpc",
+      "description": "current role is available as GUC claim",
+      "example": "RpcSpec:it:890",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/get_guc_value",
+        "query": "",
+        "headers": {},
+        "body": {
+          "prefix": "request.jwt.claims",
+          "name": "role"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": "postgrest_test_anonymous",
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:899",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 899,
+      "category": "rpc",
+      "description": "single cookie ends up as claims",
+      "example": "RpcSpec:it:898",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/get_guc_value",
+        "query": "",
+        "headers": {
+          "Cookie": "acookie=cookievalue"
+        },
+        "body": {
+          "prefix": "request.cookies",
+          "name": "acookie"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": "cookievalue",
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:907",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 907,
+      "category": "rpc",
+      "description": "multiple cookies end up as claims",
+      "example": "RpcSpec:it:906",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/get_guc_value",
+        "query": "",
+        "headers": {
+          "Cookie": "acookie=cookievalue;secondcookie=anothervalue"
+        },
+        "body": {
+          "prefix": "request.cookies",
+          "name": "secondcookie"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": "anothervalue",
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:915",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 915,
+      "category": "rpc",
+      "description": "app settings available",
+      "example": "RpcSpec:it:914",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/get_guc_value",
+        "query": "",
+        "headers": {},
+        "body": {
+          "name": "app.settings.app_host"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": "localhost",
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:923",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 923,
+      "category": "rpc",
+      "description": "gets the Authorization value",
+      "example": "RpcSpec:it:922",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/get_guc_value",
+        "query": "",
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoicG9zdGdyZXN0X3Rlc3RfYXV0aG9yIn0.Xod-F15qsGL0WhdOCr2j3DdKuTw9QJERVgoFD3vGaWA"
+        },
+        "body": {
+          "prefix": "request.headers",
+          "name": "authorization"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoicG9zdGdyZXN0X3Rlc3RfYXV0aG9yIn0.Xod-F15qsGL0WhdOCr2j3DdKuTw9QJERVgoFD3vGaWA",
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:931",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 931,
+      "category": "rpc",
+      "description": "gets the http method",
+      "example": "RpcSpec:it:930",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/get_guc_value",
+        "query": "",
+        "headers": {},
+        "body": {
+          "name": "request.method"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": "POST",
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:939",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 939,
+      "category": "rpc",
+      "description": "gets the http path",
+      "example": "RpcSpec:it:938",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/get_guc_value",
+        "query": "",
+        "headers": {},
+        "body": {
+          "name": "request.path"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": "/rpc/get_guc_value",
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:949",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 949,
+      "category": "rpc",
+      "description": "should fail on mutating procs",
+      "example": "RpcSpec:it:948",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/callcounter",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 405,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:950",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 950,
+      "category": "rpc",
+      "description": "should fail on mutating procs",
+      "example": "RpcSpec:it:948",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/setprojects",
+        "query": "id_l=1&id_h=5&name=FreeBSD",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 405,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:953",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 953,
+      "category": "rpc",
+      "description": "should filter a proc that has arg name = filter name",
+      "example": "RpcSpec:it:952",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/get_projects_below",
+        "query": "id=5&id=gt.2&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 3
+          },
+          {
+            "id": 4
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:958",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 958,
+      "category": "rpc",
+      "description": "should work with filters that have the not operator",
+      "example": "RpcSpec:it:957",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/get_projects_below",
+        "query": "id=5&id=not.gt.2&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          },
+          {
+            "id": 2
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:961",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 961,
+      "category": "rpc",
+      "description": "should work with filters that have the not operator",
+      "example": "RpcSpec:it:957",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/get_projects_below",
+        "query": "id=5&id=not.in.(1,3)&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 2
+          },
+          {
+            "id": 4
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:966",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 966,
+      "category": "rpc",
+      "description": "should work with filters that use the fts operator on tsvector columns",
+      "example": "RpcSpec:it:965",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/get_tsearch",
+        "query": "text_search_vector=fts(english).impossible",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "text_search_vector": "'fun':5 'imposs':9 'kind':3"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:969",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 969,
+      "category": "rpc",
+      "description": "should work with filters that use the fts operator on tsvector columns",
+      "example": "RpcSpec:it:965",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/get_tsearch",
+        "query": "text_search_vector=plfts.impossible",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "text_search_vector": "'fun':5 'imposs':9 'kind':3"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:972",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 972,
+      "category": "rpc",
+      "description": "should work with filters that use the fts operator on tsvector columns",
+      "example": "RpcSpec:it:965",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/get_tsearch",
+        "query": "text_search_vector=not.fts(english).fun%7Crat",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "text_search_vector": "'amus':5 'fair':7 'impossibl':9 'peu':4"
+          },
+          {
+            "text_search_vector": "'art':4 'spass':5 'unmog':7"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:975",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 975,
+      "category": "rpc",
+      "description": "should work with filters that use the fts operator on tsvector columns",
+      "example": "RpcSpec:it:965",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/get_tsearch",
+        "query": "text_search_vector=wfts.impossible",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "text_search_vector": "'fun':5 'imposs':9 'kind':3"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:979",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 979,
+      "category": "rpc",
+      "description": "should work with filters that use the fts operator on text and json columns",
+      "example": "RpcSpec:it:978",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/get_tsearch_to_tsvector",
+        "query": "select=text_search&text_search=fts(english).impossible",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "text_search": "It's kind of fun to do the impossible"
+          },
+          {
+            "text_search": "C'est un peu amusant de faire l'impossible"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:985",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 985,
+      "category": "rpc",
+      "description": "should work with filters that use the fts operator on text and json columns",
+      "example": "RpcSpec:it:978",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/get_tsearch_to_tsvector",
+        "query": "select=text_search&text_search=plfts.impossible",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "text_search": "It's kind of fun to do the impossible"
+          },
+          {
+            "text_search": "C'est un peu amusant de faire l'impossible"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:991",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 991,
+      "category": "rpc",
+      "description": "should work with filters that use the fts operator on text and json columns",
+      "example": "RpcSpec:it:978",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/get_tsearch_to_tsvector",
+        "query": "select=text_search&text_search=not.fts(english).fun%7Crat",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "text_search": "C'est un peu amusant de faire l'impossible"
+          },
+          {
+            "text_search": "Es ist eine Art Spaß, das Unmögliche zu machen"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:997",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 997,
+      "category": "rpc",
+      "description": "should work with filters that use the fts operator on text and json columns",
+      "example": "RpcSpec:it:978",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/get_tsearch_to_tsvector",
+        "query": "select=text_search&text_search=wfts.impossible",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "text_search": "It's kind of fun to do the impossible"
+          },
+          {
+            "text_search": "C'est un peu amusant de faire l'impossible"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1005",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1005,
+      "category": "rpc",
+      "description": "should work with filters that use the fts operator when the column type is a tsvector domain",
+      "example": "RpcSpec:it:1004",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/get_tsearch_to_tsvector",
+        "query": "select=text_search_domain&text_search_domain=fts(simple).impossible",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "text_search_domain": "'do':7 'fun':5 'impossible':9 'it':1 'kind':3 'of':4 's':2 'the':8 'to':6"
+          },
+          {
+            "text_search_domain": "'amusant':5 'c':1 'de':6 'est':2 'faire':7 'impossible':9 'l':8 'peu':4 'un':3"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1013",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1013,
+      "category": "rpc",
+      "description": "should work with filters that use the fts operator when the column type is a recursive tsvector domain",
+      "example": "RpcSpec:it:1012",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/get_tsearch_to_tsvector",
+        "query": "select=text_search_rec_domain&text_search_rec_domain=fts(simple).impossible",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "text_search_rec_domain": "'do':7 'fun':5 'impossible':9 'it':1 'kind':3 'of':4 's':2 'the':8 'to':6"
+          },
+          {
+            "text_search_rec_domain": "'amusant':5 'c':1 'de':6 'est':2 'faire':7 'impossible':9 'l':8 'peu':4 'un':3"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1021",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1021,
+      "category": "rpc",
+      "description": "should work with the phraseto_tsquery function",
+      "example": "RpcSpec:it:1020",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/get_tsearch",
+        "query": "text_search_vector=phfts(english).impossible",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "text_search_vector": "'fun':5 'imposs':9 'kind':3"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1026",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1026,
+      "category": "rpc",
+      "description": "should work with an argument of custom type in public schema",
+      "example": "RpcSpec:it:1025",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/test_arg",
+        "query": "my_arg=something",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": "foobar",
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1032",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1032,
+      "category": "rpc",
+      "description": "succeeds setting the headers",
+      "example": "RpcSpec:it:1031",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/get_projects_and_guc_headers",
+        "query": "id=eq.2&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 2
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "X-Test": "key1=val1; someValue; key2=val2",
+          "X-Test-2": "key1=val1"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1038",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1038,
+      "category": "rpc",
+      "description": "succeeds setting the headers",
+      "example": "RpcSpec:it:1031",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/get_int_and_guc_headers",
+        "query": "num=1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": 1,
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "X-Test": "key1=val1; someValue; key2=val2",
+          "X-Test-2": "key1=val1"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1044",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1044,
+      "category": "rpc",
+      "description": "succeeds setting the headers",
+      "example": "RpcSpec:it:1031",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/get_int_and_guc_headers",
+        "query": "",
+        "headers": {},
+        "body": {
+          "num": 1
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": 1,
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "X-Test": "key1=val1; someValue; key2=val2",
+          "X-Test-2": "key1=val1"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1052",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1052,
+      "category": "rpc",
+      "description": "fails when setting headers with wrong json structure",
+      "example": "RpcSpec:it:1051",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/bad_guc_headers_1",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 500,
+        "body": {
+          "message": "response.headers guc must be a JSON array composed of objects with a single key and a string value",
+          "code": "PGRST111",
+          "details": null,
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Length": "157",
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1059",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1059,
+      "category": "rpc",
+      "description": "fails when setting headers with wrong json structure",
+      "example": "RpcSpec:it:1051",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/bad_guc_headers_2",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 500,
+        "body": {
+          "message": "response.headers guc must be a JSON array composed of objects with a single key and a string value",
+          "code": "PGRST111",
+          "details": null,
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1065",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1065,
+      "category": "rpc",
+      "description": "fails when setting headers with wrong json structure",
+      "example": "RpcSpec:it:1051",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/bad_guc_headers_3",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 500,
+        "body": {
+          "message": "response.headers guc must be a JSON array composed of objects with a single key and a string value",
+          "code": "PGRST111",
+          "details": null,
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1071",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1071,
+      "category": "rpc",
+      "description": "fails when setting headers with wrong json structure",
+      "example": "RpcSpec:it:1051",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/bad_guc_headers_1",
+        "query": "",
+        "headers": {},
+        "body": {},
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 500,
+        "body": {
+          "message": "response.headers guc must be a JSON array composed of objects with a single key and a string value",
+          "code": "PGRST111",
+          "details": null,
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1079",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1079,
+      "category": "rpc",
+      "description": "can set the same http header twice",
+      "example": "RpcSpec:it:1078",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/set_cookie_twice",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Set-Cookie": "sessionid=38afes7a8; HttpOnly; Path=/, id=a3fWa; Expires=Wed, 21 Oct 2015 07:28:00 GMT; Secure; HttpOnly"
+        },
+        "headersAbsent": [
+          "Content-Type",
+          "Content-Length"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1090",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1090,
+      "category": "rpc",
+      "description": "can override the Location header on a trigger",
+      "example": "RpcSpec:it:1089",
+      "request": {
+        "method": "POST",
+        "path": "/stuff",
+        "query": "",
+        "headers": {},
+        "body": [
+          {
+            "id": 2,
+            "name": "stuff 2"
+          }
+        ],
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Location": "/stuff?id=eq.2&overriden=true"
+        },
+        "headersAbsent": [
+          "Content-Type"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1129",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1129,
+      "category": "rpc",
+      "description": "can override the status on RPC",
+      "example": "RpcSpec:it:1128",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/send_body_status_403",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 403,
+        "body": {
+          "message": "invalid user or password"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1137",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1137,
+      "category": "rpc",
+      "description": "can override the status through trigger",
+      "example": "RpcSpec:it:1136",
+      "request": {
+        "method": "PATCH",
+        "path": "/stuff",
+        "query": "id=eq.1",
+        "headers": {},
+        "body": [
+          {
+            "name": "updated stuff 1"
+          }
+        ],
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 205,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1143",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1143,
+      "category": "rpc",
+      "description": "fails when setting invalid status guc",
+      "example": "RpcSpec:it:1142",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/send_bad_status",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 500,
+        "body": {
+          "message": "response.status guc must be a valid status code",
+          "code": "PGRST112",
+          "details": null,
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Length": "106",
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1153",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1153,
+      "category": "rpc",
+      "description": "can insert json directly with unnamed parameter",
+      "example": "RpcSpec:it:1152",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/unnamed_json_param",
+        "query": "",
+        "headers": {},
+        "body": {
+          "A": 1,
+          "B": 2,
+          "C": 3
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "A": 1,
+          "B": 2,
+          "C": 3
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1159",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1159,
+      "category": "rpc",
+      "description": "rejects json body when single param has a name",
+      "example": "RpcSpec:it:1158",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/named_json_param",
+        "query": "",
+        "headers": {},
+        "body": {
+          "A": 1,
+          "B": 2,
+          "C": 3
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "code": "PGRST202",
+          "message": "Could not find the function public.named_json_param(A, B, C) in the schema cache",
+          "details": "Searched for the function public.named_json_param with parameters A, B, C or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache.",
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [
+        "expected body: schema \"test.\" rewritten to \"public.\" (the DSQL fixtures load upstream's test schema into public)"
+      ],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1171",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1171,
+      "category": "rpc",
+      "description": "can insert text directly",
+      "example": "RpcSpec:it:1170",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/unnamed_text_param",
+        "query": "",
+        "headers": {
+          "Content-Type": "text/plain",
+          "Accept": "text/plain"
+        },
+        "body": "unnamed text arg",
+        "bodyFormat": "text"
+      },
+      "expected": {
+        "status": 200,
+        "body": "unnamed text arg",
+        "bodyFormat": "text",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1178",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1178,
+      "category": "rpc",
+      "description": "can insert xml directly",
+      "example": "RpcSpec:it:1177",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/unnamed_xml_param",
+        "query": "",
+        "headers": {
+          "Content-Type": "text/xml",
+          "Accept": "text/xml"
+        },
+        "body": "<note><from>John</from><to>Jane</to><message>Remember me</message></note>",
+        "bodyFormat": "text"
+      },
+      "expected": {
+        "status": 200,
+        "body": "<note><from>John</from><to>Jane</to><message>Remember me</message></note>",
+        "bodyFormat": "text",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1194",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1194,
+      "category": "rpc",
+      "description": "will err when no function with single unnamed json parameter exists and application/json is specified",
+      "example": "RpcSpec:it:1193",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/unnamed_int_param",
+        "query": "",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "x": 1,
+          "y": 2
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "hint": "Perhaps you meant to call the function public.unnamed_text_param",
+          "message": "Could not find the function public.unnamed_int_param(x, y) in the schema cache",
+          "code": "PGRST202",
+          "details": "Searched for the function public.unnamed_int_param with parameters x, y or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache."
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [
+        "expected body: schema \"test.\" rewritten to \"public.\" (the DSQL fixtures load upstream's test schema into public)"
+      ],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1208",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1208,
+      "category": "rpc",
+      "description": "will err when no function with single unnamed text parameter exists and text/plain is specified",
+      "example": "RpcSpec:it:1207",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/unnamed_int_param",
+        "query": "",
+        "headers": {
+          "Content-Type": "text/plain"
+        },
+        "body": "a simple text",
+        "bodyFormat": "text"
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "hint": null,
+          "message": "Could not find the function public.unnamed_int_param in the schema cache",
+          "code": "PGRST202",
+          "details": "Searched for the function public.unnamed_int_param with a single unnamed text parameter, but no matches were found in the schema cache."
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [
+        "expected body: schema \"test.\" rewritten to \"public.\" (the DSQL fixtures load upstream's test schema into public)"
+      ],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1223",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1223,
+      "category": "rpc",
+      "description": "will err when no function with single unnamed text parameter exists and text/xml is specified",
+      "example": "RpcSpec:it:1222",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/unnamed_int_param",
+        "query": "",
+        "headers": {
+          "Content-Type": "text/xml"
+        },
+        "body": "a simple text",
+        "bodyFormat": "text"
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "hint": null,
+          "message": "Could not find the function public.unnamed_int_param in the schema cache",
+          "code": "PGRST202",
+          "details": "Searched for the function public.unnamed_int_param with a single unnamed xml parameter, but no matches were found in the schema cache."
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [
+        "expected body: schema \"test.\" rewritten to \"public.\" (the DSQL fixtures load upstream's test schema into public)"
+      ],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1238",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1238,
+      "category": "rpc",
+      "description": "will err when no function with single unnamed bytea parameter exists and application/octet-stream is specified",
+      "example": "RpcSpec:it:1237",
+      "request": null,
+      "expected": {
+        "status": 404,
+        "body": {
+          "hint": null,
+          "message": "Could not find the function test.unnamed_int_param in the schema cache",
+          "code": "PGRST202",
+          "details": "Searched for the function test.unnamed_int_param with a single unnamed bytea parameter, but no matches were found in the schema cache."
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "request body not a literal: not a string expression: readFixtureFile \"image.png\"",
+      "skipClass": "not-representable"
+    },
+    {
+      "id": "RpcSpec:1253",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1253,
+      "category": "rpc",
+      "description": "should be able to resolve when a single unnamed json parameter exists and other overloaded functions are found",
+      "example": "RpcSpec:it:1252",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/overloaded_unnamed_param",
+        "query": "",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {},
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": 1,
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1260",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1260,
+      "category": "rpc",
+      "description": "should be able to resolve when a single unnamed json parameter exists and other overloaded functions are found",
+      "example": "RpcSpec:it:1252",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/overloaded_unnamed_param",
+        "query": "",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "x": 1,
+          "y": 2
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": 3,
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1269",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1269,
+      "category": "rpc",
+      "description": "should be able to fallback to the single unnamed parameter function when other overloaded functions are not found",
+      "example": "RpcSpec:it:1268",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/overloaded_unnamed_param",
+        "query": "",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "A": 1,
+          "B": 2,
+          "C": 3
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "A": 1,
+          "B": 2,
+          "C": 3
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1274",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1274,
+      "category": "rpc",
+      "description": "should be able to fallback to the single unnamed parameter function when other overloaded functions are not found",
+      "example": "RpcSpec:it:1268",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/overloaded_unnamed_param",
+        "query": "",
+        "headers": {
+          "Content-Type": "text/plain",
+          "Accept": "text/plain"
+        },
+        "body": "unnamed text arg",
+        "bodyFormat": "text"
+      },
+      "expected": {
+        "status": 200,
+        "body": "unnamed text arg",
+        "bodyFormat": "text",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1288",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1288,
+      "category": "rpc",
+      "description": "should call the function with no parameters and not fallback to the single unnamed parameter function when using GET with Content-Type headers",
+      "example": "RpcSpec:it:1287",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/overloaded_unnamed_param",
+        "query": "",
+        "headers": {
+          "Content-Type": "text/plain"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": 1,
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1292",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1292,
+      "category": "rpc",
+      "description": "should call the function with no parameters and not fallback to the single unnamed parameter function when using GET with Content-Type headers",
+      "example": "RpcSpec:it:1287",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/overloaded_unnamed_param",
+        "query": "",
+        "headers": {
+          "Content-Type": "application/octet-stream"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": 1,
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1298",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1298,
+      "category": "rpc",
+      "description": "should fail to fallback to any single unnamed parameter function when using an unsupported Content-Type header",
+      "example": "RpcSpec:it:1297",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/overloaded_unnamed_param",
+        "query": "",
+        "headers": {
+          "Content-Type": "text/csv"
+        },
+        "body": "a,b\n1,2\n4,6\n100,200",
+        "bodyFormat": "text"
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "hint": "Perhaps you meant to call the function public.overloaded_unnamed_param(x, y)",
+          "message": "Could not find the function public.overloaded_unnamed_param(a, b) in the schema cache",
+          "code": "PGRST202",
+          "details": "Searched for the function public.overloaded_unnamed_param with parameters a, b, but no matches were found in the schema cache."
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [
+        "expected body: schema \"test.\" rewritten to \"public.\" (the DSQL fixtures load upstream's test schema into public)"
+      ],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1313",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1313,
+      "category": "rpc",
+      "description": "should fail with multiple choices when two fallback functions with single unnamed json and jsonb parameters exist",
+      "example": "RpcSpec:it:1312",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/overloaded_unnamed_json_jsonb_param",
+        "query": "",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "A": 1,
+          "B": 2,
+          "C": 3
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 300,
+        "body": {
+          "hint": "Try renaming the parameters or the function itself in the database so function overloading can be resolved",
+          "message": "Could not choose the best candidate function between: public.overloaded_unnamed_json_jsonb_param( => json), public.overloaded_unnamed_json_jsonb_param( => jsonb)",
+          "code": "PGRST203",
+          "details": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [
+        "expected body: schema \"test.\" rewritten to \"public.\" (the DSQL fixtures load upstream's test schema into public)"
+      ],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1327",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1327,
+      "category": "rpc",
+      "description": "should fail on /rpc/unnamed_xml_param when posting invalid xml",
+      "example": "RpcSpec:it:1326",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/unnamed_xml_param",
+        "query": "",
+        "headers": {
+          "Content-Type": "text/xml",
+          "Accept": "text/xml"
+        },
+        "body": "<",
+        "bodyFormat": "text"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "hint": null,
+          "message": "invalid XML content",
+          "code": "2200N",
+          "details": "line 1: StartTag: invalid element name\n<\n ^"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Length": "118",
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1345",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1345,
+      "category": "rpc",
+      "description": "modifies the param type from character to character varying",
+      "example": "RpcSpec:it:1344",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/char_param_select",
+        "query": "char_=abcdefg&char_arr={abc,abcdefg}",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "char_": "abcdefg",
+            "char_arr": [
+              "abc",
+              "abcdefg"
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1349",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1349,
+      "category": "rpc",
+      "description": "modifies the param type from character to character varying",
+      "example": "RpcSpec:it:1344",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/char_param_insert",
+        "query": "",
+        "headers": {},
+        "body": {
+          "char_": "abcdefg",
+          "char_arr": "{abc,abcdefg}"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "code": "22001",
+          "details": null,
+          "hint": null,
+          "message": "value too long for type character(5)"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Length": "92",
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1358",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1358,
+      "category": "rpc",
+      "description": "modifies the param type from bit to bit varying",
+      "example": "RpcSpec:it:1357",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/bit_param_select",
+        "query": "bit_=101010&bit_arr={101,101010}",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "bit_": "101010",
+            "bit_arr": [
+              "101",
+              "101010"
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1362",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1362,
+      "category": "rpc",
+      "description": "modifies the param type from bit to bit varying",
+      "example": "RpcSpec:it:1357",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/bit_param_insert",
+        "query": "",
+        "headers": {},
+        "body": {
+          "bit_": "101010",
+          "bit_arr": "{101,101010}"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "code": "22026",
+          "details": null,
+          "hint": null,
+          "message": "bit string length 6 does not match type bit(5)"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Length": "102",
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1384",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1384,
+      "category": "rpc",
+      "description": "gets message and details from raise sqlstate PGRST",
+      "example": "RpcSpec:it:1371",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/raise_sqlstate_test2",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 332,
+        "body": {
+          "code": "123",
+          "message": "ABC",
+          "details": null,
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "X-Header": "str"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1417",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1417,
+      "category": "rpc",
+      "description": "returns error for invalid JSON in the MESSAGE option of the RAISE statement",
+      "example": "RpcSpec:it:1416",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/raise_sqlstate_invalid_json_message",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 500,
+        "body": {
+          "code": "PGRST121",
+          "message": "Could not parse JSON in the \"RAISE SQLSTATE 'PGRST'\" error",
+          "details": "Invalid JSON value for MESSAGE: 'INVALID'",
+          "hint": "MESSAGE must be a JSON object with obligatory keys: 'code', 'message' and optional keys: 'details', 'hint'."
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Length": "263",
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1429",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1429,
+      "category": "rpc",
+      "description": "returns error for invalid JSON in the DETAIL option of the RAISE statement",
+      "example": "RpcSpec:it:1428",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/raise_sqlstate_invalid_json_details",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 500,
+        "body": {
+          "code": "PGRST121",
+          "message": "Could not parse JSON in the \"RAISE SQLSTATE 'PGRST'\" error",
+          "details": "Invalid JSON value for DETAIL: 'INVALID'",
+          "hint": "DETAIL must be a JSON object with obligatory keys: 'status', 'headers' and optional key: 'status_text'."
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1438",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1438,
+      "category": "rpc",
+      "description": "returns error for missing DETAIL option in the RAISE statement",
+      "example": "RpcSpec:it:1437",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/raise_sqlstate_missing_details",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 500,
+        "body": {
+          "code": "PGRST121",
+          "message": "Could not parse JSON in the \"RAISE SQLSTATE 'PGRST'\" error",
+          "details": "DETAIL is missing in the RAISE statement",
+          "hint": "DETAIL must be a JSON object with obligatory keys: 'status', 'headers' and optional key: 'status_text'."
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1450",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1450,
+      "category": "rpc",
+      "description": "should return http status 500",
+      "example": "RpcSpec:it:1449",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/temp_file_limit",
+        "query": "",
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoicG9zdGdyZXN0X3Rlc3Rfc3VwZXJ1c2VyIiwiaWQiOiJqZG9lIn0.LQ-qx0ArBnfkwQQhIHKF5cS-lzl0gnTPI8NLoPbL5Fg"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": null,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "expectation is not a literal ResponseMatcher: (; example is gated on a PostgreSQL version check (actualPgVersion)",
+      "skipClass": "not-representable"
+    },
+    {
+      "id": "RpcSpec:1462",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1462,
+      "category": "rpc",
+      "description": "works with filter on unselected columns",
+      "example": "RpcSpec:it:1461",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/getallprojects",
+        "query": "select=id,client_id&name=like.OSX",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 4,
+            "client_id": 2
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1471",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1471,
+      "category": "rpc",
+      "description": "works with filter on unselected columns with null embed",
+      "example": "RpcSpec:it:1470",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/getallprojects",
+        "query": "select=id,clients(id)&clients.name=not.is.null",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "clients": {
+              "id": 1
+            }
+          },
+          {
+            "id": 2,
+            "clients": {
+              "id": 1
+            }
+          },
+          {
+            "id": 3,
+            "clients": {
+              "id": 2
+            }
+          },
+          {
+            "id": 4,
+            "clients": {
+              "id": 2
+            }
+          },
+          {
+            "id": 5,
+            "clients": null
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1480",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1480,
+      "category": "rpc",
+      "description": "works with logical filter on unselected columns",
+      "example": "RpcSpec:it:1479",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/getallprojects",
+        "query": "select=id,client_id&or=(name.like.OSX,name.like.IOS)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 3,
+            "client_id": 2
+          },
+          {
+            "id": 4,
+            "client_id": 2
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1490",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1490,
+      "category": "rpc",
+      "description": "doesn't err with 300 Multiple Choices",
+      "example": "RpcSpec:it:1489",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/collision_test_func",
+        "query": "id=1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": 1,
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RpcSpec:1498",
+      "source": "Feature/Query/RpcSpec.hs",
+      "line": 1498,
+      "category": "rpc",
+      "description": "should not fail when function name is a pg reserved word",
+      "example": "RpcSpec:it:1497",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/true",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbPreConfig)",
+      "skipClass": "needs-engine-config"
+    }
+  ]
+}

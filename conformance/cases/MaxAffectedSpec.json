@@ -1,0 +1,534 @@
+{
+  "source": "Feature/Query/Preferences/MaxAffectedSpec.hs",
+  "extractedCases": 13,
+  "skippedSites": 0,
+  "needsConfigCases": 0,
+  "cases": [
+    {
+      "id": "MaxAffectedSpec:15",
+      "source": "Feature/Query/Preferences/MaxAffectedSpec.hs",
+      "line": 15,
+      "category": "preferences",
+      "description": "should fail if items deleted more than 10",
+      "example": "MaxAffectedSpec:it:14",
+      "request": {
+        "method": "DELETE",
+        "path": "/items",
+        "query": "id=lt.15",
+        "headers": {
+          "Prefer": "handling=strict, max-affected=10"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "code": "PGRST124",
+          "details": "The query affects 14 rows",
+          "hint": null,
+          "message": "Query result exceeds max-affected preference constraint"
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "MaxAffectedSpec:23",
+      "source": "Feature/Query/Preferences/MaxAffectedSpec.hs",
+      "line": 23,
+      "category": "preferences",
+      "description": "should succeed if items deleted less than 10",
+      "example": "MaxAffectedSpec:it:22",
+      "request": {
+        "method": "DELETE",
+        "path": "/items",
+        "query": "id=lt.10",
+        "headers": {
+          "Prefer": "handling=strict, max-affected=10"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Preference-Applied": "handling=strict, max-affected=10"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "MaxAffectedSpec:32",
+      "source": "Feature/Query/Preferences/MaxAffectedSpec.hs",
+      "line": 32,
+      "category": "preferences",
+      "description": "should fail if items updated more than 0",
+      "example": "MaxAffectedSpec:it:31",
+      "request": {
+        "method": "PATCH",
+        "path": "/tiobe_pls",
+        "query": "name=eq.Java",
+        "headers": {
+          "Prefer": "handling=strict, max-affected=0"
+        },
+        "body": [
+          {
+            "name": "Java",
+            "rank": 19
+          }
+        ],
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "code": "PGRST124",
+          "details": "The query affects 1 rows",
+          "hint": null,
+          "message": "Query result exceeds max-affected preference constraint"
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "MaxAffectedSpec:40",
+      "source": "Feature/Query/Preferences/MaxAffectedSpec.hs",
+      "line": 40,
+      "category": "preferences",
+      "description": "should succeed if items updated equal 1",
+      "example": "MaxAffectedSpec:it:39",
+      "request": {
+        "method": "DELETE",
+        "path": "/tiobe_pls",
+        "query": "name=eq.Java",
+        "headers": {
+          "Prefer": "handling=strict, max-affected=1"
+        },
+        "body": [
+          {
+            "name": "Java",
+            "rank": 19
+          }
+        ],
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Preference-Applied": "handling=strict, max-affected=1"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "MaxAffectedSpec:50",
+      "source": "Feature/Query/Preferences/MaxAffectedSpec.hs",
+      "line": 50,
+      "category": "preferences",
+      "description": "should not fail",
+      "example": "MaxAffectedSpec:it:49",
+      "request": {
+        "method": "DELETE",
+        "path": "/items",
+        "query": "id=lt.15",
+        "headers": {
+          "Prefer": "handling=lenient, max-affected=10"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Preference-Applied": "handling=lenient"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "MaxAffectedSpec:59",
+      "source": "Feature/Query/Preferences/MaxAffectedSpec.hs",
+      "line": 59,
+      "category": "preferences",
+      "description": "should succeed if items deleted less than 10",
+      "example": "MaxAffectedSpec:it:58",
+      "request": {
+        "method": "DELETE",
+        "path": "/items",
+        "query": "id=lt.10",
+        "headers": {
+          "Prefer": "handling=lenient, max-affected=10"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Preference-Applied": "handling=lenient"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "MaxAffectedSpec:68",
+      "source": "Feature/Query/Preferences/MaxAffectedSpec.hs",
+      "line": 68,
+      "category": "preferences",
+      "description": "should not fail",
+      "example": "MaxAffectedSpec:it:67",
+      "request": {
+        "method": "PATCH",
+        "path": "/tiobe_pls",
+        "query": "name=eq.Java",
+        "headers": {
+          "Prefer": "handling=lenient, max-affected=0"
+        },
+        "body": [
+          {
+            "name": "Java",
+            "rank": 19
+          }
+        ],
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Preference-Applied": "handling=lenient"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "MaxAffectedSpec:77",
+      "source": "Feature/Query/Preferences/MaxAffectedSpec.hs",
+      "line": 77,
+      "category": "preferences",
+      "description": "should succeed if items updated equal 1",
+      "example": "MaxAffectedSpec:it:76",
+      "request": {
+        "method": "DELETE",
+        "path": "/tiobe_pls",
+        "query": "name=eq.Java",
+        "headers": {
+          "Prefer": "handling=lenient, max-affected=1"
+        },
+        "body": [
+          {
+            "name": "Java",
+            "rank": 19
+          }
+        ],
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Preference-Applied": "handling=lenient"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "MaxAffectedSpec:87",
+      "source": "Feature/Query/Preferences/MaxAffectedSpec.hs",
+      "line": 87,
+      "category": "preferences",
+      "description": "should fail with rpc when deleting rows more than prefered with returns setof",
+      "example": "MaxAffectedSpec:it:86",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/delete_items_returns_setof",
+        "query": "",
+        "headers": {
+          "Prefer": "handling=strict, max-affected=10"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "code": "PGRST124",
+          "details": "The query affects 15 rows",
+          "hint": null,
+          "message": "Query result exceeds max-affected preference constraint"
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "MaxAffectedSpec:95",
+      "source": "Feature/Query/Preferences/MaxAffectedSpec.hs",
+      "line": 95,
+      "category": "preferences",
+      "description": "should fail with rpc when deleting rows more than prefered with returns table",
+      "example": "MaxAffectedSpec:it:94",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/delete_items_returns_table",
+        "query": "",
+        "headers": {
+          "Prefer": "handling=strict, max-affected=10"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "code": "PGRST124",
+          "details": "The query affects 15 rows",
+          "hint": null,
+          "message": "Query result exceeds max-affected preference constraint"
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "MaxAffectedSpec:103",
+      "source": "Feature/Query/Preferences/MaxAffectedSpec.hs",
+      "line": 103,
+      "category": "preferences",
+      "description": "should succeed with rpc deleting rows less than prefered with returns setof",
+      "example": "MaxAffectedSpec:it:102",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/delete_items_returns_setof",
+        "query": "",
+        "headers": {
+          "Prefer": "handling=strict, max-affected=20"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          },
+          {
+            "id": 2
+          },
+          {
+            "id": 3
+          },
+          {
+            "id": 4
+          },
+          {
+            "id": 5
+          },
+          {
+            "id": 6
+          },
+          {
+            "id": 7
+          },
+          {
+            "id": 8
+          },
+          {
+            "id": 9
+          },
+          {
+            "id": 10
+          },
+          {
+            "id": 11
+          },
+          {
+            "id": 12
+          },
+          {
+            "id": 13
+          },
+          {
+            "id": 14
+          },
+          {
+            "id": 15
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "MaxAffectedSpec:113",
+      "source": "Feature/Query/Preferences/MaxAffectedSpec.hs",
+      "line": 113,
+      "category": "preferences",
+      "description": "should succeed with rpc deleting rows less than prefered with returns table",
+      "example": "MaxAffectedSpec:it:112",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/delete_items_returns_table",
+        "query": "",
+        "headers": {
+          "Prefer": "handling=strict, max-affected=20"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          },
+          {
+            "id": 2
+          },
+          {
+            "id": 3
+          },
+          {
+            "id": 4
+          },
+          {
+            "id": 5
+          },
+          {
+            "id": 6
+          },
+          {
+            "id": 7
+          },
+          {
+            "id": 8
+          },
+          {
+            "id": 9
+          },
+          {
+            "id": 10
+          },
+          {
+            "id": 11
+          },
+          {
+            "id": 12
+          },
+          {
+            "id": 13
+          },
+          {
+            "id": 14
+          },
+          {
+            "id": 15
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "MaxAffectedSpec:123",
+      "source": "Feature/Query/Preferences/MaxAffectedSpec.hs",
+      "line": 123,
+      "category": "preferences",
+      "description": "should fail with rpc when returns void with handling=strict",
+      "example": "MaxAffectedSpec:it:122",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/delete_items_returns_void",
+        "query": "",
+        "headers": {
+          "Prefer": "handling=strict, max-affected=20"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "code": "PGRST128",
+          "details": null,
+          "hint": null,
+          "message": "Function must return SETOF or TABLE when max-affected preference is used with handling=strict"
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    }
+  ]
+}

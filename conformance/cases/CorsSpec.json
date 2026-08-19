@@ -1,0 +1,316 @@
+{
+  "source": "Feature/CorsSpec.hs",
+  "extractedCases": 5,
+  "skippedSites": 4,
+  "needsConfigCases": 4,
+  "cases": [
+    {
+      "id": "CorsSpec:16",
+      "source": "Feature/CorsSpec.hs",
+      "line": 16,
+      "category": "cors",
+      "description": "replies naively and permissively to preflight request",
+      "example": "CorsSpec:it:15",
+      "request": {
+        "method": "OPTIONS",
+        "path": "/",
+        "query": "",
+        "headers": {
+          "Accept": "*/*",
+          "Origin": "http://example.com",
+          "Access-Control-Request-Method": "POST",
+          "Access-Control-Request-Headers": "Foo,Bar"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, POST, PATCH, PUT, DELETE, OPTIONS, HEAD",
+          "Access-Control-Allow-Headers": "Authorization, Foo, Bar, Accept, Accept-Language, Content-Language",
+          "Access-Control-Max-Age": "86400"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CorsSpec:31",
+      "source": "Feature/CorsSpec.hs",
+      "line": 31,
+      "category": "cors",
+      "description": "exposes necesssary response headers to regular request",
+      "example": "CorsSpec:it:30",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "",
+        "headers": {
+          "Origin": "http://example.com"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {
+          "Access-Control-Expose-Headers": "Content-Encoding, Content-Location, Content-Range, Content-Type, Date, Location, Server, Transfer-Encoding, Range-Unit"
+        }
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CorsSpec:44",
+      "source": "Feature/CorsSpec.hs",
+      "line": 44,
+      "category": "cors",
+      "description": "allows INFO body through even with CORS request headers present to postflight request",
+      "example": "CorsSpec:it:43",
+      "request": {
+        "method": "OPTIONS",
+        "path": "/items",
+        "query": "",
+        "headers": {
+          "Host": "localhost:3000",
+          "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.9; rv:32.0) Gecko/20100101 Firefox/32.0",
+          "Origin": "http://localhost:8000",
+          "Accept": "text/csv, */*; q=0.01",
+          "Accept-Language": "en-US,en;q=0.5",
+          "Accept-Encoding": "gzip, deflate",
+          "Referer": "http://localhost:8000/",
+          "Connection": "keep-alive"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Access-Control-Allow-Origin": "*"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CorsSpec:58",
+      "source": "Feature/CorsSpec.hs",
+      "line": 58,
+      "category": "cors",
+      "description": "allows INFO body through even with CORS request headers present to postflight request",
+      "example": "CorsSpec:it:43",
+      "request": {
+        "method": "OPTIONS",
+        "path": "/items",
+        "query": "",
+        "headers": {
+          "Accept": "application/json"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Access-Control-Allow-Origin": "*"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CorsSpec:65",
+      "source": "Feature/CorsSpec.hs",
+      "line": 65,
+      "category": "cors",
+      "description": "allows INFO body through even with CORS request headers present to postflight request",
+      "example": "CorsSpec:it:43",
+      "request": {
+        "method": "OPTIONS",
+        "path": "/shops",
+        "query": "",
+        "headers": {
+          "Accept": "application/geo+json"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Access-Control-Allow-Origin": "*"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CorsSpec:75",
+      "source": "Feature/CorsSpec.hs",
+      "line": 75,
+      "category": "cors",
+      "description": "OPTIONS preflight request should return Access-Control-Allow-Origin equal to origin",
+      "example": "CorsSpec:it:74",
+      "request": {
+        "method": "OPTIONS",
+        "path": "/items",
+        "query": "",
+        "headers": {
+          "Accept": "*/*",
+          "Origin": "http://example.com",
+          "Access-Control-Request-Method": "POST",
+          "Access-Control-Request-Headers": "Content-Type"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {
+          "Access-Control-Allow-Origin": "http://example.com",
+          "Access-Control-Allow-Credentials": "true"
+        }
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configServerCorsAllowedOrigins)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "CorsSpec:90",
+      "source": "Feature/CorsSpec.hs",
+      "line": 90,
+      "category": "cors",
+      "description": "GET no preflight request should return Access-Control-Allow-Origin equal to origin",
+      "example": "CorsSpec:it:89",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "",
+        "headers": {
+          "Accept": "*/*",
+          "Origin": "http://example.com"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {
+          "Access-Control-Allow-Origin": "http://example.com"
+        }
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configServerCorsAllowedOrigins)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "CorsSpec:101",
+      "source": "Feature/CorsSpec.hs",
+      "line": 101,
+      "category": "cors",
+      "description": "GET no preflight request should not return Access-Control-Allow-Origin",
+      "example": "CorsSpec:it:100",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "",
+        "headers": {
+          "Accept": "*/*",
+          "Origin": "http://invalid.com"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {},
+        "headersAbsent": [
+          "Access-Control-Allow-Origin"
+        ]
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configServerCorsAllowedOrigins)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "CorsSpec:114",
+      "source": "Feature/CorsSpec.hs",
+      "line": 114,
+      "category": "cors",
+      "description": "OPTIONS preflight request should allow all origins when config is not set or empty",
+      "example": "CorsSpec:it:113",
+      "request": {
+        "method": "OPTIONS",
+        "path": "/items",
+        "query": "",
+        "headers": {
+          "Accept": "*/*",
+          "Origin": "http://anyorigin.com",
+          "Access-Control-Request-Method": "POST",
+          "Access-Control-Request-Headers": "Content-Type"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {
+          "Access-Control-Allow-Origin": "*"
+        },
+        "headersContain": [
+          {
+            "name": "Access-Control-Allow-Methods",
+            "value": "POST"
+          }
+        ]
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configServerCorsAllowedOrigins)",
+      "skipClass": "needs-engine-config"
+    }
+  ]
+}

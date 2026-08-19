@@ -1,0 +1,703 @@
+{
+  "source": "Feature/RollbackSpec.hs",
+  "extractedCases": 2,
+  "skippedSites": 24,
+  "needsConfigCases": 0,
+  "cases": [
+    {
+      "id": "RollbackSpec:17",
+      "source": "Feature/RollbackSpec.hs",
+      "line": 17,
+      "category": "rollback",
+      "description": "RollbackSpec",
+      "example": null,
+      "request": {
+        "method": "POST",
+        "path": "/items",
+        "query": "",
+        "headers": {
+          "Prefer": "tx=commit, resolution=ignore-duplicates"
+        },
+        "body": {
+          "id": 0
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Length": "0"
+        },
+        "headersAbsent": [
+          "Content-Type"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "assertion is not inside an `it` example (top-level helper definition, not a test)",
+      "skipClass": "not-representable"
+    },
+    {
+      "id": "RollbackSpec:29",
+      "source": "Feature/RollbackSpec.hs",
+      "line": 29,
+      "category": "rollback",
+      "description": "RollbackSpec",
+      "example": null,
+      "request": {
+        "method": "DELETE",
+        "path": "/items",
+        "query": "id=lte.0",
+        "headers": {
+          "Prefer": "tx=commit"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {},
+        "headersAbsent": [
+          "Content-Type",
+          "Content-Length"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "assertion is not inside an `it` example (top-level helper definition, not a test)",
+      "skipClass": "not-representable"
+    },
+    {
+      "id": "RollbackSpec:49",
+      "source": "Feature/RollbackSpec.hs",
+      "line": 49,
+      "category": "rollback",
+      "description": "responds to GET",
+      "example": "RollbackSpec:it:48",
+      "request": null,
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "request headers not representable: unresolved header list identifier \"reqHeaders\"; matchHeaders is not a literal list: respHeaders",
+      "skipClass": "not-representable"
+    },
+    {
+      "id": "RollbackSpec:57",
+      "source": "Feature/RollbackSpec.hs",
+      "line": 57,
+      "category": "rollback",
+      "description": "responds to HEAD",
+      "example": "RollbackSpec:it:56",
+      "request": null,
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "request headers not representable: unresolved header list identifier \"reqHeaders\"; matchHeaders is not a literal list: respHeaders",
+      "skipClass": "not-representable"
+    },
+    {
+      "id": "RollbackSpec:65",
+      "source": "Feature/RollbackSpec.hs",
+      "line": 65,
+      "category": "rollback",
+      "description": "responds to GET on RPC",
+      "example": "RollbackSpec:it:64",
+      "request": null,
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "request headers not representable: unresolved header list identifier \"reqHeaders\"; matchHeaders is not a literal list: respHeaders",
+      "skipClass": "not-representable"
+    },
+    {
+      "id": "RollbackSpec:73",
+      "source": "Feature/RollbackSpec.hs",
+      "line": 73,
+      "category": "rollback",
+      "description": "responds to POST on RPC",
+      "example": "RollbackSpec:it:72",
+      "request": null,
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "request headers not representable: unresolved header list identifier \"reqHeaders\"; matchHeaders is not a literal list: respHeaders",
+      "skipClass": "not-representable"
+    },
+    {
+      "id": "RollbackSpec:82",
+      "source": "Feature/RollbackSpec.hs",
+      "line": 82,
+      "category": "rollback",
+      "description": "raises immediate constraints",
+      "example": "RollbackSpec:it:81",
+      "request": null,
+      "expected": {
+        "status": 409,
+        "body": {
+          "hint": null,
+          "details": "Key (col)=(1) already exists.",
+          "code": "23505",
+          "message": "duplicate key value violates unique constraint \"deferrable_unique_constraint_col_key\""
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "request headers not representable: unresolved header list identifier \"reqHeaders\"; matchHeaders is not a literal list: respHeaders",
+      "skipClass": "not-representable"
+    },
+    {
+      "id": "RollbackSpec:96",
+      "source": "Feature/RollbackSpec.hs",
+      "line": 96,
+      "category": "rollback",
+      "description": "raises deferred constraints",
+      "example": "RollbackSpec:it:95",
+      "request": null,
+      "expected": {
+        "status": 409,
+        "body": {
+          "hint": null,
+          "details": "Key (col)=(1) already exists.",
+          "code": "23505",
+          "message": "duplicate key value violates unique constraint \"deferrable_unique_constraint_col_key\""
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "request headers not representable: unresolved header list identifier \"reqHeaders\"; matchHeaders is not a literal list: respHeaders",
+      "skipClass": "not-representable"
+    },
+    {
+      "id": "RollbackSpec:111",
+      "source": "Feature/RollbackSpec.hs",
+      "line": 111,
+      "category": "rollback",
+      "description": "does persist post",
+      "example": "RollbackSpec:it:110",
+      "request": null,
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "id": 0
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "request headers not representable: unresolved header list identifier \"reqHeaders\"; matchHeaders is not a literal list: respHeaders",
+      "skipClass": "not-representable"
+    },
+    {
+      "id": "RollbackSpec:118",
+      "source": "Feature/RollbackSpec.hs",
+      "line": 118,
+      "category": "rollback",
+      "description": "does persist post",
+      "example": "RollbackSpec:it:110",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "id=eq.0",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 0
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "a preceding assertion in the same example was skipped, so the state this one depends on is never created",
+      "skipClass": "not-representable"
+    },
+    {
+      "id": "RollbackSpec:124",
+      "source": "Feature/RollbackSpec.hs",
+      "line": 124,
+      "category": "rollback",
+      "description": "does persist put",
+      "example": "RollbackSpec:it:123",
+      "request": null,
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "id": 0
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "request headers not representable: unresolved header list identifier \"reqHeaders\"; matchHeaders is not a literal list: respHeaders",
+      "skipClass": "not-representable"
+    },
+    {
+      "id": "RollbackSpec:131",
+      "source": "Feature/RollbackSpec.hs",
+      "line": 131,
+      "category": "rollback",
+      "description": "does persist put",
+      "example": "RollbackSpec:it:123",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "id=eq.0",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 0
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "a preceding assertion in the same example was skipped, so the state this one depends on is never created",
+      "skipClass": "not-representable"
+    },
+    {
+      "id": "RollbackSpec:138",
+      "source": "Feature/RollbackSpec.hs",
+      "line": 138,
+      "category": "rollback",
+      "description": "does persist patch",
+      "example": "RollbackSpec:it:136",
+      "request": null,
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": -1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "request headers not representable: unresolved header list identifier \"reqHeaders\"; matchHeaders is not a literal list: respHeaders",
+      "skipClass": "not-representable"
+    },
+    {
+      "id": "RollbackSpec:144",
+      "source": "Feature/RollbackSpec.hs",
+      "line": 144,
+      "category": "rollback",
+      "description": "does persist patch",
+      "example": "RollbackSpec:it:136",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "id=eq.0",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "a preceding assertion in the same example was skipped, so the state this one depends on is never created",
+      "skipClass": "not-representable"
+    },
+    {
+      "id": "RollbackSpec:147",
+      "source": "Feature/RollbackSpec.hs",
+      "line": 147,
+      "category": "rollback",
+      "description": "does persist patch",
+      "example": "RollbackSpec:it:136",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "id=eq.-1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": -1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RollbackSpec:154",
+      "source": "Feature/RollbackSpec.hs",
+      "line": 154,
+      "category": "rollback",
+      "description": "does persist delete",
+      "example": "RollbackSpec:it:152",
+      "request": null,
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 0
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "request headers not representable: unresolved header list identifier \"reqHeaders\"; matchHeaders is not a literal list: respHeaders",
+      "skipClass": "not-representable"
+    },
+    {
+      "id": "RollbackSpec:160",
+      "source": "Feature/RollbackSpec.hs",
+      "line": 160,
+      "category": "rollback",
+      "description": "does persist delete",
+      "example": "RollbackSpec:it:152",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "id=eq.0",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "a preceding assertion in the same example was skipped, so the state this one depends on is never created",
+      "skipClass": "not-representable"
+    },
+    {
+      "id": "RollbackSpec:166",
+      "source": "Feature/RollbackSpec.hs",
+      "line": 166,
+      "category": "rollback",
+      "description": "does not persist post",
+      "example": "RollbackSpec:it:165",
+      "request": null,
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "id": 0
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "request headers not representable: unresolved header list identifier \"reqHeaders\"; matchHeaders is not a literal list: respHeaders",
+      "skipClass": "not-representable"
+    },
+    {
+      "id": "RollbackSpec:173",
+      "source": "Feature/RollbackSpec.hs",
+      "line": 173,
+      "category": "rollback",
+      "description": "does not persist post",
+      "example": "RollbackSpec:it:165",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "id=eq.0",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "a preceding assertion in the same example was skipped, so the state this one depends on is never created",
+      "skipClass": "not-representable"
+    },
+    {
+      "id": "RollbackSpec:178",
+      "source": "Feature/RollbackSpec.hs",
+      "line": 178,
+      "category": "rollback",
+      "description": "does not persist put",
+      "example": "RollbackSpec:it:177",
+      "request": null,
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "id": 0
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "request headers not representable: unresolved header list identifier \"reqHeaders\"; matchHeaders is not a literal list: respHeaders",
+      "skipClass": "not-representable"
+    },
+    {
+      "id": "RollbackSpec:185",
+      "source": "Feature/RollbackSpec.hs",
+      "line": 185,
+      "category": "rollback",
+      "description": "does not persist put",
+      "example": "RollbackSpec:it:177",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "id=eq.0",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "a preceding assertion in the same example was skipped, so the state this one depends on is never created",
+      "skipClass": "not-representable"
+    },
+    {
+      "id": "RollbackSpec:190",
+      "source": "Feature/RollbackSpec.hs",
+      "line": 190,
+      "category": "rollback",
+      "description": "does not persist patch",
+      "example": "RollbackSpec:it:189",
+      "request": null,
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 0
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "request headers not representable: unresolved header list identifier \"reqHeaders\"; matchHeaders is not a literal list: respHeaders",
+      "skipClass": "not-representable"
+    },
+    {
+      "id": "RollbackSpec:196",
+      "source": "Feature/RollbackSpec.hs",
+      "line": 196,
+      "category": "rollback",
+      "description": "does not persist patch",
+      "example": "RollbackSpec:it:189",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "id=eq.0",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "a preceding assertion in the same example was skipped, so the state this one depends on is never created",
+      "skipClass": "not-representable"
+    },
+    {
+      "id": "RollbackSpec:199",
+      "source": "Feature/RollbackSpec.hs",
+      "line": 199,
+      "category": "rollback",
+      "description": "does not persist patch",
+      "example": "RollbackSpec:it:189",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "id=eq.1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RollbackSpec:204",
+      "source": "Feature/RollbackSpec.hs",
+      "line": 204,
+      "category": "rollback",
+      "description": "does not persist delete",
+      "example": "RollbackSpec:it:203",
+      "request": null,
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "request headers not representable: unresolved header list identifier \"reqHeaders\"; matchHeaders is not a literal list: respHeaders",
+      "skipClass": "not-representable"
+    },
+    {
+      "id": "RollbackSpec:210",
+      "source": "Feature/RollbackSpec.hs",
+      "line": 210,
+      "category": "rollback",
+      "description": "does not persist delete",
+      "example": "RollbackSpec:it:203",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "id=eq.1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "a preceding assertion in the same example was skipped, so the state this one depends on is never created",
+      "skipClass": "not-representable"
+    }
+  ]
+}

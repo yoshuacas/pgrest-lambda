@@ -1,0 +1,95 @@
+{
+  "source": "Feature/Query/PlanSpec.hs",
+  "extractedCases": 0,
+  "skippedSites": 3,
+  "needsConfigCases": 3,
+  "cases": [
+    {
+      "id": "PlanSpec:546",
+      "source": "Feature/Query/PlanSpec.hs",
+      "line": 546,
+      "category": "plan",
+      "description": "doesn't work if db-plan-enabled=false(the default)",
+      "example": "PlanSpec:it:545",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "id=in.(1,2,3)",
+        "headers": {
+          "Accept": "application/vnd.pgrst.plan"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 406,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "asserts the behaviour of a PostgREST feature that is off by default and the engine has no switch for (db-plan-enabled)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "PlanSpec:550",
+      "source": "Feature/Query/PlanSpec.hs",
+      "line": 550,
+      "category": "plan",
+      "description": "doesn't work if db-plan-enabled=false(the default)",
+      "example": "PlanSpec:it:545",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/getallprojects",
+        "query": "id=in.(1,2,3)",
+        "headers": {
+          "Accept": "application/vnd.pgrst.plan"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 406,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "asserts the behaviour of a PostgREST feature that is off by default and the engine has no switch for (db-plan-enabled)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "PlanSpec:554",
+      "source": "Feature/Query/PlanSpec.hs",
+      "line": 554,
+      "category": "plan",
+      "description": "doesn't work if db-plan-enabled=false(the default)",
+      "example": "PlanSpec:it:545",
+      "request": {
+        "method": "DELETE",
+        "path": "/projects",
+        "query": "id=in.(1,2,3)",
+        "headers": {
+          "Accept": "application/vnd.pgrst.plan"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 406,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "asserts the behaviour of a PostgREST feature that is off by default and the engine has no switch for (db-plan-enabled)",
+      "skipClass": "needs-engine-config"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "generatedAt": "2026-08-19T15:32:55.899Z",
+  "endpoint": "6juamhyj5nkoeatkzc3ieaerc4.dsql.us-east-1.on.aws",
+  "elapsedMs": 61356,
+  "statementsTotal": 1116,
+  "statementsFailed": 0,
+  "resetApplied": 493,
+  "resetFailures": 0,
+  "byError": {},
+  "failures": []
+}

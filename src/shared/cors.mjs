@@ -15,6 +15,16 @@ export const ALLOW_HEADERS =
 export const EXPOSE_HEADERS =
   'Content-Range, X-Relay-Error, X-Total-Count';
 
+// The JSON media type the auth layer serves. It lives here only so the auth
+// response builders share one spelling; it is deliberately NOT part of the
+// CORS header blocks below.
+export const JSON_CONTENT_TYPE = 'application/json';
+
+// Content-Type is a property of the payload, not of CORS, so it is not in
+// these blocks. Every response builder sets it on the branches that actually
+// serialize bytes and leaves it off the bodyless ones (204, OPTIONS
+// preflight, HEAD). PostgREST asserts its absence on those — a Content-Type
+// on a 204 tells the client to expect bytes that are not coming.
 export const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': ALLOW_HEADERS,
@@ -22,7 +32,6 @@ export const CORS_HEADERS = {
     'GET,POST,PUT,PATCH,DELETE,OPTIONS',
   'Access-Control-Expose-Headers': EXPOSE_HEADERS,
   'Cache-Control': 'no-store',
-  'Content-Type': 'application/json',
 };
 
 const STATIC_HEADERS = {
@@ -31,7 +40,6 @@ const STATIC_HEADERS = {
     'GET,POST,PUT,PATCH,DELETE,OPTIONS',
   'Access-Control-Expose-Headers': EXPOSE_HEADERS,
   'Cache-Control': 'no-store',
-  'Content-Type': 'application/json',
 };
 
 export function buildCorsHeaders(corsConfig, origin) {

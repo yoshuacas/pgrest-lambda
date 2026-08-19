@@ -26,7 +26,10 @@ describe('PGRST501 error', () => {
     const res = error(err);
 
     assert.equal(res.statusCode, 501);
-    assert.equal(res.headers['Content-Type'], 'application/json');
+    // PostgREST sends the charset on error bodies too
+    // (`Error.errorResponseFor` -> `MediaType.toContentType MTApplicationJSON`).
+    assert.equal(res.headers['Content-Type'],
+      'application/json; charset=utf-8');
 
     const body = JSON.parse(res.body);
     assert.equal(body.code, 'PGRST501');

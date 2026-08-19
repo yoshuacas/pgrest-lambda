@@ -1,0 +1,2396 @@
+{
+  "source": "Feature/Query/JsonOperatorSpec.hs",
+  "extractedCases": 63,
+  "skippedSites": 2,
+  "needsConfigCases": 0,
+  "cases": [
+    {
+      "id": "JsonOperatorSpec:17",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 17,
+      "category": "json-operators",
+      "description": "obtains a json subfield one level with casting",
+      "example": "JsonOperatorSpec:it:16",
+      "request": {
+        "method": "GET",
+        "path": "/complex_items",
+        "query": "id=eq.1&select=settings->>foo::json",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "foo": {
+              "int": 1,
+              "bar": "baz"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:22",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 22,
+      "category": "json-operators",
+      "description": "renames json subfield one level with casting",
+      "example": "JsonOperatorSpec:it:21",
+      "request": {
+        "method": "GET",
+        "path": "/complex_items",
+        "query": "id=eq.1&select=myFoo:settings->>foo::json",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "myFoo": {
+              "int": 1,
+              "bar": "baz"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:27",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 27,
+      "category": "json-operators",
+      "description": "fails on bad casting (data of the wrong format)",
+      "example": "JsonOperatorSpec:it:26",
+      "request": {
+        "method": "GET",
+        "path": "/complex_items",
+        "query": "select=settings->foo->>bar::integer",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "hint": null,
+          "details": null,
+          "code": "22P02",
+          "message": "invalid input syntax for type integer: \"baz\""
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:33",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 33,
+      "category": "json-operators",
+      "description": "obtains a json subfield two levels (string)",
+      "example": "JsonOperatorSpec:it:32",
+      "request": {
+        "method": "GET",
+        "path": "/complex_items",
+        "query": "id=eq.1&select=settings->foo->>bar",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "bar": "baz"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:38",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 38,
+      "category": "json-operators",
+      "description": "renames json subfield two levels (string)",
+      "example": "JsonOperatorSpec:it:37",
+      "request": {
+        "method": "GET",
+        "path": "/complex_items",
+        "query": "id=eq.1&select=myBar:settings->foo->>bar",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "myBar": "baz"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:43",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 43,
+      "category": "json-operators",
+      "description": "obtains a json subfield two levels with casting (int)",
+      "example": "JsonOperatorSpec:it:42",
+      "request": {
+        "method": "GET",
+        "path": "/complex_items",
+        "query": "id=eq.1&select=settings->foo->>int::integer",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "int": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:48",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 48,
+      "category": "json-operators",
+      "description": "renames json subfield two levels with casting (int)",
+      "example": "JsonOperatorSpec:it:47",
+      "request": {
+        "method": "GET",
+        "path": "/complex_items",
+        "query": "id=eq.1&select=myInt:settings->foo->>int::integer",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "myInt": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:53",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 53,
+      "category": "json-operators",
+      "description": "accepts non reserved special characters in the key's name",
+      "example": "JsonOperatorSpec:it:52",
+      "request": {
+        "method": "GET",
+        "path": "/json_arr",
+        "query": "id=eq.10&select=data->!@#$%^%26*_d->>!@#$%^%26*_e::integer",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "!@#$%^&*_e": 3
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:58",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 58,
+      "category": "json-operators",
+      "description": "fails when there is a reserved special character in the key's name",
+      "example": "JsonOperatorSpec:it:57",
+      "request": {
+        "method": "GET",
+        "path": "/json_arr",
+        "query": "id=eq.10&select=data->(!@#$%^%26*_d->>!@#$%^%26*_e::integer",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "code": "PGRST100",
+          "details": "unexpected \"(\" expecting \"-\", digit or any non reserved character different from: .,>()",
+          "hint": null,
+          "message": "\"failed to parse select parameter (data->(!@#$%^&*_d->>!@#$%^&*_e::integer)\" (line 1, column 7)"
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:70",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 70,
+      "category": "json-operators",
+      "description": "fails when a double arrow ->> is followed with a single arrow ->",
+      "example": "JsonOperatorSpec:it:69",
+      "request": {
+        "method": "GET",
+        "path": "/json_arr",
+        "query": "select=data->>c->1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": null,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "expectation is not a literal ResponseMatcher: (; example is gated on a PostgreSQL version check (actualPgVersion)",
+      "skipClass": "not-representable"
+    },
+    {
+      "id": "JsonOperatorSpec:82",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 82,
+      "category": "json-operators",
+      "description": "fails when a double arrow ->> is followed with a single arrow ->",
+      "example": "JsonOperatorSpec:it:69",
+      "request": {
+        "method": "GET",
+        "path": "/json_arr",
+        "query": "select=data->>c->b",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": null,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "expectation is not a literal ResponseMatcher: (; example is gated on a PostgreSQL version check (actualPgVersion)",
+      "skipClass": "not-representable"
+    },
+    {
+      "id": "JsonOperatorSpec:97",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 97,
+      "category": "json-operators",
+      "description": "can get array of ints and alias/cast it",
+      "example": "JsonOperatorSpec:it:96",
+      "request": {
+        "method": "GET",
+        "path": "/json_arr",
+        "query": "select=data->>0::int&id=in.(1,2)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "data": 1
+          },
+          {
+            "data": 4
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:100",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 100,
+      "category": "json-operators",
+      "description": "can get array of ints and alias/cast it",
+      "example": "JsonOperatorSpec:it:96",
+      "request": {
+        "method": "GET",
+        "path": "/json_arr",
+        "query": "select=idx0:data->>0::int,idx1:data->>1::int&id=in.(1,2)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "idx0": 1,
+            "idx1": 2
+          },
+          {
+            "idx0": 4,
+            "idx1": 5
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:105",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 105,
+      "category": "json-operators",
+      "description": "can get nested array of ints",
+      "example": "JsonOperatorSpec:it:104",
+      "request": {
+        "method": "GET",
+        "path": "/json_arr",
+        "query": "select=data->0->>1::int&id=in.(3,4)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "data": 8
+          },
+          {
+            "data": 7
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:108",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 108,
+      "category": "json-operators",
+      "description": "can get nested array of ints",
+      "example": "JsonOperatorSpec:it:104",
+      "request": {
+        "method": "GET",
+        "path": "/json_arr",
+        "query": "select=data->0->0->>1::int&id=in.(3,4)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "data": null
+          },
+          {
+            "data": 6
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:113",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 113,
+      "category": "json-operators",
+      "description": "can get array of objects",
+      "example": "JsonOperatorSpec:it:112",
+      "request": {
+        "method": "GET",
+        "path": "/json_arr",
+        "query": "select=data->0->>a&id=in.(5,6)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "a": "A"
+          },
+          {
+            "a": "[1,2,3]"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:116",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 116,
+      "category": "json-operators",
+      "description": "can get array of objects",
+      "example": "JsonOperatorSpec:it:112",
+      "request": {
+        "method": "GET",
+        "path": "/json_arr",
+        "query": "select=data->0->a->>2&id=in.(5,6)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "a": null
+          },
+          {
+            "a": "3"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:121",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 121,
+      "category": "json-operators",
+      "description": "can get array in object keys",
+      "example": "JsonOperatorSpec:it:120",
+      "request": {
+        "method": "GET",
+        "path": "/json_arr",
+        "query": "select=data->c->>0::json&id=in.(7,8)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "c": 1
+          },
+          {
+            "c": {
+              "d": [
+                4,
+                5,
+                6,
+                7,
+                8
+              ]
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:124",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 124,
+      "category": "json-operators",
+      "description": "can get array in object keys",
+      "example": "JsonOperatorSpec:it:120",
+      "request": {
+        "method": "GET",
+        "path": "/json_arr",
+        "query": "select=data->c->0->d->>4::int&id=in.(7,8)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "d": null
+          },
+          {
+            "d": 8
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:129",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 129,
+      "category": "json-operators",
+      "description": "only treats well formed numbers as indexes",
+      "example": "JsonOperatorSpec:it:128",
+      "request": {
+        "method": "GET",
+        "path": "/json_arr",
+        "query": "select=data->0->0xy1->1->23-xy-45->1->xy-6->>0::int&id=eq.9",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "xy-6": 3
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:135",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 135,
+      "category": "json-operators",
+      "description": "works when finishing with a key",
+      "example": "JsonOperatorSpec:it:134",
+      "request": {
+        "method": "GET",
+        "path": "/json_arr",
+        "query": "select=data->c&id=in.(7,8)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "c": [
+              1,
+              2,
+              3
+            ]
+          },
+          {
+            "c": [
+              {
+                "d": [
+                  4,
+                  5,
+                  6,
+                  7,
+                  8
+                ]
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:138",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 138,
+      "category": "json-operators",
+      "description": "works when finishing with a key",
+      "example": "JsonOperatorSpec:it:134",
+      "request": {
+        "method": "GET",
+        "path": "/json_arr",
+        "query": "select=data->0->a&id=in.(5,6)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "a": "A"
+          },
+          {
+            "a": [
+              1,
+              2,
+              3
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:143",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 143,
+      "category": "json-operators",
+      "description": "works when finishing with an index",
+      "example": "JsonOperatorSpec:it:142",
+      "request": {
+        "method": "GET",
+        "path": "/json_arr",
+        "query": "select=data->0->a&id=in.(5,6)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "a": "A"
+          },
+          {
+            "a": [
+              1,
+              2,
+              3
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:146",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 146,
+      "category": "json-operators",
+      "description": "works when finishing with an index",
+      "example": "JsonOperatorSpec:it:142",
+      "request": {
+        "method": "GET",
+        "path": "/json_arr",
+        "query": "select=data->c->0->d&id=eq.8",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "d": [
+              4,
+              5,
+              6,
+              7,
+              8
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:151",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 151,
+      "category": "json-operators",
+      "description": "obtains a composite type field",
+      "example": "JsonOperatorSpec:it:150",
+      "request": {
+        "method": "GET",
+        "path": "/fav_numbers",
+        "query": "select=num->i",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "i": 0.5
+          },
+          {
+            "i": 0.6
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:154",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 154,
+      "category": "json-operators",
+      "description": "obtains a composite type field",
+      "example": "JsonOperatorSpec:it:150",
+      "request": {
+        "method": "GET",
+        "path": "/fav_numbers",
+        "query": "select=num->>i",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "i": "0.5"
+          },
+          {
+            "i": "0.6"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:159",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 159,
+      "category": "json-operators",
+      "description": "obtains an array item",
+      "example": "JsonOperatorSpec:it:158",
+      "request": {
+        "method": "GET",
+        "path": "/arrays",
+        "query": "select=a:numbers->0,b:numbers->1,c:numbers_mult->0->0,d:numbers_mult->1->2",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "a": 1,
+            "b": 2,
+            "c": 1,
+            "d": 6
+          },
+          {
+            "a": 11,
+            "b": 12,
+            "c": 11,
+            "d": 16
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:162",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 162,
+      "category": "json-operators",
+      "description": "obtains an array item",
+      "example": "JsonOperatorSpec:it:158",
+      "request": {
+        "method": "GET",
+        "path": "/arrays",
+        "query": "select=a:numbers->>0,b:numbers->>1,c:numbers_mult->0->>0,d:numbers_mult->1->>2",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "a": "1",
+            "b": "2",
+            "c": "1",
+            "d": "6"
+          },
+          {
+            "a": "11",
+            "b": "12",
+            "c": "11",
+            "d": "16"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:168",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 168,
+      "category": "json-operators",
+      "description": "can filter by properties inside json column",
+      "example": "JsonOperatorSpec:it:167",
+      "request": {
+        "method": "GET",
+        "path": "/json_table",
+        "query": "data->foo->>bar=eq.baz",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "data": {
+              "id": 1,
+              "foo": {
+                "bar": "baz"
+              }
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:171",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 171,
+      "category": "json-operators",
+      "description": "can filter by properties inside json column",
+      "example": "JsonOperatorSpec:it:167",
+      "request": {
+        "method": "GET",
+        "path": "/json_table",
+        "query": "data->foo->>bar=eq.fake",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:176",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 176,
+      "category": "json-operators",
+      "description": "can filter by properties inside json column using not",
+      "example": "JsonOperatorSpec:it:175",
+      "request": {
+        "method": "GET",
+        "path": "/json_table",
+        "query": "data->foo->>bar=not.eq.baz",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:181",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 181,
+      "category": "json-operators",
+      "description": "can filter by properties inside json column using ->>",
+      "example": "JsonOperatorSpec:it:180",
+      "request": {
+        "method": "GET",
+        "path": "/json_table",
+        "query": "data->>id=eq.1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "data": {
+              "id": 1,
+              "foo": {
+                "bar": "baz"
+              }
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:186",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 186,
+      "category": "json-operators",
+      "description": "can be filtered with and/or",
+      "example": "JsonOperatorSpec:it:185",
+      "request": {
+        "method": "GET",
+        "path": "/grandchild_entities",
+        "query": "or=(jsonb_col->a->>b.eq.foo, jsonb_col->>b.eq.bar)&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 4
+          },
+          {
+            "id": 5
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:190",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 190,
+      "category": "json-operators",
+      "description": "can filter when the key's name has non reserved special characters",
+      "example": "JsonOperatorSpec:it:189",
+      "request": {
+        "method": "GET",
+        "path": "/json_arr",
+        "query": "select=data->!@#$%^%26*_d&data->!@#$%^%26*_d->>!@#$%^%26*_e=eq.3",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "!@#$%^&*_d": {
+              "!@#$%^&*_e": 3
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:195",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 195,
+      "category": "json-operators",
+      "description": "can filter by array indexes",
+      "example": "JsonOperatorSpec:it:194",
+      "request": {
+        "method": "GET",
+        "path": "/json_arr",
+        "query": "select=data&data->>0=eq.1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "data": [
+              1,
+              2,
+              3
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:198",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 198,
+      "category": "json-operators",
+      "description": "can filter by array indexes",
+      "example": "JsonOperatorSpec:it:194",
+      "request": {
+        "method": "GET",
+        "path": "/json_arr",
+        "query": "select=data&data->1->>2=eq.13",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "data": [
+              [
+                9,
+                8,
+                7
+              ],
+              [
+                11,
+                12,
+                13
+              ]
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:201",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 201,
+      "category": "json-operators",
+      "description": "can filter by array indexes",
+      "example": "JsonOperatorSpec:it:194",
+      "request": {
+        "method": "GET",
+        "path": "/json_arr",
+        "query": "select=data&data->1->>b=eq.B",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "data": [
+              {
+                "a": "A"
+              },
+              {
+                "b": "B"
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:204",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 204,
+      "category": "json-operators",
+      "description": "can filter by array indexes",
+      "example": "JsonOperatorSpec:it:194",
+      "request": {
+        "method": "GET",
+        "path": "/json_arr",
+        "query": "select=data&data->1->b->>1=eq.5",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "data": [
+              {
+                "a": [
+                  1,
+                  2,
+                  3
+                ]
+              },
+              {
+                "b": [
+                  4,
+                  5
+                ]
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:209",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 209,
+      "category": "json-operators",
+      "description": "can filter jsonb",
+      "example": "JsonOperatorSpec:it:208",
+      "request": {
+        "method": "GET",
+        "path": "/jsonb_test",
+        "query": "data=eq.{\"e\":1}",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 4,
+            "data": {
+              "e": 1
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:212",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 212,
+      "category": "json-operators",
+      "description": "can filter jsonb",
+      "example": "JsonOperatorSpec:it:208",
+      "request": {
+        "method": "GET",
+        "path": "/jsonb_test",
+        "query": "data->a=eq.{\"b\":2}",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "data": {
+              "a": {
+                "b": 2
+              }
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:215",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 215,
+      "category": "json-operators",
+      "description": "can filter jsonb",
+      "example": "JsonOperatorSpec:it:208",
+      "request": {
+        "method": "GET",
+        "path": "/jsonb_test",
+        "query": "data->c=eq.[1,2,3]",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 2,
+            "data": {
+              "c": [
+                1,
+                2,
+                3
+              ]
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:218",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 218,
+      "category": "json-operators",
+      "description": "can filter jsonb",
+      "example": "JsonOperatorSpec:it:208",
+      "request": {
+        "method": "GET",
+        "path": "/jsonb_test",
+        "query": "data->0=eq.{\"d\":\"test\"}",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 3,
+            "data": [
+              {
+                "d": "test"
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:223",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 223,
+      "category": "json-operators",
+      "description": "can filter composite type field",
+      "example": "JsonOperatorSpec:it:222",
+      "request": {
+        "method": "GET",
+        "path": "/fav_numbers",
+        "query": "num->>i=gt.0.5",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "num": {
+              "r": 0.6,
+              "i": 0.6
+            },
+            "person": "B"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:228",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 228,
+      "category": "json-operators",
+      "description": "can filter array item",
+      "example": "JsonOperatorSpec:it:227",
+      "request": {
+        "method": "GET",
+        "path": "/arrays",
+        "query": "select=id&numbers->0=eq.1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 0
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:231",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 231,
+      "category": "json-operators",
+      "description": "can filter array item",
+      "example": "JsonOperatorSpec:it:227",
+      "request": {
+        "method": "GET",
+        "path": "/arrays",
+        "query": "select=id&numbers->>0=eq.11",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:234",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 234,
+      "category": "json-operators",
+      "description": "can filter array item",
+      "example": "JsonOperatorSpec:it:227",
+      "request": {
+        "method": "GET",
+        "path": "/arrays",
+        "query": "select=id&numbers_mult->1->1=eq.5",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 0
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:237",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 237,
+      "category": "json-operators",
+      "description": "can filter array item",
+      "example": "JsonOperatorSpec:it:227",
+      "request": {
+        "method": "GET",
+        "path": "/arrays",
+        "query": "select=id&numbers_mult->2->>2=eq.19",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:243",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 243,
+      "category": "json-operators",
+      "description": "orders by a json column property asc",
+      "example": "JsonOperatorSpec:it:242",
+      "request": {
+        "method": "GET",
+        "path": "/json_table",
+        "query": "order=data->>id.asc",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "data": {
+              "id": 0
+            }
+          },
+          {
+            "data": {
+              "id": 1,
+              "foo": {
+                "bar": "baz"
+              }
+            }
+          },
+          {
+            "data": {
+              "id": 3
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:248",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 248,
+      "category": "json-operators",
+      "description": "orders by a json column with two level property nulls first",
+      "example": "JsonOperatorSpec:it:247",
+      "request": {
+        "method": "GET",
+        "path": "/json_table",
+        "query": "order=data->foo->>bar.nullsfirst",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "data": {
+              "id": 3
+            }
+          },
+          {
+            "data": {
+              "id": 0
+            }
+          },
+          {
+            "data": {
+              "id": 1,
+              "foo": {
+                "bar": "baz"
+              }
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:253",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 253,
+      "category": "json-operators",
+      "description": "orders by composite type field",
+      "example": "JsonOperatorSpec:it:252",
+      "request": {
+        "method": "GET",
+        "path": "/fav_numbers",
+        "query": "order=num->i.asc",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "num": {
+              "r": 0.5,
+              "i": 0.5
+            },
+            "person": "A"
+          },
+          {
+            "num": {
+              "r": 0.6,
+              "i": 0.6
+            },
+            "person": "B"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:256",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 256,
+      "category": "json-operators",
+      "description": "orders by composite type field",
+      "example": "JsonOperatorSpec:it:252",
+      "request": {
+        "method": "GET",
+        "path": "/fav_numbers",
+        "query": "order=num->>i.desc",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "num": {
+              "r": 0.6,
+              "i": 0.6
+            },
+            "person": "B"
+          },
+          {
+            "num": {
+              "r": 0.5,
+              "i": 0.5
+            },
+            "person": "A"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:261",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 261,
+      "category": "json-operators",
+      "description": "orders by array item",
+      "example": "JsonOperatorSpec:it:260",
+      "request": {
+        "method": "GET",
+        "path": "/arrays",
+        "query": "select=id&order=numbers->0.desc",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          },
+          {
+            "id": 0
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:264",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 264,
+      "category": "json-operators",
+      "description": "orders by array item",
+      "example": "JsonOperatorSpec:it:260",
+      "request": {
+        "method": "GET",
+        "path": "/arrays",
+        "query": "select=id&order=numbers->1.asc",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 0
+          },
+          {
+            "id": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:267",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 267,
+      "category": "json-operators",
+      "description": "orders by array item",
+      "example": "JsonOperatorSpec:it:260",
+      "request": {
+        "method": "GET",
+        "path": "/arrays",
+        "query": "select=id&order=numbers_mult->0->0.desc",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          },
+          {
+            "id": 0
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:270",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 270,
+      "category": "json-operators",
+      "description": "orders by array item",
+      "example": "JsonOperatorSpec:it:260",
+      "request": {
+        "method": "GET",
+        "path": "/arrays",
+        "query": "select=id&order=numbers_mult->2->2.asc",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 0
+          },
+          {
+            "id": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:276",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 276,
+      "category": "json-operators",
+      "description": "can set a json column to escaped value",
+      "example": "JsonOperatorSpec:it:275",
+      "request": {
+        "method": "PATCH",
+        "path": "/json_table",
+        "query": "data->>id=eq.3",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "data": {
+            "id": " \"escaped"
+          }
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "data": {
+              "id": " \"escaped"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:284",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 284,
+      "category": "json-operators",
+      "description": "can select with negative indexes",
+      "example": "JsonOperatorSpec:it:283",
+      "request": {
+        "method": "GET",
+        "path": "/json_arr",
+        "query": "select=data->>-1::int&id=in.(1,2)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "data": 3
+          },
+          {
+            "data": 6
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:287",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 287,
+      "category": "json-operators",
+      "description": "can select with negative indexes",
+      "example": "JsonOperatorSpec:it:283",
+      "request": {
+        "method": "GET",
+        "path": "/json_arr",
+        "query": "select=data->0->>-2::int&id=in.(3,4)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "data": 8
+          },
+          {
+            "data": 7
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:290",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 290,
+      "category": "json-operators",
+      "description": "can select with negative indexes",
+      "example": "JsonOperatorSpec:it:283",
+      "request": {
+        "method": "GET",
+        "path": "/json_arr",
+        "query": "select=data->-2->>a&id=in.(5,6)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "a": "A"
+          },
+          {
+            "a": "[1,2,3]"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:295",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 295,
+      "category": "json-operators",
+      "description": "can filter with negative indexes",
+      "example": "JsonOperatorSpec:it:294",
+      "request": {
+        "method": "GET",
+        "path": "/json_arr",
+        "query": "select=data&data->>-3=eq.1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "data": [
+              1,
+              2,
+              3
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:298",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 298,
+      "category": "json-operators",
+      "description": "can filter with negative indexes",
+      "example": "JsonOperatorSpec:it:294",
+      "request": {
+        "method": "GET",
+        "path": "/json_arr",
+        "query": "select=data&data->-1->>-3=eq.11",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "data": [
+              [
+                9,
+                8,
+                7
+              ],
+              [
+                11,
+                12,
+                13
+              ]
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:301",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 301,
+      "category": "json-operators",
+      "description": "can filter with negative indexes",
+      "example": "JsonOperatorSpec:it:294",
+      "request": {
+        "method": "GET",
+        "path": "/json_arr",
+        "query": "select=data&data->-1->>b=eq.B",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "data": [
+              {
+                "a": "A"
+              },
+              {
+                "b": "B"
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:304",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 304,
+      "category": "json-operators",
+      "description": "can filter with negative indexes",
+      "example": "JsonOperatorSpec:it:294",
+      "request": {
+        "method": "GET",
+        "path": "/json_arr",
+        "query": "select=data&data->-1->b->>-1=eq.5",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "data": [
+              {
+                "a": [
+                  1,
+                  2,
+                  3
+                ]
+              },
+              {
+                "b": [
+                  4,
+                  5
+                ]
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:309",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 309,
+      "category": "json-operators",
+      "description": "gives a meaningful error on bad syntax",
+      "example": "JsonOperatorSpec:it:308",
+      "request": {
+        "method": "GET",
+        "path": "/json_arr",
+        "query": "select=data->>--34",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "details": "unexpected \"-\" expecting digit",
+          "message": "\"failed to parse select parameter (data->>--34)\" (line 1, column 9)",
+          "code": "PGRST100",
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "JsonOperatorSpec:318",
+      "source": "Feature/Query/JsonOperatorSpec.hs",
+      "line": 318,
+      "category": "json-operators",
+      "description": "works when an RPC returns a dynamic TABLE with a composite type",
+      "example": "JsonOperatorSpec:it:317",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/returns_complex",
+        "query": "select=val->r&val->i=gt.0.5&order=val->>i.desc",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "r": 0.3
+          },
+          {
+            "r": 0.2
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    }
+  ]
+}

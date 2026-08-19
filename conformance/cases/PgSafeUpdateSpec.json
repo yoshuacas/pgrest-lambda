@@ -1,0 +1,188 @@
+{
+  "source": "Feature/Query/PgSafeUpdateSpec.hs",
+  "extractedCases": 2,
+  "skippedSites": 4,
+  "needsConfigCases": 4,
+  "cases": [
+    {
+      "id": "PgSafeUpdateSpec:19",
+      "source": "Feature/Query/PgSafeUpdateSpec.hs",
+      "line": 19,
+      "category": "update",
+      "description": "does not update and throws error if no condition is present",
+      "example": "PgSafeUpdateSpec:it:18",
+      "request": {
+        "method": "PATCH",
+        "path": "/safe_update_items",
+        "query": "",
+        "headers": {
+          "Prefer": "count=exact"
+        },
+        "body": {
+          "name": "New name"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "code": "21000",
+          "details": null,
+          "hint": null,
+          "message": "UPDATE requires a WHERE clause"
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbPreRequest)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "PgSafeUpdateSpec:32",
+      "source": "Feature/Query/PgSafeUpdateSpec.hs",
+      "line": 32,
+      "category": "update",
+      "description": "allows full table update if a filter is present",
+      "example": "PgSafeUpdateSpec:it:31",
+      "request": {
+        "method": "PATCH",
+        "path": "/safe_update_items",
+        "query": "id=gt.0",
+        "headers": {},
+        "body": {
+          "name": "updated-item"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbPreRequest)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "PgSafeUpdateSpec:38",
+      "source": "Feature/Query/PgSafeUpdateSpec.hs",
+      "line": 38,
+      "category": "update",
+      "description": "does not delete and throws error if no condition is present",
+      "example": "PgSafeUpdateSpec:it:37",
+      "request": {
+        "method": "DELETE",
+        "path": "/safe_delete_items",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "code": "21000",
+          "details": null,
+          "hint": null,
+          "message": "DELETE requires a WHERE clause"
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbPreRequest)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "PgSafeUpdateSpec:49",
+      "source": "Feature/Query/PgSafeUpdateSpec.hs",
+      "line": 49,
+      "category": "update",
+      "description": "allows full table delete if a filter is present",
+      "example": "PgSafeUpdateSpec:it:48",
+      "request": {
+        "method": "DELETE",
+        "path": "/safe_delete_items",
+        "query": "id=gt.0",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbPreRequest)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "PgSafeUpdateSpec:58",
+      "source": "Feature/Query/PgSafeUpdateSpec.hs",
+      "line": 58,
+      "category": "update",
+      "description": "works if no condition is present",
+      "example": "PgSafeUpdateSpec:it:57",
+      "request": {
+        "method": "PATCH",
+        "path": "/unsafe_update_items",
+        "query": "",
+        "headers": {},
+        "body": {
+          "name": "updated-item"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "PgSafeUpdateSpec:64",
+      "source": "Feature/Query/PgSafeUpdateSpec.hs",
+      "line": 64,
+      "category": "update",
+      "description": "works if no condition is present",
+      "example": "PgSafeUpdateSpec:it:63",
+      "request": {
+        "method": "DELETE",
+        "path": "/unsafe_delete_items",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    }
+  ]
+}

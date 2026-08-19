@@ -1,0 +1,28 @@
+{
+  "source": "SpecHelper.hs",
+  "extractedCases": 0,
+  "skippedSites": 1,
+  "needsConfigCases": 0,
+  "cases": [
+    {
+      "id": "SpecHelper:122",
+      "source": "SpecHelper.hs",
+      "line": 122,
+      "category": "openapi",
+      "description": "SpecHelper",
+      "example": null,
+      "request": null,
+      "expected": {
+        "status": 200,
+        "body": true,
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "request body not a literal: not a string expression: JSON.encode args; assertion is not inside an `it` example (top-level helper definition, not a test)",
+      "skipClass": "not-representable"
+    }
+  ]
+}

@@ -1,0 +1,308 @@
+{
+  "source": "Feature/RpcPreRequestGucsSpec.hs",
+  "extractedCases": 0,
+  "skippedSites": 9,
+  "needsConfigCases": 9,
+  "cases": [
+    {
+      "id": "RpcPreRequestGucsSpec:18",
+      "source": "Feature/RpcPreRequestGucsSpec.hs",
+      "line": 18,
+      "category": "rpc",
+      "description": "succeeds setting the headers on POST",
+      "example": "RpcPreRequestGucsSpec:it:17",
+      "request": {
+        "method": "POST",
+        "path": "/items",
+        "query": "",
+        "headers": {},
+        "body": [
+          {
+            "id": 11111
+          }
+        ],
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "X-Custom-Header": "mykey=myval"
+        },
+        "headersAbsent": [
+          "Content-Type"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbPreRequest)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "RpcPreRequestGucsSpec:28",
+      "source": "Feature/RpcPreRequestGucsSpec.hs",
+      "line": 28,
+      "category": "rpc",
+      "description": "succeeds setting the headers on GET and HEAD",
+      "example": "RpcPreRequestGucsSpec:it:27",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "id=eq.1",
+        "headers": {
+          "User-Agent": "MSIE 6.0"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Cache-Control": "no-cache, no-store, must-revalidate"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbPreRequest)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "RpcPreRequestGucsSpec:35",
+      "source": "Feature/RpcPreRequestGucsSpec.hs",
+      "line": 35,
+      "category": "rpc",
+      "description": "succeeds setting the headers on GET and HEAD",
+      "example": "RpcPreRequestGucsSpec:it:27",
+      "request": {
+        "method": "HEAD",
+        "path": "/items",
+        "query": "id=eq.1",
+        "headers": {
+          "User-Agent": "MSIE 7.0"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Cache-Control": "no-cache, no-store, must-revalidate"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbPreRequest)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "RpcPreRequestGucsSpec:44",
+      "source": "Feature/RpcPreRequestGucsSpec.hs",
+      "line": 44,
+      "category": "rpc",
+      "description": "succeeds setting the headers on GET and HEAD",
+      "example": "RpcPreRequestGucsSpec:it:27",
+      "request": {
+        "method": "HEAD",
+        "path": "/projects",
+        "query": "",
+        "headers": {
+          "Accept": "text/csv"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Type": "text/csv; charset=utf-8",
+          "Content-Disposition": "attachment; filename=projects.csv"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbPreRequest)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "RpcPreRequestGucsSpec:54",
+      "source": "Feature/RpcPreRequestGucsSpec.hs",
+      "line": 54,
+      "category": "rpc",
+      "description": "succeeds setting the headers on PATCH",
+      "example": "RpcPreRequestGucsSpec:it:53",
+      "request": {
+        "method": "PATCH",
+        "path": "/items",
+        "query": "id=eq.1",
+        "headers": {},
+        "body": [
+          {
+            "id": 11111
+          }
+        ],
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "X-Custom-Header": "mykey=myval"
+        },
+        "headersAbsent": [
+          "Content-Type",
+          "Content-Length"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbPreRequest)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "RpcPreRequestGucsSpec:65",
+      "source": "Feature/RpcPreRequestGucsSpec.hs",
+      "line": 65,
+      "category": "rpc",
+      "description": "succeeds setting the headers on PUT",
+      "example": "RpcPreRequestGucsSpec:it:64",
+      "request": {
+        "method": "PUT",
+        "path": "/items",
+        "query": "id=eq.1",
+        "headers": {},
+        "body": [
+          {
+            "id": 1
+          }
+        ],
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "X-Custom-Header": "mykey=myval"
+        },
+        "headersAbsent": [
+          "Content-Type",
+          "Content-Length"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbPreRequest)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "RpcPreRequestGucsSpec:76",
+      "source": "Feature/RpcPreRequestGucsSpec.hs",
+      "line": 76,
+      "category": "rpc",
+      "description": "succeeds setting the headers on DELETE",
+      "example": "RpcPreRequestGucsSpec:it:75",
+      "request": {
+        "method": "DELETE",
+        "path": "/items",
+        "query": "id=eq.1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "X-Custom-Header": "mykey=myval"
+        },
+        "headersAbsent": [
+          "Content-Type",
+          "Content-Length"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbPreRequest)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "RpcPreRequestGucsSpec:85",
+      "source": "Feature/RpcPreRequestGucsSpec.hs",
+      "line": 85,
+      "category": "rpc",
+      "description": "can override the Content-Type header",
+      "example": "RpcPreRequestGucsSpec:it:84",
+      "request": {
+        "method": "HEAD",
+        "path": "/clients",
+        "query": "id=eq.1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Type": "application/custom+json"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbPreRequest)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "RpcPreRequestGucsSpec:93",
+      "source": "Feature/RpcPreRequestGucsSpec.hs",
+      "line": 93,
+      "category": "rpc",
+      "description": "can override the Content-Type header",
+      "example": "RpcPreRequestGucsSpec:it:84",
+      "request": {
+        "method": "HEAD",
+        "path": "/rpc/getallprojects",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Type": "application/custom+json"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbPreRequest)",
+      "skipClass": "needs-engine-config"
+    }
+  ]
+}

@@ -1,0 +1,1339 @@
+{
+  "source": "Feature/Query/SingularSpec.hs",
+  "extractedCases": 36,
+  "skippedSites": 0,
+  "needsConfigCases": 0,
+  "cases": [
+    {
+      "id": "SingularSpec:20",
+      "source": "Feature/Query/SingularSpec.hs",
+      "line": 20,
+      "category": "singular",
+      "description": "fails for zero rows",
+      "example": "SingularSpec:it:19",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "id=gt.0&id=lt.0",
+        "headers": {
+          "Accept": "application/vnd.pgrst.object+json"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 406,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SingularSpec:24",
+      "source": "Feature/Query/SingularSpec.hs",
+      "line": 24,
+      "category": "singular",
+      "description": "will select an existing object",
+      "example": "SingularSpec:it:23",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "id=eq.5",
+        "headers": {
+          "Accept": "application/vnd.pgrst.object+json"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": 5
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/vnd.pgrst.object+json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SingularSpec:29",
+      "source": "Feature/Query/SingularSpec.hs",
+      "line": 29,
+      "category": "singular",
+      "description": "will select an existing object",
+      "example": "SingularSpec:it:23",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "id=eq.5",
+        "headers": {
+          "Accept": "application/vnd.pgrst.object"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": 5
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/vnd.pgrst.object+json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SingularSpec:36",
+      "source": "Feature/Query/SingularSpec.hs",
+      "line": 36,
+      "category": "singular",
+      "description": "can combine multiple prefer values",
+      "example": "SingularSpec:it:35",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "id=eq.5",
+        "headers": {
+          "Accept": "application/vnd.pgrst.object+json",
+          "Prefer": "count=none"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": 5
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/vnd.pgrst.object+json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SingularSpec:42",
+      "source": "Feature/Query/SingularSpec.hs",
+      "line": 42,
+      "category": "singular",
+      "description": "can shape plurality singular object routes",
+      "example": "SingularSpec:it:41",
+      "request": {
+        "method": "GET",
+        "path": "/projects_view",
+        "query": "id=eq.1&select=id,name,clients(*),tasks(id,name)",
+        "headers": {
+          "Accept": "application/vnd.pgrst.object+json"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": 1,
+          "name": "Windows 7",
+          "clients": {
+            "id": 1,
+            "name": "Microsoft"
+          },
+          "tasks": [
+            {
+              "id": 1,
+              "name": "Design w7"
+            },
+            {
+              "id": 2,
+              "name": "Code w7"
+            }
+          ]
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/vnd.pgrst.object+json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SingularSpec:49",
+      "source": "Feature/Query/SingularSpec.hs",
+      "line": 49,
+      "category": "singular",
+      "description": "works for one row with return=rep",
+      "example": "SingularSpec:it:48",
+      "request": {
+        "method": "PATCH",
+        "path": "/addresses",
+        "query": "id=eq.1",
+        "headers": {
+          "Prefer": "return=representation",
+          "Accept": "application/vnd.pgrst.object+json"
+        },
+        "body": {
+          "address": "B Street"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": 1,
+          "address": "B Street"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/vnd.pgrst.object+json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SingularSpec:57",
+      "source": "Feature/Query/SingularSpec.hs",
+      "line": 57,
+      "category": "singular",
+      "description": "works for one row with return=minimal",
+      "example": "SingularSpec:it:56",
+      "request": {
+        "method": "PATCH",
+        "path": "/addresses",
+        "query": "id=eq.1",
+        "headers": {
+          "Prefer": "return=minimal",
+          "Accept": "application/vnd.pgrst.object+json"
+        },
+        "body": {
+          "address": "C Street"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Preference-Applied": "return=minimal"
+        },
+        "headersAbsent": [
+          "Content-Type"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SingularSpec:68",
+      "source": "Feature/Query/SingularSpec.hs",
+      "line": 68,
+      "category": "singular",
+      "description": "raises an error for multiple rows",
+      "example": "SingularSpec:it:67",
+      "request": {
+        "method": "PATCH",
+        "path": "/addresses",
+        "query": "",
+        "headers": {
+          "Prefer": "tx=commit",
+          "Accept": "application/vnd.pgrst.object+json"
+        },
+        "body": {
+          "address": "zzz"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 406,
+        "body": {
+          "details": "The result contains 4 rows",
+          "message": "Cannot coerce the result to a single JSON object",
+          "code": "PGRST116",
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SingularSpec:78",
+      "source": "Feature/Query/SingularSpec.hs",
+      "line": 78,
+      "category": "singular",
+      "description": "raises an error for multiple rows",
+      "example": "SingularSpec:it:67",
+      "request": {
+        "method": "GET",
+        "path": "/addresses",
+        "query": "id=eq.1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "address": "address 1"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SingularSpec:83",
+      "source": "Feature/Query/SingularSpec.hs",
+      "line": 83,
+      "category": "singular",
+      "description": "raises an error for multiple rows with return=rep",
+      "example": "SingularSpec:it:82",
+      "request": {
+        "method": "PATCH",
+        "path": "/addresses",
+        "query": "",
+        "headers": {
+          "Prefer": "tx=commit, return=representation",
+          "Accept": "application/vnd.pgrst.object+json"
+        },
+        "body": {
+          "address": "zzz"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 406,
+        "body": {
+          "details": "The result contains 4 rows",
+          "message": "Cannot coerce the result to a single JSON object",
+          "code": "PGRST116",
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SingularSpec:93",
+      "source": "Feature/Query/SingularSpec.hs",
+      "line": 93,
+      "category": "singular",
+      "description": "raises an error for multiple rows with return=rep",
+      "example": "SingularSpec:it:82",
+      "request": {
+        "method": "GET",
+        "path": "/addresses",
+        "query": "id=eq.1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "address": "address 1"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SingularSpec:98",
+      "source": "Feature/Query/SingularSpec.hs",
+      "line": 98,
+      "category": "singular",
+      "description": "raises an error for zero rows",
+      "example": "SingularSpec:it:97",
+      "request": {
+        "method": "PATCH",
+        "path": "/items",
+        "query": "id=gt.0&id=lt.0",
+        "headers": {
+          "Accept": "application/vnd.pgrst.object+json"
+        },
+        "body": {
+          "id": 1
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 406,
+        "body": {
+          "details": "The result contains 0 rows",
+          "message": "Cannot coerce the result to a single JSON object",
+          "code": "PGRST116",
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SingularSpec:107",
+      "source": "Feature/Query/SingularSpec.hs",
+      "line": 107,
+      "category": "singular",
+      "description": "raises an error for zero rows with return=rep",
+      "example": "SingularSpec:it:106",
+      "request": {
+        "method": "PATCH",
+        "path": "/items",
+        "query": "id=gt.0&id=lt.0",
+        "headers": {
+          "Prefer": "return=representation",
+          "Accept": "application/vnd.pgrst.object+json"
+        },
+        "body": {
+          "id": 1
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 406,
+        "body": {
+          "details": "The result contains 0 rows",
+          "message": "Cannot coerce the result to a single JSON object",
+          "code": "PGRST116",
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SingularSpec:117",
+      "source": "Feature/Query/SingularSpec.hs",
+      "line": 117,
+      "category": "singular",
+      "description": "works for one row with return=rep",
+      "example": "SingularSpec:it:116",
+      "request": {
+        "method": "POST",
+        "path": "/addresses",
+        "query": "",
+        "headers": {
+          "Prefer": "return=representation",
+          "Accept": "application/vnd.pgrst.object+json"
+        },
+        "body": [
+          {
+            "id": 102,
+            "address": "xxx"
+          }
+        ],
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": {
+          "id": 102,
+          "address": "xxx"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/vnd.pgrst.object+json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SingularSpec:127",
+      "source": "Feature/Query/SingularSpec.hs",
+      "line": 127,
+      "category": "singular",
+      "description": "works for one row with return=minimal",
+      "example": "SingularSpec:it:126",
+      "request": {
+        "method": "POST",
+        "path": "/addresses",
+        "query": "",
+        "headers": {
+          "Prefer": "return=minimal",
+          "Accept": "application/vnd.pgrst.object+json"
+        },
+        "body": [
+          {
+            "id": 103,
+            "address": "xxx"
+          }
+        ],
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Range": "*/*",
+          "Preference-Applied": "return=minimal"
+        },
+        "headersAbsent": [
+          "Content-Type"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SingularSpec:139",
+      "source": "Feature/Query/SingularSpec.hs",
+      "line": 139,
+      "category": "singular",
+      "description": "raises an error when attempting to create multiple entities",
+      "example": "SingularSpec:it:138",
+      "request": {
+        "method": "POST",
+        "path": "/addresses",
+        "query": "",
+        "headers": {
+          "Prefer": "tx=commit",
+          "Accept": "application/vnd.pgrst.object+json"
+        },
+        "body": [
+          {
+            "id": 200,
+            "address": "xxx"
+          },
+          {
+            "id": 201,
+            "address": "yyy"
+          }
+        ],
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 406,
+        "body": {
+          "details": "The result contains 2 rows",
+          "message": "Cannot coerce the result to a single JSON object",
+          "code": "PGRST116",
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SingularSpec:149",
+      "source": "Feature/Query/SingularSpec.hs",
+      "line": 149,
+      "category": "singular",
+      "description": "raises an error when attempting to create multiple entities",
+      "example": "SingularSpec:it:138",
+      "request": {
+        "method": "GET",
+        "path": "/addresses",
+        "query": "id=eq.200",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SingularSpec:154",
+      "source": "Feature/Query/SingularSpec.hs",
+      "line": 154,
+      "category": "singular",
+      "description": "raises an error when attempting to create multiple entities with return=rep",
+      "example": "SingularSpec:it:153",
+      "request": {
+        "method": "POST",
+        "path": "/addresses",
+        "query": "",
+        "headers": {
+          "Prefer": "tx=commit, return=representation",
+          "Accept": "application/vnd.pgrst.object+json"
+        },
+        "body": [
+          {
+            "id": 202,
+            "address": "xxx"
+          },
+          {
+            "id": 203,
+            "address": "yyy"
+          }
+        ],
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 406,
+        "body": {
+          "details": "The result contains 2 rows",
+          "message": "Cannot coerce the result to a single JSON object",
+          "code": "PGRST116",
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SingularSpec:164",
+      "source": "Feature/Query/SingularSpec.hs",
+      "line": 164,
+      "category": "singular",
+      "description": "raises an error when attempting to create multiple entities with return=rep",
+      "example": "SingularSpec:it:153",
+      "request": {
+        "method": "GET",
+        "path": "/addresses",
+        "query": "id=eq.202",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SingularSpec:169",
+      "source": "Feature/Query/SingularSpec.hs",
+      "line": 169,
+      "category": "singular",
+      "description": "raises an error regardless of return=minimal",
+      "example": "SingularSpec:it:168",
+      "request": {
+        "method": "POST",
+        "path": "/addresses",
+        "query": "",
+        "headers": {
+          "Prefer": "tx=commit, return=minimal",
+          "Accept": "application/vnd.pgrst.object+json"
+        },
+        "body": [
+          {
+            "id": 204,
+            "address": "xxx"
+          },
+          {
+            "id": 205,
+            "address": "yyy"
+          }
+        ],
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 406,
+        "body": {
+          "details": "The result contains 2 rows",
+          "message": "Cannot coerce the result to a single JSON object",
+          "code": "PGRST116",
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SingularSpec:179",
+      "source": "Feature/Query/SingularSpec.hs",
+      "line": 179,
+      "category": "singular",
+      "description": "raises an error regardless of return=minimal",
+      "example": "SingularSpec:it:168",
+      "request": {
+        "method": "GET",
+        "path": "/addresses",
+        "query": "id=eq.204",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SingularSpec:184",
+      "source": "Feature/Query/SingularSpec.hs",
+      "line": 184,
+      "category": "singular",
+      "description": "raises an error when creating zero entities",
+      "example": "SingularSpec:it:183",
+      "request": {
+        "method": "POST",
+        "path": "/addresses",
+        "query": "",
+        "headers": {
+          "Accept": "application/vnd.pgrst.object+json"
+        },
+        "body": [],
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 406,
+        "body": {
+          "details": "The result contains 0 rows",
+          "message": "Cannot coerce the result to a single JSON object",
+          "code": "PGRST116",
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SingularSpec:194",
+      "source": "Feature/Query/SingularSpec.hs",
+      "line": 194,
+      "category": "singular",
+      "description": "raises an error when creating zero entities with return=rep",
+      "example": "SingularSpec:it:193",
+      "request": {
+        "method": "POST",
+        "path": "/addresses",
+        "query": "",
+        "headers": {
+          "Prefer": "return=representation",
+          "Accept": "application/vnd.pgrst.object+json"
+        },
+        "body": [],
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 406,
+        "body": {
+          "details": "The result contains 0 rows",
+          "message": "Cannot coerce the result to a single JSON object",
+          "code": "PGRST116",
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SingularSpec:217",
+      "source": "Feature/Query/SingularSpec.hs",
+      "line": 217,
+      "category": "singular",
+      "description": "raises an error when attempting to delete multiple entities",
+      "example": "SingularSpec:it:216",
+      "request": {
+        "method": "DELETE",
+        "path": "/items",
+        "query": "id=gt.0&id=lt.6",
+        "headers": {
+          "Prefer": "tx=commit",
+          "Accept": "application/vnd.pgrst.object+json"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 406,
+        "body": {
+          "details": "The result contains 5 rows",
+          "message": "Cannot coerce the result to a single JSON object",
+          "code": "PGRST116",
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SingularSpec:227",
+      "source": "Feature/Query/SingularSpec.hs",
+      "line": 227,
+      "category": "singular",
+      "description": "raises an error when attempting to delete multiple entities",
+      "example": "SingularSpec:it:216",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "id=gt.0&id=lt.6&order=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          },
+          {
+            "id": 2
+          },
+          {
+            "id": 3
+          },
+          {
+            "id": 4
+          },
+          {
+            "id": 5
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "0-4/*"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SingularSpec:235",
+      "source": "Feature/Query/SingularSpec.hs",
+      "line": 235,
+      "category": "singular",
+      "description": "raises an error when attempting to delete multiple entities with return=rep",
+      "example": "SingularSpec:it:234",
+      "request": {
+        "method": "DELETE",
+        "path": "/items",
+        "query": "id=gt.5&id=lt.11",
+        "headers": {
+          "Prefer": "tx=commit, return=representation",
+          "Accept": "application/vnd.pgrst.object+json"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 406,
+        "body": {
+          "details": "The result contains 5 rows",
+          "message": "Cannot coerce the result to a single JSON object",
+          "code": "PGRST116",
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SingularSpec:244",
+      "source": "Feature/Query/SingularSpec.hs",
+      "line": 244,
+      "category": "singular",
+      "description": "raises an error when attempting to delete multiple entities with return=rep",
+      "example": "SingularSpec:it:234",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "id=gt.5&id=lt.11",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 6
+          },
+          {
+            "id": 7
+          },
+          {
+            "id": 8
+          },
+          {
+            "id": 9
+          },
+          {
+            "id": 10
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "0-4/*"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SingularSpec:251",
+      "source": "Feature/Query/SingularSpec.hs",
+      "line": 251,
+      "category": "singular",
+      "description": "raises an error when deleting zero entities",
+      "example": "SingularSpec:it:250",
+      "request": {
+        "method": "DELETE",
+        "path": "/items",
+        "query": "id=lt.0",
+        "headers": {
+          "Accept": "application/vnd.pgrst.object+json"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 406,
+        "body": {
+          "details": "The result contains 0 rows",
+          "message": "Cannot coerce the result to a single JSON object",
+          "code": "PGRST116",
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SingularSpec:260",
+      "source": "Feature/Query/SingularSpec.hs",
+      "line": 260,
+      "category": "singular",
+      "description": "raises an error when deleting zero entities with return=rep",
+      "example": "SingularSpec:it:259",
+      "request": {
+        "method": "DELETE",
+        "path": "/items",
+        "query": "id=lt.0",
+        "headers": {
+          "Prefer": "return=representation",
+          "Accept": "application/vnd.pgrst.object+json"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 406,
+        "body": {
+          "details": "The result contains 0 rows",
+          "message": "Cannot coerce the result to a single JSON object",
+          "code": "PGRST116",
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SingularSpec:270",
+      "source": "Feature/Query/SingularSpec.hs",
+      "line": 270,
+      "category": "singular",
+      "description": "fails for zero rows",
+      "example": "SingularSpec:it:269",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/getproject",
+        "query": "",
+        "headers": {
+          "Accept": "application/vnd.pgrst.object+json"
+        },
+        "body": {
+          "id": 9999999
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 406,
+        "body": {
+          "details": "The result contains 0 rows",
+          "message": "Cannot coerce the result to a single JSON object",
+          "code": "PGRST116",
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SingularSpec:281",
+      "source": "Feature/Query/SingularSpec.hs",
+      "line": 281,
+      "category": "singular",
+      "description": "succeeds for scalar result",
+      "example": "SingularSpec:it:280",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/sayhello",
+        "query": "",
+        "headers": {
+          "Accept": "application/vnd.pgrst.object+json"
+        },
+        "body": {
+          "name": "world"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SingularSpec:286",
+      "source": "Feature/Query/SingularSpec.hs",
+      "line": 286,
+      "category": "singular",
+      "description": "returns a single object for json proc",
+      "example": "SingularSpec:it:285",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/getproject",
+        "query": "",
+        "headers": {
+          "Accept": "application/vnd.pgrst.object+json"
+        },
+        "body": {
+          "id": 1
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": 1,
+          "name": "Windows 7",
+          "client_id": 1
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/vnd.pgrst.object+json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SingularSpec:293",
+      "source": "Feature/Query/SingularSpec.hs",
+      "line": 293,
+      "category": "singular",
+      "description": "fails for multiple rows",
+      "example": "SingularSpec:it:292",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/getallprojects",
+        "query": "",
+        "headers": {
+          "Accept": "application/vnd.pgrst.object+json"
+        },
+        "body": "{}",
+        "bodyFormat": "text"
+      },
+      "expected": {
+        "status": 406,
+        "body": {
+          "details": "The result contains 5 rows",
+          "message": "Cannot coerce the result to a single JSON object",
+          "code": "PGRST116",
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SingularSpec:302",
+      "source": "Feature/Query/SingularSpec.hs",
+      "line": 302,
+      "category": "singular",
+      "description": "fails for multiple rows with rolled back changes",
+      "example": "SingularSpec:it:301",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/getproject",
+        "query": "select=id,name",
+        "headers": {},
+        "body": {
+          "id": 1
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "Windows 7"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SingularSpec:307",
+      "source": "Feature/Query/SingularSpec.hs",
+      "line": 307,
+      "category": "singular",
+      "description": "fails for multiple rows with rolled back changes",
+      "example": "SingularSpec:it:301",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/setprojects",
+        "query": "",
+        "headers": {
+          "Prefer": "tx=commit",
+          "Accept": "application/vnd.pgrst.object+json"
+        },
+        "body": {
+          "id_l": 1,
+          "id_h": 2,
+          "name": "changed"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 406,
+        "body": {
+          "details": "The result contains 2 rows",
+          "message": "Cannot coerce the result to a single JSON object",
+          "code": "PGRST116",
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SingularSpec:317",
+      "source": "Feature/Query/SingularSpec.hs",
+      "line": 317,
+      "category": "singular",
+      "description": "fails for multiple rows with rolled back changes",
+      "example": "SingularSpec:it:301",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/getproject",
+        "query": "select=id,name",
+        "headers": {},
+        "body": {
+          "id": 1
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "Windows 7"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    }
+  ]
+}

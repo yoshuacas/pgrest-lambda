@@ -1,0 +1,66 @@
+{
+  "source": "Feature/Auth/AsymmetricJwtSpec.hs",
+  "extractedCases": 0,
+  "skippedSites": 2,
+  "needsConfigCases": 2,
+  "cases": [
+    {
+      "id": "AsymmetricJwtSpec:29",
+      "source": "Feature/Auth/AsymmetricJwtSpec.hs",
+      "line": 29,
+      "category": "auth",
+      "description": "succeeds with jwt token signed with an asymmetric key",
+      "example": "AsymmetricJwtSpec:it:28",
+      "request": {
+        "method": "GET",
+        "path": "/authors_only",
+        "query": "",
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJSUzI1NiJ9.eyJyb2xlIjogInBvc3RncmVzdF90ZXN0X2F1dGhvciJ9Cg.CBOYWDvqgAR0YYnZnyDGTQi6AJLc2Pds6_eV3YuBG6I36mj_h05eLhkEKNEDA5ZteMzCiY83P60rC_xtxVd7B6vo3BeF5uoanPS3rrbuHzKPwzsrgrD_CqvEuJ4n7Q9epkQiLsNkcexneENZDRqFjbwZx3DrXiCWwlK3Ytr5NAIGxmy0od-0xNpb2U1nXQyO_Q3mumWFViRt4tmFn_3goDHNKG3Ha_AzImfUNvHnWL78kAc4rbn15vLtWXD8PwtSnZaB4lY4V6RfsaW937srQsmRetvytM1i_bHBnjkjQLAqGbXPyItjtlXPs0uGNBadE8-wgkLtfmSCC4v2DjUthw"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configJwtSecret, configJWKS)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "AsymmetricJwtSpec:38",
+      "source": "Feature/Auth/AsymmetricJwtSpec.hs",
+      "line": 38,
+      "category": "auth",
+      "description": "succeeds with jwt token signed with an asymmetric key",
+      "example": "AsymmetricJwtSpec:it:37",
+      "request": {
+        "method": "GET",
+        "path": "/authors_only",
+        "query": "",
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJSUzI1NiJ9.eyJyb2xlIjogInBvc3RncmVzdF90ZXN0X2F1dGhvciJ9Cg.CBOYWDvqgAR0YYnZnyDGTQi6AJLc2Pds6_eV3YuBG6I36mj_h05eLhkEKNEDA5ZteMzCiY83P60rC_xtxVd7B6vo3BeF5uoanPS3rrbuHzKPwzsrgrD_CqvEuJ4n7Q9epkQiLsNkcexneENZDRqFjbwZx3DrXiCWwlK3Ytr5NAIGxmy0od-0xNpb2U1nXQyO_Q3mumWFViRt4tmFn_3goDHNKG3Ha_AzImfUNvHnWL78kAc4rbn15vLtWXD8PwtSnZaB4lY4V6RfsaW937srQsmRetvytM1i_bHBnjkjQLAqGbXPyItjtlXPs0uGNBadE8-wgkLtfmSCC4v2DjUthw"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configJwtSecret, configJWKS)",
+      "skipClass": "needs-engine-config"
+    }
+  ]
+}

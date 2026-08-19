@@ -274,6 +274,90 @@ describe('query-parser', () => {
         'onConflict should be id');
     });
   });
+
+  // Upstream folds the whole query string into a list of predicates; it does
+  // not key them by column. `?id=gt.5&id=lt.11` is the documented way to write
+  // a range (SingularSpec:227). API Gateway's single-valued
+  // `queryStringParameters` keeps only the last occurrence, so the parser has
+  // to read the multi-value map to see the rest.
+  describe('repeated filters on one column', () => {
+    it('keeps both predicates from ?id=gt.5&id=lt.11', () => {
+      const result = parseQuery(
+        { id: 'lt.11' },
+        'GET',
+        { id: ['gt.5', 'lt.11'] },
+      );
+      assert.equal(result.filters.length, 2,
+        'both occurrences of id should become filters');
+      assert.deepStrictEqual(
+        result.filters.map(f => [f.column, f.operator, f.value]),
+        [['id', 'gt', '5'], ['id', 'lt', '11']],
+        'filters should be gt.5 and lt.11, in query-string order');
+    });
+
+    it('does not duplicate a filter that appears once', () => {
+      const result = parseQuery(
+        { id: 'eq.7' }, 'GET', { id: ['eq.7'] });
+      assert.equal(result.filters.length, 1,
+        'a single occurrence should produce one filter');
+    });
+
+    it('keeps repeated filters on an embedded table', () => {
+      const result = parseQuery(
+        { select: 'id,clients(id)', 'clients.id': 'lt.11' },
+        'GET',
+        { 'clients.id': ['gt.5', 'lt.11'] },
+      );
+      const embed = result.select.find(n => n.type === 'embed');
+      assert.equal(embed.filters.length, 2,
+        'both embedded predicates should be kept');
+      assert.deepStrictEqual(
+        embed.filters.map(f => [f.column, f.operator, f.value]),
+        [['id', 'gt', '5'], ['id', 'lt', '11']],
+        'embedded filters should be gt.5 and lt.11');
+    });
+  });
+
+  // `pEmbedParam` (upstream ApiRequest/QueryParams.hs:601) reserves exactly two
+  // words after '!': `left` and `inner`. Anything else is a hint.
+  describe('embed join type', () => {
+    it('treats !inner as an inner join, not a hint', () => {
+      const [embed] = parseQuery(
+        { select: 'id,clients!inner(id)' }, 'GET').select
+        .filter(n => n.type === 'embed');
+      assert.equal(embed.inner, true, 'inner should be true');
+      assert.equal(embed.hint, null, 'inner is not a hint');
+    });
+
+    it('treats !left as the default left join, not a hint', () => {
+      const [embed] = parseQuery(
+        { select: 'id,clients!left(id)' }, 'GET').select
+        .filter(n => n.type === 'embed');
+      assert.equal(embed.inner, false, 'left join means inner is false');
+      assert.equal(embed.hint, null,
+        '!left must not be read as a relationship hint named "left"');
+    });
+
+    it('keeps a hint alongside !inner in either order', () => {
+      for (const sel of [
+        'id,clients!client_fk!inner(id)',
+        'id,clients!inner!client_fk(id)',
+      ]) {
+        const [embed] = parseQuery({ select: sel }, 'GET').select
+          .filter(n => n.type === 'embed');
+        assert.equal(embed.hint, 'client_fk', `hint for ${sel}`);
+        assert.equal(embed.inner, true, `inner for ${sel}`);
+      }
+    });
+
+    it('keeps a hint alongside !left', () => {
+      const [embed] = parseQuery(
+        { select: 'id,clients!left!client_fk(id)' }, 'GET').select
+        .filter(n => n.type === 'embed');
+      assert.equal(embed.hint, 'client_fk', 'hint should survive !left');
+      assert.equal(embed.inner, false, 'inner should stay false');
+    });
+  });
 });
 
 describe('parseSelectList', () => {

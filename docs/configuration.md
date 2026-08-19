@@ -42,6 +42,76 @@ your `.gitignore` too.
 | `REGION_NAME` | AWS region for SES, DSQL signing, etc. Never use `AWS_REGION` — Lambda reserves it. |
 | `DSQL_ENDPOINT` | Enables Aurora DSQL mode with IAM auth. |
 | `POLICIES_PATH` | Cedar policy source. Accepts a filesystem path (`./policies`), `file:///absolute/path`, or `s3://<bucket>/<prefix>/`. See below. |
+| `PGREST_RELATIONSHIPS_PATH` | Path to a declared-relationship manifest. Adds foreign keys the catalog cannot report, so resource embedding works on databases that reject `FOREIGN KEY`. See below. |
+| `PGREST_DEFAULT_TS_CONFIG` | Text search configuration for `fts`/`plfts`/`phfts` filters that name none. See below. |
+
+## Text search configuration
+
+`?col=fts.word` builds `to_tsvector(col) @@ to_tsquery($1)` with no explicit
+configuration, so PostgreSQL resolves it from the session's
+`default_text_search_config`. That is what upstream PostgREST emits, and it is
+the default here: leave `PGREST_DEFAULT_TS_CONFIG` unset and the server decides.
+
+Set it to a configuration name and every unqualified text-search filter becomes
+`to_tsvector('<name>', col)` instead. A filter that names its own configuration
+(`?col=fts(english).word`) always wins over this variable.
+
+Aurora DSQL needs it. DSQL reports `pg_catalog.english` as its
+`default_text_search_config` but ships only the `simple` configuration in
+`pg_ts_config`, so any unqualified filter fails with `text search configuration
+"english" does not exist`. On DSQL, set:
+
+```
+PGREST_DEFAULT_TS_CONFIG=simple
+```
+
+`simple` does no stemming and applies no stopword list, so `plfts`/`phfts`
+matching is exact word-for-word rather than linguistic.
+
+## Declared relationships
+
+Resource embedding (`/projects?select=*,clients(*)`) is derived from
+foreign keys read out of `pg_constraint`. Aurora DSQL parses
+`FOREIGN KEY` but stores nothing, so `pg_constraint` returns no rows for
+`contype = 'f'` and every embed would fail with `PGRST200`.
+
+`PGREST_RELATIONSHIPS_PATH` points at a JSON file listing those keys:
+
+```json
+{
+  "relationships": [
+    {
+      "constraint": "projects_client_id_fkey",
+      "schema": "public",
+      "table": "projects",
+      "columns": ["client_id"],
+      "foreignSchema": "public",
+      "foreignTable": "clients",
+      "foreignColumns": ["id"]
+    }
+  ]
+}
+```
+
+Rules:
+
+- `constraint` names the key. It is what a client passes to disambiguate
+  an embed (`/projects?select=clients!projects_client_id_fkey(*)`) and
+  what appears in a `PGRST201` error body.
+- `columns` and `foreignColumns` are positional and must be the same
+  length. An entry that is not is ignored.
+- `schema`/`foreignSchema` default to `public`. A key on a relation
+  outside the served schema is still useful: a `public` view over that
+  relation inherits the relationship, the same way PostgREST propagates
+  keys onto views.
+- The manifest is **additive**. The catalog is read first and wins on
+  conflict, so a standard PostgreSQL deployment behaves identically
+  whether or not a manifest is set.
+- One-to-many, many-to-one and many-to-many (through a junction whose
+  primary key covers two of the declared keys) are all derived from this
+  list — the same derivation PostgREST runs over `pg_constraint`.
+- An unreadable or malformed file fails the request loudly rather than
+  serving an API with embedding silently switched off.
 
 ## Policy loading
 

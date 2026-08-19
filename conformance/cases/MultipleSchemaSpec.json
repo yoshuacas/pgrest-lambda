@@ -1,0 +1,1055 @@
+{
+  "source": "Feature/Query/MultipleSchemaSpec.hs",
+  "extractedCases": 0,
+  "skippedSites": 26,
+  "needsConfigCases": 26,
+  "cases": [
+    {
+      "id": "MultipleSchemaSpec:25",
+      "source": "Feature/Query/MultipleSchemaSpec.hs",
+      "line": 25,
+      "category": "multiple-schemas",
+      "description": "succeeds in reading table from default schema v1 if no schema is selected via header",
+      "example": "MultipleSchemaSpec:it:24",
+      "request": {
+        "method": "GET",
+        "path": "/parents",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "parent v1-1"
+          },
+          {
+            "id": 2,
+            "name": "parent v1-2"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Profile": "v1"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbSchemas)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "MultipleSchemaSpec:36",
+      "source": "Feature/Query/MultipleSchemaSpec.hs",
+      "line": 36,
+      "category": "multiple-schemas",
+      "description": "succeeds in reading table from default schema v1 after explicitly passing it in the header",
+      "example": "MultipleSchemaSpec:it:35",
+      "request": {
+        "method": "GET",
+        "path": "/parents",
+        "query": "",
+        "headers": {
+          "Accept-Profile": "v1"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "parent v1-1"
+          },
+          {
+            "id": 2,
+            "name": "parent v1-2"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Profile": "v1"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbSchemas)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "MultipleSchemaSpec:47",
+      "source": "Feature/Query/MultipleSchemaSpec.hs",
+      "line": 47,
+      "category": "multiple-schemas",
+      "description": "succeeds in reading table from schema v2",
+      "example": "MultipleSchemaSpec:it:46",
+      "request": {
+        "method": "GET",
+        "path": "/parents",
+        "query": "",
+        "headers": {
+          "Accept-Profile": "v2"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 3,
+            "name": "parent v2-3"
+          },
+          {
+            "id": 4,
+            "name": "parent v2-4"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Profile": "v2"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbSchemas)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "MultipleSchemaSpec:58",
+      "source": "Feature/Query/MultipleSchemaSpec.hs",
+      "line": 58,
+      "category": "multiple-schemas",
+      "description": "succeeds in reading another_table from schema v2",
+      "example": "MultipleSchemaSpec:it:57",
+      "request": {
+        "method": "GET",
+        "path": "/another_table",
+        "query": "",
+        "headers": {
+          "Accept-Profile": "v2"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 5,
+            "another_value": "value 5"
+          },
+          {
+            "id": 6,
+            "another_value": "value 6"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Profile": "v2"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbSchemas)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "MultipleSchemaSpec:69",
+      "source": "Feature/Query/MultipleSchemaSpec.hs",
+      "line": 69,
+      "category": "multiple-schemas",
+      "description": "doesn't find another_table in schema v1",
+      "example": "MultipleSchemaSpec:it:68",
+      "request": {
+        "method": "GET",
+        "path": "/another_table",
+        "query": "",
+        "headers": {
+          "Accept-Profile": "v1"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "code": "PGRST205",
+          "details": null,
+          "hint": null,
+          "message": "Could not find the table 'v1.another_table' in the schema cache"
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbSchemas)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "MultipleSchemaSpec:78",
+      "source": "Feature/Query/MultipleSchemaSpec.hs",
+      "line": 78,
+      "category": "multiple-schemas",
+      "description": "fails trying to read table from unknown schema",
+      "example": "MultipleSchemaSpec:it:77",
+      "request": {
+        "method": "GET",
+        "path": "/parents",
+        "query": "",
+        "headers": {
+          "Accept-Profile": "unknown"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 406,
+        "body": {
+          "message": "Invalid schema: unknown",
+          "code": "PGRST106",
+          "details": null,
+          "hint": "Only the following schemas are exposed: v1, v2, SPECIAL \"@/\\#~_-"
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbSchemas)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "MultipleSchemaSpec:85",
+      "source": "Feature/Query/MultipleSchemaSpec.hs",
+      "line": 85,
+      "category": "multiple-schemas",
+      "description": "succeeds in reading a table from a schema with uppercase and special characters in its name",
+      "example": "MultipleSchemaSpec:it:84",
+      "request": {
+        "method": "GET",
+        "path": "/names",
+        "query": "select=id,name",
+        "headers": {
+          "Accept-Profile": "SPECIAL \"@/\\#~_-"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "John"
+          },
+          {
+            "id": 2,
+            "name": "Mary"
+          },
+          {
+            "id": 3,
+            "name": "José"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Profile": "SPECIAL \"@/\\#~_-"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbSchemas)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "MultipleSchemaSpec:97",
+      "source": "Feature/Query/MultipleSchemaSpec.hs",
+      "line": 97,
+      "category": "multiple-schemas",
+      "description": "succeeds in embedding with FK when the schema name has special characters",
+      "example": "MultipleSchemaSpec:it:96",
+      "request": {
+        "method": "GET",
+        "path": "/names",
+        "query": "select=name,languages(name)&id=in.(1,3)",
+        "headers": {
+          "Accept-Profile": "SPECIAL \"@/\\#~_-"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "John",
+            "languages": {
+              "name": "English"
+            }
+          },
+          {
+            "name": "José",
+            "languages": {
+              "name": "Spanish"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Profile": "SPECIAL \"@/\\#~_-"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbSchemas)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "MultipleSchemaSpec:108",
+      "source": "Feature/Query/MultipleSchemaSpec.hs",
+      "line": 108,
+      "category": "multiple-schemas",
+      "description": "succeeds in embedding with computed relationships when the schema name has special characters",
+      "example": "MultipleSchemaSpec:it:107",
+      "request": {
+        "method": "GET",
+        "path": "/names",
+        "query": "select=name,computed_languages(name)&id=in.(1,3)",
+        "headers": {
+          "Accept-Profile": "SPECIAL \"@/\\#~_-"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "John",
+            "computed_languages": {
+              "name": "English"
+            }
+          },
+          {
+            "name": "José",
+            "computed_languages": {
+              "name": "Spanish"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Profile": "SPECIAL \"@/\\#~_-"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbSchemas)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "MultipleSchemaSpec:120",
+      "source": "Feature/Query/MultipleSchemaSpec.hs",
+      "line": 120,
+      "category": "multiple-schemas",
+      "description": "succeeds inserting on default schema and returning it",
+      "example": "MultipleSchemaSpec:it:119",
+      "request": {
+        "method": "POST",
+        "path": "/children",
+        "query": "",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "id": 0,
+          "name": "child v1-1",
+          "parent_id": 1
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "id": 0,
+            "name": "child v1-1",
+            "parent_id": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Profile": "v1"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbSchemas)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "MultipleSchemaSpec:131",
+      "source": "Feature/Query/MultipleSchemaSpec.hs",
+      "line": 131,
+      "category": "multiple-schemas",
+      "description": "succeeds inserting on the v1 schema and returning its parent",
+      "example": "MultipleSchemaSpec:it:130",
+      "request": {
+        "method": "POST",
+        "path": "/children",
+        "query": "select=id,parent(*)",
+        "headers": {
+          "Prefer": "return=representation",
+          "Content-Profile": "v1"
+        },
+        "body": {
+          "id": 0,
+          "name": "child v1-2",
+          "parent_id": 2
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "id": 0,
+            "parent": {
+              "id": 2,
+              "name": "parent v1-2"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Profile": "v1"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbSchemas)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "MultipleSchemaSpec:142",
+      "source": "Feature/Query/MultipleSchemaSpec.hs",
+      "line": 142,
+      "category": "multiple-schemas",
+      "description": "succeeds inserting on the v2 schema and returning its parent",
+      "example": "MultipleSchemaSpec:it:141",
+      "request": {
+        "method": "POST",
+        "path": "/children",
+        "query": "select=id,parent(*)",
+        "headers": {
+          "Prefer": "return=representation",
+          "Content-Profile": "v2"
+        },
+        "body": {
+          "id": 0,
+          "name": "child v2-3",
+          "parent_id": 3
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "id": 0,
+            "parent": {
+              "id": 3,
+              "name": "parent v2-3"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Profile": "v2"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbSchemas)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "MultipleSchemaSpec:153",
+      "source": "Feature/Query/MultipleSchemaSpec.hs",
+      "line": 153,
+      "category": "multiple-schemas",
+      "description": "fails when inserting on an unknown schema",
+      "example": "MultipleSchemaSpec:it:152",
+      "request": {
+        "method": "POST",
+        "path": "/children",
+        "query": "",
+        "headers": {
+          "Content-Profile": "unknown"
+        },
+        "body": {
+          "name": "child 4",
+          "parent_id": 4
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 406,
+        "body": {
+          "message": "Invalid schema: unknown",
+          "code": "PGRST106",
+          "details": null,
+          "hint": "Only the following schemas are exposed: v1, v2, SPECIAL \"@/\\#~_-"
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbSchemas)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "MultipleSchemaSpec:162",
+      "source": "Feature/Query/MultipleSchemaSpec.hs",
+      "line": 162,
+      "category": "multiple-schemas",
+      "description": "succeeds in calling handler with a domain on another schema",
+      "example": "MultipleSchemaSpec:it:161",
+      "request": {
+        "method": "GET",
+        "path": "/another_table",
+        "query": "",
+        "headers": {
+          "Accept-Profile": "v2",
+          "Accept": "text/plain"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": "plain",
+        "bodyFormat": "text",
+        "headers": {
+          "Content-Type": "text/plain; charset=utf-8",
+          "Content-Profile": "v2"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbSchemas)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "MultipleSchemaSpec:169",
+      "source": "Feature/Query/MultipleSchemaSpec.hs",
+      "line": 169,
+      "category": "multiple-schemas",
+      "description": "succeeds in calling handler with a domain on an exposed schema",
+      "example": "MultipleSchemaSpec:it:168",
+      "request": {
+        "method": "GET",
+        "path": "/another_table",
+        "query": "",
+        "headers": {
+          "Accept-Profile": "v2",
+          "Accept": "text/special"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": "special",
+        "bodyFormat": "text",
+        "headers": {
+          "Content-Type": "text/special",
+          "Content-Profile": "v2"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbSchemas)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "MultipleSchemaSpec:177",
+      "source": "Feature/Query/MultipleSchemaSpec.hs",
+      "line": 177,
+      "category": "multiple-schemas",
+      "description": "succeeds in calling the default schema proc",
+      "example": "MultipleSchemaSpec:it:176",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/get_parents_below",
+        "query": "id=6",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "parent v1-1"
+          },
+          {
+            "id": 2,
+            "name": "parent v1-2"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Profile": "v1"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbSchemas)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "MultipleSchemaSpec:186",
+      "source": "Feature/Query/MultipleSchemaSpec.hs",
+      "line": 186,
+      "category": "multiple-schemas",
+      "description": "succeeds in calling the v1 schema proc and embedding",
+      "example": "MultipleSchemaSpec:it:185",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/get_parents_below",
+        "query": "id=6&select=id,name,children(id,name)",
+        "headers": {
+          "Accept-Profile": "v1"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "parent v1-1",
+            "children": [
+              {
+                "id": 1,
+                "name": "child v1-1"
+              }
+            ]
+          },
+          {
+            "id": 2,
+            "name": "parent v1-2",
+            "children": [
+              {
+                "id": 2,
+                "name": "child v1-2"
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Profile": "v1"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbSchemas)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "MultipleSchemaSpec:197",
+      "source": "Feature/Query/MultipleSchemaSpec.hs",
+      "line": 197,
+      "category": "multiple-schemas",
+      "description": "succeeds in calling the v2 schema proc and embedding",
+      "example": "MultipleSchemaSpec:it:196",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/get_parents_below",
+        "query": "id=6&select=id,name,children(id,name)",
+        "headers": {
+          "Accept-Profile": "v2"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 3,
+            "name": "parent v2-3",
+            "children": [
+              {
+                "id": 1,
+                "name": "child v2-3"
+              }
+            ]
+          },
+          {
+            "id": 4,
+            "name": "parent v2-4",
+            "children": []
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Profile": "v2"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbSchemas)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "MultipleSchemaSpec:208",
+      "source": "Feature/Query/MultipleSchemaSpec.hs",
+      "line": 208,
+      "category": "multiple-schemas",
+      "description": "succeeds in calling the v2 schema proc with POST by using Content-Profile",
+      "example": "MultipleSchemaSpec:it:207",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/get_parents_below",
+        "query": "select=id,name",
+        "headers": {
+          "Content-Profile": "v2"
+        },
+        "body": {
+          "id": "6"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 3,
+            "name": "parent v2-3"
+          },
+          {
+            "id": 4,
+            "name": "parent v2-4"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Profile": "v2"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbSchemas)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "MultipleSchemaSpec:220",
+      "source": "Feature/Query/MultipleSchemaSpec.hs",
+      "line": 220,
+      "category": "multiple-schemas",
+      "description": "succeeds in calling handler with a domain on another schema",
+      "example": "MultipleSchemaSpec:it:219",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/get_plain_text",
+        "query": "",
+        "headers": {
+          "Accept-Profile": "v2",
+          "Accept": "text/plain"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": "plain",
+        "bodyFormat": "text",
+        "headers": {
+          "Content-Type": "text/plain; charset=utf-8",
+          "Content-Profile": "v2"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbSchemas)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "MultipleSchemaSpec:227",
+      "source": "Feature/Query/MultipleSchemaSpec.hs",
+      "line": 227,
+      "category": "multiple-schemas",
+      "description": "succeeds in calling handler with a domain on an exposed schema",
+      "example": "MultipleSchemaSpec:it:226",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/get_special_text",
+        "query": "",
+        "headers": {
+          "Accept-Profile": "v2",
+          "Accept": "text/special"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": "special",
+        "bodyFormat": "text",
+        "headers": {
+          "Content-Type": "text/special",
+          "Content-Profile": "v2"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbSchemas)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "MultipleSchemaSpec:235",
+      "source": "Feature/Query/MultipleSchemaSpec.hs",
+      "line": 235,
+      "category": "multiple-schemas",
+      "description": "succeeds in patching on the v1 schema and returning its parent",
+      "example": "MultipleSchemaSpec:it:234",
+      "request": {
+        "method": "PATCH",
+        "path": "/children",
+        "query": "select=name,parent(name)&id=eq.1",
+        "headers": {
+          "Content-Profile": "v1",
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "name": "child v1-1 updated"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "child v1-1 updated",
+            "parent": {
+              "name": "parent v1-1"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Profile": "v1"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbSchemas)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "MultipleSchemaSpec:245",
+      "source": "Feature/Query/MultipleSchemaSpec.hs",
+      "line": 245,
+      "category": "multiple-schemas",
+      "description": "succeeds in patching on the v2 schema and returning its parent",
+      "example": "MultipleSchemaSpec:it:244",
+      "request": {
+        "method": "PATCH",
+        "path": "/children",
+        "query": "select=name,parent(name)&id=eq.1",
+        "headers": {
+          "Content-Profile": "v2",
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "name": "child v2-1 updated"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "child v2-1 updated",
+            "parent": {
+              "name": "parent v2-3"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Profile": "v2"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbSchemas)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "MultipleSchemaSpec:255",
+      "source": "Feature/Query/MultipleSchemaSpec.hs",
+      "line": 255,
+      "category": "multiple-schemas",
+      "description": "succeeds on deleting on the v2 schema",
+      "example": "MultipleSchemaSpec:it:254",
+      "request": {
+        "method": "DELETE",
+        "path": "/children",
+        "query": "id=eq.1",
+        "headers": {
+          "Content-Profile": "v2",
+          "Prefer": "return=representation"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "child v2-3",
+            "parent_id": 3
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Profile": "v2"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbSchemas)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "MultipleSchemaSpec:263",
+      "source": "Feature/Query/MultipleSchemaSpec.hs",
+      "line": 263,
+      "category": "multiple-schemas",
+      "description": "succeeds on PUT on the v2 schema",
+      "example": "MultipleSchemaSpec:it:262",
+      "request": {
+        "method": "PUT",
+        "path": "/children",
+        "query": "id=eq.111",
+        "headers": {
+          "Content-Profile": "v2",
+          "Prefer": "return=representation"
+        },
+        "body": [
+          {
+            "id": 111,
+            "name": "child v2-111",
+            "parent_id": null
+          }
+        ],
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "id": 111,
+            "name": "child v2-111",
+            "parent_id": null
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Profile": "v2"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbSchemas)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "MultipleSchemaSpec:395",
+      "source": "Feature/Query/MultipleSchemaSpec.hs",
+      "line": 395,
+      "category": "multiple-schemas",
+      "description": "fails trying to read definitions from unknown schema",
+      "example": "MultipleSchemaSpec:it:394",
+      "request": {
+        "method": "GET",
+        "path": "/",
+        "query": "",
+        "headers": {
+          "Accept-Profile": "unknown"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 406,
+        "body": {
+          "message": "Invalid schema: unknown",
+          "code": "PGRST106",
+          "details": null,
+          "hint": "Only the following schemas are exposed: v1, v2, SPECIAL \"@/\\#~_-"
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbSchemas)",
+      "skipClass": "needs-engine-config"
+    }
+  ]
+}

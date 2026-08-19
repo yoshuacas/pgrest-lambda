@@ -1,0 +1,541 @@
+{
+  "source": "Feature/Query/NullsStripSpec.hs",
+  "extractedCases": 11,
+  "skippedSites": 0,
+  "needsConfigCases": 0,
+  "cases": [
+    {
+      "id": "NullsStripSpec:19",
+      "source": "Feature/Query/NullsStripSpec.hs",
+      "line": 19,
+      "category": "media-types",
+      "description": "strips nulls when Accept: application/vnd.pgrst.array+json;nulls=stripped",
+      "example": "NullsStripSpec:it:18",
+      "request": {
+        "method": "GET",
+        "path": "/organizations",
+        "query": "select=*",
+        "headers": {
+          "Accept": "application/vnd.pgrst.array+json;nulls=stripped"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "Referee Org",
+            "manager_id": 1
+          },
+          {
+            "id": 2,
+            "name": "Auditor Org",
+            "manager_id": 2
+          },
+          {
+            "id": 3,
+            "name": "Acme",
+            "referee": 1,
+            "auditor": 2,
+            "manager_id": 3
+          },
+          {
+            "id": 4,
+            "name": "Umbrella",
+            "referee": 1,
+            "auditor": 2,
+            "manager_id": 4
+          },
+          {
+            "id": 5,
+            "name": "Cyberdyne",
+            "referee": 3,
+            "auditor": 4,
+            "manager_id": 5
+          },
+          {
+            "id": 6,
+            "name": "Oscorp",
+            "referee": 3,
+            "auditor": 4,
+            "manager_id": 6
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/vnd.pgrst.array+json;nulls=stripped; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "NullsStripSpec:28",
+      "source": "Feature/Query/NullsStripSpec.hs",
+      "line": 28,
+      "category": "media-types",
+      "description": "strips nulls when Accept: application/vnd.pgrst.array+json;nulls=stripped",
+      "example": "NullsStripSpec:it:18",
+      "request": {
+        "method": "POST",
+        "path": "/organizations",
+        "query": "select=*",
+        "headers": {
+          "Accept": "application/vnd.pgrst.array+json;nulls=stripped",
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "id": 7,
+          "name": "John",
+          "referee": null,
+          "auditor": null,
+          "manager_id": 6
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "id": 7,
+            "name": "John",
+            "manager_id": 6
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/vnd.pgrst.array+json;nulls=stripped; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "NullsStripSpec:37",
+      "source": "Feature/Query/NullsStripSpec.hs",
+      "line": 37,
+      "category": "media-types",
+      "description": "strips nulls when Accept: application/vnd.pgrst.array+json;nulls=stripped",
+      "example": "NullsStripSpec:it:18",
+      "request": {
+        "method": "PATCH",
+        "path": "/organizations",
+        "query": "id=eq.3&select=*",
+        "headers": {
+          "Accept": "application/vnd.pgrst.array+json;nulls=stripped",
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "name": "John",
+          "referee": null
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 3,
+            "name": "John",
+            "auditor": 2,
+            "manager_id": 3
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/vnd.pgrst.array+json;nulls=stripped; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "NullsStripSpec:47",
+      "source": "Feature/Query/NullsStripSpec.hs",
+      "line": 47,
+      "category": "media-types",
+      "description": "strips nulls when Accept: application/vnd.pgrst.array;nulls=stripped",
+      "example": "NullsStripSpec:it:46",
+      "request": {
+        "method": "GET",
+        "path": "/organizations",
+        "query": "select=*",
+        "headers": {
+          "Accept": "application/vnd.pgrst.array;nulls=stripped"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "Referee Org",
+            "manager_id": 1
+          },
+          {
+            "id": 2,
+            "name": "Auditor Org",
+            "manager_id": 2
+          },
+          {
+            "id": 3,
+            "name": "Acme",
+            "referee": 1,
+            "auditor": 2,
+            "manager_id": 3
+          },
+          {
+            "id": 4,
+            "name": "Umbrella",
+            "referee": 1,
+            "auditor": 2,
+            "manager_id": 4
+          },
+          {
+            "id": 5,
+            "name": "Cyberdyne",
+            "referee": 3,
+            "auditor": 4,
+            "manager_id": 5
+          },
+          {
+            "id": 6,
+            "name": "Oscorp",
+            "referee": 3,
+            "auditor": 4,
+            "manager_id": 6
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/vnd.pgrst.array+json;nulls=stripped; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "NullsStripSpec:57",
+      "source": "Feature/Query/NullsStripSpec.hs",
+      "line": 57,
+      "category": "media-types",
+      "description": "strips nulls when Accept: application/vnd.pgrst.object+json;nulls=stripped",
+      "example": "NullsStripSpec:it:56",
+      "request": {
+        "method": "GET",
+        "path": "/organizations",
+        "query": "limit=1",
+        "headers": {
+          "Accept": "application/vnd.pgrst.object+json;nulls=stripped"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": 1,
+          "name": "Referee Org",
+          "manager_id": 1
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/vnd.pgrst.object+json;nulls=stripped; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "NullsStripSpec:67",
+      "source": "Feature/Query/NullsStripSpec.hs",
+      "line": 67,
+      "category": "media-types",
+      "description": "throws error when Accept: application/vnd.pgrst.object+json;nulls=stripped and result not singular",
+      "example": "NullsStripSpec:it:66",
+      "request": {
+        "method": "GET",
+        "path": "/organizations",
+        "query": "select=*",
+        "headers": {
+          "Accept": "application/vnd.pgrst.object+json;nulls=stripped"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 406,
+        "body": {
+          "details": "The result contains 6 rows",
+          "message": "Cannot coerce the result to a single JSON object",
+          "code": "PGRST116",
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "NullsStripSpec:78",
+      "source": "Feature/Query/NullsStripSpec.hs",
+      "line": 78,
+      "category": "media-types",
+      "description": "strips nulls when Accept: application/vnd.pgrst.array+json;nulls=stripped",
+      "example": "NullsStripSpec:it:77",
+      "request": {
+        "method": "GET",
+        "path": "/organizations",
+        "query": "select=id,referee,auditor",
+        "headers": {
+          "Accept": "application/vnd.pgrst.array+json;nulls=stripped"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          },
+          {
+            "id": 2
+          },
+          {
+            "id": 3,
+            "referee": 1,
+            "auditor": 2
+          },
+          {
+            "id": 4,
+            "referee": 1,
+            "auditor": 2
+          },
+          {
+            "id": 5,
+            "referee": 3,
+            "auditor": 4
+          },
+          {
+            "id": 6,
+            "referee": 3,
+            "auditor": 4
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/vnd.pgrst.array+json;nulls=stripped; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "NullsStripSpec:87",
+      "source": "Feature/Query/NullsStripSpec.hs",
+      "line": 87,
+      "category": "media-types",
+      "description": "strips nulls when Accept: application/vnd.pgrst.array+json;nulls=stripped",
+      "example": "NullsStripSpec:it:77",
+      "request": {
+        "method": "POST",
+        "path": "/organizations",
+        "query": "select=id,referee,auditor",
+        "headers": {
+          "Accept": "application/vnd.pgrst.array+json;nulls=stripped",
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "id": 7,
+          "name": "John",
+          "referee": null,
+          "auditor": null,
+          "manager_id": 6
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "id": 7
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/vnd.pgrst.array+json;nulls=stripped; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "NullsStripSpec:96",
+      "source": "Feature/Query/NullsStripSpec.hs",
+      "line": 96,
+      "category": "media-types",
+      "description": "strips nulls when Accept: application/vnd.pgrst.array+json;nulls=stripped",
+      "example": "NullsStripSpec:it:77",
+      "request": {
+        "method": "PATCH",
+        "path": "/organizations",
+        "query": "id=eq.3&select=id,name,referee,auditor",
+        "headers": {
+          "Accept": "application/vnd.pgrst.array+json;nulls=stripped",
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "name": "John",
+          "referee": null
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 3,
+            "name": "John",
+            "auditor": 2
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/vnd.pgrst.array+json;nulls=stripped; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "NullsStripSpec:106",
+      "source": "Feature/Query/NullsStripSpec.hs",
+      "line": 106,
+      "category": "media-types",
+      "description": "strips nulls when Accept: application/vnd.pgrst.object+json;nulls=stripped",
+      "example": "NullsStripSpec:it:105",
+      "request": {
+        "method": "GET",
+        "path": "/organizations",
+        "query": "select=id,referee,auditor&limit=1",
+        "headers": {
+          "Accept": "application/vnd.pgrst.object+json;nulls=stripped"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": 1
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/vnd.pgrst.object+json;nulls=stripped; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "NullsStripSpec:117",
+      "source": "Feature/Query/NullsStripSpec.hs",
+      "line": 117,
+      "category": "media-types",
+      "description": "doesn't strips nulls when Accept: application/vnd.pgrst.array+json",
+      "example": "NullsStripSpec:it:116",
+      "request": {
+        "method": "GET",
+        "path": "/organizations",
+        "query": "select=id,referee,auditor",
+        "headers": {
+          "Accept": "application/vnd.pgrst.array+json"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "referee": null,
+            "auditor": null
+          },
+          {
+            "id": 2,
+            "referee": null,
+            "auditor": null
+          },
+          {
+            "id": 3,
+            "referee": 1,
+            "auditor": 2
+          },
+          {
+            "id": 4,
+            "referee": 1,
+            "auditor": 2
+          },
+          {
+            "id": 5,
+            "referee": 3,
+            "auditor": 4
+          },
+          {
+            "id": 6,
+            "referee": 3,
+            "auditor": 4
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    }
+  ]
+}

@@ -1047,4 +1047,210 @@ describe('handler integration', () => {
         'GET remains blocked by existing method guard');
     });
   });
+
+  describe('HTTP protocol headers', () => {
+    it('GET carries Content-Range and the JSON charset', async () => {
+      const res = await handler(makeEvent({ method: 'GET' }));
+      assert.equal(res.statusCode, 200);
+      assert.equal(res.headers['Content-Range'], '0-1/*');
+      assert.equal(res.headers['Content-Type'],
+        'application/json; charset=utf-8');
+    });
+
+    it('HEAD returns the GET headers with no body', async () => {
+      const get = await handler(makeEvent({ method: 'GET' }));
+      const head = await handler(makeEvent({ method: 'HEAD' }));
+      assert.equal(head.statusCode, get.statusCode);
+      assert.equal(head.headers['Content-Range'], get.headers['Content-Range']);
+      assert.equal(head.headers['Content-Type'], get.headers['Content-Type']);
+      assert.equal(head.body, '', 'HEAD must not carry a body');
+    });
+
+    it('applies the Range header on GET', async () => {
+      const pool = createMockPool();
+      const local = createRestHandler(createTestContext(pool)).handler;
+      const res = await local(makeEvent({
+        method: 'GET', headers: { Range: 'items=1-1' },
+      }));
+      const select = pool.capturedQueries
+        .filter(q => q.text.trimStart().startsWith('SELECT'))
+        .pop();
+      assert.match(select.text, /LIMIT/,
+        'the Range header should become a LIMIT');
+      assert.equal(res.headers['Content-Range'].startsWith('1-'), true,
+        `lower bound should follow the Range header, got `
+        + `${res.headers['Content-Range']}`);
+    });
+
+    it('ignores the Range header on HEAD', async () => {
+      // Upstream reads the header only when the raw method is GET
+      // (ApiRequest.getRanges), so a HEAD range is a no-op.
+      const pool = createMockPool();
+      const local = createRestHandler(createTestContext(pool)).handler;
+      const res = await local(makeEvent({
+        method: 'HEAD', headers: { Range: 'items=1-1' },
+      }));
+      const select = pool.capturedQueries
+        .filter(q => q.text.trimStart().startsWith('SELECT'))
+        .pop();
+      assert.doesNotMatch(select.text, /LIMIT/,
+        'HEAD must not turn the Range header into a LIMIT');
+      assert.equal(res.headers['Content-Range'], '0-1/*');
+    });
+
+    it('reports the total and 206 for Prefer: count=exact', async () => {
+      const res = await handler(makeEvent({
+        method: 'GET', query: { limit: '1' },
+        headers: { Prefer: 'count=exact' },
+      }));
+      // mock COUNT returns 2, the mock SELECT returns 2 rows
+      assert.equal(res.headers['Content-Range'], '0-1/2');
+      assert.equal(res.headers['Preference-Applied'], 'count=exact');
+    });
+
+    it('sends no Content-Type on a 204', async () => {
+      const res = await handler(makeEvent({
+        method: 'PATCH', query: { id: 'eq.abc' },
+        body: { title: 'x' },
+      }));
+      assert.equal(res.statusCode, 204);
+      assert.equal(res.headers['Content-Type'], undefined,
+        'a bodyless response must not claim a media type');
+      assert.equal(res.body, '');
+    });
+
+    it('uses the update Content-Range form on PATCH', async () => {
+      const res = await handler(makeEvent({
+        method: 'PATCH', query: { id: 'eq.abc' },
+        body: { title: 'x' },
+        headers: { Prefer: 'return=representation' },
+      }));
+      assert.equal(res.statusCode, 200);
+      assert.equal(res.headers['Content-Range'], '0-0/*');
+      assert.equal(res.headers['Preference-Applied'], 'return=representation');
+    });
+
+    it('uses the delete Content-Range form on DELETE', async () => {
+      const res = await handler(makeEvent({
+        method: 'DELETE', query: { id: 'eq.abc' },
+      }));
+      assert.equal(res.statusCode, 204);
+      assert.equal(res.headers['Content-Range'], '*/*');
+    });
+
+    it('uses the insert Content-Range form on POST', async () => {
+      const res = await handler(makeEvent({
+        method: 'POST', body: { title: 'x' },
+      }));
+      assert.equal(res.statusCode, 201);
+      assert.equal(res.headers['Content-Range'], '*/*');
+    });
+
+    it('states Content-Length 0 on a bodyless 201', async () => {
+      const res = await handler(makeEvent({
+        method: 'POST', body: { title: 'x' },
+        headers: { Prefer: 'return=minimal' },
+      }));
+      assert.equal(res.statusCode, 201);
+      assert.equal(res.headers['Content-Length'], '0');
+      assert.equal(res.headers['Content-Type'], undefined);
+      assert.equal(res.body, '');
+    });
+
+    it('sends no Content-Length on a 204', async () => {
+      const res = await handler(makeEvent({
+        method: 'DELETE', query: { id: 'eq.abc' },
+      }));
+      assert.equal(res.statusCode, 204);
+      assert.equal(res.headers['Content-Length'], undefined);
+    });
+
+    it('returns the singular media type for vnd.pgrst.object+json',
+      async () => {
+        const res = await handler(makeEvent({
+          method: 'GET', query: { id: 'eq.abc' },
+          headers: { Accept: 'application/vnd.pgrst.object+json' },
+        }));
+        assert.equal(res.statusCode, 200);
+        assert.equal(res.headers['Content-Type'],
+          'application/vnd.pgrst.object+json; charset=utf-8');
+        assert.equal(Array.isArray(JSON.parse(res.body)), false);
+      });
+
+    it('rejects an invalid Prefer under handling=strict with PGRST122',
+      async () => {
+        const res = await handler(makeEvent({
+          method: 'GET', headers: { Prefer: 'handling=strict, foo=bar' },
+        }));
+        assert.equal(res.statusCode, 400);
+        const body = JSON.parse(res.body);
+        assert.equal(body.code, 'PGRST122');
+        assert.equal(body.details, 'Invalid preferences: foo=bar');
+      });
+
+    it('ignores an invalid Prefer without handling=strict', async () => {
+      const res = await handler(makeEvent({
+        method: 'GET', headers: { Prefer: 'foo=bar' },
+      }));
+      assert.equal(res.statusCode, 200);
+      assert.equal(res.headers['Preference-Applied'], undefined);
+    });
+  });
+
+  describe('PUT single-row upsert', () => {
+    it('upserts the row the primary key pins', async () => {
+      const res = await handler(makeEvent({
+        method: 'PUT', query: { id: 'eq.abc' },
+        body: { id: 'abc', user_id: 'user-1', title: 'x' },
+        role: 'service_role',
+      }));
+      // No Prefer: return, so upstream answers 204 with no body
+      // (Response.hs, MutationSingleUpsert).
+      assert.equal(res.statusCode, 204);
+      assert.equal(res.headers['Content-Range'], undefined,
+        'upstream sends no Content-Range on a single upsert');
+    });
+
+    it('returns the row for return=representation', async () => {
+      const res = await handler(makeEvent({
+        method: 'PUT', query: { id: 'eq.abc' },
+        body: { id: 'abc', user_id: 'user-1', title: 'x' },
+        headers: { Prefer: 'return=representation' },
+        role: 'service_role',
+      }));
+      assert.equal(res.statusCode, 200);
+      assert.equal(res.headers['Preference-Applied'], 'return=representation');
+      assert.ok(Array.isArray(JSON.parse(res.body)));
+    });
+
+    it('rejects a filter that is not the whole primary key', async () => {
+      const res = await handler(makeEvent({
+        method: 'PUT', query: { title: 'eq.x' },
+        body: { id: 'abc', title: 'x' },
+        role: 'service_role',
+      }));
+      assert.equal(res.statusCode, 405);
+      assert.equal(JSON.parse(res.body).code, 'PGRST105');
+    });
+
+    it('rejects a payload whose key differs from the URL', async () => {
+      const res = await handler(makeEvent({
+        method: 'PUT', query: { id: 'eq.abc' },
+        body: { id: 'other', title: 'x' },
+        role: 'service_role',
+      }));
+      assert.equal(res.statusCode, 400);
+      assert.equal(JSON.parse(res.body).code, 'PGRST115');
+    });
+
+    it('rejects limit on a PUT with PGRST114', async () => {
+      const res = await handler(makeEvent({
+        method: 'PUT', query: { id: 'eq.abc', limit: '1' },
+        body: { id: 'abc', title: 'x' },
+        role: 'service_role',
+      }));
+      assert.equal(res.statusCode, 400);
+      assert.equal(JSON.parse(res.body).code, 'PGRST114');
+    });
+  });
 });

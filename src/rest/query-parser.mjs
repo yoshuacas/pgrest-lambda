@@ -6,11 +6,27 @@ const RESERVED_PARAMS = new Set([
   'select', 'order', 'limit', 'offset', 'on_conflict', 'columns',
 ]);
 
-const VALID_OPERATORS = new Set([
-  'eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'like', 'ilike', 'in', 'is',
+// Operator tables, in the order upstream tries them
+// (QueryParams.hs `pOperation`, `simpleOperator`, `quantOperator`).
+// Order matters: a prefix must be tried after the longer token that
+// starts with it, so `gte` comes before `gt` and `lte` before `lt`.
+const SIMPLE_OPERATORS = [
+  'neq', 'cs', 'cd', 'ov', 'sl', 'sr', 'nxr', 'nxl', 'adj',
+];
+const QUANT_OPERATORS = [
+  'eq', 'gte', 'gt', 'lte', 'lt', 'like', 'ilike', 'match', 'imatch',
+];
+const FTS_OPERATORS = ['fts', 'plfts', 'phfts', 'wfts'];
+
+export const VALID_OPERATORS = new Set([
+  ...SIMPLE_OPERATORS, ...QUANT_OPERATORS, ...FTS_OPERATORS,
+  'in', 'is', 'isdistinct',
 ]);
 
-const VALID_IS_VALUES = new Set(['null', 'true', 'false', 'unknown']);
+// Upstream `pIsVal`, matched case-insensitively.
+const VALID_IS_VALUES = new Set([
+  'null', 'not_null', 'true', 'false', 'unknown',
+]);
 
 const LOGICAL_OPS = new Set(['or', 'and']);
 
@@ -26,31 +42,77 @@ const ALLOWED_CAST_TYPES = new Set([
   'varchar', 'char',
 ]);
 
-function parseCast(column) {
-  const idx = column.indexOf('::');
-  if (idx === -1) return { colName: column, cast: undefined };
-  const colName = column.slice(0, idx).trim();
-  const castType = column.slice(idx + 2).trim().toLowerCase();
-  if (!colName) {
+const ALIAS_IDENT = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+
+// Legacy alias/cast diagnostics. Upstream reports every malformed select
+// token as one Parsec error; pgrest-lambda has always named the specific
+// mistake instead, and those messages are part of its API. They are kept
+// for tokens without a json path — a json key may legally contain the
+// characters these checks key off (`:` inside a quoted key), so a token
+// carrying `->` is left entirely to the grammar.
+function legacySelectChecks(token) {
+  if (token.startsWith('::')) {
     throw new PostgRESTError(400, 'PGRST100',
       "Empty column name before '::'");
   }
-  if (!castType) {
-    throw new PostgRESTError(400, 'PGRST100',
-      "Empty cast type after '::'");
+  let colonIdx = -1;
+  for (let j = 0; j < token.length; j++) {
+    if (token[j] === ':') {
+      if (j + 1 < token.length && token[j + 1] === ':') {
+        j++;
+      } else {
+        colonIdx = j;
+        break;
+      }
+    }
   }
-  if (!ALLOWED_CAST_TYPES.has(castType)) {
+  if (colonIdx === -1) return;
+  const alias = token.slice(0, colonIdx).trim();
+  const column = token.slice(colonIdx + 1).trim();
+  if (!ALIAS_IDENT.test(alias)) {
     throw new PostgRESTError(400, 'PGRST100',
-      `Unsupported cast type '${castType}'`);
+      `'${alias}' is not a valid identifier for an alias`);
   }
-  return { colName, cast: castType };
+  if (!column) {
+    throw new PostgRESTError(400, 'PGRST100',
+      `Empty column name after alias '${alias}'`);
+  }
 }
 
 const MAX_NESTING_DEPTH = 10;
 export const DEFAULT_MAX_EMBED_DEPTH = 5;
 
+// Upstream `pRelationSelect` is the only alternative that may be followed
+// by a parenthesised sub-select, and it accepts nothing but
+// `[alias:]name[!hint][!inner]` before the '(' — with an explicit
+// `guard (name /= "count")` so that `count()` can never be read as an
+// embed. Everything else that reaches a '(' is a field, which is what
+// makes `select=data->(x` a json-path parse error rather than an embed
+// with an empty select list.
+function looksLikeEmbedPrefix(prefix) {
+  const sc = new Scanner(prefix);
+  sc.ws();
+  const before = sc.pos;
+  const maybeAlias = pFieldName(sc);
+  if (maybeAlias !== FAIL && sc.src[sc.pos] === ':'
+      && sc.src[sc.pos + 1] !== ':') {
+    sc.pos += 1;
+  } else {
+    sc.pos = before;
+  }
+  const name = pFieldName(sc);
+  if (name === FAIL || name === 'count') return false;
+  while (sc.src[sc.pos] === '!') {
+    sc.pos += 1;
+    if (pFieldName(sc) === FAIL) return false;
+  }
+  sc.ws();
+  return sc.pos === prefix.length;
+}
+
 export function parseSelectList(
-    input, maxEmbedDepth = DEFAULT_MAX_EMBED_DEPTH, depth = 0) {
+    input, maxEmbedDepth = DEFAULT_MAX_EMBED_DEPTH, depth = 0,
+    source = input, offset = 0) {
   if (Number.isNaN(maxEmbedDepth)) {
     maxEmbedDepth = DEFAULT_MAX_EMBED_DEPTH;
   }
@@ -63,7 +125,7 @@ export function parseSelectList(
     while (i < len && input[i] === ' ') i++;
     if (i >= len) break;
 
-    // Scan token up to ',' or '(' at depth 0
+    // Scan token up to ',' or the '(' of an embed, both at depth 0.
     let tokenStart = i;
     let parenDepth = 0;
     let parenStart = -1;
@@ -72,7 +134,15 @@ export function parseSelectList(
       const ch = input[i];
       if (parenDepth === 0 && ch === ',') break;
       if (ch === '(') {
-        if (parenDepth === 0) parenStart = i;
+        if (parenDepth === 0) {
+          if (!looksLikeEmbedPrefix(input.slice(tokenStart, i))) {
+            // A field, not an embed: the '(' belongs to the field token
+            // and the grammar decides what to make of it.
+            while (i < len && input[i] !== ',') i++;
+            break;
+          }
+          parenStart = i;
+        }
         parenDepth++;
       } else if (ch === ')') {
         if (parenDepth === 0) {
@@ -94,42 +164,12 @@ export function parseSelectList(
     }
 
     if (parenStart === -1) {
-      // Plain column token
-      const name = input.slice(tokenStart, i).trim();
-      if (name) {
-        let colonIdx = -1;
-        for (let j = 0; j < name.length; j++) {
-          if (name[j] === ':') {
-            if (j + 1 < name.length && name[j + 1] === ':') {
-              j++;
-            } else {
-              colonIdx = j;
-              break;
-            }
-          }
-        }
-        if (colonIdx !== -1) {
-          const alias = name.slice(0, colonIdx).trim();
-          const column = name.slice(colonIdx + 1).trim();
-          if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(alias)) {
-            throw new PostgRESTError(400, 'PGRST100',
-              `'${alias}' is not a valid identifier`
-              + ` for an alias`);
-          }
-          if (!column) {
-            throw new PostgRESTError(400, 'PGRST100',
-              `Empty column name after alias '${alias}'`);
-          }
-          const { colName, cast } = parseCast(column);
-          const node = { type: 'column', name: colName, alias };
-          if (cast) node.cast = cast;
-          nodes.push(node);
-        } else {
-          const { colName, cast } = parseCast(name);
-          const node = { type: 'column', name: colName };
-          if (cast) node.cast = cast;
-          nodes.push(node);
-        }
+      // Plain field token
+      const token = input.slice(tokenStart, i).trim();
+      if (token) {
+        if (!token.includes('->')) legacySelectChecks(token);
+        nodes.push(parseFieldSelect(
+          source, offset + tokenStart, offset + i));
       }
     } else {
       // Embed token: text before '(' is the embed descriptor
@@ -140,7 +180,8 @@ export function parseSelectList(
           `Embedding depth exceeds maximum of ${maxEmbedDepth}`);
       }
       const childNodes = parseSelectList(
-        innerContent, maxEmbedDepth, depth + 1);
+        innerContent, maxEmbedDepth, depth + 1,
+        source, offset + parenStart + 1);
       const embed = parseEmbedToken(embedToken);
       if (childNodes.length === 0) {
         throw new PostgRESTError(400, 'PGRST100',
@@ -165,7 +206,10 @@ export function parseSelectList(
 
   const keys = new Set();
   for (const node of nodes) {
-    if (node.type === 'column' && node.name !== '*') {
+    if (node.type === 'column' && !(node.name === '*' && !node.agg)) {
+      // The key is the JSON key the response will carry: the alias when
+      // there is one, and for a json path or an aggregate the alias the
+      // parser derived (upstream Plan.hs `addAliases`).
       const key = node.alias || node.name;
       if (keys.has(key)) {
         throw new PostgRESTError(400, 'PGRST100',
@@ -262,11 +306,20 @@ function parseEmbedToken(token) {
   let hint = null;
   let inner = false;
 
+  // Upstream `pEmbedParam` (ApiRequest/QueryParams.hs:601) recognises exactly
+  // two reserved words after a '!' — `left` and `inner` — and treats anything
+  // else as a disambiguation hint. `!left` is the explicit spelling of the
+  // default join, so it must not be mistaken for a hint named "left": that made
+  // `?select=*,clients!left(*)` look for a relationship called "left" and
+  // answer PGRST200. Where both a hint and a join type appear, upstream keeps
+  // the first of each (`embedParamHint prm1 <|> embedParamHint prm2`).
   for (let j = 1; j < parts.length; j++) {
     const seg = parts[j].trim();
     if (seg === 'inner') {
       inner = true;
-    } else {
+    } else if (seg === 'left') {
+      inner = false;
+    } else if (hint === null) {
       hint = seg;
     }
   }
@@ -327,13 +380,26 @@ export function parseQuery(
     if (logicalOp) {
       filters.push(parseLogicalGroup(logicalOp, negate, rawValue));
     } else {
+      // A column can appear more than once — `?id=gt.5&id=lt.11` is upstream's
+      // documented way to write a range, and every pair becomes its own ANDed
+      // predicate (QueryParams.hs folds the whole query string into a list, it
+      // does not key it by column). API Gateway's single-valued
+      // `queryStringParameters` keeps only the last occurrence, so the earlier
+      // filters were silently dropped and `gt.5` never reached the SQL.
+      const repeated = multiValueParams?.[key];
+      const rawValues = Array.isArray(repeated) && repeated.length > 1
+        ? repeated
+        : [rawValue];
+
       const dotIdx = key.indexOf('.');
       if (dotIdx !== -1) {
         const prefix = key.slice(0, dotIdx);
         const rest = key.slice(dotIdx + 1);
         const embedNode = embedMap.get(prefix);
         if (embedNode) {
-          routeEmbedParam(embedNode, prefix, rest, rawValue);
+          for (const v of rawValues) {
+            routeEmbedParam(embedNode, prefix, rest, v);
+          }
           continue;
         }
         if (hasAnyEmbed(select) && !LOGICAL_OPS.has(prefix)
@@ -343,7 +409,9 @@ export function parseQuery(
             + `named '${prefix}' in select`);
         }
       }
-      filters.push(parseFilter(key, rawValue));
+      for (const v of rawValues) {
+        filters.push(parseFilter(key, v));
+      }
     }
   }
 
@@ -361,139 +429,869 @@ export function parseQuery(
   return { select, filters, order, limit, offset, onConflict, columns };
 }
 
-function parseFilter(column, raw) {
-  if (raw === 'not_null') {
-    return { type: 'filter', column, operator: 'is', value: 'null', negate: true };
+// --- Query-string grammar --------------------------------------------------
+//
+// Ported from upstream's Parsec grammar in
+// PostgREST.ApiRequest.QueryParams (`pOpExpr`, `pLogicTree`, `pListVal`,
+// `pFieldName`). The port is deliberately literal: the operator table, the
+// order the alternatives are tried in, where whitespace is allowed, and
+// where a quoted list element ends are all observable through the API.
+//
+// Upstream's PGRST100 body is a rendering of the Parsec error — `message`
+// is the source position, `details` the "unexpected ... expecting ..."
+// line — so the scanner also tracks the furthest position it reached and
+// the labels of every alternative that failed there.
+
+const FAIL = Symbol('parse-fail');
+
+// Upstream `pIdentifierChar`: letter | digit | one of "_ $". The space is
+// deliberate: `pIdentifier` strips the result afterwards, which is what
+// makes `or=(id.eq.1, id.eq.2)` legal.
+const IDENT_CHAR = /[\p{L}0-9_ $]/u;
+
+const LBL_FIELD_NAME = 'field name (* or [a..z0..9_$])';
+const LBL_OPERATOR = 'operator (eq, gt, ...)';
+const LBL_LOGIC_NOT = 'negation operator (not)';
+const LBL_LOGIC_OP = 'logic operator (and, or)';
+const LBL_IS_VAL = 'isVal: (null, not_null, true, false, unknown)';
+const LBL_DELIMITER = 'delimiter (.)';
+
+class Scanner {
+  constructor(src) {
+    this.src = src;
+    this.pos = 0;
+    this.failPos = -1;
+    this.failExpecting = [];
+    this.failToken = undefined;
   }
 
-  const dotIdx = raw.indexOf('.');
-  if (dotIdx === -1) {
-    throw new PostgRESTError(
-      400, 'PGRST100',
-      `"${raw}" is not a valid filter for column "${column}"`,
-    );
-  }
+  get done() { return this.pos >= this.src.length; }
 
-  let prefix = raw.slice(0, dotIdx);
-  let remainder = raw.slice(dotIdx + 1);
-  let negate = false;
-
-  if (prefix === 'not') {
-    negate = true;
-    const nextDot = remainder.indexOf('.');
-    if (nextDot === -1) {
-      throw new PostgRESTError(
-        400, 'PGRST100',
-        `"${raw}" is not a valid filter for column "${column}"`,
-      );
+  // Record that `label` was acceptable at `pos` but not found, together
+  // with the input token that was there instead. Only the furthest
+  // position is kept, the way Parsec's `mergeError` discards the error of
+  // an alternative that did not get as far.
+  expect(pos, label, token) {
+    if (pos > this.failPos) {
+      this.failPos = pos;
+      this.failExpecting = [];
+      this.failToken = token === undefined ? this.src[pos] : token;
     }
-    prefix = remainder.slice(0, nextDot);
-    remainder = remainder.slice(nextDot + 1);
-  }
-
-  const operator = prefix;
-
-  if (!VALID_OPERATORS.has(operator)) {
-    throw new PostgRESTError(
-      400, 'PGRST100',
-      `"${operator}" is not a valid filter operator`,
-    );
-  }
-
-  let value = remainder;
-
-  if (operator === 'is') {
-    if (!VALID_IS_VALUES.has(value)) {
-      throw new PostgRESTError(
-        400, 'PGRST100',
-        `"${value}" is not a valid value for is operator`,
-      );
+    if (pos !== this.failPos) return;
+    if (label !== null && !this.failExpecting.includes(label)) {
+      this.failExpecting.push(label);
     }
-  } else if (operator === 'in') {
-    value = value.replace(/^\(/, '').replace(/\)$/, '');
-    value = value.split(',');
-  } else if (operator === 'like' || operator === 'ilike') {
-    value = value.replaceAll('*', '%');
   }
 
-  return { type: 'filter', column, operator, value, negate };
-}
+  snapshot() {
+    return {
+      failPos: this.failPos,
+      failExpecting: this.failExpecting.slice(),
+      failToken: this.failToken,
+    };
+  }
 
-function splitConditions(str) {
-  const conditions = [];
-  let start = 0;
-  let depth = 0;
+  // Upstream `<?>`: when a parser fails, or succeeds, *without consuming
+  // input*, the expectations it collected are replaced by a single label.
+  // The position and the offending token are kept — that is why
+  // `fts().value` reports column 5 and `unexpected ")"` while still
+  // saying `expecting operator (eq, gt, ...)`.
+  relabel(snap, label) {
+    const attemptPos = this.failPos;
+    const attemptToken = this.failToken;
+    this.failPos = snap.failPos;
+    this.failExpecting = snap.failExpecting;
+    this.failToken = snap.failToken;
+    this.expect(attemptPos, label, attemptToken);
+  }
 
-  for (let i = 0; i < str.length; i++) {
-    if (str[i] === '(') depth++;
-    else if (str[i] === ')') {
-      depth--;
-      if (depth < 0) {
-        throw new PostgRESTError(400, 'PGRST100',
-          'Unbalanced parentheses in logical operator value');
+  labelled(label, fn) {
+    const startPos = this.pos;
+    const snap = this.snapshot();
+    const result = fn();
+    if (result === FAIL && this.pos === startPos) this.relabel(snap, label);
+    return result;
+  }
+
+  // `<?>` again, but scoped to the failure `fn` itself produced.
+  //
+  // `labelled` merges into whatever the furthest failure so far was, which
+  // is wrong when a *sibling* alternative already failed further along:
+  // Parsec relabels the error of one parser, and `mergeError` then keeps
+  // the furthest of the two. `?select=data->>--34` is the case that tells
+  // them apart — the index branch fails at the second '-' expecting a
+  // digit, the key branch fails one character earlier, and upstream
+  // reports only `expecting digit`.
+  labelledOwn(label, fn) {
+    const startPos = this.pos;
+    const outer = this.snapshot();
+    this.failPos = -1;
+    this.failExpecting = [];
+    this.failToken = undefined;
+    const result = fn();
+    const inner = this.snapshot();
+    this.failPos = outer.failPos;
+    this.failExpecting = outer.failExpecting;
+    this.failToken = outer.failToken;
+    if (inner.failPos < 0) {
+      // nothing to merge
+    } else if (result === FAIL && this.pos === startPos) {
+      // Empty failure: the label replaces the collected expectations.
+      this.expect(inner.failPos, label, inner.failToken);
+    } else {
+      for (const l of inner.failExpecting) {
+        this.expect(inner.failPos, l, inner.failToken);
       }
-    } else if (str[i] === ',' && depth === 0) {
-      conditions.push(str.slice(start, i));
-      start = i + 1;
+      if (inner.failExpecting.length === 0) {
+        this.expect(inner.failPos, null, inner.failToken);
+      }
+    }
+    return result;
+  }
+
+  // `string s`: Parsec's `tokens` reports the failure at the position the
+  // literal started at, but names the character where the comparison
+  // stopped as the unexpected one.
+  literal(s) {
+    if (this.src.startsWith(s, this.pos)) {
+      this.pos += s.length;
+      return true;
+    }
+    let i = 0;
+    while (i < s.length && this.src[this.pos + i] === s[i]) i += 1;
+    this.expect(this.pos, JSON.stringify(s), this.src[this.pos + i]);
+    return false;
+  }
+
+  char(c) {
+    if (this.src[this.pos] === c) {
+      this.pos += 1;
+      return true;
+    }
+    this.expect(this.pos, JSON.stringify(c));
+    return false;
+  }
+
+  // Upstream `ws`: spaces and tabs only.
+  ws() {
+    while (this.src[this.pos] === ' ' || this.src[this.pos] === '\t') {
+      this.pos += 1;
     }
   }
 
-  if (depth !== 0) {
-    throw new PostgRESTError(400, 'PGRST100',
-      'Unbalanced parentheses in logical operator value');
+  // Upstream `lexeme p`: ws *> p <* ws.
+  lexemeChar(c) {
+    const start = this.pos;
+    this.ws();
+    if (!this.char(c)) {
+      this.pos = start;
+      return false;
+    }
+    this.ws();
+    return true;
   }
-
-  const last = str.slice(start);
-  if (last) conditions.push(last);
-
-  return conditions;
 }
 
-function parseCondition(str, depth) {
-  const nestedMatch = str.match(/^(not\.)?(or|and)\((.*)?\)$/);
-  if (nestedMatch) {
-    const negate = !!nestedMatch[1];
-    const op = nestedMatch[2];
-    const inner = nestedMatch[3];
-    if (!inner) {
+function commasOr(labels) {
+  if (labels.length === 0) return 'unknown parse error';
+  if (labels.length === 1) return labels[0];
+  return `${labels.slice(0, -1).join(', ')} or ${labels[labels.length - 1]}`;
+}
+
+// Parsec shows the offending token as a Haskell String, so one
+// double-quoted character; past the end of the input it says
+// "end of input" instead.
+function unexpectedAt(sc) {
+  if (sc.failToken === undefined) return 'end of input';
+  return JSON.stringify(sc.failToken);
+}
+
+// Upstream `mapError`: message is `show (errorPos e)`, which prints the
+// source name Parsec was given followed by the position.
+function qpError(what, raw, sc) {
+  return new PostgRESTError(
+    400, 'PGRST100',
+    `"failed to parse ${what} (${raw})" (line 1, column `
+    + `${Math.max(sc.failPos, 0) + 1})`,
+    `unexpected ${unexpectedAt(sc)} `
+    + `expecting ${commasOr(sc.failExpecting)}`,
+  );
+}
+
+// Upstream `pDelimiter`: char '.' <?> "delimiter (.)".
+function pDelimiter(sc) {
+  return sc.labelled(LBL_DELIMITER, () => (sc.char('.') ? true : FAIL))
+    !== FAIL;
+}
+
+// Upstream `pNot`: try (string "not" *> pDelimiter) <|> pure False, then
+// `<?>`. Because the alternation succeeds without consuming input when
+// there is no `not.`, the label replaces whatever the failed attempt
+// expected — a plain `pure` still contributes its label to the error.
+function pNotPrefix(sc, label) {
+  const start = sc.pos;
+  const snap = sc.snapshot();
+  if (sc.literal('not') && pDelimiter(sc)) return true;
+  sc.pos = start;
+  if (label === null) return false;
+  sc.relabel(snap, label);
+  return false;
+}
+
+// Upstream `pQuotedValue`: char '"' *> many (noneOf "\\\"" | '\\' *> any)
+// <* char '"'. A backslash escapes the next character, whatever it is.
+function pQuotedValue(sc) {
+  const start = sc.pos;
+  if (!sc.char('"')) return FAIL;
+  let out = '';
+  for (;;) {
+    const ch = sc.src[sc.pos];
+    if (ch === undefined) {
+      sc.expect(sc.pos, '"\\""');
+      sc.pos = start;
+      return FAIL;
+    }
+    if (ch === '"') { sc.pos += 1; return out; }
+    if (ch === '\\') {
+      const next = sc.src[sc.pos + 1];
+      if (next === undefined) {
+        sc.expect(sc.pos + 1, 'any character');
+        sc.pos = start;
+        return FAIL;
+      }
+      out += next;
+      sc.pos += 2;
+      continue;
+    }
+    out += ch;
+    sc.pos += 1;
+  }
+}
+
+// Upstream `pIdentifier`: many1 pIdentifierChar, stripped.
+function pIdentifier(sc) {
+  const start = sc.pos;
+  while (sc.pos < sc.src.length && IDENT_CHAR.test(sc.src[sc.pos])) {
+    sc.pos += 1;
+  }
+  if (sc.pos === start) {
+    sc.expect(start, 'letter, digit, "_", " " or "$"');
+    return FAIL;
+  }
+  return sc.src.slice(start, sc.pos).trim();
+}
+
+// Upstream `pFieldName`: a quoted value, or identifiers joined by dashes
+// that are not the start of a `->` json arrow.
+function pFieldName(sc) {
+  return sc.labelled(LBL_FIELD_NAME, () => {
+    const start = sc.pos;
+    const quoted = pQuotedValue(sc);
+    if (quoted !== FAIL) return quoted;
+    const parts = [];
+    for (;;) {
+      const id = pIdentifier(sc);
+      if (id === FAIL) {
+        sc.pos = start;
+        return FAIL;
+      }
+      parts.push(id);
+      if (sc.src[sc.pos] === '-' && sc.src[sc.pos + 1] !== '>') {
+        sc.pos += 1;
+        continue;
+      }
+      return parts.join('-');
+    }
+  });
+}
+
+// --- JSON path -------------------------------------------------------------
+//
+// Upstream `pJsonPath`: `many (pJsonArrow <*> pJsonOperand)`, where the
+// operand is an array index (optionally negative, and only when the next
+// thing is `->`, `::`, `.`, `,` or the end of the input) or an object key.
+// A key is the widest possible thing: any run of characters that are not
+// one of `(-:.,>)`, with single dashes allowed inside it as long as they
+// are not the start of another arrow. That is what makes
+// `data->!@#$%^&*_d` and `data->23-xy-45` legal.
+
+const LBL_JSON_KEY = 'any non reserved character different from: .,>()';
+
+// Upstream `pJsonKeyIdentifier`: many1 (noneOf "(-:.,>)"), stripped.
+function pJsonKeyIdentifier(sc) {
+  const start = sc.pos;
+  while (sc.pos < sc.src.length) {
+    const ch = sc.src[sc.pos];
+    if (ch === '(' || ch === '-' || ch === ':' || ch === '.'
+        || ch === ',' || ch === '>' || ch === ')') break;
+    sc.pos += 1;
+  }
+  if (sc.pos === start) {
+    // `noneOf` is a bare `satisfy`: it names the offending character but
+    // has no expectation of its own.
+    sc.expect(start, null);
+    return FAIL;
+  }
+  return sc.src.slice(start, sc.pos).trim();
+}
+
+// Upstream `pJsonKeyName`: pQuotedValue <|> sepByDash pJsonKeyIdentifier,
+// relabelled as a whole (`<?>` is the loosest-binding operator).
+function pJsonKeyName(sc) {
+  return sc.labelledOwn(LBL_JSON_KEY, () => {
+    const start = sc.pos;
+    const quoted = pQuotedValue(sc);
+    if (quoted !== FAIL) return quoted;
+    sc.pos = start;
+    const parts = [];
+    for (;;) {
+      const id = pJsonKeyIdentifier(sc);
+      if (id === FAIL) {
+        // The first identifier failing is an empty failure, so the label
+        // applies; a later one has consumed the dash before it, which is
+        // a consuming failure the caller's `try` undoes.
+        if (parts.length === 0) sc.pos = start;
+        return FAIL;
+      }
+      parts.push(id);
+      if (sc.src[sc.pos] === '-' && sc.src[sc.pos + 1] !== '>') {
+        sc.pos += 1;
+        continue;
+      }
+      return parts.join('-');
+    }
+  });
+}
+
+// Upstream `pJIdx`: `option '+' (char '-')`, digits, then a lookahead that
+// stops a key like `-78xy` from being read as the index -78.
+function pJIdx(sc) {
+  const start = sc.pos;
+  let sign = '+';
+  if (sc.src[sc.pos] === '-') {
+    sign = '-';
+    sc.pos += 1;
+  } else {
+    sc.expect(sc.pos, '"-"');
+  }
+  const digitStart = sc.pos;
+  while (sc.pos < sc.src.length && sc.src[sc.pos] >= '0'
+      && sc.src[sc.pos] <= '9') {
+    sc.pos += 1;
+  }
+  if (sc.pos === digitStart) {
+    sc.expect(digitStart, 'digit');
+    sc.pos = start;
+    return FAIL;
+  }
+  const digits = sc.src.slice(digitStart, sc.pos);
+  // `many1 digit` stops here wanting one more digit, and says so.
+  sc.expect(sc.pos, 'digit');
+  const end = sc.pos;
+  const ahead = sc.src.slice(end, end + 2);
+  if (!(ahead.startsWith('->') || ahead.startsWith('::')
+      || ahead.startsWith('.') || ahead.startsWith(',')
+      || end >= sc.src.length)) {
+    for (const label of ['"->"', '"::"', '"."', '","', 'end of input']) {
+      sc.expect(end, label);
+    }
+    sc.pos = start;
+    return FAIL;
+  }
+  return sign + digits;
+}
+
+// Upstream `pJsonOperand`: try pJIdx <|> try pJKey.
+function pJsonOperand(sc) {
+  const start = sc.pos;
+  const idx = pJIdx(sc);
+  if (idx !== FAIL) return { kind: 'idx', value: idx };
+  sc.pos = start;
+  const key = pJsonKeyName(sc);
+  if (key !== FAIL) return { kind: 'key', value: key };
+  sc.pos = start;
+  return FAIL;
+}
+
+// Upstream `pJsonPath`. Returns [] when there is no arrow at all, and FAIL
+// when an arrow was consumed but no operand followed — `many` propagates a
+// failure that consumed input.
+function pJsonPath(sc) {
+  const path = [];
+  for (;;) {
+    const start = sc.pos;
+    let op;
+    if (sc.literal('->>')) op = '->>';
+    else if (sc.literal('->')) op = '->';
+    else { sc.pos = start; return path; }
+    const operand = pJsonOperand(sc);
+    if (operand === FAIL) return FAIL;
+    path.push({ op, kind: operand.kind, value: operand.value });
+  }
+}
+
+// Upstream `pField`: lexeme (pFieldName, optional json path).
+function pField(sc) {
+  sc.ws();
+  const name = pFieldName(sc);
+  if (name === FAIL) return FAIL;
+  const jsonPath = pJsonPath(sc);
+  if (jsonPath === FAIL) return FAIL;
+  sc.ws();
+  return { name, jsonPath };
+}
+
+// Upstream Plan.hs `addAliases`/`lastJsonKey`: a field with a json path is
+// labelled with the last key in the path. When the path ends in an index
+// the label is the last key before it, and when there is none it is the
+// column name — `select=data->1->mycol->>2` comes back as `mycol`,
+// `select=data->3` as `data`.
+function derivedJsonAlias(name, jsonPath) {
+  const last = jsonPath[jsonPath.length - 1];
+  if (last.kind === 'key') return last.value;
+  for (let i = jsonPath.length - 1; i >= 0; i--) {
+    if (jsonPath[i].kind === 'key') return jsonPath[i].value;
+  }
+  return name;
+}
+
+// --- Select items ----------------------------------------------------------
+//
+// Upstream `pFieldSelect`, in the order it tries its three alternatives:
+//
+//   *                                          (and nothing else)
+//   [alias:]count()[::cast]
+//   [alias:]field[jsonpath][::cast][.agg()][::cast]
+//
+// The bare `count()` alternative exists because the aggregate has no field
+// of its own; upstream models it as an aggregate over `*`.
+
+const AGG_FUNCTIONS = ['sum', 'avg', 'count', 'max', 'min'];
+
+// Upstream `pEnd` for a select item: `)`, `,` or end of input. The token
+// boundary the tokenizer already found is that position, so reaching it —
+// modulo the trailing whitespace `lexeme` allows — is what "ended" means.
+function pSelectEnd(sc, tokenEnd) {
+  const start = sc.pos;
+  sc.ws();
+  if (sc.pos === tokenEnd) return true;
+  for (const label of ['")"', '","', 'end of input']) {
+    sc.expect(sc.pos, label);
+  }
+  sc.pos = start;
+  return false;
+}
+
+// Upstream `optionMaybe (try (pFieldName <* aliasSeparator))`, where
+// `aliasSeparator` is a ':' not followed by another ':' — that is what
+// keeps `col::text` from being read as the alias `col`.
+function pOptAlias(sc) {
+  const start = sc.pos;
+  const name = pFieldName(sc);
+  if (name !== FAIL) {
+    if (sc.src[sc.pos] === ':' && sc.src[sc.pos + 1] !== ':') {
+      sc.pos += 1;
+      return name;
+    }
+    sc.expect(sc.pos, '":"');
+  }
+  sc.pos = start;
+  return null;
+}
+
+// Upstream `optionMaybe (string "::" *> pIdentifier)`. There is no `try`,
+// so a `::` with nothing usable after it fails the whole item; pgrest-lambda
+// names that mistake instead of reporting a parse position.
+function pOptCast(sc) {
+  const start = sc.pos;
+  if (!sc.literal('::')) { sc.pos = start; return null; }
+  const id = pIdentifier(sc);
+  if (id === FAIL) {
+    throw new PostgRESTError(400, 'PGRST100',
+      "Empty cast type after '::'");
+  }
+  return id;
+}
+
+function pAggregation(sc) {
+  for (const fn of AGG_FUNCTIONS) {
+    if (sc.literal(fn)) return fn;
+  }
+  return FAIL;
+}
+
+// Upstream `optionMaybe (try (char '.' *> pAggregation <* string "()"))`.
+function pOptAggregate(sc) {
+  const start = sc.pos;
+  if (!sc.char('.')) { sc.pos = start; return null; }
+  const fn = pAggregation(sc);
+  if (fn === FAIL || !sc.literal('()')) { sc.pos = start; return null; }
+  return fn;
+}
+
+function checkCast(cast) {
+  const type = cast.toLowerCase();
+  if (!ALLOWED_CAST_TYPES.has(type)) {
+    throw new PostgRESTError(400, 'PGRST100',
+      `Unsupported cast type '${cast}'`);
+  }
+  return type;
+}
+
+function pFieldSelect(sc, tokenEnd) {
+  sc.ws();
+  const start = sc.pos;
+
+  // `*` on its own.
+  if (sc.literal('*') && pSelectEnd(sc, tokenEnd)) {
+    return { type: 'column', name: '*' };
+  }
+  sc.pos = start;
+
+  // count() — an aggregate with no field.
+  const countAlias = pOptAlias(sc);
+  if (sc.literal('count()')) {
+    const aggCast = pOptCast(sc);
+    if (pSelectEnd(sc, tokenEnd)) {
+      return {
+        type: 'column', name: '*', agg: 'count',
+        alias: countAlias, aggCast,
+      };
+    }
+  }
+  sc.pos = start;
+
+  const alias = pOptAlias(sc);
+  const field = pField(sc);
+  if (field === FAIL) return FAIL;
+  const cast = pOptCast(sc);
+  const agg = pOptAggregate(sc);
+  const aggCast = pOptCast(sc);
+  if (!pSelectEnd(sc, tokenEnd)) return FAIL;
+  if (aggCast !== null && agg === null) {
+    // Upstream drops the second cast on the floor (`pgFmtApplyAggregate`
+    // ignores its cast when there is no aggregate). Rejecting it keeps the
+    // engine's long-standing "no double cast" error.
+    throw new PostgRESTError(400, 'PGRST100',
+      `Unsupported cast type '${cast}::${aggCast}'`);
+  }
+  return {
+    type: 'column', name: field.name, jsonPath: field.jsonPath,
+    alias, cast, agg, aggCast,
+  };
+}
+
+// Parse one select item out of `source` between two absolute offsets, and
+// turn it into a select node. Positions stay absolute so that a parse error
+// reports the column upstream reports.
+function parseFieldSelect(source, from, to) {
+  const sc = new Scanner(source);
+  sc.pos = from;
+  const item = pFieldSelect(sc, to);
+  if (item === FAIL) throw qpError('select parameter', source, sc);
+
+  const node = { type: 'column', name: item.name };
+  const jsonPath = item.jsonPath && item.jsonPath.length > 0
+    ? item.jsonPath
+    : null;
+  let alias = item.alias;
+  if (alias !== null && alias !== undefined) {
+    if (!ALIAS_IDENT.test(alias)) {
       throw new PostgRESTError(400, 'PGRST100',
-        `Empty condition list in '${op}' operator`);
+        `'${alias}' is not a valid identifier for an alias`);
     }
-    return parseLogicalGroup(op, negate, inner, depth + 1);
+  } else if (item.agg) {
+    // PostgreSQL labels an unaliased aggregate with the function name, so
+    // that is the JSON key upstream returns.
+    alias = item.agg;
+  } else if (jsonPath) {
+    alias = derivedJsonAlias(item.name, jsonPath);
+  } else {
+    alias = null;
   }
 
-  const dotIdx = str.indexOf('.');
-  if (dotIdx === -1) {
-    throw new PostgRESTError(400, 'PGRST100',
-      `"${str}" is not a valid filter condition`);
-  }
-
-  const column = str.slice(0, dotIdx);
-  const remainder = str.slice(dotIdx + 1);
-
-  return parseFilter(column, remainder);
+  if (jsonPath) node.jsonPath = jsonPath;
+  if (alias !== null) node.alias = alias;
+  if (item.cast) node.cast = checkCast(item.cast);
+  if (item.agg) node.agg = item.agg;
+  if (item.aggCast) node.aggCast = checkCast(item.aggCast);
+  return node;
 }
 
-function parseLogicalGroup(op, negate, raw, depth = 0) {
+// Upstream `pListElement`: a quoted value that is followed by nothing but
+// a delimiter, else everything up to the next ',' or ')'.
+function pListElement(sc) {
+  const start = sc.pos;
+  const quoted = pQuotedValue(sc);
+  if (quoted !== FAIL) {
+    const after = sc.src[sc.pos];
+    if (after === undefined || after === ',' || after === ')') return quoted;
+    sc.pos = start;
+  }
+  let out = '';
+  while (sc.pos < sc.src.length
+      && sc.src[sc.pos] !== ',' && sc.src[sc.pos] !== ')') {
+    out += sc.src[sc.pos];
+    sc.pos += 1;
+  }
+  return out;
+}
+
+// Upstream `pListVal`: lexeme '(' *> pListElement `sepBy1` ',' <* lexeme ')'.
+function pListVal(sc) {
+  const start = sc.pos;
+  if (!sc.lexemeChar('(')) { sc.pos = start; return FAIL; }
+  const elements = [pListElement(sc)];
+  while (sc.src[sc.pos] === ',') {
+    sc.pos += 1;
+    elements.push(pListElement(sc));
+  }
+  if (!sc.lexemeChar(')')) { sc.pos = start; return FAIL; }
+  return elements;
+}
+
+// Upstream `pSingleVal`: the whole remaining input.
+function pSingleVal(sc) {
+  const out = sc.src.slice(sc.pos);
+  sc.pos = sc.src.length;
+  return out;
+}
+
+// Upstream `pLogicSingleVal`: a quoted value, a `{...}` array literal, or
+// everything up to the next ',' or ')'.
+function pLogicSingleVal(sc) {
+  const start = sc.pos;
+  const quoted = pQuotedValue(sc);
+  if (quoted !== FAIL) {
+    const after = sc.src[sc.pos];
+    if (after === undefined || after === ',' || after === ')') return quoted;
+    sc.pos = start;
+  }
+  if (sc.src[sc.pos] === '{') {
+    const close = sc.src.indexOf('}', sc.pos + 1);
+    const inner = close === -1
+      ? null
+      : sc.src.slice(sc.pos + 1, close);
+    if (inner !== null && !inner.includes('{')) {
+      sc.pos = close + 1;
+      return `{${inner}}`;
+    }
+  }
+  let out = '';
+  while (sc.pos < sc.src.length
+      && sc.src[sc.pos] !== ',' && sc.src[sc.pos] !== ')') {
+    out += sc.src[sc.pos];
+    sc.pos += 1;
+  }
+  return out;
+}
+
+function matchOneOf(sc, tokens) {
+  for (const token of tokens) {
+    if (sc.literal(token)) return token;
+  }
+  return FAIL;
+}
+
+// Upstream `pOpExpr`: optional `not.`, then one operation. `valueParser`
+// is `pSingleVal` for a plain filter and `pLogicSingleVal` inside and()/or().
+function pOpExpr(sc, valueParser) {
+  // No `<?>` here, which is why an unparsable filter lists `"not"`
+  // alongside the operator label in its `details`.
+  const negate = pNotPrefix(sc, null);
+  const operation = sc.labelled(LBL_OPERATOR,
+    () => pOperation(sc, valueParser));
+  if (operation === FAIL) return FAIL;
+  return { negate, ...operation };
+}
+
+function pOperation(sc, valueParser) {
+  const start = sc.pos;
+
+  // in.(a,b) — once `in.` is consumed the failure is not recoverable,
+  // exactly as upstream's `pIn` has no outer `try`.
+  if (sc.literal('in') && pDelimiter(sc)) {
+    const list = pListVal(sc);
+    if (list === FAIL) return FAIL;
+    return { operator: 'in', value: list };
+  }
+  sc.pos = start;
+
+  // is.null / is.not_null / is.true / is.false / is.unknown
+  if (sc.literal('is') && pDelimiter(sc)) {
+    const word = sc.labelled(LBL_IS_VAL, () => pIsVal(sc));
+    if (word === FAIL) return FAIL;
+    return { operator: 'is', value: word };
+  }
+  sc.pos = start;
+
+  // isdistinct.value
+  if (sc.literal('isdistinct') && pDelimiter(sc)) {
+    return { operator: 'isdistinct', value: valueParser(sc) };
+  }
+  sc.pos = start;
+
+  // fts / plfts / phfts / wfts, with an optional text search config
+  const fts = matchOneOf(sc, FTS_OPERATORS);
+  if (fts !== FAIL) {
+    const lang = pParenthesized(sc, () => pIdentifier(sc));
+    if (!pDelimiter(sc)) { sc.pos = start; return FAIL; }
+    const node = { operator: fts, value: valueParser(sc) };
+    if (lang !== null) node.ftsLang = lang;
+    return node;
+  }
+  sc.pos = start;
+
+  // Single-value operators: no quantifier, and no `*` to `%` rewrite.
+  const simple = matchOneOf(sc, SIMPLE_OPERATORS);
+  if (simple !== FAIL) {
+    if (!pDelimiter(sc)) { sc.pos = start; return FAIL; }
+    return { operator: simple, value: valueParser(sc) };
+  }
+  sc.pos = start;
+
+  // Quantifiable operators, optionally `(any)` or `(all)`.
+  const quant = matchOneOf(sc, QUANT_OPERATORS);
+  if (quant !== FAIL) {
+    const quantifier = pParenthesized(sc,
+      () => matchOneOf(sc, ['any', 'all']));
+    if (!pDelimiter(sc)) { sc.pos = start; return FAIL; }
+    let value = valueParser(sc);
+    // Upstream rewrites `*` to `%` when emitting SQL for LIKE/ILIKE
+    // (`SqlFragment.star`); doing it here keeps the filter node the thing
+    // the SQL builder can use verbatim.
+    if (quant === 'like' || quant === 'ilike') {
+      value = value.replaceAll('*', '%');
+    }
+    const node = { operator: quant, value };
+    if (quantifier !== null) node.quantifier = quantifier;
+    return node;
+  }
+  sc.pos = start;
+  return FAIL;
+}
+
+// Upstream `pIsVal`: the five keywords, matched case-insensitively, each
+// behind its own `try`.
+function pIsVal(sc) {
+  for (const word of VALID_IS_VALUES) {
+    const slice = sc.src.slice(sc.pos, sc.pos + word.length);
+    if (slice.toLowerCase() === word) {
+      sc.pos += word.length;
+      return word;
+    }
+    sc.expect(sc.pos, JSON.stringify(word));
+  }
+  return FAIL;
+}
+
+// Upstream `optionMaybe $ try (between (char '(') (char ')') p)`: absent
+// is not an error, and a malformed group makes the whole optional group
+// vanish rather than failing the operator.
+function pParenthesized(sc, p) {
+  const start = sc.pos;
+  if (!sc.char('(')) { sc.pos = start; return null; }
+  const inner = p();
+  if (inner === FAIL || !sc.char(')')) { sc.pos = start; return null; }
+  return inner;
+}
+
+// Upstream `pTreePath` parses the parameter *name* as field names joined by
+// dots with an optional json path on the last one, so `?data->foo->>bar=eq.x`
+// filters on a json path. The dot-splitting for embedded filters has already
+// happened by the time this runs; what is left is one field name.
+function splitFilterKey(key) {
+  if (!key.includes('->')) return { column: key, jsonPath: null };
+  const sc = new Scanner(key);
+  const name = pFieldName(sc);
+  if (name === FAIL) return { column: key, jsonPath: null };
+  const jsonPath = pJsonPath(sc);
+  if (jsonPath === FAIL || jsonPath.length === 0 || !sc.done) {
+    return { column: key, jsonPath: null };
+  }
+  return { column: name, jsonPath };
+}
+
+function parseFilter(key, raw) {
+  const { column, jsonPath } = splitFilterKey(key);
+
+  // pgrest-lambda extension, kept for backwards compatibility:
+  // `?col=not_null` is shorthand for `?col=not.is.null`.
+  if (raw === 'not_null') {
+    const shorthand = {
+      type: 'filter', column, operator: 'is',
+      value: 'null', negate: true,
+    };
+    if (jsonPath) shorthand.jsonPath = jsonPath;
+    return shorthand;
+  }
+
+  const sc = new Scanner(raw);
+  const opExpr = pOpExpr(sc, pSingleVal);
+  if (opExpr === FAIL) throw qpError('filter', raw, sc);
+  const filter = { type: 'filter', column, ...opExpr };
+  if (jsonPath) filter.jsonPath = jsonPath;
+  return filter;
+}
+
+// Upstream `pLogicTree`:
+//   Stmnt <$> try pLogicFilter
+//   <|> Expr <$> pNot <*> pLogicOp
+//            <*> (lexeme '(' *> pLogicTree `sepBy1` lexeme ',' <* lexeme ')')
+function pLogicTree(sc, depth) {
   if (depth > MAX_NESTING_DEPTH) {
     throw new PostgRESTError(400, 'PGRST100',
       'Logical operator nesting exceeds maximum '
       + `depth of ${MAX_NESTING_DEPTH}`);
   }
 
-  if (raw.startsWith('(') && raw.endsWith(')')) {
-    raw = raw.slice(1, -1);
+  const start = sc.pos;
+
+  // try pLogicFilter — a leaf wins over the and()/or() branch, which is
+  // what makes a column called `and_starting_col` parse as a filter.
+  const field = pField(sc);
+  if (field !== FAIL && pDelimiter(sc)) {
+    const opExpr = pOpExpr(sc, pLogicSingleVal);
+    if (opExpr !== FAIL) {
+      const leaf = { type: 'filter', column: field.name, ...opExpr };
+      if (field.jsonPath.length > 0) leaf.jsonPath = field.jsonPath;
+      return leaf;
+    }
   }
+  sc.pos = start;
 
-  if (!raw) {
-    throw new PostgRESTError(400, 'PGRST100',
-      `Empty condition list in '${op}' operator`);
+  // Expr: pNot, a logic operator, then a parenthesised list of subtrees.
+  const negate = pNotPrefix(sc, LBL_LOGIC_NOT);
+
+  const logicalOp = sc.labelled(LBL_LOGIC_OP,
+    () => matchOneOf(sc, [...LOGICAL_OPS]));
+  if (logicalOp === FAIL) { sc.pos = start; return FAIL; }
+  if (!sc.lexemeChar('(')) { sc.pos = start; return FAIL; }
+
+  const conditions = [];
+  for (;;) {
+    const child = pLogicTree(sc, depth + 1);
+    if (child === FAIL) { sc.pos = start; return FAIL; }
+    conditions.push(child);
+    const beforeComma = sc.pos;
+    if (!sc.lexemeChar(',')) { sc.pos = beforeComma; break; }
   }
+  if (!sc.lexemeChar(')')) { sc.pos = start; return FAIL; }
 
-  const parts = splitConditions(raw);
-  const conditions = parts.map(c => parseCondition(c, depth));
+  return { type: 'logicalGroup', logicalOp, negate, conditions };
+}
 
-  return { type: 'logicalGroup', logicalOp: op, negate, conditions };
+// Upstream concatenates the parameter name and value so the tree is
+// regular: `?and=(a,b)` is parsed as `and(a,b)` and `?not.or=(a,b)` as
+// `not.or(a,b)`. Parsec's `parse` does not require end of input, so
+// trailing junk after the closing paren is ignored — `and=(a,b))` is a
+// 200 upstream, not a parse error.
+function parseLogicalGroup(op, negate, raw, depth = 0) {
+  const prefix = negate ? `not.${op}` : op;
+  const sc = new Scanner(prefix + raw);
+  const tree = pLogicTree(sc, depth);
+  if (tree === FAIL) throw qpError('logic tree', raw, sc);
+  return tree;
 }
 
 const VALID_ORDER_DIRECTIONS = new Set(['asc', 'desc']);
@@ -501,9 +1299,40 @@ const VALID_ORDER_NULLS = new Set(['nullsfirst', 'nullslast']);
 
 function parseOrder(raw) {
   return raw.split(',').map((entry) => {
-    const parts = entry.split('.');
-    const direction = parts[1] || 'asc';
-    const nulls = parts[2] || null;
+    // Upstream `pOrderTerm` parses a full field — name plus an optional json
+    // path — before the direction/nulls modifiers, so `order=data->>k.desc`
+    // sorts on the json path and not on a column called `data->>k`.
+    let column = entry;
+    let jsonPath = null;
+    let mods;
+    let rest = null;
+    if (entry.includes('->')) {
+      const sc = new Scanner(entry);
+      const name = pFieldName(sc);
+      const jp = name === FAIL ? FAIL : pJsonPath(sc);
+      if (name !== FAIL && jp !== FAIL && jp.length > 0) {
+        column = name;
+        jsonPath = jp;
+        rest = entry.slice(sc.pos);
+      }
+    }
+    if (jsonPath) {
+      mods = rest.startsWith('.') ? rest.slice(1).split('.')
+        : (rest ? rest.split('.') : []);
+    } else {
+      const parts = entry.split('.');
+      column = parts[0];
+      mods = parts.slice(1);
+    }
+
+    let direction = mods[0] || 'asc';
+    let nulls = mods[1] || null;
+    // `order=col.nullsfirst` — a nulls option with no direction is legal
+    // upstream (`optionMaybe pOrdDir` before `optionMaybe pNulls`).
+    if (mods.length === 1 && VALID_ORDER_NULLS.has(mods[0])) {
+      direction = 'asc';
+      nulls = mods[0];
+    }
     if (!VALID_ORDER_DIRECTIONS.has(direction)) {
       throw new PostgRESTError(
         400, 'PGRST100',
@@ -514,10 +1343,8 @@ function parseOrder(raw) {
         400, 'PGRST100',
         `Invalid nulls option '${nulls}'. Must be 'nullsfirst' or 'nullslast'`);
     }
-    return {
-      column: parts[0],
-      direction,
-      nulls,
-    };
+    const term = { column, direction, nulls };
+    if (jsonPath) term.jsonPath = jsonPath;
+    return term;
   });
 }

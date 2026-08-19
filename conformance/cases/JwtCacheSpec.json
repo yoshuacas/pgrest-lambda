@@ -1,0 +1,76 @@
+{
+  "source": "Feature/Auth/JwtCacheSpec.hs",
+  "extractedCases": 0,
+  "skippedSites": 2,
+  "needsConfigCases": 2,
+  "cases": [
+    {
+      "id": "JwtCacheSpec:59",
+      "source": "Feature/Auth/JwtCacheSpec.hs",
+      "line": 59,
+      "category": "auth",
+      "description": "JWT cache does not break requests with server-timing disabled",
+      "example": "JwtCacheSpec:it:55",
+      "request": {
+        "method": "GET",
+        "path": "/authors_only",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none",
+        "jwt": {
+          "alg": "HS256",
+          "secret": "reallyreallyreallyreallyverysafe",
+          "claims": {
+            "role": "postgrest_test_author"
+          }
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configServerTimingEnabled, configJwtCacheMaxEntries)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "JwtCacheSpec:60",
+      "source": "Feature/Auth/JwtCacheSpec.hs",
+      "line": 60,
+      "category": "auth",
+      "description": "JWT cache does not break requests with server-timing disabled",
+      "example": "JwtCacheSpec:it:55",
+      "request": {
+        "method": "GET",
+        "path": "/authors_only",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none",
+        "jwt": {
+          "alg": "HS256",
+          "secret": "reallyreallyreallyreallyverysafe",
+          "claims": {
+            "role": "postgrest_test_author"
+          }
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configServerTimingEnabled, configJwtCacheMaxEntries)",
+      "skipClass": "needs-engine-config"
+    }
+  ]
+}

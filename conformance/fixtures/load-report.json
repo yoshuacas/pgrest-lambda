@@ -1,0 +1,3346 @@
+{
+  "statementsTotal": 1116,
+  "statementsApplied": 1116,
+  "statementsFailed": 0,
+  "objects": {
+    "tables": 215,
+    "views": 80,
+    "functions": 153,
+    "domains": 23
+  },
+  "dropped": [
+    {
+      "object": "pgcrypto",
+      "kind": "extension",
+      "reason": "CREATE EXTENSION not supported by DSQL",
+      "affectsCategories": [
+        "rpc",
+        "select"
+      ]
+    },
+    {
+      "object": "alter database postgres set request.jwt.claim.id = '-1';",
+      "kind": "statement",
+      "reason": "ALTER DATABASE ... SET not supported by DSQL",
+      "affectsCategories": []
+    },
+    {
+      "object": "set client_min_messages to warning;",
+      "kind": "statement",
+      "reason": "session GUC not settable on DSQL",
+      "affectsCategories": []
+    },
+    {
+      "object": "drop schema if exists test, private, postgrest, jwt, public, تست, exte",
+      "kind": "statement",
+      "reason": "schema teardown moved to 00-reset.sql (DROP SCHEMA public is rejected: must be owner of schema public)",
+      "affectsCategories": []
+    },
+    {
+      "object": "drop type if exists jwt_token cascade;",
+      "kind": "statement",
+      "reason": "DROP of this object kind is rejected by DSQL (unsupported object in DROP statement)",
+      "affectsCategories": []
+    },
+    {
+      "object": "set check_function_bodies = false;",
+      "kind": "statement",
+      "reason": "session GUC not settable on DSQL",
+      "affectsCategories": []
+    },
+    {
+      "object": "set client_min_messages = error;",
+      "kind": "statement",
+      "reason": "session GUC not settable on DSQL",
+      "affectsCategories": []
+    },
+    {
+      "object": "public",
+      "kind": "statement",
+      "reason": "schema public already exists on DSQL and cannot be recreated (schema \"public\" already exists)",
+      "affectsCategories": []
+    },
+    {
+      "object": "public",
+      "kind": "statement",
+      "reason": "schema public already exists on DSQL and cannot be recreated (schema \"public\" already exists)",
+      "affectsCategories": []
+    },
+    {
+      "object": "extensions",
+      "kind": "schema",
+      "reason": "skipped to stay under the DSQL 10-schema limit (\"more than 10 schemas not allowed\"); it only holds postgis/isn objects DSQL cannot create anyway",
+      "affectsCategories": [
+        "select",
+        "rpc",
+        "media-types"
+      ]
+    },
+    {
+      "object": "comment on schema \"public\" is $$my api title my api description that s",
+      "kind": "statement",
+      "reason": "COMMENT ON SCHEMA public is rejected by DSQL (must be owner of schema public); the OpenAPI title/description carried by that comment is lost",
+      "affectsCategories": [
+        "openapi"
+      ]
+    },
+    {
+      "object": "plpgsql",
+      "kind": "extension",
+      "reason": "CREATE EXTENSION not supported by DSQL",
+      "affectsCategories": [
+        "rpc",
+        "select"
+      ]
+    },
+    {
+      "object": "pgcrypto",
+      "kind": "extension",
+      "reason": "CREATE EXTENSION not supported by DSQL",
+      "affectsCategories": [
+        "rpc",
+        "select"
+      ]
+    },
+    {
+      "object": "public.jwt_token",
+      "kind": "type",
+      "reason": "CREATE TYPE (composite) not supported by DSQL",
+      "affectsCategories": [
+        "rpc",
+        "select",
+        "openapi"
+      ]
+    },
+    {
+      "object": "public.enum_menagerie_type",
+      "kind": "type",
+      "reason": "CREATE TYPE (enum) not supported by DSQL",
+      "affectsCategories": [
+        "rpc",
+        "select",
+        "openapi"
+      ]
+    },
+    {
+      "object": "public.bit",
+      "kind": "type",
+      "reason": "CREATE TYPE (enum) not supported by DSQL",
+      "affectsCategories": [
+        "rpc",
+        "select",
+        "openapi"
+      ]
+    },
+    {
+      "object": "postgrest.check_role_exists",
+      "kind": "function",
+      "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "postgrest.set_authors_only_owner",
+      "kind": "function",
+      "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "postgrest.update_owner",
+      "kind": "function",
+      "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "set default_tablespace = '';",
+      "kind": "statement",
+      "reason": "session GUC not settable on DSQL",
+      "affectsCategories": []
+    },
+    {
+      "object": "set default_with_oids = false;",
+      "kind": "statement",
+      "reason": "session GUC not settable on DSQL",
+      "affectsCategories": []
+    },
+    {
+      "object": "public.text/xml",
+      "kind": "domain",
+      "reason": "base type pg_catalog.xml not supported by DSQL",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "public.search",
+      "kind": "function",
+      "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.public_orders_consumer_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.login",
+      "kind": "function",
+      "reason": "returns public.jwt_token, which DSQL cannot produce (datatype jwt_token not supported)",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "public.varied_arguments",
+      "kind": "function",
+      "reason": "parameter type enum_menagerie_type does not exist on DSQL",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "comment on function varied_arguments(double precision, chara",
+      "kind": "statement",
+      "reason": "references type enum_menagerie_type, which DSQL could not create",
+      "affectsCategories": []
+    },
+    {
+      "object": "public.varied_arguments_openapi",
+      "kind": "function",
+      "reason": "parameter type enum_menagerie_type does not exist on DSQL",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "comment on function varied_arguments_openapi(double precisio",
+      "kind": "statement",
+      "reason": "references type enum_menagerie_type, which DSQL could not create",
+      "affectsCategories": []
+    },
+    {
+      "object": "public.jwt_test",
+      "kind": "function",
+      "reason": "returns public.jwt_token, which DSQL cannot produce (datatype jwt_token not supported)",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "public.switch_role",
+      "kind": "function",
+      "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.assert",
+      "kind": "function",
+      "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.problem",
+      "kind": "function",
+      "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.reset_sequence",
+      "kind": "function",
+      "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.complex_items.arr_data",
+      "kind": "column",
+      "reason": "column type integer[] not supported by DSQL",
+      "affectsCategories": [
+        "filters",
+        "select"
+      ]
+    },
+    {
+      "object": "public.private_table",
+      "kind": "table",
+      "reason": "every column uses a type DSQL does not support",
+      "affectsCategories": [
+        "select",
+        "embedding",
+        "insert",
+        "update",
+        "delete"
+      ]
+    },
+    {
+      "object": "public.materialized_view",
+      "kind": "materialized-view",
+      "reason": "materialized views not supported by DSQL (unsupported statement: CreateTableAs)",
+      "affectsCategories": [
+        "select",
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.menagerie.money",
+      "kind": "column",
+      "reason": "column type money not supported by DSQL",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "public.menagerie.enum",
+      "kind": "column",
+      "reason": "column type enum_menagerie_type not supported by DSQL",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "public.client",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.competitors_sponsor_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "test_null_pk_competitors_sponsors",
+      "kind": "rule",
+      "reason": "CREATE RULE not supported by DSQL (unsupported statement: Rule)",
+      "affectsCategories": [
+        "insert"
+      ]
+    },
+    {
+      "object": "public.users_projects_user_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.users_projects_project_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.project",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.users_tasks_user_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.users_tasks_task_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.user",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.comments_task_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.fk_users_tasks",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.fk_upload",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "private.article",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "private.user",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.tsearch.text_search_vector",
+      "kind": "column",
+      "reason": "column type tsvector not supported by DSQL",
+      "affectsCategories": [
+        "filters"
+      ]
+    },
+    {
+      "object": "public.tsearch",
+      "kind": "table",
+      "reason": "every column uses a type DSQL does not support",
+      "affectsCategories": [
+        "select",
+        "embedding",
+        "insert",
+        "update",
+        "delete"
+      ]
+    },
+    {
+      "object": "public.ghostBusters_escapeId_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "ensure_auth_role_exists",
+      "kind": "trigger",
+      "reason": "CREATE TRIGGER not supported by DSQL (trigger functions require plpgsql)",
+      "affectsCategories": [
+        "insert",
+        "update",
+        "rpc"
+      ]
+    },
+    {
+      "object": "articles_owner_track",
+      "kind": "trigger",
+      "reason": "CREATE TRIGGER not supported by DSQL (trigger functions require plpgsql)",
+      "affectsCategories": [
+        "insert",
+        "update",
+        "rpc"
+      ]
+    },
+    {
+      "object": "secrets_owner_track",
+      "kind": "trigger",
+      "reason": "CREATE TRIGGER not supported by DSQL (trigger functions require plpgsql)",
+      "affectsCategories": [
+        "insert",
+        "update",
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.has_fk_fk_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.has_fk_simple_fk_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.billing",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.shipping",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.projects_domain",
+      "kind": "domain",
+      "reason": "domain over the row type of table public.projects not supported by DSQL (datatype projects not supported)",
+      "affectsCategories": [
+        "rpc",
+        "select",
+        "openapi"
+      ]
+    },
+    {
+      "object": "public.getproject_domain",
+      "kind": "function",
+      "reason": "returns projects_domain, which DSQL cannot produce (datatype projects_domain not supported)",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "public.ret_enum",
+      "kind": "function",
+      "reason": "returns \"public\".enum_menagerie_type, which DSQL cannot produce (datatype enum_menagerie_type not supported)",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "public.ret_range",
+      "kind": "function",
+      "reason": "returns int4range, which DSQL cannot produce (datatype int4range not supported)",
+      "affectsCategories": [
+        "filters"
+      ]
+    },
+    {
+      "object": "public.ret_scalars",
+      "kind": "function",
+      "reason": "parameter type b \"public\".enum_menagerie_type does not exist on DSQL",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "public.point_2d",
+      "kind": "type",
+      "reason": "CREATE TYPE (composite) not supported by DSQL",
+      "affectsCategories": [
+        "rpc",
+        "select",
+        "openapi"
+      ]
+    },
+    {
+      "object": "public.ret_point_2d",
+      "kind": "function",
+      "reason": "returns \"public\".point_2d, which DSQL cannot produce (datatype point_2d not supported)",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "public.ret_point_overloaded",
+      "kind": "function",
+      "reason": "returns \"public\".point_2d, which DSQL cannot produce (datatype point_2d not supported)",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "public.ret_point_overloaded",
+      "kind": "function",
+      "reason": "depends on function public.ret_point_overloaded, which DSQL could not create",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.composite_domain",
+      "kind": "domain",
+      "reason": "base type \"public\".point_2d not supported by DSQL",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "public.ret_composite_domain",
+      "kind": "function",
+      "reason": "returns \"public\".composite_domain, which DSQL cannot produce (datatype composite_domain not supported)",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "private.point_3d",
+      "kind": "type",
+      "reason": "CREATE TYPE (composite) not supported by DSQL",
+      "affectsCategories": [
+        "rpc",
+        "select",
+        "openapi"
+      ]
+    },
+    {
+      "object": "public.ret_point_3d",
+      "kind": "function",
+      "reason": "returns private.point_3d, which DSQL cannot produce (datatype point_3d not supported)",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "public.entities.arr",
+      "kind": "column",
+      "reason": "column type integer[] not supported by DSQL",
+      "affectsCategories": [
+        "filters",
+        "select"
+      ]
+    },
+    {
+      "object": "public.entities.text_search_vector",
+      "kind": "column",
+      "reason": "column type tsvector not supported by DSQL",
+      "affectsCategories": [
+        "filters"
+      ]
+    },
+    {
+      "object": "public.child_entities_parent_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.grandchild_entities_parent_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.ranges.range",
+      "kind": "column",
+      "reason": "column type numrange not supported by DSQL",
+      "affectsCategories": [
+        "filters"
+      ]
+    },
+    {
+      "object": "public.get_tsearch",
+      "kind": "function",
+      "reason": "depends on relation public.tsearch, which DSQL could not create",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.descendant_being_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.being_part_being_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.being_part_part_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.raise_pt402",
+      "kind": "function",
+      "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.raise_bad_pt",
+      "kind": "function",
+      "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.send_body_status_403",
+      "kind": "function",
+      "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.send_bad_status",
+      "kind": "function",
+      "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.get_projects_and_guc_headers",
+      "kind": "function",
+      "reason": "SET response.headers is rejected by DSQL (setting configuration parameter \"response.headers\" not supported)",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.get_int_and_guc_headers",
+      "kind": "function",
+      "reason": "SET response.headers is rejected by DSQL (setting configuration parameter \"response.headers\" not supported)",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.bad_guc_headers_1",
+      "kind": "function",
+      "reason": "SET response.headers is rejected by DSQL (setting configuration parameter \"response.headers\" not supported)",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.bad_guc_headers_2",
+      "kind": "function",
+      "reason": "SET response.headers is rejected by DSQL (setting configuration parameter \"response.headers\" not supported)",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.bad_guc_headers_3",
+      "kind": "function",
+      "reason": "SET response.headers is rejected by DSQL (setting configuration parameter \"response.headers\" not supported)",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.set_cookie_twice",
+      "kind": "function",
+      "reason": "SET response.headers is rejected by DSQL (setting configuration parameter \"response.headers\" not supported)",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.leak",
+      "kind": "function",
+      "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.employees.salary",
+      "kind": "column",
+      "reason": "column type money not supported by DSQL",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "public.pptr",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.organizations_referee_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.organizations_auditor_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.manager",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "private.books_author_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "private.books_first_publisher_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.message_sender_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.message_recipient_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.zone_space_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "file_fdw",
+      "kind": "extension",
+      "reason": "CREATE EXTENSION not supported by DSQL",
+      "affectsCategories": [
+        "rpc",
+        "select"
+      ]
+    },
+    {
+      "object": "create server import_csv foreign data wrapper file_fdw;",
+      "kind": "statement",
+      "reason": "object kind not supported by DSQL",
+      "affectsCategories": []
+    },
+    {
+      "object": "create foreign table projects_dump ( id integer, name text, client_id ",
+      "kind": "statement",
+      "reason": "object kind not supported by DSQL",
+      "affectsCategories": []
+    },
+    {
+      "object": "comment on foreign table projects_dump is $$a temporary projects dump ",
+      "kind": "statement",
+      "reason": "COMMENT on this object kind is rejected by DSQL (unsupported COMMENT statement)",
+      "affectsCategories": []
+    },
+    {
+      "object": "public.bar_fooId_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.materialized_projects",
+      "kind": "materialized-view",
+      "reason": "materialized views not supported by DSQL (unsupported statement: CreateTableAs)",
+      "affectsCategories": [
+        "select",
+        "embedding"
+      ]
+    },
+    {
+      "object": "comment on materialized view materialized_projects is $$a materialized",
+      "kind": "statement",
+      "reason": "COMMENT on this object kind is rejected by DSQL (unsupported COMMENT statement)",
+      "affectsCategories": []
+    },
+    {
+      "object": "public.test_for_views_with_triggers",
+      "kind": "function",
+      "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "projects_view_with_all_triggers_with_pk_insert",
+      "kind": "trigger",
+      "reason": "CREATE TRIGGER not supported by DSQL (trigger functions require plpgsql)",
+      "affectsCategories": [
+        "insert",
+        "update",
+        "rpc"
+      ]
+    },
+    {
+      "object": "projects_view_with_all_triggers_with_pk_update",
+      "kind": "trigger",
+      "reason": "CREATE TRIGGER not supported by DSQL (trigger functions require plpgsql)",
+      "affectsCategories": [
+        "insert",
+        "update",
+        "rpc"
+      ]
+    },
+    {
+      "object": "projects_view_with_all_triggers_with_pk_delete",
+      "kind": "trigger",
+      "reason": "CREATE TRIGGER not supported by DSQL (trigger functions require plpgsql)",
+      "affectsCategories": [
+        "insert",
+        "update",
+        "rpc"
+      ]
+    },
+    {
+      "object": "projects_view_with_all_triggers_without_pk_insert",
+      "kind": "trigger",
+      "reason": "CREATE TRIGGER not supported by DSQL (trigger functions require plpgsql)",
+      "affectsCategories": [
+        "insert",
+        "update",
+        "rpc"
+      ]
+    },
+    {
+      "object": "projects_view_with_all_triggers_without_pk_update",
+      "kind": "trigger",
+      "reason": "CREATE TRIGGER not supported by DSQL (trigger functions require plpgsql)",
+      "affectsCategories": [
+        "insert",
+        "update",
+        "rpc"
+      ]
+    },
+    {
+      "object": "projects_view_with_all_triggers_without_pk_delete",
+      "kind": "trigger",
+      "reason": "CREATE TRIGGER not supported by DSQL (trigger functions require plpgsql)",
+      "affectsCategories": [
+        "insert",
+        "update",
+        "rpc"
+      ]
+    },
+    {
+      "object": "projects_view_with_insert_trigger_insert",
+      "kind": "trigger",
+      "reason": "CREATE TRIGGER not supported by DSQL (trigger functions require plpgsql)",
+      "affectsCategories": [
+        "insert",
+        "update",
+        "rpc"
+      ]
+    },
+    {
+      "object": "projects_view_with_update_trigger_update",
+      "kind": "trigger",
+      "reason": "CREATE TRIGGER not supported by DSQL (trigger functions require plpgsql)",
+      "affectsCategories": [
+        "insert",
+        "update",
+        "rpc"
+      ]
+    },
+    {
+      "object": "projects_view_with_delete_trigger_delete",
+      "kind": "trigger",
+      "reason": "CREATE TRIGGER not supported by DSQL (trigger functions require plpgsql)",
+      "affectsCategories": [
+        "insert",
+        "update",
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.contract.time",
+      "kind": "column",
+      "reason": "column type tsrange not supported by DSQL",
+      "affectsCategories": [
+        "filters"
+      ]
+    },
+    {
+      "object": "public.contract_last_name_id_first_name_birth_date_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.my_type",
+      "kind": "type",
+      "reason": "CREATE TYPE (enum) not supported by DSQL",
+      "affectsCategories": [
+        "rpc",
+        "select",
+        "openapi"
+      ]
+    },
+    {
+      "object": "public.test_arg",
+      "kind": "function",
+      "reason": "parameter type my_arg public.my_type does not exist on DSQL",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "ltree",
+      "kind": "extension",
+      "reason": "CREATE EXTENSION not supported by DSQL",
+      "affectsCategories": [
+        "rpc",
+        "select"
+      ]
+    },
+    {
+      "object": "public.ltree_sample.path",
+      "kind": "column",
+      "reason": "column type public.ltree not supported by DSQL",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "public.ltree_sample",
+      "kind": "table",
+      "reason": "every column uses a type DSQL does not support",
+      "affectsCategories": [
+        "select",
+        "embedding",
+        "insert",
+        "update",
+        "delete"
+      ]
+    },
+    {
+      "object": "public.number_of_labels",
+      "kind": "function",
+      "reason": "depends on relation public.ltree_sample, which DSQL could not create",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "isn",
+      "kind": "extension",
+      "reason": "CREATE EXTENSION not supported by DSQL",
+      "affectsCategories": [
+        "rpc",
+        "select"
+      ]
+    },
+    {
+      "object": "public.isn_sample.id",
+      "kind": "column",
+      "reason": "column type extensions.isbn not supported by DSQL",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "public.is_valid_isbn",
+      "kind": "function",
+      "reason": "depends on function is_valid() (extension function), which DSQL could not create",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.openapi_types.a_text_arr",
+      "kind": "column",
+      "reason": "column type text[] not supported by DSQL",
+      "affectsCategories": [
+        "filters",
+        "select"
+      ]
+    },
+    {
+      "object": "public.openapi_types.a_int_arr",
+      "kind": "column",
+      "reason": "column type int[] not supported by DSQL",
+      "affectsCategories": [
+        "filters",
+        "select"
+      ]
+    },
+    {
+      "object": "public.openapi_types.a_bool_arr",
+      "kind": "column",
+      "reason": "column type boolean[] not supported by DSQL",
+      "affectsCategories": [
+        "filters",
+        "select"
+      ]
+    },
+    {
+      "object": "public.openapi_types.a_char_arr",
+      "kind": "column",
+      "reason": "column type char[] not supported by DSQL",
+      "affectsCategories": [
+        "filters",
+        "select"
+      ]
+    },
+    {
+      "object": "public.openapi_types.a_varchar_arr",
+      "kind": "column",
+      "reason": "column type varchar[] not supported by DSQL",
+      "affectsCategories": [
+        "filters",
+        "select"
+      ]
+    },
+    {
+      "object": "public.openapi_types.a_bigint_arr",
+      "kind": "column",
+      "reason": "column type bigint[] not supported by DSQL",
+      "affectsCategories": [
+        "filters",
+        "select"
+      ]
+    },
+    {
+      "object": "public.openapi_types.a_numeric_arr",
+      "kind": "column",
+      "reason": "column type numeric[] not supported by DSQL",
+      "affectsCategories": [
+        "filters",
+        "select"
+      ]
+    },
+    {
+      "object": "public.openapi_types.a_json_arr",
+      "kind": "column",
+      "reason": "column type json[] not supported by DSQL",
+      "affectsCategories": [
+        "filters",
+        "select"
+      ]
+    },
+    {
+      "object": "public.openapi_types.a_jsonb_arr",
+      "kind": "column",
+      "reason": "column type jsonb[] not supported by DSQL",
+      "affectsCategories": [
+        "filters",
+        "select"
+      ]
+    },
+    {
+      "object": "public.root",
+      "kind": "function",
+      "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.web_content_p_web_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "private.referrals_link_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.main_project",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.jobs_site_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.jobs_big_project_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.whatev_jobs_site_id_1_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.whatev_jobs_project_id_1_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.whatev_jobs_site_id_2_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.whatev_jobs_project_id_2_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.departments_head_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.agents_department_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.schedule",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.fst_shift",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.snd_shift",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.custom_headers",
+      "kind": "function",
+      "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.location_for_stuff",
+      "kind": "function",
+      "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "location_for_stuff",
+      "kind": "trigger",
+      "reason": "CREATE TRIGGER not supported by DSQL (trigger functions require plpgsql)",
+      "affectsCategories": [
+        "insert",
+        "update",
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.status_205_for_updated_stuff",
+      "kind": "function",
+      "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "status_205_for_updated_stuff",
+      "kind": "trigger",
+      "reason": "CREATE TRIGGER not supported by DSQL (trigger functions require plpgsql)",
+      "affectsCategories": [
+        "insert",
+        "update",
+        "rpc"
+      ]
+    },
+    {
+      "object": "v1.parent",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "v2.parent",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "drop aggregate if exists v2.special_agg(v2.another_table);",
+      "kind": "statement",
+      "reason": "DROP of this object kind is rejected by DSQL (unsupported object in DROP statement)",
+      "affectsCategories": []
+    },
+    {
+      "object": "v2.special_agg",
+      "kind": "aggregate",
+      "reason": "CREATE AGGREGATE not supported by DSQL (unsupported statement: Define)",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "drop aggregate if exists v2.plain_agg(v2.another_table);",
+      "kind": "statement",
+      "reason": "DROP of this object kind is rejected by DSQL (unsupported object in DROP statement)",
+      "affectsCategories": []
+    },
+    {
+      "object": "v2.plain_agg",
+      "kind": "aggregate",
+      "reason": "CREATE AGGREGATE not supported by DSQL (unsupported statement: Define)",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "private.label_screen_label_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "private.label_screen_screen_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "private.personnages_film_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "private.personnages_role_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "private.junction_end_1_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "private.junction_end_2_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.rollen",
+      "kind": "table",
+      "reason": "every column uses a type DSQL does not support",
+      "affectsCategories": [
+        "select",
+        "embedding",
+        "insert",
+        "update",
+        "delete"
+      ]
+    },
+    {
+      "object": "private.rollen_film_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "private.rollen_rolle_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.car_models",
+      "kind": "partitioned-table",
+      "reason": "PARTITION BY / PARTITION OF not supported by DSQL",
+      "affectsCategories": [
+        "embedding",
+        "select"
+      ]
+    },
+    {
+      "object": "comment on table \"public\".car_models is $$a partitioned tabl",
+      "kind": "statement",
+      "reason": "references relation public.car_models, which DSQL could not create",
+      "affectsCategories": []
+    },
+    {
+      "object": "public.car_models_2021",
+      "kind": "partitioned-table",
+      "reason": "PARTITION BY / PARTITION OF not supported by DSQL",
+      "affectsCategories": [
+        "embedding",
+        "select"
+      ]
+    },
+    {
+      "object": "public.car_models_default",
+      "kind": "partitioned-table",
+      "reason": "PARTITION BY / PARTITION OF not supported by DSQL",
+      "affectsCategories": [
+        "embedding",
+        "select"
+      ]
+    },
+    {
+      "object": "alter table \"public\".car_models add primary key (name, year)",
+      "kind": "statement",
+      "reason": "target public.car_models was dropped",
+      "affectsCategories": []
+    },
+    {
+      "object": "alter table \"public\".car_models add column car_brand_name va",
+      "kind": "statement",
+      "reason": "target public.car_models was dropped",
+      "affectsCategories": []
+    },
+    {
+      "object": "public.car_model_sales",
+      "kind": "partitioned-table",
+      "reason": "PARTITION BY / PARTITION OF not supported by DSQL",
+      "affectsCategories": [
+        "embedding",
+        "select"
+      ]
+    },
+    {
+      "object": "public.car_model_sales_202101",
+      "kind": "partitioned-table",
+      "reason": "PARTITION BY / PARTITION OF not supported by DSQL",
+      "affectsCategories": [
+        "embedding",
+        "select"
+      ]
+    },
+    {
+      "object": "public.car_model_sales_default",
+      "kind": "partitioned-table",
+      "reason": "PARTITION BY / PARTITION OF not supported by DSQL",
+      "affectsCategories": [
+        "embedding",
+        "select"
+      ]
+    },
+    {
+      "object": "public.car_racers_car_model_name_car_model_year_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.car_racers",
+      "kind": "table",
+      "reason": "depends on relation public.car_models, which DSQL could not create",
+      "affectsCategories": [
+        "select",
+        "embedding",
+        "insert",
+        "update",
+        "delete"
+      ]
+    },
+    {
+      "object": "public.car_dealers",
+      "kind": "partitioned-table",
+      "reason": "PARTITION BY / PARTITION OF not supported by DSQL",
+      "affectsCategories": [
+        "embedding",
+        "select"
+      ]
+    },
+    {
+      "object": "public.car_dealers_springfield",
+      "kind": "partitioned-table",
+      "reason": "PARTITION BY / PARTITION OF not supported by DSQL",
+      "affectsCategories": [
+        "embedding",
+        "select"
+      ]
+    },
+    {
+      "object": "public.car_dealers_default",
+      "kind": "partitioned-table",
+      "reason": "PARTITION BY / PARTITION OF not supported by DSQL",
+      "affectsCategories": [
+        "embedding",
+        "select"
+      ]
+    },
+    {
+      "object": "public.car_models_car_dealers",
+      "kind": "partitioned-table",
+      "reason": "PARTITION BY / PARTITION OF not supported by DSQL",
+      "affectsCategories": [
+        "embedding",
+        "select"
+      ]
+    },
+    {
+      "object": "public.car_models_car_dealers_10to20",
+      "kind": "partitioned-table",
+      "reason": "PARTITION BY / PARTITION OF not supported by DSQL",
+      "affectsCategories": [
+        "embedding",
+        "select"
+      ]
+    },
+    {
+      "object": "public.car_models_car_dealers_default",
+      "kind": "partitioned-table",
+      "reason": "PARTITION BY / PARTITION OF not supported by DSQL",
+      "affectsCategories": [
+        "embedding",
+        "select"
+      ]
+    },
+    {
+      "object": "public.unnamed_xml_param",
+      "kind": "function",
+      "reason": "returns \"text/xml\", which DSQL cannot produce (datatype text/xml not supported)",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "public.products_suppliers_product_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.products_suppliers_supplier_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.suppliers_trade_unions_supplier_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.suppliers_trade_unions_trade_union_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.contact_clientid_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.clientinfo_clientid_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.raise_constraint",
+      "kind": "function",
+      "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.xml",
+      "kind": "view",
+      "reason": "depends on feature xmltable, which DSQL could not create",
+      "affectsCategories": [
+        "select",
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.complex",
+      "kind": "type",
+      "reason": "CREATE TYPE (composite) not supported by DSQL",
+      "affectsCategories": [
+        "rpc",
+        "select",
+        "openapi"
+      ]
+    },
+    {
+      "object": "public.fav_numbers.num",
+      "kind": "column",
+      "reason": "column type complex not supported by DSQL",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "public.arrays.numbers",
+      "kind": "column",
+      "reason": "column type int[] not supported by DSQL",
+      "affectsCategories": [
+        "filters",
+        "select"
+      ]
+    },
+    {
+      "object": "public.arrays.numbers_mult",
+      "kind": "column",
+      "reason": "column type int[][] not supported by DSQL",
+      "affectsCategories": [
+        "filters",
+        "select"
+      ]
+    },
+    {
+      "object": "public.unsupported_proc",
+      "kind": "procedure",
+      "reason": "PROCEDURE is not supported by DSQL",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.unsupported_agg",
+      "kind": "aggregate",
+      "reason": "CREATE AGGREGATE not supported by DSQL (unsupported statement: Define)",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.reset_table",
+      "kind": "function",
+      "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.well_parent_well_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.well_plate_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.plate_plan_step_from_well_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.plate_plan_step_to_plate_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.plate_plan_step_to_well_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.return_scalar_xml",
+      "kind": "function",
+      "reason": "returns \"text/xml\", which DSQL cannot produce (datatype text/xml not supported)",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "public.welcome.xml",
+      "kind": "function",
+      "reason": "returns \"text/xml\", which DSQL cannot produce (datatype text/xml not supported)",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "public.xmltest.xml",
+      "kind": "column",
+      "reason": "column type pg_catalog.xml not supported by DSQL",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "public.xmltest",
+      "kind": "table",
+      "reason": "depends on relation public.xml, which DSQL could not create",
+      "affectsCategories": [
+        "select",
+        "embedding",
+        "insert",
+        "update",
+        "delete"
+      ]
+    },
+    {
+      "object": "public.xml_handler_transition",
+      "kind": "function",
+      "reason": "returns \"text/xml\", which DSQL cannot produce (datatype text/xml not supported)",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "public.xml_handler_final",
+      "kind": "function",
+      "reason": "returns \"text/xml\", which DSQL cannot produce (datatype text/xml not supported)",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "drop aggregate if exists \"public\".text_xml_agg(\"public\".xmltest);",
+      "kind": "statement",
+      "reason": "DROP of this object kind is rejected by DSQL (unsupported object in DROP statement)",
+      "affectsCategories": []
+    },
+    {
+      "object": "public.text_xml_agg",
+      "kind": "aggregate",
+      "reason": "CREATE AGGREGATE not supported by DSQL (unsupported statement: Define)",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.oid_test.oid_array_col",
+      "kind": "column",
+      "reason": "column type oid[] not supported by DSQL",
+      "affectsCategories": [
+        "filters",
+        "select"
+      ]
+    },
+    {
+      "object": "private.parent_fk",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.adaptation_notifications_series_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.parent_test",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "postgis",
+      "kind": "extension",
+      "reason": "CREATE EXTENSION not supported by DSQL",
+      "affectsCategories": [
+        "rpc",
+        "select"
+      ]
+    },
+    {
+      "object": "public.shops.shop_geom",
+      "kind": "column",
+      "reason": "column type extensions.geometry(point, 4326) not supported by DSQL",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "public.shop_bles.coords",
+      "kind": "column",
+      "reason": "column type extensions.geometry(point, 4326) not supported by DSQL",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "public.shop_bles.range_area",
+      "kind": "column",
+      "reason": "column type extensions.geometry(polygon, 4326) not supported by DSQL",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "public.shop_bles_shop_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "SPECIAL \"@/\\#~_-.names_language_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.load_safeupdate",
+      "kind": "function",
+      "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "CREATE CAST (public.titlecasetext AS json) WITH FUNCTION \"json\"(public.titlecase",
+      "kind": "cast",
+      "reason": "CREATE CAST not supported by DSQL",
+      "affectsCategories": [
+        "media-types",
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.videogames_designer_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.students_info_code_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.capital_country_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.first_second_id_1_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.first_second_id_2_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.first_1_second_id_1_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.first_1_second_id_2_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.janedoe_baz_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.johnsmith_fee_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.johnsmith_baz_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.b_c1_c2_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.with_multiple_pks_insert",
+      "kind": "function",
+      "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "ins",
+      "kind": "trigger",
+      "reason": "CREATE TRIGGER not supported by DSQL (trigger functions require plpgsql)",
+      "affectsCategories": [
+        "insert",
+        "update",
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.i2459_simple_t2_t1_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.i2459_composite_t2_t1_a_t1_b_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.i2459_self_t_parent_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.tb_b1_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.tb_b1_b2_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.trash_details_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.group_yard_group_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.group_yard_yard_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.subscriptions_subscriber_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.subscriptions_subscribed_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "CREATE CAST (public.color AS json) WITH FUNCTION \"json\"(public.color) AS IMPLICI",
+      "kind": "cast",
+      "reason": "CREATE CAST not supported by DSQL",
+      "affectsCategories": [
+        "media-types",
+        "rpc"
+      ]
+    },
+    {
+      "object": "CREATE CAST (json AS public.color) WITH FUNCTION color(json) AS IMPLICIT;",
+      "kind": "cast",
+      "reason": "CREATE CAST not supported by DSQL",
+      "affectsCategories": [
+        "media-types",
+        "rpc"
+      ]
+    },
+    {
+      "object": "CREATE CAST (text AS public.color) WITH FUNCTION color(text) AS IMPLICIT;",
+      "kind": "cast",
+      "reason": "CREATE CAST not supported by DSQL",
+      "affectsCategories": [
+        "media-types",
+        "rpc"
+      ]
+    },
+    {
+      "object": "CREATE CAST (public.isodate AS json) WITH FUNCTION \"json\"(public.isodate) AS IMP",
+      "kind": "cast",
+      "reason": "CREATE CAST not supported by DSQL",
+      "affectsCategories": [
+        "media-types",
+        "rpc"
+      ]
+    },
+    {
+      "object": "CREATE CAST (json AS public.isodate) WITH FUNCTION isodate(json) AS IMPLICIT;",
+      "kind": "cast",
+      "reason": "CREATE CAST not supported by DSQL",
+      "affectsCategories": [
+        "media-types",
+        "rpc"
+      ]
+    },
+    {
+      "object": "CREATE CAST (public.bytea_b64 AS json) WITH FUNCTION \"json\"(public.bytea_b64) AS",
+      "kind": "cast",
+      "reason": "CREATE CAST not supported by DSQL",
+      "affectsCategories": [
+        "media-types",
+        "rpc"
+      ]
+    },
+    {
+      "object": "CREATE CAST (json AS public.bytea_b64) WITH FUNCTION bytea_b64(json) AS IMPLICIT",
+      "kind": "cast",
+      "reason": "CREATE CAST not supported by DSQL",
+      "affectsCategories": [
+        "media-types",
+        "rpc"
+      ]
+    },
+    {
+      "object": "CREATE CAST (text AS public.bytea_b64) WITH FUNCTION bytea_b64(text) AS IMPLICIT",
+      "kind": "cast",
+      "reason": "CREATE CAST not supported by DSQL",
+      "affectsCategories": [
+        "media-types",
+        "rpc"
+      ]
+    },
+    {
+      "object": "CREATE CAST (public.unixtz AS json) WITH FUNCTION \"json\"(public.unixtz) AS IMPLI",
+      "kind": "cast",
+      "reason": "CREATE CAST not supported by DSQL",
+      "affectsCategories": [
+        "media-types",
+        "rpc"
+      ]
+    },
+    {
+      "object": "CREATE CAST (json AS public.unixtz) WITH FUNCTION unixtz(json) AS IMPLICIT;",
+      "kind": "cast",
+      "reason": "CREATE CAST not supported by DSQL",
+      "affectsCategories": [
+        "media-types",
+        "rpc"
+      ]
+    },
+    {
+      "object": "CREATE CAST (text AS public.unixtz) WITH FUNCTION unixtz(text) AS IMPLICIT;",
+      "kind": "cast",
+      "reason": "CREATE CAST not supported by DSQL",
+      "affectsCategories": [
+        "media-types",
+        "rpc"
+      ]
+    },
+    {
+      "object": "CREATE CAST (public.monetary AS json) WITH FUNCTION \"json\"(public.monetary) AS I",
+      "kind": "cast",
+      "reason": "CREATE CAST not supported by DSQL",
+      "affectsCategories": [
+        "media-types",
+        "rpc"
+      ]
+    },
+    {
+      "object": "CREATE CAST (json AS public.monetary) WITH FUNCTION monetary(json) AS IMPLICIT;",
+      "kind": "cast",
+      "reason": "CREATE CAST not supported by DSQL",
+      "affectsCategories": [
+        "media-types",
+        "rpc"
+      ]
+    },
+    {
+      "object": "CREATE CAST (text AS public.monetary) WITH FUNCTION monetary(text) AS IMPLICIT;",
+      "kind": "cast",
+      "reason": "CREATE CAST not supported by DSQL",
+      "affectsCategories": [
+        "media-types",
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.datarep_next_two_todos_first_item_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.datarep_next_two_todos_second_item_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.user_friend_user1_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.user_friend_user2_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.tournaments_status_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.bitchar_with_length.bit",
+      "kind": "column",
+      "reason": "column type bit(5) not supported by DSQL",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "public.bitchar_with_length.bit_arr",
+      "kind": "column",
+      "reason": "column type bit(5)[] not supported by DSQL",
+      "affectsCategories": [
+        "filters",
+        "select"
+      ]
+    },
+    {
+      "object": "public.bitchar_with_length.char_arr",
+      "kind": "column",
+      "reason": "column type char(5)[] not supported by DSQL",
+      "affectsCategories": [
+        "filters",
+        "select"
+      ]
+    },
+    {
+      "object": "public.char_param_insert",
+      "kind": "function",
+      "reason": "depends on column public.bitchar_with_length.char_arr, which DSQL could not create",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.bit_param_insert",
+      "kind": "function",
+      "reason": "depends on column public.bitchar_with_length.bit, which DSQL could not create",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.raise_sqlstate_test1",
+      "kind": "function",
+      "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.raise_sqlstate_test2",
+      "kind": "function",
+      "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.raise_sqlstate_test3",
+      "kind": "function",
+      "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.raise_sqlstate_test4",
+      "kind": "function",
+      "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.raise_sqlstate_invalid_json_message",
+      "kind": "function",
+      "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.raise_sqlstate_invalid_json_details",
+      "kind": "function",
+      "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.raise_sqlstate_missing_details",
+      "kind": "function",
+      "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.table_b_table_a_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.returns_complex",
+      "kind": "function",
+      "reason": "parameter type complex does not exist on DSQL",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "public.search2",
+      "kind": "function",
+      "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.lines.geom",
+      "kind": "column",
+      "reason": "column type extensions.geometry(linestring, 4326) not supported by DSQL",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "public.get_line",
+      "kind": "function",
+      "reason": "depends on column public.lines.geom, which DSQL could not create",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.twkb_handler_transition",
+      "kind": "function",
+      "reason": "depends on column public.lines.geom, which DSQL could not create",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "drop aggregate if exists \"public\".twkb_agg(\"public\".lines);",
+      "kind": "statement",
+      "reason": "DROP of this object kind is rejected by DSQL (unsupported object in DROP statement)",
+      "affectsCategories": []
+    },
+    {
+      "object": "public.twkb_agg",
+      "kind": "aggregate",
+      "reason": "CREATE AGGREGATE not supported by DSQL (unsupported statement: Define)",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.geo2json_trans",
+      "kind": "function",
+      "reason": "depends on schema extensions, which DSQL could not create",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "drop aggregate if exists \"public\".geo2json_agg_any(anyelement);",
+      "kind": "statement",
+      "reason": "DROP of this object kind is rejected by DSQL (unsupported object in DROP statement)",
+      "affectsCategories": []
+    },
+    {
+      "object": "public.geo2json_agg_any",
+      "kind": "aggregate",
+      "reason": "CREATE AGGREGATE not supported by DSQL (unsupported statement: Define)",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.geo2json_trans",
+      "kind": "function",
+      "reason": "depends on function public.geo2json_trans, which DSQL could not create",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "drop aggregate if exists \"public\".geo2json_agg(\"public\".shop_bles);",
+      "kind": "statement",
+      "reason": "DROP of this object kind is rejected by DSQL (unsupported object in DROP statement)",
+      "affectsCategories": []
+    },
+    {
+      "object": "public.geo2json_agg",
+      "kind": "aggregate",
+      "reason": "CREATE AGGREGATE not supported by DSQL (unsupported statement: Define)",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.ov_json",
+      "kind": "table",
+      "reason": "every column uses a type DSQL does not support",
+      "affectsCategories": [
+        "select",
+        "embedding",
+        "insert",
+        "update",
+        "delete"
+      ]
+    },
+    {
+      "object": "public.ov_json_trans",
+      "kind": "function",
+      "reason": "depends on relation public.ov_json, which DSQL could not create",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "drop aggregate if exists \"public\".ov_json_agg(ov_json);",
+      "kind": "statement",
+      "reason": "DROP of this object kind is rejected by DSQL (unsupported object in DROP statement)",
+      "affectsCategories": []
+    },
+    {
+      "object": "public.ov_json_agg",
+      "kind": "aggregate",
+      "reason": "CREATE AGGREGATE not supported by DSQL (unsupported statement: Define)",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.lines_geojson_trans",
+      "kind": "function",
+      "reason": "depends on schema extensions, which DSQL could not create",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "drop aggregate if exists \"public\".lines_geojson_agg(\"public\".lines);",
+      "kind": "statement",
+      "reason": "DROP of this object kind is rejected by DSQL (unsupported object in DROP statement)",
+      "affectsCategories": []
+    },
+    {
+      "object": "public.lines_geojson_agg",
+      "kind": "aggregate",
+      "reason": "CREATE AGGREGATE not supported by DSQL (unsupported statement: Define)",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "drop aggregate if exists \"public\".pgrst_obj_agg(anyelement);",
+      "kind": "statement",
+      "reason": "DROP of this object kind is rejected by DSQL (unsupported object in DROP statement)",
+      "affectsCategories": []
+    },
+    {
+      "object": "public.pgrst_obj_agg",
+      "kind": "aggregate",
+      "reason": "CREATE AGGREGATE not supported by DSQL (unsupported statement: Define)",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "drop aggregate if exists \"public\".tsv_agg(\"public\".projects);",
+      "kind": "statement",
+      "reason": "DROP of this object kind is rejected by DSQL (unsupported object in DROP statement)",
+      "affectsCategories": []
+    },
+    {
+      "object": "public.tsv_agg",
+      "kind": "aggregate",
+      "reason": "CREATE AGGREGATE not supported by DSQL (unsupported statement: Define)",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.bom_csv_trans",
+      "kind": "function",
+      "reason": "depends on column public.lines.geom, which DSQL could not create",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "drop aggregate if exists \"public\".bom_csv_agg(\"public\".lines);",
+      "kind": "statement",
+      "reason": "DROP of this object kind is rejected by DSQL (unsupported object in DROP statement)",
+      "affectsCategories": []
+    },
+    {
+      "object": "public.bom_csv_agg",
+      "kind": "aggregate",
+      "reason": "CREATE AGGREGATE not supported by DSQL (unsupported statement: Define)",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.empty_string",
+      "kind": "table",
+      "reason": "CREATE TABLE AS not supported by DSQL",
+      "affectsCategories": [
+        "select",
+        "embedding",
+        "insert",
+        "update",
+        "delete"
+      ]
+    },
+    {
+      "object": "public.project_invoices_project_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.budget_expenses_budget_category_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.ret_some_mt",
+      "kind": "function",
+      "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.some_numbers",
+      "kind": "table",
+      "reason": "CREATE TABLE AS not supported by DSQL",
+      "affectsCategories": [
+        "select",
+        "embedding",
+        "insert",
+        "update",
+        "delete"
+      ]
+    },
+    {
+      "object": "public.some_trans",
+      "kind": "function",
+      "reason": "depends on relation public.some_numbers, which DSQL could not create",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.some_final",
+      "kind": "function",
+      "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "drop aggregate if exists some_agg (some_numbers);",
+      "kind": "statement",
+      "reason": "DROP of this object kind is rejected by DSQL (unsupported object in DROP statement)",
+      "affectsCategories": []
+    },
+    {
+      "object": "public.some_agg",
+      "kind": "aggregate",
+      "reason": "CREATE AGGREGATE not supported by DSQL (unsupported statement: Define)",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.outfunc_agg",
+      "kind": "aggregate",
+      "reason": "CREATE AGGREGATE not supported by DSQL (unsupported statement: Define)",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.temp_file_limit",
+      "kind": "function",
+      "reason": "SET temp_file_limit is rejected by DSQL (setting configuration parameter \"temp_file_limit\" not supported)",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.infinite_inserts",
+      "kind": "function",
+      "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "do_infinite_inserts",
+      "kind": "trigger",
+      "reason": "CREATE TRIGGER not supported by DSQL (trigger functions require plpgsql)",
+      "affectsCategories": [
+        "insert",
+        "update",
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.processes_factory_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.processes_category_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.process_costs_process_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.process_supervisor_process_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.process_supervisor_supervisor_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.tsvector_not_null",
+      "kind": "domain",
+      "reason": "base type tsvector not supported by DSQL",
+      "affectsCategories": [
+        "filters"
+      ]
+    },
+    {
+      "object": "public.tsvector_not_empty",
+      "kind": "domain",
+      "reason": "base type tsvector_not_null not supported by DSQL",
+      "affectsCategories": [
+        "filters"
+      ]
+    },
+    {
+      "object": "public.tsearch_to_tsvector.text_search_domain",
+      "kind": "column",
+      "reason": "column type tsvector_not_null not supported by DSQL",
+      "affectsCategories": [
+        "filters"
+      ]
+    },
+    {
+      "object": "public.tsearch_to_tsvector.text_search_rec_domain",
+      "kind": "column",
+      "reason": "column type tsvector_not_empty not supported by DSQL",
+      "affectsCategories": [
+        "filters"
+      ]
+    },
+    {
+      "object": "public.fk_artist",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.process_operator_process_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.process_operator_operator_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.factory_buildings_factory_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "update pg_proc set oid = 'test.collision_test_table'::regclass::oid wh",
+      "kind": "statement",
+      "reason": "writing to pg_catalog is not permitted on DSQL",
+      "affectsCategories": []
+    },
+    {
+      "object": "public.visit_type",
+      "kind": "type",
+      "reason": "CREATE TYPE (enum) not supported by DSQL",
+      "affectsCategories": [
+        "rpc",
+        "select",
+        "openapi"
+      ]
+    },
+    {
+      "object": "public.visits.visit_type",
+      "kind": "column",
+      "reason": "column type visit_type not supported by DSQL",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "public.visits_place_id_fkey",
+      "kind": "foreign-key",
+      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
+      "affectsCategories": [
+        "embedding"
+      ]
+    },
+    {
+      "object": "public.custom_vary_hdr",
+      "kind": "function",
+      "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "begin;",
+      "kind": "statement",
+      "reason": "explicit transaction removed: DSQL rejects multiple DDL statements in one transaction",
+      "affectsCategories": []
+    },
+    {
+      "object": "set client_min_messages to warning;",
+      "kind": "statement",
+      "reason": "session GUC not settable on DSQL",
+      "affectsCategories": []
+    },
+    {
+      "object": "drop schema if exists jwt cascade;",
+      "kind": "statement",
+      "reason": "schema teardown moved to 00-reset.sql (DROP SCHEMA public is rejected: must be owner of schema public)",
+      "affectsCategories": []
+    },
+    {
+      "object": "jwt.algorithm_sign",
+      "kind": "function",
+      "reason": "depends on function hmac() (extension function), which DSQL could not create",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "jwt.sign",
+      "kind": "function",
+      "reason": "depends on function jwt.algorithm_sign, which DSQL could not create",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "jwt.verify",
+      "kind": "function",
+      "reason": "depends on function jwt.algorithm_sign, which DSQL could not create",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "commit;",
+      "kind": "statement",
+      "reason": "explicit transaction removed: DSQL rejects multiple DDL statements in one transaction",
+      "affectsCategories": []
+    },
+    {
+      "object": "public._validate_json_schema_type",
+      "kind": "function",
+      "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "public.validate_json_schema",
+      "kind": "function",
+      "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
+      "affectsCategories": [
+        "rpc"
+      ]
+    },
+    {
+      "object": "grant usage on schema \"public\" to postgrest_test_author;",
+      "kind": "statement",
+      "reason": "every schema in this grant was skipped",
+      "affectsCategories": []
+    },
+    {
+      "object": "grant usage on schema \"public\" to postgrest_test_default_rol",
+      "kind": "statement",
+      "reason": "every schema in this grant was skipped",
+      "affectsCategories": []
+    },
+    {
+      "object": "set statement_timeout = 0;",
+      "kind": "statement",
+      "reason": "session GUC not settable on DSQL",
+      "affectsCategories": []
+    },
+    {
+      "object": "set lock_timeout = 0;",
+      "kind": "statement",
+      "reason": "session GUC not settable on DSQL",
+      "affectsCategories": []
+    },
+    {
+      "object": "set client_encoding = 'utf8';",
+      "kind": "statement",
+      "reason": "session GUC not settable on DSQL",
+      "affectsCategories": []
+    },
+    {
+      "object": "set standard_conforming_strings = on;",
+      "kind": "statement",
+      "reason": "session GUC not settable on DSQL",
+      "affectsCategories": []
+    },
+    {
+      "object": "set check_function_bodies = false;",
+      "kind": "statement",
+      "reason": "session GUC not settable on DSQL",
+      "affectsCategories": []
+    },
+    {
+      "object": "set client_min_messages = warning;",
+      "kind": "statement",
+      "reason": "session GUC not settable on DSQL",
+      "affectsCategories": []
+    },
+    {
+      "object": "truncate table tsearch cascade;",
+      "kind": "data",
+      "reason": "target public.tsearch was dropped",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "insert into tsearch values (to_tsvector('it''s kind of fun to do the i",
+      "kind": "data",
+      "reason": "target public.tsearch was dropped",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "insert into tsearch values (to_tsvector('but also fun to do what is po",
+      "kind": "data",
+      "reason": "target public.tsearch was dropped",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "insert into tsearch values (to_tsvector('fat cats ate rats'));",
+      "kind": "data",
+      "reason": "target public.tsearch was dropped",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "insert into tsearch values (to_tsvector('french', 'c''est un peu amusa",
+      "kind": "data",
+      "reason": "target public.tsearch was dropped",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "insert into tsearch values (to_tsvector('german', 'es ist eine art spa",
+      "kind": "data",
+      "reason": "target public.tsearch was dropped",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "copy (select id, name, client_id from projects) to '/tmp/pro",
+      "kind": "data",
+      "reason": "COPY to/from file not supported by DSQL",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "insert into contract select 'tournament_' || generate_series, tsrange(",
+      "kind": "data",
+      "reason": "public.contract lost columns and this INSERT ... SELECT cannot be rewritten mechanically",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "truncate table ltree_sample cascade;",
+      "kind": "data",
+      "reason": "target public.ltree_sample was dropped",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "insert into ltree_sample values ('top');",
+      "kind": "data",
+      "reason": "target public.ltree_sample was dropped",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "insert into ltree_sample values ('top.science');",
+      "kind": "data",
+      "reason": "target public.ltree_sample was dropped",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "insert into ltree_sample values ('top.science.astronomy');",
+      "kind": "data",
+      "reason": "target public.ltree_sample was dropped",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "insert into ltree_sample values ('top.science.astronomy.astrophysics')",
+      "kind": "data",
+      "reason": "target public.ltree_sample was dropped",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "insert into ltree_sample values ('top.science.astronomy.cosmology');",
+      "kind": "data",
+      "reason": "target public.ltree_sample was dropped",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "insert into ltree_sample values ('top.hobbies');",
+      "kind": "data",
+      "reason": "target public.ltree_sample was dropped",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "insert into ltree_sample values ('top.hobbies.amateurs_astronomy');",
+      "kind": "data",
+      "reason": "target public.ltree_sample was dropped",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "insert into ltree_sample values ('top.collections');",
+      "kind": "data",
+      "reason": "target public.ltree_sample was dropped",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "insert into ltree_sample values ('top.collections.pictures');",
+      "kind": "data",
+      "reason": "target public.ltree_sample was dropped",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "insert into ltree_sample values ('top.collections.pictures.astronomy')",
+      "kind": "data",
+      "reason": "target public.ltree_sample was dropped",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "insert into ltree_sample values ('top.collections.pictures.astronomy.s",
+      "kind": "data",
+      "reason": "target public.ltree_sample was dropped",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "insert into ltree_sample values ('top.collections.pictures.astronomy.g",
+      "kind": "data",
+      "reason": "target public.ltree_sample was dropped",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "insert into ltree_sample values ('top.collections.pictures.astronomy.a",
+      "kind": "data",
+      "reason": "target public.ltree_sample was dropped",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "insert into \"public\".car_models(name, year) values ('delorean',1981);",
+      "kind": "data",
+      "reason": "target public.car_models was dropped",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "insert into \"public\".car_models(name, year) values ('f310-b',1997);",
+      "kind": "data",
+      "reason": "target public.car_models was dropped",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "insert into \"public\".car_models(name, year) values ('veneno',2013);",
+      "kind": "data",
+      "reason": "target public.car_models was dropped",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "insert into \"public\".car_models(name, year) values ('murcielago',2001)",
+      "kind": "data",
+      "reason": "target public.car_models was dropped",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "update \"public\".car_models set car_brand_name = 'dmc' where ",
+      "kind": "data",
+      "reason": "references relation public.car_models, which DSQL could not create",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "update \"public\".car_models set car_brand_name = 'ferrari' wh",
+      "kind": "data",
+      "reason": "references relation public.car_models, which DSQL could not create",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "update \"public\".car_models set car_brand_name = 'lamborghini",
+      "kind": "data",
+      "reason": "references relation public.car_models, which DSQL could not create",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "update \"public\".car_models set car_brand_name = 'lamborghini",
+      "kind": "data",
+      "reason": "references relation public.car_models, which DSQL could not create",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "insert into \"public\".car_model_sales(date, quantity, car_model_name, c",
+      "kind": "data",
+      "reason": "target public.car_model_sales was dropped",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "insert into \"public\".car_model_sales(date, quantity, car_model_name, c",
+      "kind": "data",
+      "reason": "target public.car_model_sales was dropped",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "insert into \"public\".car_model_sales(date, quantity, car_model_name, c",
+      "kind": "data",
+      "reason": "target public.car_model_sales was dropped",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "insert into \"public\".car_model_sales(date, quantity, car_model_name, c",
+      "kind": "data",
+      "reason": "target public.car_model_sales was dropped",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "insert into \"public\".car_racers(name) values ('alain prost');",
+      "kind": "data",
+      "reason": "target public.car_racers was dropped",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "insert into \"public\".car_racers(name, car_model_name, car_model_year) ",
+      "kind": "data",
+      "reason": "target public.car_racers was dropped",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "insert into \"public\".car_dealers(name,city) values ('springfield cars ",
+      "kind": "data",
+      "reason": "target public.car_dealers was dropped",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "insert into \"public\".car_dealers(name,city) values ('the best deals s.",
+      "kind": "data",
+      "reason": "target public.car_dealers was dropped",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "insert into \"public\".car_models_car_dealers(car_model_name, car_model_",
+      "kind": "data",
+      "reason": "target public.car_models_car_dealers was dropped",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "insert into \"public\".car_models_car_dealers(car_model_name, car_model_",
+      "kind": "data",
+      "reason": "target public.car_models_car_dealers was dropped",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "truncate table \"public\".xmltest cascade;",
+      "kind": "data",
+      "reason": "target public.xmltest was dropped",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "insert into \"public\".xmltest values (1, '<myxml>foo</myxml>'), (2, 'ba",
+      "kind": "data",
+      "reason": "target public.xmltest was dropped",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "update tsearch_to_tsvector set text_search_domain = to_tsvec",
+      "kind": "data",
+      "reason": "references column public.tsearch_to_tsvector.text_search_domain, which DSQL could not create",
+      "affectsCategories": [
+        "select"
+      ]
+    },
+    {
+      "object": "update tsearch_to_tsvector set text_search_rec_domain = to_t",
+      "kind": "data",
+      "reason": "references column public.tsearch_to_tsvector.text_search_rec_domain, which DSQL could not create",
+      "affectsCategories": [
+        "select"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,4452 @@
+{
+  "source": "Feature/Query/SpreadQueriesSpec.hs",
+  "extractedCases": 56,
+  "skippedSites": 0,
+  "needsConfigCases": 0,
+  "cases": [
+    {
+      "id": "SpreadQueriesSpec:14",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 14,
+      "category": "embedding",
+      "description": "works on a many-to-one relationship",
+      "example": "SpreadQueriesSpec:it:13",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "select=id,...clients(client_name:name)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "client_name": "Microsoft"
+          },
+          {
+            "id": 2,
+            "client_name": "Microsoft"
+          },
+          {
+            "id": 3,
+            "client_name": "Apple"
+          },
+          {
+            "id": 4,
+            "client_name": "Apple"
+          },
+          {
+            "id": 5,
+            "client_name": null
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:25",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 25,
+      "category": "embedding",
+      "description": "works on a many-to-one relationship",
+      "example": "SpreadQueriesSpec:it:13",
+      "request": {
+        "method": "GET",
+        "path": "/grandchild_entities",
+        "query": "select=name,...child_entities(parent_name:name,...entities(grandparent_name:name))&limit=3",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "grandchild entity 1",
+            "parent_name": "child entity 1",
+            "grandparent_name": "entity 1"
+          },
+          {
+            "name": "grandchild entity 2",
+            "parent_name": "child entity 1",
+            "grandparent_name": "entity 1"
+          },
+          {
+            "name": "grandchild entity 3",
+            "parent_name": "child entity 2",
+            "grandparent_name": "entity 1"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:34",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 34,
+      "category": "embedding",
+      "description": "works on a many-to-one relationship",
+      "example": "SpreadQueriesSpec:it:13",
+      "request": {
+        "method": "GET",
+        "path": "/videogames",
+        "query": "select=name,...computed_designers(designer_name:name)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Civilization I",
+            "designer_name": "Sid Meier"
+          },
+          {
+            "name": "Civilization II",
+            "designer_name": "Sid Meier"
+          },
+          {
+            "name": "Final Fantasy I",
+            "designer_name": "Hironobu Sakaguchi"
+          },
+          {
+            "name": "Final Fantasy II",
+            "designer_name": "Hironobu Sakaguchi"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:46",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 46,
+      "category": "embedding",
+      "description": "works inside a normal embed",
+      "example": "SpreadQueriesSpec:it:45",
+      "request": {
+        "method": "GET",
+        "path": "/grandchild_entities",
+        "query": "select=name,child_entity:child_entities(name,...entities(parent_name:name))&limit=1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "grandchild entity 1",
+            "child_entity": {
+              "name": "child entity 1",
+              "parent_name": "entity 1"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:55",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 55,
+      "category": "embedding",
+      "description": "works on a one-to-one relationship",
+      "example": "SpreadQueriesSpec:it:54",
+      "request": {
+        "method": "GET",
+        "path": "/country",
+        "query": "select=name,...capital(capital:name)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Afghanistan",
+            "capital": "Kabul"
+          },
+          {
+            "name": "Algeria",
+            "capital": "Algiers"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:65",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 65,
+      "category": "embedding",
+      "description": "can include or exclude attributes of the junction on a m2m",
+      "example": "SpreadQueriesSpec:it:64",
+      "request": {
+        "method": "GET",
+        "path": "/users",
+        "query": "select=*,tasks:users_tasks(*,...tasks(*))&limit=1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "Angela Martin",
+            "tasks": [
+              {
+                "user_id": 1,
+                "task_id": 1,
+                "id": 1,
+                "name": "Design w7",
+                "project_id": 1
+              },
+              {
+                "user_id": 1,
+                "task_id": 2,
+                "id": 2,
+                "name": "Code w7",
+                "project_id": 1
+              },
+              {
+                "user_id": 1,
+                "task_id": 3,
+                "id": 3,
+                "name": "Design w10",
+                "project_id": 2
+              },
+              {
+                "user_id": 1,
+                "task_id": 4,
+                "id": 4,
+                "name": "Code w10",
+                "project_id": 2
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:78",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 78,
+      "category": "embedding",
+      "description": "can include or exclude attributes of the junction on a m2m",
+      "example": "SpreadQueriesSpec:it:64",
+      "request": {
+        "method": "GET",
+        "path": "/users",
+        "query": "select=*,tasks:users_tasks(...tasks(*))&limit=1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "Angela Martin",
+            "tasks": [
+              {
+                "id": 1,
+                "name": "Design w7",
+                "project_id": 1
+              },
+              {
+                "id": 2,
+                "name": "Code w7",
+                "project_id": 1
+              },
+              {
+                "id": 3,
+                "name": "Design w10",
+                "project_id": 2
+              },
+              {
+                "id": 4,
+                "name": "Code w10",
+                "project_id": 2
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:94",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 94,
+      "category": "embedding",
+      "description": "should spread a column as a json array",
+      "example": "SpreadQueriesSpec:it:93",
+      "request": {
+        "method": "GET",
+        "path": "/factories",
+        "query": "select=factory:name,...processes(name)&order=name",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "factory": "Factory A",
+            "name": [
+              "Process A1",
+              "Process A2"
+            ]
+          },
+          {
+            "factory": "Factory B",
+            "name": [
+              "Process B1",
+              "Process B2"
+            ]
+          },
+          {
+            "factory": "Factory C",
+            "name": [
+              "Process C1",
+              "Process C2",
+              "Process XX",
+              "Process YY"
+            ]
+          },
+          {
+            "factory": "Factory D",
+            "name": []
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:104",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 104,
+      "category": "embedding",
+      "description": "should spread a column as a json array",
+      "example": "SpreadQueriesSpec:it:93",
+      "request": {
+        "method": "GET",
+        "path": "/factories",
+        "query": "select=factory:name,...processes(processes:name)&order=name",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "factory": "Factory A",
+            "processes": [
+              "Process A1",
+              "Process A2"
+            ]
+          },
+          {
+            "factory": "Factory B",
+            "processes": [
+              "Process B1",
+              "Process B2"
+            ]
+          },
+          {
+            "factory": "Factory C",
+            "processes": [
+              "Process C1",
+              "Process C2",
+              "Process XX",
+              "Process YY"
+            ]
+          },
+          {
+            "factory": "Factory D",
+            "processes": []
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:115",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 115,
+      "category": "embedding",
+      "description": "should spread many columns as json arrays",
+      "example": "SpreadQueriesSpec:it:114",
+      "request": {
+        "method": "GET",
+        "path": "/factories",
+        "query": "select=factory:name,...processes(name,category_id)&order=name",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "factory": "Factory A",
+            "name": [
+              "Process A1",
+              "Process A2"
+            ],
+            "category_id": [
+              1,
+              2
+            ]
+          },
+          {
+            "factory": "Factory B",
+            "name": [
+              "Process B1",
+              "Process B2"
+            ],
+            "category_id": [
+              1,
+              1
+            ]
+          },
+          {
+            "factory": "Factory C",
+            "name": [
+              "Process C1",
+              "Process C2",
+              "Process XX",
+              "Process YY"
+            ],
+            "category_id": [
+              2,
+              2,
+              2,
+              2
+            ]
+          },
+          {
+            "factory": "Factory D",
+            "name": [],
+            "category_id": []
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:125",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 125,
+      "category": "embedding",
+      "description": "should spread many columns as json arrays",
+      "example": "SpreadQueriesSpec:it:114",
+      "request": {
+        "method": "GET",
+        "path": "/factories",
+        "query": "select=factory:name,...processes(processes:name,categories:category_id)&order=name",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "factory": "Factory A",
+            "processes": [
+              "Process A1",
+              "Process A2"
+            ],
+            "categories": [
+              1,
+              2
+            ]
+          },
+          {
+            "factory": "Factory B",
+            "processes": [
+              "Process B1",
+              "Process B2"
+            ],
+            "categories": [
+              1,
+              1
+            ]
+          },
+          {
+            "factory": "Factory C",
+            "processes": [
+              "Process C1",
+              "Process C2",
+              "Process XX",
+              "Process YY"
+            ],
+            "categories": [
+              2,
+              2,
+              2,
+              2
+            ]
+          },
+          {
+            "factory": "Factory D",
+            "processes": [],
+            "categories": []
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:136",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 136,
+      "category": "embedding",
+      "description": "should return an empty array when no elements are found",
+      "example": "SpreadQueriesSpec:it:135",
+      "request": {
+        "method": "GET",
+        "path": "/factories",
+        "query": "select=factory:name,...processes(processes:name)&processes=is.null",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "factory": "Factory D",
+            "processes": []
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:144",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 144,
+      "category": "embedding",
+      "description": "should return a single null element array, not an empty one, when the row exists but the value happens to be null",
+      "example": "SpreadQueriesSpec:it:143",
+      "request": {
+        "method": "GET",
+        "path": "/managers",
+        "query": "select=name,...organizations(organizations:name,referees:referee)&id=eq.1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Referee Manager",
+            "organizations": [
+              "Referee Org"
+            ],
+            "referees": [
+              null
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:152",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 152,
+      "category": "embedding",
+      "description": "should work when selecting all columns",
+      "example": "SpreadQueriesSpec:it:151",
+      "request": {
+        "method": "GET",
+        "path": "/factories",
+        "query": "select=factory:name,...processes(*)&order=name",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "factory": "Factory A",
+            "id": [
+              1,
+              2
+            ],
+            "name": [
+              "Process A1",
+              "Process A2"
+            ],
+            "factory_id": [
+              1,
+              1
+            ],
+            "category_id": [
+              1,
+              2
+            ]
+          },
+          {
+            "factory": "Factory B",
+            "id": [
+              3,
+              4
+            ],
+            "name": [
+              "Process B1",
+              "Process B2"
+            ],
+            "factory_id": [
+              2,
+              2
+            ],
+            "category_id": [
+              1,
+              1
+            ]
+          },
+          {
+            "factory": "Factory C",
+            "id": [
+              5,
+              6,
+              7,
+              8
+            ],
+            "name": [
+              "Process C1",
+              "Process C2",
+              "Process XX",
+              "Process YY"
+            ],
+            "factory_id": [
+              3,
+              3,
+              3,
+              3
+            ],
+            "category_id": [
+              2,
+              2,
+              2,
+              2
+            ]
+          },
+          {
+            "factory": "Factory D",
+            "id": [],
+            "name": [],
+            "factory_id": [],
+            "category_id": []
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:163",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 163,
+      "category": "embedding",
+      "description": "should select spread columns from a nested one-to-one relationship",
+      "example": "SpreadQueriesSpec:it:162",
+      "request": {
+        "method": "GET",
+        "path": "/factories",
+        "query": "select=factory:name,...processes(process:name,...process_costs(process_costs:cost))&order=name&processes.order=name",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "factory": "Factory A",
+            "process": [
+              "Process A1",
+              "Process A2"
+            ],
+            "process_costs": [
+              150,
+              200
+            ]
+          },
+          {
+            "factory": "Factory B",
+            "process": [
+              "Process B1",
+              "Process B2"
+            ],
+            "process_costs": [
+              180,
+              70
+            ]
+          },
+          {
+            "factory": "Factory C",
+            "process": [
+              "Process C1",
+              "Process C2",
+              "Process XX",
+              "Process YY"
+            ],
+            "process_costs": [
+              40,
+              70,
+              null,
+              40
+            ]
+          },
+          {
+            "factory": "Factory D",
+            "process": [],
+            "process_costs": []
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:174",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 174,
+      "category": "embedding",
+      "description": "should select spread columns from a nested many-to-one relationship",
+      "example": "SpreadQueriesSpec:it:173",
+      "request": {
+        "method": "GET",
+        "path": "/factories",
+        "query": "select=factory:name,...processes(process:name,...process_categories(categories:name))&order=name&processes.order=name",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "factory": "Factory A",
+            "process": [
+              "Process A1",
+              "Process A2"
+            ],
+            "categories": [
+              "Batch",
+              "Mass"
+            ]
+          },
+          {
+            "factory": "Factory B",
+            "process": [
+              "Process B1",
+              "Process B2"
+            ],
+            "categories": [
+              "Batch",
+              "Batch"
+            ]
+          },
+          {
+            "factory": "Factory C",
+            "process": [
+              "Process C1",
+              "Process C2",
+              "Process XX",
+              "Process YY"
+            ],
+            "categories": [
+              "Mass",
+              "Mass",
+              "Mass",
+              "Mass"
+            ]
+          },
+          {
+            "factory": "Factory D",
+            "process": [],
+            "categories": []
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:185",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 185,
+      "category": "embedding",
+      "description": "should select spread columns from a nested one-to-many relationship",
+      "example": "SpreadQueriesSpec:it:184",
+      "request": {
+        "method": "GET",
+        "path": "/factories",
+        "query": "select=factory:name,...processes(process:name,...process_supervisor(supervisor_ids:supervisor_id))&order=name&processes.order=name",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "factory": "Factory A",
+            "process": [
+              "Process A1",
+              "Process A2"
+            ],
+            "supervisor_ids": [
+              [
+                1
+              ],
+              [
+                2
+              ]
+            ]
+          },
+          {
+            "factory": "Factory B",
+            "process": [
+              "Process B1",
+              "Process B2"
+            ],
+            "supervisor_ids": [
+              [
+                3,
+                4
+              ],
+              [
+                1,
+                2
+              ]
+            ]
+          },
+          {
+            "factory": "Factory C",
+            "process": [
+              "Process C1",
+              "Process C2",
+              "Process XX",
+              "Process YY"
+            ],
+            "supervisor_ids": [
+              [
+                3
+              ],
+              [
+                3
+              ],
+              [],
+              []
+            ]
+          },
+          {
+            "factory": "Factory D",
+            "process": [],
+            "supervisor_ids": []
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:196",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 196,
+      "category": "embedding",
+      "description": "should select spread columns from a nested many-to-many relationship",
+      "example": "SpreadQueriesSpec:it:195",
+      "request": {
+        "method": "GET",
+        "path": "/factories",
+        "query": "select=factory:name,...processes(process:name,...supervisors(supervisors:name))&order=name&processes.order=name&processes.supervisors.order=name",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "factory": "Factory A",
+            "process": [
+              "Process A1",
+              "Process A2"
+            ],
+            "supervisors": [
+              [
+                "Mary"
+              ],
+              [
+                "John"
+              ]
+            ]
+          },
+          {
+            "factory": "Factory B",
+            "process": [
+              "Process B1",
+              "Process B2"
+            ],
+            "supervisors": [
+              [
+                "Peter",
+                "Sarah"
+              ],
+              [
+                "John",
+                "Mary"
+              ]
+            ]
+          },
+          {
+            "factory": "Factory C",
+            "process": [
+              "Process C1",
+              "Process C2",
+              "Process XX",
+              "Process YY"
+            ],
+            "supervisors": [
+              [
+                "Peter"
+              ],
+              [
+                "Peter"
+              ],
+              [],
+              []
+            ]
+          },
+          {
+            "factory": "Factory D",
+            "process": [],
+            "supervisors": []
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:207",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 207,
+      "category": "embedding",
+      "description": "should show a nested non-spread one-to-one relationship as an array of objects",
+      "example": "SpreadQueriesSpec:it:206",
+      "request": {
+        "method": "GET",
+        "path": "/factories",
+        "query": "select=factory:name,...processes(process:name,process_costs(cost))&order=name&processes.order=name",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "factory": "Factory A",
+            "process": [
+              "Process A1",
+              "Process A2"
+            ],
+            "process_costs": [
+              {
+                "cost": 150
+              },
+              {
+                "cost": 200
+              }
+            ]
+          },
+          {
+            "factory": "Factory B",
+            "process": [
+              "Process B1",
+              "Process B2"
+            ],
+            "process_costs": [
+              {
+                "cost": 180
+              },
+              {
+                "cost": 70
+              }
+            ]
+          },
+          {
+            "factory": "Factory C",
+            "process": [
+              "Process C1",
+              "Process C2",
+              "Process XX",
+              "Process YY"
+            ],
+            "process_costs": [
+              {
+                "cost": 40
+              },
+              {
+                "cost": 70
+              },
+              null,
+              {
+                "cost": 40
+              }
+            ]
+          },
+          {
+            "factory": "Factory D",
+            "process": [],
+            "process_costs": []
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:218",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 218,
+      "category": "embedding",
+      "description": "should show a nested non-spread many-to-one relationship as an array of objects",
+      "example": "SpreadQueriesSpec:it:217",
+      "request": {
+        "method": "GET",
+        "path": "/factories",
+        "query": "select=factory:name,...processes(process:name,process_categories(name))&order=name&processes.order=name",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "factory": "Factory A",
+            "process": [
+              "Process A1",
+              "Process A2"
+            ],
+            "process_categories": [
+              {
+                "name": "Batch"
+              },
+              {
+                "name": "Mass"
+              }
+            ]
+          },
+          {
+            "factory": "Factory B",
+            "process": [
+              "Process B1",
+              "Process B2"
+            ],
+            "process_categories": [
+              {
+                "name": "Batch"
+              },
+              {
+                "name": "Batch"
+              }
+            ]
+          },
+          {
+            "factory": "Factory C",
+            "process": [
+              "Process C1",
+              "Process C2",
+              "Process XX",
+              "Process YY"
+            ],
+            "process_categories": [
+              {
+                "name": "Mass"
+              },
+              {
+                "name": "Mass"
+              },
+              {
+                "name": "Mass"
+              },
+              {
+                "name": "Mass"
+              }
+            ]
+          },
+          {
+            "factory": "Factory D",
+            "process": [],
+            "process_categories": []
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:229",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 229,
+      "category": "embedding",
+      "description": "should show a nested non-spread one-to-many relationship as an array of arrays",
+      "example": "SpreadQueriesSpec:it:228",
+      "request": {
+        "method": "GET",
+        "path": "/factories",
+        "query": "select=factory:name,...processes(process:name,process_supervisor(supervisor_id))&order=name&processes.order=name&processes.process_supervisor.order=supervisor_id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "factory": "Factory A",
+            "process": [
+              "Process A1",
+              "Process A2"
+            ],
+            "process_supervisor": [
+              [
+                {
+                  "supervisor_id": 1
+                }
+              ],
+              [
+                {
+                  "supervisor_id": 2
+                }
+              ]
+            ]
+          },
+          {
+            "factory": "Factory B",
+            "process": [
+              "Process B1",
+              "Process B2"
+            ],
+            "process_supervisor": [
+              [
+                {
+                  "supervisor_id": 3
+                },
+                {
+                  "supervisor_id": 4
+                }
+              ],
+              [
+                {
+                  "supervisor_id": 1
+                },
+                {
+                  "supervisor_id": 2
+                }
+              ]
+            ]
+          },
+          {
+            "factory": "Factory C",
+            "process": [
+              "Process C1",
+              "Process C2",
+              "Process XX",
+              "Process YY"
+            ],
+            "process_supervisor": [
+              [
+                {
+                  "supervisor_id": 3
+                }
+              ],
+              [
+                {
+                  "supervisor_id": 3
+                }
+              ],
+              [],
+              []
+            ]
+          },
+          {
+            "factory": "Factory D",
+            "process": [],
+            "process_supervisor": []
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:240",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 240,
+      "category": "embedding",
+      "description": "should show a nested non-spread many-to-many relationship as an array of arrays",
+      "example": "SpreadQueriesSpec:it:239",
+      "request": {
+        "method": "GET",
+        "path": "/factories",
+        "query": "select=factory:name,...processes(process:name,supervisors(name))&order=name&processes.order=name&processes.supervisors.order=name",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "factory": "Factory A",
+            "process": [
+              "Process A1",
+              "Process A2"
+            ],
+            "supervisors": [
+              [
+                {
+                  "name": "Mary"
+                }
+              ],
+              [
+                {
+                  "name": "John"
+                }
+              ]
+            ]
+          },
+          {
+            "factory": "Factory B",
+            "process": [
+              "Process B1",
+              "Process B2"
+            ],
+            "supervisors": [
+              [
+                {
+                  "name": "Peter"
+                },
+                {
+                  "name": "Sarah"
+                }
+              ],
+              [
+                {
+                  "name": "John"
+                },
+                {
+                  "name": "Mary"
+                }
+              ]
+            ]
+          },
+          {
+            "factory": "Factory C",
+            "process": [
+              "Process C1",
+              "Process C2",
+              "Process XX",
+              "Process YY"
+            ],
+            "supervisors": [
+              [
+                {
+                  "name": "Peter"
+                }
+              ],
+              [
+                {
+                  "name": "Peter"
+                }
+              ],
+              [],
+              []
+            ]
+          },
+          {
+            "factory": "Factory D",
+            "process": [],
+            "supervisors": []
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:251",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 251,
+      "category": "embedding",
+      "description": "should work when selecting all columns in a nested to-one resource",
+      "example": "SpreadQueriesSpec:it:250",
+      "request": {
+        "method": "GET",
+        "path": "/factories",
+        "query": "select=factory:name,...processes(*,...process_costs(*))&order=name&processes.order=name",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "factory": "Factory A",
+            "id": [
+              1,
+              2
+            ],
+            "name": [
+              "Process A1",
+              "Process A2"
+            ],
+            "factory_id": [
+              1,
+              1
+            ],
+            "category_id": [
+              1,
+              2
+            ],
+            "process_id": [
+              1,
+              2
+            ],
+            "cost": [
+              150,
+              200
+            ]
+          },
+          {
+            "factory": "Factory B",
+            "id": [
+              3,
+              4
+            ],
+            "name": [
+              "Process B1",
+              "Process B2"
+            ],
+            "factory_id": [
+              2,
+              2
+            ],
+            "category_id": [
+              1,
+              1
+            ],
+            "process_id": [
+              3,
+              4
+            ],
+            "cost": [
+              180,
+              70
+            ]
+          },
+          {
+            "factory": "Factory C",
+            "id": [
+              5,
+              6,
+              7,
+              8
+            ],
+            "name": [
+              "Process C1",
+              "Process C2",
+              "Process XX",
+              "Process YY"
+            ],
+            "factory_id": [
+              3,
+              3,
+              3,
+              3
+            ],
+            "category_id": [
+              2,
+              2,
+              2,
+              2
+            ],
+            "process_id": [
+              5,
+              6,
+              null,
+              8
+            ],
+            "cost": [
+              40,
+              70,
+              null,
+              40
+            ]
+          },
+          {
+            "factory": "Factory D",
+            "id": [],
+            "name": [],
+            "factory_id": [],
+            "category_id": [],
+            "process_id": [],
+            "cost": []
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:262",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 262,
+      "category": "embedding",
+      "description": "works when column filters are specified",
+      "example": "SpreadQueriesSpec:it:261",
+      "request": {
+        "method": "GET",
+        "path": "/factories",
+        "query": "select=factory:name,...processes(*)&processes.name=not.like.*1&order=name&processes.order=name",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "factory": "Factory A",
+            "id": [
+              2
+            ],
+            "name": [
+              "Process A2"
+            ],
+            "factory_id": [
+              1
+            ],
+            "category_id": [
+              2
+            ]
+          },
+          {
+            "factory": "Factory B",
+            "id": [
+              4
+            ],
+            "name": [
+              "Process B2"
+            ],
+            "factory_id": [
+              2
+            ],
+            "category_id": [
+              1
+            ]
+          },
+          {
+            "factory": "Factory C",
+            "id": [
+              6,
+              7,
+              8
+            ],
+            "name": [
+              "Process C2",
+              "Process XX",
+              "Process YY"
+            ],
+            "factory_id": [
+              3,
+              3,
+              3
+            ],
+            "category_id": [
+              2,
+              2,
+              2
+            ]
+          },
+          {
+            "factory": "Factory D",
+            "id": [],
+            "name": [],
+            "factory_id": [],
+            "category_id": []
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:273",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 273,
+      "category": "embedding",
+      "description": "works with inner joins or not.is.null filters",
+      "example": "SpreadQueriesSpec:it:272",
+      "request": {
+        "method": "GET",
+        "path": "/factories",
+        "query": "select=factory:name,...processes!inner(name)&order=name&processes.order=name",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "factory": "Factory A",
+            "name": [
+              "Process A1",
+              "Process A2"
+            ]
+          },
+          {
+            "factory": "Factory B",
+            "name": [
+              "Process B1",
+              "Process B2"
+            ]
+          },
+          {
+            "factory": "Factory C",
+            "name": [
+              "Process C1",
+              "Process C2",
+              "Process XX",
+              "Process YY"
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:282",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 282,
+      "category": "embedding",
+      "description": "works with inner joins or not.is.null filters",
+      "example": "SpreadQueriesSpec:it:272",
+      "request": {
+        "method": "GET",
+        "path": "/factories",
+        "query": "select=factory:name,...processes(name)&processes=not.is.null&order=name&processes.order=name",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "factory": "Factory A",
+            "name": [
+              "Process A1",
+              "Process A2"
+            ]
+          },
+          {
+            "factory": "Factory B",
+            "name": [
+              "Process B1",
+              "Process B2"
+            ]
+          },
+          {
+            "factory": "Factory C",
+            "name": [
+              "Process C1",
+              "Process C2",
+              "Process XX",
+              "Process YY"
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:292",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 292,
+      "category": "embedding",
+      "description": "orders all the resulting arrays according to the spread relationship ordering columns",
+      "example": "SpreadQueriesSpec:it:291",
+      "request": {
+        "method": "GET",
+        "path": "/factories",
+        "query": "select=factory:name,...processes(*)&processes.order=category_id.asc,name.desc&order=name",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "factory": "Factory A",
+            "id": [
+              1,
+              2
+            ],
+            "name": [
+              "Process A1",
+              "Process A2"
+            ],
+            "factory_id": [
+              1,
+              1
+            ],
+            "category_id": [
+              1,
+              2
+            ]
+          },
+          {
+            "factory": "Factory B",
+            "id": [
+              4,
+              3
+            ],
+            "name": [
+              "Process B2",
+              "Process B1"
+            ],
+            "factory_id": [
+              2,
+              2
+            ],
+            "category_id": [
+              1,
+              1
+            ]
+          },
+          {
+            "factory": "Factory C",
+            "id": [
+              8,
+              7,
+              6,
+              5
+            ],
+            "name": [
+              "Process YY",
+              "Process XX",
+              "Process C2",
+              "Process C1"
+            ],
+            "factory_id": [
+              3,
+              3,
+              3,
+              3
+            ],
+            "category_id": [
+              2,
+              2,
+              2,
+              2
+            ]
+          },
+          {
+            "factory": "Factory D",
+            "id": [],
+            "name": [],
+            "factory_id": [],
+            "category_id": []
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:302",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 302,
+      "category": "embedding",
+      "description": "orders all the resulting arrays according to the spread relationship ordering columns",
+      "example": "SpreadQueriesSpec:it:291",
+      "request": {
+        "method": "GET",
+        "path": "/factories",
+        "query": "select=factory:name,...factory_buildings(*)&factory_buildings.order=inspections->pending.asc.nullsfirst,inspections->ins.desc&order=name",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "factory": "Factory A",
+            "id": [
+              2,
+              1
+            ],
+            "code": [
+              "A002",
+              "A001"
+            ],
+            "size": [
+              200,
+              150
+            ],
+            "type": [
+              "A",
+              "A"
+            ],
+            "factory_id": [
+              1,
+              1
+            ],
+            "inspections": [
+              {
+                "ins": "2025A",
+                "pending": true
+              },
+              {
+                "ins": "2024C",
+                "pending": true
+              }
+            ]
+          },
+          {
+            "factory": "Factory B",
+            "id": [
+              4,
+              3
+            ],
+            "code": [
+              "B002",
+              "B001"
+            ],
+            "size": [
+              120,
+              50
+            ],
+            "type": [
+              "C",
+              "B"
+            ],
+            "factory_id": [
+              2,
+              2
+            ],
+            "inspections": [
+              {
+                "ins": "2023A"
+              },
+              {
+                "ins": "2025A",
+                "pending": true
+              }
+            ]
+          },
+          {
+            "factory": "Factory C",
+            "id": [
+              5
+            ],
+            "code": [
+              "C001"
+            ],
+            "size": [
+              240
+            ],
+            "type": [
+              "B"
+            ],
+            "factory_id": [
+              3
+            ],
+            "inspections": [
+              {
+                "ins": "2022B"
+              }
+            ]
+          },
+          {
+            "factory": "Factory D",
+            "id": [
+              6
+            ],
+            "code": [
+              "D001"
+            ],
+            "size": [
+              310
+            ],
+            "type": [
+              "A"
+            ],
+            "factory_id": [
+              4
+            ],
+            "inspections": [
+              {
+                "ins": "2024C",
+                "pending": true
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:313",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 313,
+      "category": "embedding",
+      "description": "orders all the resulting arrays according to the spread relationship ordering columns even if they aren't selected",
+      "example": "SpreadQueriesSpec:it:312",
+      "request": {
+        "method": "GET",
+        "path": "/factories",
+        "query": "select=factory:name,...processes(name)&processes.order=category_id.asc,name.desc&order=name",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "factory": "Factory A",
+            "name": [
+              "Process A1",
+              "Process A2"
+            ]
+          },
+          {
+            "factory": "Factory B",
+            "name": [
+              "Process B2",
+              "Process B1"
+            ]
+          },
+          {
+            "factory": "Factory C",
+            "name": [
+              "Process YY",
+              "Process XX",
+              "Process C2",
+              "Process C1"
+            ]
+          },
+          {
+            "factory": "Factory D",
+            "name": []
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:324",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 324,
+      "category": "embedding",
+      "description": "orders all the resulting arrays according to the related ordering columns in the spread relationship",
+      "example": "SpreadQueriesSpec:it:323",
+      "request": {
+        "method": "GET",
+        "path": "/factories",
+        "query": "select=factory:name,...processes(name,...process_costs(cost))&processes.order=process_costs(cost)&order=name",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "factory": "Factory A",
+            "name": [
+              "Process A1",
+              "Process A2"
+            ],
+            "cost": [
+              150,
+              200
+            ]
+          },
+          {
+            "factory": "Factory B",
+            "name": [
+              "Process B2",
+              "Process B1"
+            ],
+            "cost": [
+              70,
+              180
+            ]
+          },
+          {
+            "factory": "Factory C",
+            "name": [
+              "Process C1",
+              "Process YY",
+              "Process C2",
+              "Process XX"
+            ],
+            "cost": [
+              40,
+              40,
+              70,
+              null
+            ]
+          },
+          {
+            "factory": "Factory D",
+            "name": [],
+            "cost": []
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:337",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 337,
+      "category": "embedding",
+      "description": "should spread a column as a json array",
+      "example": "SpreadQueriesSpec:it:336",
+      "request": {
+        "method": "GET",
+        "path": "/operators",
+        "query": "select=operator:name,...processes(name)&order=name&processes.order=name",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "operator": "Alfred",
+            "name": [
+              "Process C2",
+              "Process XX"
+            ]
+          },
+          {
+            "operator": "Anne",
+            "name": [
+              "Process A1",
+              "Process A2",
+              "Process B2"
+            ]
+          },
+          {
+            "operator": "Jeff",
+            "name": [
+              "Process A2",
+              "Process B1",
+              "Process B2",
+              "Process C2"
+            ]
+          },
+          {
+            "operator": "Liz",
+            "name": []
+          },
+          {
+            "operator": "Louis",
+            "name": [
+              "Process A1",
+              "Process A2"
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:348",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 348,
+      "category": "embedding",
+      "description": "should spread a column as a json array",
+      "example": "SpreadQueriesSpec:it:336",
+      "request": {
+        "method": "GET",
+        "path": "/operators",
+        "query": "select=operator:name,...processes(processes:name)&order=name&processes.order=name",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "operator": "Alfred",
+            "processes": [
+              "Process C2",
+              "Process XX"
+            ]
+          },
+          {
+            "operator": "Anne",
+            "processes": [
+              "Process A1",
+              "Process A2",
+              "Process B2"
+            ]
+          },
+          {
+            "operator": "Jeff",
+            "processes": [
+              "Process A2",
+              "Process B1",
+              "Process B2",
+              "Process C2"
+            ]
+          },
+          {
+            "operator": "Liz",
+            "processes": []
+          },
+          {
+            "operator": "Louis",
+            "processes": [
+              "Process A1",
+              "Process A2"
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:360",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 360,
+      "category": "embedding",
+      "description": "should spread many columns as json arrays",
+      "example": "SpreadQueriesSpec:it:359",
+      "request": {
+        "method": "GET",
+        "path": "/operators",
+        "query": "select=operator:name,...processes(name,category_id)&order=name&processes.order=name",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "operator": "Alfred",
+            "name": [
+              "Process C2",
+              "Process XX"
+            ],
+            "category_id": [
+              2,
+              2
+            ]
+          },
+          {
+            "operator": "Anne",
+            "name": [
+              "Process A1",
+              "Process A2",
+              "Process B2"
+            ],
+            "category_id": [
+              1,
+              2,
+              1
+            ]
+          },
+          {
+            "operator": "Jeff",
+            "name": [
+              "Process A2",
+              "Process B1",
+              "Process B2",
+              "Process C2"
+            ],
+            "category_id": [
+              2,
+              1,
+              1,
+              2
+            ]
+          },
+          {
+            "operator": "Liz",
+            "name": [],
+            "category_id": []
+          },
+          {
+            "operator": "Louis",
+            "name": [
+              "Process A1",
+              "Process A2"
+            ],
+            "category_id": [
+              1,
+              2
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:371",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 371,
+      "category": "embedding",
+      "description": "should spread many columns as json arrays",
+      "example": "SpreadQueriesSpec:it:359",
+      "request": {
+        "method": "GET",
+        "path": "/operators",
+        "query": "select=operator:name,...processes(processes:name,categories:category_id)&order=name&processes.order=name",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "operator": "Alfred",
+            "processes": [
+              "Process C2",
+              "Process XX"
+            ],
+            "categories": [
+              2,
+              2
+            ]
+          },
+          {
+            "operator": "Anne",
+            "processes": [
+              "Process A1",
+              "Process A2",
+              "Process B2"
+            ],
+            "categories": [
+              1,
+              2,
+              1
+            ]
+          },
+          {
+            "operator": "Jeff",
+            "processes": [
+              "Process A2",
+              "Process B1",
+              "Process B2",
+              "Process C2"
+            ],
+            "categories": [
+              2,
+              1,
+              1,
+              2
+            ]
+          },
+          {
+            "operator": "Liz",
+            "processes": [],
+            "categories": []
+          },
+          {
+            "operator": "Louis",
+            "processes": [
+              "Process A1",
+              "Process A2"
+            ],
+            "categories": [
+              1,
+              2
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:383",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 383,
+      "category": "embedding",
+      "description": "should return an empty array when no elements are found",
+      "example": "SpreadQueriesSpec:it:382",
+      "request": {
+        "method": "GET",
+        "path": "/operators",
+        "query": "select=operator:name,...processes(processes:name)&processes=is.null",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "operator": "Liz",
+            "processes": []
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:391",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 391,
+      "category": "embedding",
+      "description": "should return a single null element array, not an empty one, when the row exists but the value happens to be null",
+      "example": "SpreadQueriesSpec:it:390",
+      "request": {
+        "method": "GET",
+        "path": "/operators",
+        "query": "select=name,...processes(process:name,...process_costs(cost)))&id=eq.5&processes.id=eq.7",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Alfred",
+            "process": [
+              "Process XX"
+            ],
+            "cost": [
+              null
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:399",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 399,
+      "category": "embedding",
+      "description": "should work when selecting all columns",
+      "example": "SpreadQueriesSpec:it:398",
+      "request": {
+        "method": "GET",
+        "path": "/operators",
+        "query": "select=operator:name,...processes(*)&order=name&processes.order=name",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "operator": "Alfred",
+            "id": [
+              6,
+              7
+            ],
+            "name": [
+              "Process C2",
+              "Process XX"
+            ],
+            "factory_id": [
+              3,
+              3
+            ],
+            "category_id": [
+              2,
+              2
+            ]
+          },
+          {
+            "operator": "Anne",
+            "id": [
+              1,
+              2,
+              4
+            ],
+            "name": [
+              "Process A1",
+              "Process A2",
+              "Process B2"
+            ],
+            "factory_id": [
+              1,
+              1,
+              2
+            ],
+            "category_id": [
+              1,
+              2,
+              1
+            ]
+          },
+          {
+            "operator": "Jeff",
+            "id": [
+              2,
+              3,
+              4,
+              6
+            ],
+            "name": [
+              "Process A2",
+              "Process B1",
+              "Process B2",
+              "Process C2"
+            ],
+            "factory_id": [
+              1,
+              2,
+              2,
+              3
+            ],
+            "category_id": [
+              2,
+              1,
+              1,
+              2
+            ]
+          },
+          {
+            "operator": "Liz",
+            "id": [],
+            "name": [],
+            "factory_id": [],
+            "category_id": []
+          },
+          {
+            "operator": "Louis",
+            "id": [
+              1,
+              2
+            ],
+            "name": [
+              "Process A1",
+              "Process A2"
+            ],
+            "factory_id": [
+              1,
+              1
+            ],
+            "category_id": [
+              1,
+              2
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:411",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 411,
+      "category": "embedding",
+      "description": "should show spread columns from a nested one-to-one relationship",
+      "example": "SpreadQueriesSpec:it:410",
+      "request": {
+        "method": "GET",
+        "path": "/operators",
+        "query": "select=operator:name,...processes(process:name,...process_costs(process_costs:cost))&order=name&processes.order=name",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "operator": "Alfred",
+            "process": [
+              "Process C2",
+              "Process XX"
+            ],
+            "process_costs": [
+              70,
+              null
+            ]
+          },
+          {
+            "operator": "Anne",
+            "process": [
+              "Process A1",
+              "Process A2",
+              "Process B2"
+            ],
+            "process_costs": [
+              150,
+              200,
+              70
+            ]
+          },
+          {
+            "operator": "Jeff",
+            "process": [
+              "Process A2",
+              "Process B1",
+              "Process B2",
+              "Process C2"
+            ],
+            "process_costs": [
+              200,
+              180,
+              70,
+              70
+            ]
+          },
+          {
+            "operator": "Liz",
+            "process": [],
+            "process_costs": []
+          },
+          {
+            "operator": "Louis",
+            "process": [
+              "Process A1",
+              "Process A2"
+            ],
+            "process_costs": [
+              150,
+              200
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:423",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 423,
+      "category": "embedding",
+      "description": "should show spread columns from a nested many-to-one relationship",
+      "example": "SpreadQueriesSpec:it:422",
+      "request": {
+        "method": "GET",
+        "path": "/operators",
+        "query": "select=operator:name,...processes(process:name,...process_categories(categories:name))&order=name&processes.order=name",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "operator": "Alfred",
+            "process": [
+              "Process C2",
+              "Process XX"
+            ],
+            "categories": [
+              "Mass",
+              "Mass"
+            ]
+          },
+          {
+            "operator": "Anne",
+            "process": [
+              "Process A1",
+              "Process A2",
+              "Process B2"
+            ],
+            "categories": [
+              "Batch",
+              "Mass",
+              "Batch"
+            ]
+          },
+          {
+            "operator": "Jeff",
+            "process": [
+              "Process A2",
+              "Process B1",
+              "Process B2",
+              "Process C2"
+            ],
+            "categories": [
+              "Mass",
+              "Batch",
+              "Batch",
+              "Mass"
+            ]
+          },
+          {
+            "operator": "Liz",
+            "process": [],
+            "categories": []
+          },
+          {
+            "operator": "Louis",
+            "process": [
+              "Process A1",
+              "Process A2"
+            ],
+            "categories": [
+              "Batch",
+              "Mass"
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:435",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 435,
+      "category": "embedding",
+      "description": "should show spread columns from a nested one-to-many relationship",
+      "example": "SpreadQueriesSpec:it:434",
+      "request": {
+        "method": "GET",
+        "path": "/operators",
+        "query": "select=operator:name,...processes(process:name,...process_supervisor(supervisor_ids:supervisor_id))&order=name&processes.order=name",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "operator": "Alfred",
+            "process": [
+              "Process C2",
+              "Process XX"
+            ],
+            "supervisor_ids": [
+              [
+                3
+              ],
+              []
+            ]
+          },
+          {
+            "operator": "Anne",
+            "process": [
+              "Process A1",
+              "Process A2",
+              "Process B2"
+            ],
+            "supervisor_ids": [
+              [
+                1
+              ],
+              [
+                2
+              ],
+              [
+                1,
+                2
+              ]
+            ]
+          },
+          {
+            "operator": "Jeff",
+            "process": [
+              "Process A2",
+              "Process B1",
+              "Process B2",
+              "Process C2"
+            ],
+            "supervisor_ids": [
+              [
+                2
+              ],
+              [
+                3,
+                4
+              ],
+              [
+                1,
+                2
+              ],
+              [
+                3
+              ]
+            ]
+          },
+          {
+            "operator": "Liz",
+            "process": [],
+            "supervisor_ids": []
+          },
+          {
+            "operator": "Louis",
+            "process": [
+              "Process A1",
+              "Process A2"
+            ],
+            "supervisor_ids": [
+              [
+                1
+              ],
+              [
+                2
+              ]
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:447",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 447,
+      "category": "embedding",
+      "description": "should show spread columns from a nested many-to-many relationship",
+      "example": "SpreadQueriesSpec:it:446",
+      "request": {
+        "method": "GET",
+        "path": "/operators",
+        "query": "select=operator:name,...processes(process:name,...supervisors(supervisors:name))&order=name&processes.order=name",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "operator": "Alfred",
+            "process": [
+              "Process C2",
+              "Process XX"
+            ],
+            "supervisors": [
+              [
+                "Peter"
+              ],
+              []
+            ]
+          },
+          {
+            "operator": "Anne",
+            "process": [
+              "Process A1",
+              "Process A2",
+              "Process B2"
+            ],
+            "supervisors": [
+              [
+                "Mary"
+              ],
+              [
+                "John"
+              ],
+              [
+                "Mary",
+                "John"
+              ]
+            ]
+          },
+          {
+            "operator": "Jeff",
+            "process": [
+              "Process A2",
+              "Process B1",
+              "Process B2",
+              "Process C2"
+            ],
+            "supervisors": [
+              [
+                "John"
+              ],
+              [
+                "Peter",
+                "Sarah"
+              ],
+              [
+                "Mary",
+                "John"
+              ],
+              [
+                "Peter"
+              ]
+            ]
+          },
+          {
+            "operator": "Liz",
+            "process": [],
+            "supervisors": []
+          },
+          {
+            "operator": "Louis",
+            "process": [
+              "Process A1",
+              "Process A2"
+            ],
+            "supervisors": [
+              [
+                "Mary"
+              ],
+              [
+                "John"
+              ]
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:459",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 459,
+      "category": "embedding",
+      "description": "should show a nested non-spread one-to-one relationship as an array of objects",
+      "example": "SpreadQueriesSpec:it:458",
+      "request": {
+        "method": "GET",
+        "path": "/operators",
+        "query": "select=operator:name,...processes(process:name,process_costs(cost))&order=name&processes.order=name",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "operator": "Alfred",
+            "process": [
+              "Process C2",
+              "Process XX"
+            ],
+            "process_costs": [
+              {
+                "cost": 70
+              },
+              null
+            ]
+          },
+          {
+            "operator": "Anne",
+            "process": [
+              "Process A1",
+              "Process A2",
+              "Process B2"
+            ],
+            "process_costs": [
+              {
+                "cost": 150
+              },
+              {
+                "cost": 200
+              },
+              {
+                "cost": 70
+              }
+            ]
+          },
+          {
+            "operator": "Jeff",
+            "process": [
+              "Process A2",
+              "Process B1",
+              "Process B2",
+              "Process C2"
+            ],
+            "process_costs": [
+              {
+                "cost": 200
+              },
+              {
+                "cost": 180
+              },
+              {
+                "cost": 70
+              },
+              {
+                "cost": 70
+              }
+            ]
+          },
+          {
+            "operator": "Liz",
+            "process": [],
+            "process_costs": []
+          },
+          {
+            "operator": "Louis",
+            "process": [
+              "Process A1",
+              "Process A2"
+            ],
+            "process_costs": [
+              {
+                "cost": 150
+              },
+              {
+                "cost": 200
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:471",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 471,
+      "category": "embedding",
+      "description": "should show a nested non-spread many-to-one relationship as an array of objects",
+      "example": "SpreadQueriesSpec:it:470",
+      "request": {
+        "method": "GET",
+        "path": "/operators",
+        "query": "select=operator:name,...processes(process:name,process_categories(name))&order=name&processes.order=name",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "operator": "Alfred",
+            "process": [
+              "Process C2",
+              "Process XX"
+            ],
+            "process_categories": [
+              {
+                "name": "Mass"
+              },
+              {
+                "name": "Mass"
+              }
+            ]
+          },
+          {
+            "operator": "Anne",
+            "process": [
+              "Process A1",
+              "Process A2",
+              "Process B2"
+            ],
+            "process_categories": [
+              {
+                "name": "Batch"
+              },
+              {
+                "name": "Mass"
+              },
+              {
+                "name": "Batch"
+              }
+            ]
+          },
+          {
+            "operator": "Jeff",
+            "process": [
+              "Process A2",
+              "Process B1",
+              "Process B2",
+              "Process C2"
+            ],
+            "process_categories": [
+              {
+                "name": "Mass"
+              },
+              {
+                "name": "Batch"
+              },
+              {
+                "name": "Batch"
+              },
+              {
+                "name": "Mass"
+              }
+            ]
+          },
+          {
+            "operator": "Liz",
+            "process": [],
+            "process_categories": []
+          },
+          {
+            "operator": "Louis",
+            "process": [
+              "Process A1",
+              "Process A2"
+            ],
+            "process_categories": [
+              {
+                "name": "Batch"
+              },
+              {
+                "name": "Mass"
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:483",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 483,
+      "category": "embedding",
+      "description": "should show a nested non-spread one-to-many relationship as an array of arrays",
+      "example": "SpreadQueriesSpec:it:482",
+      "request": {
+        "method": "GET",
+        "path": "/operators",
+        "query": "select=operator:name,...processes(process:name,process_supervisor(supervisor_id))&order=name&processes.order=name",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "operator": "Alfred",
+            "process": [
+              "Process C2",
+              "Process XX"
+            ],
+            "process_supervisor": [
+              [
+                {
+                  "supervisor_id": 3
+                }
+              ],
+              []
+            ]
+          },
+          {
+            "operator": "Anne",
+            "process": [
+              "Process A1",
+              "Process A2",
+              "Process B2"
+            ],
+            "process_supervisor": [
+              [
+                {
+                  "supervisor_id": 1
+                }
+              ],
+              [
+                {
+                  "supervisor_id": 2
+                }
+              ],
+              [
+                {
+                  "supervisor_id": 1
+                },
+                {
+                  "supervisor_id": 2
+                }
+              ]
+            ]
+          },
+          {
+            "operator": "Jeff",
+            "process": [
+              "Process A2",
+              "Process B1",
+              "Process B2",
+              "Process C2"
+            ],
+            "process_supervisor": [
+              [
+                {
+                  "supervisor_id": 2
+                }
+              ],
+              [
+                {
+                  "supervisor_id": 3
+                },
+                {
+                  "supervisor_id": 4
+                }
+              ],
+              [
+                {
+                  "supervisor_id": 1
+                },
+                {
+                  "supervisor_id": 2
+                }
+              ],
+              [
+                {
+                  "supervisor_id": 3
+                }
+              ]
+            ]
+          },
+          {
+            "operator": "Liz",
+            "process": [],
+            "process_supervisor": []
+          },
+          {
+            "operator": "Louis",
+            "process": [
+              "Process A1",
+              "Process A2"
+            ],
+            "process_supervisor": [
+              [
+                {
+                  "supervisor_id": 1
+                }
+              ],
+              [
+                {
+                  "supervisor_id": 2
+                }
+              ]
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:495",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 495,
+      "category": "embedding",
+      "description": "should show a nested non-spread many-to-many relationship as an array of arrays",
+      "example": "SpreadQueriesSpec:it:494",
+      "request": {
+        "method": "GET",
+        "path": "/operators",
+        "query": "select=operator:name,...processes(process:name,supervisors(name))&order=name&processes.order=name",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "operator": "Alfred",
+            "process": [
+              "Process C2",
+              "Process XX"
+            ],
+            "supervisors": [
+              [
+                {
+                  "name": "Peter"
+                }
+              ],
+              []
+            ]
+          },
+          {
+            "operator": "Anne",
+            "process": [
+              "Process A1",
+              "Process A2",
+              "Process B2"
+            ],
+            "supervisors": [
+              [
+                {
+                  "name": "Mary"
+                }
+              ],
+              [
+                {
+                  "name": "John"
+                }
+              ],
+              [
+                {
+                  "name": "Mary"
+                },
+                {
+                  "name": "John"
+                }
+              ]
+            ]
+          },
+          {
+            "operator": "Jeff",
+            "process": [
+              "Process A2",
+              "Process B1",
+              "Process B2",
+              "Process C2"
+            ],
+            "supervisors": [
+              [
+                {
+                  "name": "John"
+                }
+              ],
+              [
+                {
+                  "name": "Peter"
+                },
+                {
+                  "name": "Sarah"
+                }
+              ],
+              [
+                {
+                  "name": "Mary"
+                },
+                {
+                  "name": "John"
+                }
+              ],
+              [
+                {
+                  "name": "Peter"
+                }
+              ]
+            ]
+          },
+          {
+            "operator": "Liz",
+            "process": [],
+            "supervisors": []
+          },
+          {
+            "operator": "Louis",
+            "process": [
+              "Process A1",
+              "Process A2"
+            ],
+            "supervisors": [
+              [
+                {
+                  "name": "Mary"
+                }
+              ],
+              [
+                {
+                  "name": "John"
+                }
+              ]
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:507",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 507,
+      "category": "embedding",
+      "description": "should work when selecting all columns in a nested to-one resource",
+      "example": "SpreadQueriesSpec:it:506",
+      "request": {
+        "method": "GET",
+        "path": "/operators",
+        "query": "select=operator:name,...processes(*,...process_costs(*))&order=name&processes.order=name",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "operator": "Alfred",
+            "id": [
+              6,
+              7
+            ],
+            "name": [
+              "Process C2",
+              "Process XX"
+            ],
+            "factory_id": [
+              3,
+              3
+            ],
+            "category_id": [
+              2,
+              2
+            ],
+            "process_id": [
+              6,
+              null
+            ],
+            "cost": [
+              70,
+              null
+            ]
+          },
+          {
+            "operator": "Anne",
+            "id": [
+              1,
+              2,
+              4
+            ],
+            "name": [
+              "Process A1",
+              "Process A2",
+              "Process B2"
+            ],
+            "factory_id": [
+              1,
+              1,
+              2
+            ],
+            "category_id": [
+              1,
+              2,
+              1
+            ],
+            "process_id": [
+              1,
+              2,
+              4
+            ],
+            "cost": [
+              150,
+              200,
+              70
+            ]
+          },
+          {
+            "operator": "Jeff",
+            "id": [
+              2,
+              3,
+              4,
+              6
+            ],
+            "name": [
+              "Process A2",
+              "Process B1",
+              "Process B2",
+              "Process C2"
+            ],
+            "factory_id": [
+              1,
+              2,
+              2,
+              3
+            ],
+            "category_id": [
+              2,
+              1,
+              1,
+              2
+            ],
+            "process_id": [
+              2,
+              3,
+              4,
+              6
+            ],
+            "cost": [
+              200,
+              180,
+              70,
+              70
+            ]
+          },
+          {
+            "operator": "Liz",
+            "id": [],
+            "name": [],
+            "factory_id": [],
+            "category_id": [],
+            "process_id": [],
+            "cost": []
+          },
+          {
+            "operator": "Louis",
+            "id": [
+              1,
+              2
+            ],
+            "name": [
+              "Process A1",
+              "Process A2"
+            ],
+            "factory_id": [
+              1,
+              1
+            ],
+            "category_id": [
+              1,
+              2
+            ],
+            "process_id": [
+              1,
+              2
+            ],
+            "cost": [
+              150,
+              200
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:519",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 519,
+      "category": "embedding",
+      "description": "works when column filters are specified",
+      "example": "SpreadQueriesSpec:it:518",
+      "request": {
+        "method": "GET",
+        "path": "/supervisors",
+        "query": "select=supervisor:name,...processes(*)&processes.name=not.like.*1&order=name&processes.order=name",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "supervisor": "Jane",
+            "id": [],
+            "name": [],
+            "factory_id": [],
+            "category_id": []
+          },
+          {
+            "supervisor": "John",
+            "id": [
+              2,
+              4
+            ],
+            "name": [
+              "Process A2",
+              "Process B2"
+            ],
+            "factory_id": [
+              1,
+              2
+            ],
+            "category_id": [
+              2,
+              1
+            ]
+          },
+          {
+            "supervisor": "Mary",
+            "id": [
+              4
+            ],
+            "name": [
+              "Process B2"
+            ],
+            "factory_id": [
+              2
+            ],
+            "category_id": [
+              1
+            ]
+          },
+          {
+            "supervisor": "Peter",
+            "id": [
+              6
+            ],
+            "name": [
+              "Process C2"
+            ],
+            "factory_id": [
+              3
+            ],
+            "category_id": [
+              2
+            ]
+          },
+          {
+            "supervisor": "Sarah",
+            "id": [],
+            "name": [],
+            "factory_id": [],
+            "category_id": []
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:531",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 531,
+      "category": "embedding",
+      "description": "works with inner joins or not.is.null filters",
+      "example": "SpreadQueriesSpec:it:530",
+      "request": {
+        "method": "GET",
+        "path": "/supervisors",
+        "query": "select=supervisor:name,...processes!inner(name)&order=name&processes.order=name",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "supervisor": "John",
+            "name": [
+              "Process A2",
+              "Process B2"
+            ]
+          },
+          {
+            "supervisor": "Mary",
+            "name": [
+              "Process A1",
+              "Process B2"
+            ]
+          },
+          {
+            "supervisor": "Peter",
+            "name": [
+              "Process B1",
+              "Process C1",
+              "Process C2"
+            ]
+          },
+          {
+            "supervisor": "Sarah",
+            "name": [
+              "Process B1"
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:541",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 541,
+      "category": "embedding",
+      "description": "works with inner joins or not.is.null filters",
+      "example": "SpreadQueriesSpec:it:530",
+      "request": {
+        "method": "GET",
+        "path": "/supervisors",
+        "query": "select=supervisor:name,...processes(name)&processes=not.is.null&order=name&processes.order=name",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "supervisor": "John",
+            "name": [
+              "Process A2",
+              "Process B2"
+            ]
+          },
+          {
+            "supervisor": "Mary",
+            "name": [
+              "Process A1",
+              "Process B2"
+            ]
+          },
+          {
+            "supervisor": "Peter",
+            "name": [
+              "Process B1",
+              "Process C1",
+              "Process C2"
+            ]
+          },
+          {
+            "supervisor": "Sarah",
+            "name": [
+              "Process B1"
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:552",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 552,
+      "category": "embedding",
+      "description": "orders all the resulting arrays according to the spread relationship ordering columns",
+      "example": "SpreadQueriesSpec:it:551",
+      "request": {
+        "method": "GET",
+        "path": "/supervisors",
+        "query": "select=supervisor:name,...processes(*)&processes.order=category_id.asc,name.desc&order=name",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "supervisor": "Jane",
+            "id": [],
+            "name": [],
+            "factory_id": [],
+            "category_id": []
+          },
+          {
+            "supervisor": "John",
+            "id": [
+              4,
+              2
+            ],
+            "name": [
+              "Process B2",
+              "Process A2"
+            ],
+            "factory_id": [
+              2,
+              1
+            ],
+            "category_id": [
+              1,
+              2
+            ]
+          },
+          {
+            "supervisor": "Mary",
+            "id": [
+              4,
+              1
+            ],
+            "name": [
+              "Process B2",
+              "Process A1"
+            ],
+            "factory_id": [
+              2,
+              1
+            ],
+            "category_id": [
+              1,
+              1
+            ]
+          },
+          {
+            "supervisor": "Peter",
+            "id": [
+              3,
+              6,
+              5
+            ],
+            "name": [
+              "Process B1",
+              "Process C2",
+              "Process C1"
+            ],
+            "factory_id": [
+              2,
+              3,
+              3
+            ],
+            "category_id": [
+              1,
+              2,
+              2
+            ]
+          },
+          {
+            "supervisor": "Sarah",
+            "id": [
+              3
+            ],
+            "name": [
+              "Process B1"
+            ],
+            "factory_id": [
+              2
+            ],
+            "category_id": [
+              1
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:563",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 563,
+      "category": "embedding",
+      "description": "orders all the resulting arrays according to the spread relationship ordering columns",
+      "example": "SpreadQueriesSpec:it:551",
+      "request": {
+        "method": "GET",
+        "path": "/processes",
+        "query": "select=process:name,...operators(*)&operators.order=status->afk.asc.nullsfirst,status->id.desc&order=name",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "process": "Process A1",
+            "id": [
+              2,
+              1
+            ],
+            "name": [
+              "Louis",
+              "Anne"
+            ],
+            "status": [
+              {
+                "id": "012345"
+              },
+              {
+                "id": "543210",
+                "afk": true
+              }
+            ]
+          },
+          {
+            "process": "Process A2",
+            "id": [
+              2,
+              3,
+              1
+            ],
+            "name": [
+              "Louis",
+              "Jeff",
+              "Anne"
+            ],
+            "status": [
+              {
+                "id": "012345"
+              },
+              {
+                "id": "666666",
+                "afk": true
+              },
+              {
+                "id": "543210",
+                "afk": true
+              }
+            ]
+          },
+          {
+            "process": "Process B1",
+            "id": [
+              3
+            ],
+            "name": [
+              "Jeff"
+            ],
+            "status": [
+              {
+                "id": "666666",
+                "afk": true
+              }
+            ]
+          },
+          {
+            "process": "Process B2",
+            "id": [
+              3,
+              1
+            ],
+            "name": [
+              "Jeff",
+              "Anne"
+            ],
+            "status": [
+              {
+                "id": "666666",
+                "afk": true
+              },
+              {
+                "id": "543210",
+                "afk": true
+              }
+            ]
+          },
+          {
+            "process": "Process C1",
+            "id": [],
+            "name": [],
+            "status": []
+          },
+          {
+            "process": "Process C2",
+            "id": [
+              5,
+              3
+            ],
+            "name": [
+              "Alfred",
+              "Jeff"
+            ],
+            "status": [
+              {
+                "id": "000000"
+              },
+              {
+                "id": "666666",
+                "afk": true
+              }
+            ]
+          },
+          {
+            "process": "Process XX",
+            "id": [
+              5
+            ],
+            "name": [
+              "Alfred"
+            ],
+            "status": [
+              {
+                "id": "000000"
+              }
+            ]
+          },
+          {
+            "process": "Process YY",
+            "id": [],
+            "name": [],
+            "status": []
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:578",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 578,
+      "category": "embedding",
+      "description": "orders all the resulting arrays according to the spread relationship ordering columns even if they aren't selected",
+      "example": "SpreadQueriesSpec:it:577",
+      "request": {
+        "method": "GET",
+        "path": "/supervisors",
+        "query": "select=supervisor:name,...processes(name)&processes.order=category_id.asc,name.desc&order=name",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "supervisor": "Jane",
+            "name": []
+          },
+          {
+            "supervisor": "John",
+            "name": [
+              "Process B2",
+              "Process A2"
+            ]
+          },
+          {
+            "supervisor": "Mary",
+            "name": [
+              "Process B2",
+              "Process A1"
+            ]
+          },
+          {
+            "supervisor": "Peter",
+            "name": [
+              "Process B1",
+              "Process C2",
+              "Process C1"
+            ]
+          },
+          {
+            "supervisor": "Sarah",
+            "name": [
+              "Process B1"
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:590",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 590,
+      "category": "embedding",
+      "description": "orders all the resulting arrays according to the related ordering columns in the spread relationship",
+      "example": "SpreadQueriesSpec:it:589",
+      "request": {
+        "method": "GET",
+        "path": "/supervisors",
+        "query": "select=supervisor:name,...processes(name,...process_costs(cost))&processes.order=process_costs(cost)&order=name",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "supervisor": "Jane",
+            "name": [],
+            "cost": []
+          },
+          {
+            "supervisor": "John",
+            "name": [
+              "Process B2",
+              "Process A2"
+            ],
+            "cost": [
+              70,
+              200
+            ]
+          },
+          {
+            "supervisor": "Mary",
+            "name": [
+              "Process B2",
+              "Process A1"
+            ],
+            "cost": [
+              70,
+              150
+            ]
+          },
+          {
+            "supervisor": "Peter",
+            "name": [
+              "Process C1",
+              "Process C2",
+              "Process B1"
+            ],
+            "cost": [
+              40,
+              70,
+              180
+            ]
+          },
+          {
+            "supervisor": "Sarah",
+            "name": [
+              "Process B1"
+            ],
+            "cost": [
+              180
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:604",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 604,
+      "category": "embedding",
+      "description": "should work return the same as empty embeddings",
+      "example": "SpreadQueriesSpec:it:603",
+      "request": {
+        "method": "GET",
+        "path": "/actors",
+        "query": "select=*,...films()",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "john"
+          },
+          {
+            "id": 2,
+            "name": "mary"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:611",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 611,
+      "category": "embedding",
+      "description": "should work return the same as empty embeddings",
+      "example": "SpreadQueriesSpec:it:603",
+      "request": {
+        "method": "GET",
+        "path": "/grandchild_entities",
+        "query": "select=name,...child_entities(parent_name:name,...entities())",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "grandchild entity 1",
+            "parent_name": "child entity 1"
+          },
+          {
+            "name": "grandchild entity 2",
+            "parent_name": "child entity 1"
+          },
+          {
+            "name": "grandchild entity 3",
+            "parent_name": "child entity 2"
+          },
+          {
+            "name": "(grandchild,entity,4)",
+            "parent_name": "child entity 2"
+          },
+          {
+            "name": "(grandchild,entity,5)",
+            "parent_name": "child entity 2"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "SpreadQueriesSpec:624",
+      "source": "Feature/Query/SpreadQueriesSpec.hs",
+      "line": 624,
+      "category": "embedding",
+      "description": "should work return the same as empty embeddings",
+      "example": "SpreadQueriesSpec:it:603",
+      "request": {
+        "method": "GET",
+        "path": "/factories",
+        "query": "select=factory:name,...processes()",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "factory": "Factory A"
+          },
+          {
+            "factory": "Factory B"
+          },
+          {
+            "factory": "Factory C"
+          },
+          {
+            "factory": "Factory D"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    }
+  ]
+}

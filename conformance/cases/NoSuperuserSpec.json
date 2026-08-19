@@ -1,0 +1,35 @@
+{
+  "source": "Feature/NoSuperuserSpec.hs",
+  "extractedCases": 1,
+  "skippedSites": 0,
+  "needsConfigCases": 0,
+  "cases": [
+    {
+      "id": "NoSuperuserSpec:14",
+      "source": "Feature/NoSuperuserSpec.hs",
+      "line": 14,
+      "category": "auth",
+      "description": "proves that the authenticator role is not a superuser",
+      "example": "NoSuperuserSpec:it:13",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/is_superuser",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": false,
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    }
+  ]
+}

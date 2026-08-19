@@ -1,0 +1,133 @@
+{
+  "source": "Feature/Query/UnicodeSpec.hs",
+  "extractedCases": 0,
+  "skippedSites": 4,
+  "needsConfigCases": 4,
+  "cases": [
+    {
+      "id": "UnicodeSpec:18",
+      "source": "Feature/Query/UnicodeSpec.hs",
+      "line": 18,
+      "category": "select",
+      "description": "Can read and write values",
+      "example": "UnicodeSpec:it:17",
+      "request": {
+        "method": "GET",
+        "path": "/%D9%85%D9%88%D8%A7%D8%B1%D8%AF",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbSchemas)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "UnicodeSpec:21",
+      "source": "Feature/Query/UnicodeSpec.hs",
+      "line": 21,
+      "category": "select",
+      "description": "Can read and write values",
+      "example": "UnicodeSpec:it:17",
+      "request": {
+        "method": "POST",
+        "path": "/%D9%85%D9%88%D8%A7%D8%B1%D8%AF",
+        "query": "",
+        "headers": {
+          "Prefer": "tx=commit, return=representation"
+        },
+        "body": {
+          "هویت": 1
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "هویت": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbSchemas)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "UnicodeSpec:28",
+      "source": "Feature/Query/UnicodeSpec.hs",
+      "line": 28,
+      "category": "select",
+      "description": "Can read and write values",
+      "example": "UnicodeSpec:it:17",
+      "request": {
+        "method": "GET",
+        "path": "/%D9%85%D9%88%D8%A7%D8%B1%D8%AF",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "هویت": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbSchemas); a preceding assertion in the same example was skipped, so the state this one depends on is never created",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "UnicodeSpec:32",
+      "source": "Feature/Query/UnicodeSpec.hs",
+      "line": 32,
+      "category": "select",
+      "description": "Can read and write values",
+      "example": "UnicodeSpec:it:17",
+      "request": {
+        "method": "DELETE",
+        "path": "/%D9%85%D9%88%D8%A7%D8%B1%D8%AF",
+        "query": "",
+        "headers": {
+          "Prefer": "tx=commit"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {},
+        "headersAbsent": [
+          "Content-Type"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbSchemas)",
+      "skipClass": "needs-engine-config"
+    }
+  ]
+}

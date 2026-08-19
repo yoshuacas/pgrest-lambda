@@ -1,0 +1,926 @@
+{
+  "source": "Feature/Auth/AuthSpec.hs",
+  "extractedCases": 27,
+  "skippedSites": 0,
+  "needsConfigCases": 0,
+  "cases": [
+    {
+      "id": "AuthSpec:16",
+      "source": "Feature/Auth/AuthSpec.hs",
+      "line": 16,
+      "category": "auth",
+      "description": "denies access to tables that anonymous does not own",
+      "example": "AuthSpec:it:15",
+      "request": {
+        "method": "GET",
+        "path": "/authors_only",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 401,
+        "body": {
+          "hint": null,
+          "details": null,
+          "code": "42501",
+          "message": "permission denied for table authors_only"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "WWW-Authenticate": "Bearer",
+          "Content-Length": "96"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AuthSpec:29",
+      "source": "Feature/Auth/AuthSpec.hs",
+      "line": 29,
+      "category": "auth",
+      "description": "denies access to tables that postgrest_test_author does not own",
+      "example": "AuthSpec:it:27",
+      "request": {
+        "method": "GET",
+        "path": "/private_table",
+        "query": "",
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoicG9zdGdyZXN0X3Rlc3RfYXV0aG9yIn0.Xod-F15qsGL0WhdOCr2j3DdKuTw9QJERVgoFD3vGaWA"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 403,
+        "body": {
+          "hint": null,
+          "details": null,
+          "code": "42501",
+          "message": "permission denied for table private_table"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Length": "97"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AuthSpec:41",
+      "source": "Feature/Auth/AuthSpec.hs",
+      "line": 41,
+      "category": "auth",
+      "description": "denies execution on functions that anonymous does not own",
+      "example": "AuthSpec:it:40",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/privileged_hello",
+        "query": "",
+        "headers": {},
+        "body": {
+          "name": "anonymous"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 401,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AuthSpec:45",
+      "source": "Feature/Auth/AuthSpec.hs",
+      "line": 45,
+      "category": "auth",
+      "description": "allows execution on a function that postgrest_test_author owns",
+      "example": "AuthSpec:it:43",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/privileged_hello",
+        "query": "",
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoicG9zdGdyZXN0X3Rlc3RfYXV0aG9yIn0.Xod-F15qsGL0WhdOCr2j3DdKuTw9QJERVgoFD3vGaWA"
+        },
+        "body": {
+          "name": "jdoe"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": "Privileged hello to jdoe",
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AuthSpec:52",
+      "source": "Feature/Auth/AuthSpec.hs",
+      "line": 52,
+      "category": "auth",
+      "description": "returns jwt functions as jwt tokens",
+      "example": "AuthSpec:it:51",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/login",
+        "query": "",
+        "headers": {
+          "Accept": "application/vnd.pgrst.object+json"
+        },
+        "body": {
+          "id": "jdoe",
+          "pass": "1234"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xuYW1lIjoicG9zdGdyZXN0X3Rlc3RfYXV0aG9yIiwiaWQiOiJqZG9lIn0.KO-0PGp_rU-utcDBP6qwdd-Th2Fk-ICVt01I7QtTDWs"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/vnd.pgrst.object+json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AuthSpec:60",
+      "source": "Feature/Auth/AuthSpec.hs",
+      "line": 60,
+      "category": "auth",
+      "description": "sql functions can encode custom and standard claims",
+      "example": "AuthSpec:it:59",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/jwt_test",
+        "query": "",
+        "headers": {
+          "Accept": "application/vnd.pgrst.object+json"
+        },
+        "body": "{}",
+        "bodyFormat": "text"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJqb2UiLCJzdWIiOiJmdW4iLCJhdWQiOiJldmVyeW9uZSIsImV4cCI6MTMwMDgxOTM4MCwibmJmIjoxMzAwODE5MzgwLCJpYXQiOjEzMDA4MTkzODAsImp0aSI6ImZvbyIsInJvbGUiOiJwb3N0Z3Jlc3RfdGVzdCIsImh0dHA6Ly9wb3N0Z3Jlc3QuY29tL2ZvbyI6dHJ1ZX0.G2REtPnOQMUrVRDA9OnkPJTd8R0tf4wdYOlauh1E2Ek"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/vnd.pgrst.object+json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AuthSpec:68",
+      "source": "Feature/Auth/AuthSpec.hs",
+      "line": 68,
+      "category": "auth",
+      "description": "sql functions can read custom and standard claims variables",
+      "example": "AuthSpec:it:66",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/reveal_big_jwt",
+        "query": "",
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmdW4iLCJqdGkiOiJmb28iLCJuYmYiOjEzMDA4MTkzODAsImV4cCI6OTk5OTk5OTk5OSwiaHR0cDovL3Bvc3RncmVzdC5jb20vZm9vIjp0cnVlLCJpc3MiOiJqb2UiLCJyb2xlIjoicG9zdGdyZXN0X3Rlc3RfYXV0aG9yIiwiaWF0IjoxMzAwODE5MzgwfQ.V5fEpXfpb7feqwVqlcDleFdKu86bdwU2cBRT4fcMhXg"
+        },
+        "body": "{}",
+        "bodyFormat": "text"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "iss": "joe",
+            "sub": "fun",
+            "exp": 9999999999,
+            "nbf": 1300819380,
+            "iat": 1300819380,
+            "jti": "foo",
+            "http://postgrest.com/foo": true
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AuthSpec:73",
+      "source": "Feature/Auth/AuthSpec.hs",
+      "line": 73,
+      "category": "auth",
+      "description": "allows users with permissions to see their tables",
+      "example": "AuthSpec:it:71",
+      "request": {
+        "method": "GET",
+        "path": "/authors_only",
+        "query": "",
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoicG9zdGdyZXN0X3Rlc3RfYXV0aG9yIiwiaWQiOiJqZG9lIn0.B-lReuGNDwAlU1GOC476MlO0vAt9JNoHIlxg2vwMaO0"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AuthSpec:78",
+      "source": "Feature/Auth/AuthSpec.hs",
+      "line": 78,
+      "category": "auth",
+      "description": "works with tokens which have extra fields",
+      "example": "AuthSpec:it:76",
+      "request": {
+        "method": "GET",
+        "path": "/authors_only",
+        "query": "",
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoicG9zdGdyZXN0X3Rlc3RfYXV0aG9yIiwiaWQiOiJqZG9lIiwia2V5MSI6InZhbHVlMSIsImtleTIiOiJ2YWx1ZTIiLCJrZXkzIjoidmFsdWUzIiwiYSI6MSwiYiI6MiwiYyI6M30.b0eglDKYEmGi-hCvD-ddSqFl7vnDO5qkUaviaHXm3es"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AuthSpec:84",
+      "source": "Feature/Auth/AuthSpec.hs",
+      "line": 84,
+      "category": "auth",
+      "description": "succeeds with an unexpired token",
+      "example": "AuthSpec:it:82",
+      "request": {
+        "method": "GET",
+        "path": "/authors_only",
+        "query": "",
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjk5OTk5OTk5OTksInJvbGUiOiJwb3N0Z3Jlc3RfdGVzdF9hdXRob3IiLCJpZCI6Impkb2UifQ.Dpss-QoLYjec5OTsOaAc3FNVsSjA89wACoV-0ra3ClA"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AuthSpec:91",
+      "source": "Feature/Auth/AuthSpec.hs",
+      "line": 91,
+      "category": "auth",
+      "description": "succeeds with a valid iat claim in jwt",
+      "example": "AuthSpec:it:87",
+      "request": {
+        "method": "GET",
+        "path": "/authors_only",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none",
+        "jwt": {
+          "alg": "HS256",
+          "secret": "reallyreallyreallyreallyverysafe",
+          "claims": {
+            "role": "postgrest_test_author",
+            "iat": {
+              "$secondsFromNow": 0
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AuthSpec:96",
+      "source": "Feature/Auth/AuthSpec.hs",
+      "line": 96,
+      "category": "auth",
+      "description": "fails when auth header is sent empty",
+      "example": "AuthSpec:it:94",
+      "request": {
+        "method": "GET",
+        "path": "/authors_only",
+        "query": "",
+        "headers": {
+          "Authorization": "Bearer "
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 401,
+        "body": {
+          "message": "Empty JWT is sent in Authorization header",
+          "code": "PGRST301",
+          "hint": null,
+          "details": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "WWW-Authenticate": "Bearer error=\"invalid_token\", error_description=\"Empty JWT is sent in Authorization header\"",
+          "Content-Length": "100"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AuthSpec:108",
+      "source": "Feature/Auth/AuthSpec.hs",
+      "line": 108,
+      "category": "auth",
+      "description": "fails with an expired token",
+      "example": "AuthSpec:it:106",
+      "request": {
+        "method": "GET",
+        "path": "/authors_only",
+        "query": "",
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE0NDY2NzgxNDksInJvbGUiOiJwb3N0Z3Jlc3RfdGVzdF9hdXRob3IiLCJpZCI6Impkb2UifQ.f8__E6VQwYcDqwHmr9PG03uaZn8Zh1b0vbJ9DYS0AdM"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 401,
+        "body": {
+          "message": "JWT expired",
+          "code": "PGRST303",
+          "hint": null,
+          "details": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "WWW-Authenticate": "Bearer error=\"invalid_token\", error_description=\"JWT expired\""
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AuthSpec:119",
+      "source": "Feature/Auth/AuthSpec.hs",
+      "line": 119,
+      "category": "auth",
+      "description": "hides tables from users with invalid JWT",
+      "example": "AuthSpec:it:117",
+      "request": {
+        "method": "GET",
+        "path": "/authors_only",
+        "query": "",
+        "headers": {
+          "Authorization": "Bearer ey9zdGdyZXN0X3Rlc3RfYXV0aG9yIiwiaWQiOiJqZG9lIn0.y4vZuu1dDdwAl0-S00MCRWRYMlJ5YAMSir6Es6WtWx0"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 401,
+        "body": {
+          "message": "Expected 3 parts in JWT; got 2",
+          "code": "PGRST301",
+          "hint": null,
+          "details": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "WWW-Authenticate": "Bearer error=\"invalid_token\", error_description=\"Expected 3 parts in JWT; got 2\""
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AuthSpec:130",
+      "source": "Feature/Auth/AuthSpec.hs",
+      "line": 130,
+      "category": "auth",
+      "description": "should fail when jwt contains no claims",
+      "example": "AuthSpec:it:128",
+      "request": {
+        "method": "GET",
+        "path": "/authors_only",
+        "query": "",
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.CUIP5V9thWsGGFsFyGijSZf1fJMfarLHI9CEJL-TGNk"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 401,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AuthSpec:135",
+      "source": "Feature/Auth/AuthSpec.hs",
+      "line": 135,
+      "category": "auth",
+      "description": "hides tables from users with JWT that contain no claims about role",
+      "example": "AuthSpec:it:133",
+      "request": {
+        "method": "GET",
+        "path": "/authors_only",
+        "query": "",
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Impkb2UifQ.RVlZDaSyKbFPvxUf3V_NQXybfRB4dlBIkAUQXVXLUAI"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 401,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AuthSpec:142",
+      "source": "Feature/Auth/AuthSpec.hs",
+      "line": 142,
+      "category": "auth",
+      "description": "recovers after 401 error with logged in user",
+      "example": "AuthSpec:it:138",
+      "request": {
+        "method": "GET",
+        "path": "/authors_only",
+        "query": "",
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoicG9zdGdyZXN0X3Rlc3RfYXV0aG9yIiwiaWQiOiJqZG9lIn0.B-lReuGNDwAlU1GOC476MlO0vAt9JNoHIlxg2vwMaO0"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AuthSpec:152",
+      "source": "Feature/Auth/AuthSpec.hs",
+      "line": 152,
+      "category": "auth",
+      "description": "fails when the exp claim is not a number",
+      "example": "AuthSpec:it:145",
+      "request": {
+        "method": "GET",
+        "path": "/authors_only",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none",
+        "jwt": {
+          "alg": "HS256",
+          "secret": "reallyreallyreallyreallyverysafe",
+          "claims": {
+            "exp": "invalid",
+            "role": "postgrest_test_author"
+          }
+        }
+      },
+      "expected": {
+        "status": 401,
+        "body": {
+          "code": "PGRST303",
+          "details": null,
+          "hint": null,
+          "message": "The JWT 'exp' claim must be a number"
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AuthSpec:164",
+      "source": "Feature/Auth/AuthSpec.hs",
+      "line": 164,
+      "category": "auth",
+      "description": "fails when the nbf claim is not a number",
+      "example": "AuthSpec:it:157",
+      "request": {
+        "method": "GET",
+        "path": "/authors_only",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none",
+        "jwt": {
+          "alg": "HS256",
+          "secret": "reallyreallyreallyreallyverysafe",
+          "claims": {
+            "nbf": "invalid",
+            "role": "postgrest_test_author"
+          }
+        }
+      },
+      "expected": {
+        "status": 401,
+        "body": {
+          "code": "PGRST303",
+          "details": null,
+          "hint": null,
+          "message": "The JWT 'nbf' claim must be a number"
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AuthSpec:176",
+      "source": "Feature/Auth/AuthSpec.hs",
+      "line": 176,
+      "category": "auth",
+      "description": "fails when the iat claim is not a number",
+      "example": "AuthSpec:it:169",
+      "request": {
+        "method": "GET",
+        "path": "/authors_only",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none",
+        "jwt": {
+          "alg": "HS256",
+          "secret": "reallyreallyreallyreallyverysafe",
+          "claims": {
+            "iat": "invalid",
+            "role": "postgrest_test_author"
+          }
+        }
+      },
+      "expected": {
+        "status": 401,
+        "body": {
+          "code": "PGRST303",
+          "details": null,
+          "hint": null,
+          "message": "The JWT 'iat' claim must be a number"
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AuthSpec:188",
+      "source": "Feature/Auth/AuthSpec.hs",
+      "line": 188,
+      "category": "auth",
+      "description": "fails when the aud claim has a single value and it's not a string",
+      "example": "AuthSpec:it:181",
+      "request": {
+        "method": "GET",
+        "path": "/authors_only",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none",
+        "jwt": {
+          "alg": "HS256",
+          "secret": "reallyreallyreallyreallyverysafe",
+          "claims": {
+            "aud": {
+              "invalid": "value"
+            },
+            "role": "postgrest_test_author"
+          }
+        }
+      },
+      "expected": {
+        "status": 401,
+        "body": {
+          "code": "PGRST303",
+          "details": null,
+          "hint": null,
+          "message": "The JWT 'aud' claim must be a string or an array of strings"
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AuthSpec:200",
+      "source": "Feature/Auth/AuthSpec.hs",
+      "line": 200,
+      "category": "auth",
+      "description": "fails when the aud claim is an array but it has non-string elements",
+      "example": "AuthSpec:it:193",
+      "request": {
+        "method": "GET",
+        "path": "/authors_only",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none",
+        "jwt": {
+          "alg": "HS256",
+          "secret": "reallyreallyreallyreallyverysafe",
+          "claims": {
+            "aud": [
+              {
+                "invalid": "value"
+              },
+              "test"
+            ],
+            "role": "postgrest_test_author"
+          }
+        }
+      },
+      "expected": {
+        "status": 401,
+        "body": {
+          "code": "PGRST303",
+          "details": null,
+          "hint": null,
+          "message": "The JWT 'aud' claim must be a string or an array of strings"
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AuthSpec:209",
+      "source": "Feature/Auth/AuthSpec.hs",
+      "line": 209,
+      "category": "auth",
+      "description": "able to switch to postgrest_test_author role (id=1)",
+      "example": "AuthSpec:it:207",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/get_current_user",
+        "query": "",
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MX0.gKw7qI50i9hMrSJW8BlTpdMEVmMXJYxlAqueGqpa_mE"
+        },
+        "body": {},
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": "postgrest_test_author",
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AuthSpec:218",
+      "source": "Feature/Auth/AuthSpec.hs",
+      "line": 218,
+      "category": "auth",
+      "description": "able to switch to postgrest_test_default_role (id=2)",
+      "example": "AuthSpec:it:216",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/get_current_user",
+        "query": "",
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Mn0.nwzjMI0YLvVGJQTeoCPEBsK983b__gxdpLXisBNaO2A"
+        },
+        "body": {},
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": "postgrest_test_default_role",
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AuthSpec:227",
+      "source": "Feature/Auth/AuthSpec.hs",
+      "line": 227,
+      "category": "auth",
+      "description": "raises error (id=3)",
+      "example": "AuthSpec:it:225",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/get_current_user",
+        "query": "",
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6M30.OGxEJAf60NKZiTn-tIb2jy4rqKs_ZruLGWZ40TjrJsM"
+        },
+        "body": {},
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "hint": "Please contact administrator",
+          "details": null,
+          "code": "P0001",
+          "message": "Disabled ID --> 3"
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AuthSpec:236",
+      "source": "Feature/Auth/AuthSpec.hs",
+      "line": 236,
+      "category": "auth",
+      "description": "allows 'Bearer' and 'bearer' as authentication schemes",
+      "example": "AuthSpec:it:234",
+      "request": {
+        "method": "GET",
+        "path": "/authors_only",
+        "query": "",
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoicG9zdGdyZXN0X3Rlc3RfYXV0aG9yIiwiaWQiOiJqZG9lIn0.B-lReuGNDwAlU1GOC476MlO0vAt9JNoHIlxg2vwMaO0"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AuthSpec:238",
+      "source": "Feature/Auth/AuthSpec.hs",
+      "line": 238,
+      "category": "auth",
+      "description": "allows 'Bearer' and 'bearer' as authentication schemes",
+      "example": "AuthSpec:it:234",
+      "request": {
+        "method": "GET",
+        "path": "/authors_only",
+        "query": "",
+        "headers": {
+          "Authorization": "bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoicG9zdGdyZXN0X3Rlc3RfYXV0aG9yIiwiaWQiOiJqZG9lIn0.B-lReuGNDwAlU1GOC476MlO0vAt9JNoHIlxg2vwMaO0"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    }
+  ]
+}

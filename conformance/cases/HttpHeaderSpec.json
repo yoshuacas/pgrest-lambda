@@ -1,0 +1,66 @@
+{
+  "source": "Feature/HttpHeaderSpec.hs",
+  "extractedCases": 1,
+  "skippedSites": 1,
+  "needsConfigCases": 1,
+  "cases": [
+    {
+      "id": "HttpHeaderSpec:18",
+      "source": "Feature/HttpHeaderSpec.hs",
+      "line": 18,
+      "category": "http-headers",
+      "description": "Test default Vary header value is overridden in pre-request database function",
+      "example": "HttpHeaderSpec:it:17",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {
+          "Vary": "X-Test-Accept"
+        }
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbPreRequest)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "HttpHeaderSpec:28",
+      "source": "Feature/HttpHeaderSpec.hs",
+      "line": 28,
+      "category": "http-headers",
+      "description": "Test default Vary header value matches default one",
+      "example": "HttpHeaderSpec:it:27",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {
+          "Vary": "Accept, Prefer, Range"
+        }
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    }
+  ]
+}

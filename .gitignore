@@ -9,3 +9,10 @@ coverage/
 .local/
 docs/.vitepress/dist/
 docs/.vitepress/cache/
+
+# Conformance run results: keep only the runs history.json references.
+conformance/results/run-*.json
+!conformance/results/run-2026-08-19T10-44-42-130Z.json
+!conformance/results/run-2026-08-19T16-04-15-181Z.json
+!conformance/results/run-2026-08-19T16-31-25-475Z.json
+!conformance/results/run-2026-08-19T16-34-46-825Z-noflag.json

@@ -1,0 +1,2460 @@
+{
+  "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+  "extractedCases": 57,
+  "skippedSites": 0,
+  "needsConfigCases": 0,
+  "cases": [
+    {
+      "id": "EmbedInnerJoinSpec:17",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 17,
+      "category": "embedding",
+      "description": "ignores null embeddings while the default left join doesn't",
+      "example": "EmbedInnerJoinSpec:it:16",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "select=id,clients!inner(id)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "clients": {
+              "id": 1
+            }
+          },
+          {
+            "id": 2,
+            "clients": {
+              "id": 1
+            }
+          },
+          {
+            "id": 3,
+            "clients": {
+              "id": 2
+            }
+          },
+          {
+            "id": 4,
+            "clients": {
+              "id": 2
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:22",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 22,
+      "category": "embedding",
+      "description": "ignores null embeddings while the default left join doesn't",
+      "example": "EmbedInnerJoinSpec:it:16",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "select=id,clients!left(id)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "clients": {
+              "id": 1
+            }
+          },
+          {
+            "id": 2,
+            "clients": {
+              "id": 1
+            }
+          },
+          {
+            "id": 3,
+            "clients": {
+              "id": 2
+            }
+          },
+          {
+            "id": 4,
+            "clients": {
+              "id": 2
+            }
+          },
+          {
+            "id": 5,
+            "clients": null
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:28",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 28,
+      "category": "embedding",
+      "description": "ignores null embeddings while the default left join doesn't",
+      "example": "EmbedInnerJoinSpec:it:16",
+      "request": {
+        "method": "HEAD",
+        "path": "/projects",
+        "query": "select=id,clients!inner(id)",
+        "headers": {
+          "Prefer": "count=exact"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "0-3/4"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:36",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 36,
+      "category": "embedding",
+      "description": "filters source tables when the embedded table is filtered",
+      "example": "EmbedInnerJoinSpec:it:35",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "select=id,clients!inner(id)&clients.id=eq.1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "clients": {
+              "id": 1
+            }
+          },
+          {
+            "id": 2,
+            "clients": {
+              "id": 1
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:41",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 41,
+      "category": "embedding",
+      "description": "filters source tables when the embedded table is filtered",
+      "example": "EmbedInnerJoinSpec:it:35",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "select=id,clients!inner(id)&clients.id=eq.2",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 3,
+            "clients": {
+              "id": 2
+            }
+          },
+          {
+            "id": 4,
+            "clients": {
+              "id": 2
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:46",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 46,
+      "category": "embedding",
+      "description": "filters source tables when the embedded table is filtered",
+      "example": "EmbedInnerJoinSpec:it:35",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "select=id,clients!inner(id)&clients.id=eq.0",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:49",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 49,
+      "category": "embedding",
+      "description": "filters source tables when the embedded table is filtered",
+      "example": "EmbedInnerJoinSpec:it:35",
+      "request": {
+        "method": "HEAD",
+        "path": "/projects",
+        "query": "select=id,clients!inner(id)&clients.id=eq.1",
+        "headers": {
+          "Prefer": "count=exact"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "0-1/2"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:57",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 57,
+      "category": "embedding",
+      "description": "filters source tables when a two levels below embedded table is filtered",
+      "example": "EmbedInnerJoinSpec:it:56",
+      "request": {
+        "method": "GET",
+        "path": "/tasks",
+        "query": "select=id,projects!inner(id,clients!inner(id))&projects.clients.id=eq.1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "projects": {
+              "id": 1,
+              "clients": {
+                "id": 1
+              }
+            }
+          },
+          {
+            "id": 2,
+            "projects": {
+              "id": 1,
+              "clients": {
+                "id": 1
+              }
+            }
+          },
+          {
+            "id": 3,
+            "projects": {
+              "id": 2,
+              "clients": {
+                "id": 1
+              }
+            }
+          },
+          {
+            "id": 4,
+            "projects": {
+              "id": 2,
+              "clients": {
+                "id": 1
+              }
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:64",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 64,
+      "category": "embedding",
+      "description": "filters source tables when a two levels below embedded table is filtered",
+      "example": "EmbedInnerJoinSpec:it:56",
+      "request": {
+        "method": "GET",
+        "path": "/tasks",
+        "query": "select=id,projects!inner(id,clients!inner(id))&projects.clients.id=eq.2",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 5,
+            "projects": {
+              "id": 3,
+              "clients": {
+                "id": 2
+              }
+            }
+          },
+          {
+            "id": 6,
+            "projects": {
+              "id": 3,
+              "clients": {
+                "id": 2
+              }
+            }
+          },
+          {
+            "id": 7,
+            "projects": {
+              "id": 4,
+              "clients": {
+                "id": 2
+              }
+            }
+          },
+          {
+            "id": 8,
+            "projects": {
+              "id": 4,
+              "clients": {
+                "id": 2
+              }
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:71",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 71,
+      "category": "embedding",
+      "description": "filters source tables when a two levels below embedded table is filtered",
+      "example": "EmbedInnerJoinSpec:it:56",
+      "request": {
+        "method": "HEAD",
+        "path": "/tasks",
+        "query": "select=id,projects!inner(id,clients!inner(id))&projects.clients.id=eq.1",
+        "headers": {
+          "Prefer": "count=exact"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "0-3/4"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:79",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 79,
+      "category": "embedding",
+      "description": "only affects the source table rows if his direct embedding is an inner join",
+      "example": "EmbedInnerJoinSpec:it:78",
+      "request": {
+        "method": "GET",
+        "path": "/tasks",
+        "query": "select=id,projects(id,clients!inner(id))&projects.clients.id=eq.2&order=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "projects": null
+          },
+          {
+            "id": 2,
+            "projects": null
+          },
+          {
+            "id": 3,
+            "projects": null
+          },
+          {
+            "id": 4,
+            "projects": null
+          },
+          {
+            "id": 5,
+            "projects": {
+              "id": 3,
+              "clients": {
+                "id": 2
+              }
+            }
+          },
+          {
+            "id": 6,
+            "projects": {
+              "id": 3,
+              "clients": {
+                "id": 2
+              }
+            }
+          },
+          {
+            "id": 7,
+            "projects": {
+              "id": 4,
+              "clients": {
+                "id": 2
+              }
+            }
+          },
+          {
+            "id": 8,
+            "projects": {
+              "id": 4,
+              "clients": {
+                "id": 2
+              }
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:90",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 90,
+      "category": "embedding",
+      "description": "only affects the source table rows if his direct embedding is an inner join",
+      "example": "EmbedInnerJoinSpec:it:78",
+      "request": {
+        "method": "HEAD",
+        "path": "/tasks",
+        "query": "select=id,projects(id,clients!inner(id))&projects.clients.id=eq.2",
+        "headers": {
+          "Prefer": "count=exact"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "0-7/8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:98",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 98,
+      "category": "embedding",
+      "description": "works with views",
+      "example": "EmbedInnerJoinSpec:it:97",
+      "request": {
+        "method": "GET",
+        "path": "/books",
+        "query": "select=title,authors!inner(name)&authors.name=eq.George%20Orwell",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "title": "1984",
+            "authors": {
+              "name": "George Orwell"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:101",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 101,
+      "category": "embedding",
+      "description": "works with views",
+      "example": "EmbedInnerJoinSpec:it:97",
+      "request": {
+        "method": "HEAD",
+        "path": "/books",
+        "query": "select=title,authors!inner(name)&authors.name=eq.George%20Orwell",
+        "headers": {
+          "Prefer": "count=exact"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "0-0/1"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:110",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 110,
+      "category": "embedding",
+      "description": "ignores empty array embeddings while the default left join doesn't",
+      "example": "EmbedInnerJoinSpec:it:109",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "select=id,child_entities!inner(id)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "child_entities": [
+              {
+                "id": 1
+              },
+              {
+                "id": 2
+              },
+              {
+                "id": 4
+              },
+              {
+                "id": 5
+              }
+            ]
+          },
+          {
+            "id": 2,
+            "child_entities": [
+              {
+                "id": 3
+              },
+              {
+                "id": 6
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:115",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 115,
+      "category": "embedding",
+      "description": "ignores empty array embeddings while the default left join doesn't",
+      "example": "EmbedInnerJoinSpec:it:109",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "select=id,child_entities!left(id)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "child_entities": [
+              {
+                "id": 1
+              },
+              {
+                "id": 2
+              },
+              {
+                "id": 4
+              },
+              {
+                "id": 5
+              }
+            ]
+          },
+          {
+            "id": 2,
+            "child_entities": [
+              {
+                "id": 3
+              },
+              {
+                "id": 6
+              }
+            ]
+          },
+          {
+            "id": 3,
+            "child_entities": []
+          },
+          {
+            "id": 4,
+            "child_entities": []
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:122",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 122,
+      "category": "embedding",
+      "description": "ignores empty array embeddings while the default left join doesn't",
+      "example": "EmbedInnerJoinSpec:it:109",
+      "request": {
+        "method": "HEAD",
+        "path": "/entities",
+        "query": "select=id,child_entities!inner(id)",
+        "headers": {
+          "Prefer": "count=exact"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "0-1/2"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:130",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 130,
+      "category": "embedding",
+      "description": "filters source tables when the embedded table is filtered",
+      "example": "EmbedInnerJoinSpec:it:129",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "select=id,child_entities!inner(id)&child_entities.id=eq.1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "child_entities": [
+              {
+                "id": 1
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:133",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 133,
+      "category": "embedding",
+      "description": "filters source tables when the embedded table is filtered",
+      "example": "EmbedInnerJoinSpec:it:129",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "select=id,child_entities!inner(id)&child_entities.id=eq.3",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 2,
+            "child_entities": [
+              {
+                "id": 3
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:136",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 136,
+      "category": "embedding",
+      "description": "filters source tables when the embedded table is filtered",
+      "example": "EmbedInnerJoinSpec:it:129",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "select=id,child_entities!inner(id)&child_entities.id=eq.0",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:139",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 139,
+      "category": "embedding",
+      "description": "filters source tables when the embedded table is filtered",
+      "example": "EmbedInnerJoinSpec:it:129",
+      "request": {
+        "method": "HEAD",
+        "path": "/entities",
+        "query": "select=id,child_entities!inner(id)&child_entities.id=eq.1",
+        "headers": {
+          "Prefer": "count=exact"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "0-0/1"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:147",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 147,
+      "category": "embedding",
+      "description": "filters source tables when a two levels below embedded table is filtered",
+      "example": "EmbedInnerJoinSpec:it:146",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "select=id,child_entities!inner(id,grandchild_entities!inner(id))&child_entities.grandchild_entities.id=in.(1,5)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "child_entities": [
+              {
+                "id": 1,
+                "grandchild_entities": [
+                  {
+                    "id": 1
+                  }
+                ]
+              },
+              {
+                "id": 2,
+                "grandchild_entities": [
+                  {
+                    "id": 5
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:158",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 158,
+      "category": "embedding",
+      "description": "filters source tables when a two levels below embedded table is filtered",
+      "example": "EmbedInnerJoinSpec:it:146",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "select=id,child_entities!inner(id,grandchild_entities!inner(id))&child_entities.grandchild_entities.id=eq.2",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "child_entities": [
+              {
+                "id": 1,
+                "grandchild_entities": [
+                  {
+                    "id": 2
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:167",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 167,
+      "category": "embedding",
+      "description": "filters source tables when a two levels below embedded table is filtered",
+      "example": "EmbedInnerJoinSpec:it:146",
+      "request": {
+        "method": "HEAD",
+        "path": "/entities",
+        "query": "select=id,child_entities!inner(id,grandchild_entities!inner(id))&child_entities.grandchild_entities.id=in.(1,5)",
+        "headers": {
+          "Prefer": "count=exact"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "0-0/1"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:175",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 175,
+      "category": "embedding",
+      "description": "only affects the source table rows if his direct embedding is an inner join",
+      "example": "EmbedInnerJoinSpec:it:174",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "select=id,child_entities!inner(id,grandchild_entities(id))&child_entities.grandchild_entities.id=eq.2",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "child_entities": [
+              {
+                "id": 1,
+                "grandchild_entities": [
+                  {
+                    "id": 2
+                  }
+                ]
+              },
+              {
+                "id": 2,
+                "grandchild_entities": []
+              },
+              {
+                "id": 4,
+                "grandchild_entities": []
+              },
+              {
+                "id": 5,
+                "grandchild_entities": []
+              }
+            ]
+          },
+          {
+            "id": 2,
+            "child_entities": [
+              {
+                "id": 3,
+                "grandchild_entities": []
+              },
+              {
+                "id": 6,
+                "grandchild_entities": []
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:193",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 193,
+      "category": "embedding",
+      "description": "only affects the source table rows if his direct embedding is an inner join",
+      "example": "EmbedInnerJoinSpec:it:174",
+      "request": {
+        "method": "HEAD",
+        "path": "/entities",
+        "query": "select=id,child_entities!inner(id,grandchild_entities(id))&child_entities.grandchild_entities.id=eq.2",
+        "headers": {
+          "Prefer": "count=exact"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "0-1/2"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:201",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 201,
+      "category": "embedding",
+      "description": "works with views",
+      "example": "EmbedInnerJoinSpec:it:200",
+      "request": {
+        "method": "GET",
+        "path": "/authors",
+        "query": "select=*,books!inner(*)&books.title=eq.1984",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "George Orwell",
+            "books": [
+              {
+                "id": 1,
+                "title": "1984",
+                "publication_year": 1949,
+                "author_id": 1,
+                "first_publisher_id": 1
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:204",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 204,
+      "category": "embedding",
+      "description": "works with views",
+      "example": "EmbedInnerJoinSpec:it:200",
+      "request": {
+        "method": "HEAD",
+        "path": "/authors",
+        "query": "select=*,books!inner(*)&books.title=eq.1984",
+        "headers": {
+          "Prefer": "count=exact"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "0-0/1"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:213",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 213,
+      "category": "embedding",
+      "description": "ignores empty array embeddings while the default left join doesn't",
+      "example": "EmbedInnerJoinSpec:it:212",
+      "request": {
+        "method": "GET",
+        "path": "/products",
+        "query": "select=id,suppliers!inner(id)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "suppliers": [
+              {
+                "id": 1
+              },
+              {
+                "id": 2
+              }
+            ]
+          },
+          {
+            "id": 2,
+            "suppliers": [
+              {
+                "id": 1
+              },
+              {
+                "id": 3
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:218",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 218,
+      "category": "embedding",
+      "description": "ignores empty array embeddings while the default left join doesn't",
+      "example": "EmbedInnerJoinSpec:it:212",
+      "request": {
+        "method": "GET",
+        "path": "/products",
+        "query": "select=id,suppliers!left(id)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "suppliers": [
+              {
+                "id": 1
+              },
+              {
+                "id": 2
+              }
+            ]
+          },
+          {
+            "id": 2,
+            "suppliers": [
+              {
+                "id": 1
+              },
+              {
+                "id": 3
+              }
+            ]
+          },
+          {
+            "id": 3,
+            "suppliers": []
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:224",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 224,
+      "category": "embedding",
+      "description": "ignores empty array embeddings while the default left join doesn't",
+      "example": "EmbedInnerJoinSpec:it:212",
+      "request": {
+        "method": "HEAD",
+        "path": "/products",
+        "query": "select=id,suppliers!inner(id)",
+        "headers": {
+          "Prefer": "count=exact"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "0-1/2"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:232",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 232,
+      "category": "embedding",
+      "description": "filters source tables when the embedded table is filtered",
+      "example": "EmbedInnerJoinSpec:it:231",
+      "request": {
+        "method": "GET",
+        "path": "/products",
+        "query": "select=id,suppliers!inner(id)&suppliers.id=eq.2",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "suppliers": [
+              {
+                "id": 2
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:235",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 235,
+      "category": "embedding",
+      "description": "filters source tables when the embedded table is filtered",
+      "example": "EmbedInnerJoinSpec:it:231",
+      "request": {
+        "method": "GET",
+        "path": "/products",
+        "query": "select=id,suppliers!inner(id)&suppliers.id=eq.3",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 2,
+            "suppliers": [
+              {
+                "id": 3
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:238",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 238,
+      "category": "embedding",
+      "description": "filters source tables when the embedded table is filtered",
+      "example": "EmbedInnerJoinSpec:it:231",
+      "request": {
+        "method": "GET",
+        "path": "/products",
+        "query": "select=id,suppliers!inner(id)&suppliers.id=eq.0",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:241",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 241,
+      "category": "embedding",
+      "description": "filters source tables when the embedded table is filtered",
+      "example": "EmbedInnerJoinSpec:it:231",
+      "request": {
+        "method": "HEAD",
+        "path": "/products",
+        "query": "select=id,suppliers!inner(id)&suppliers.id=eq.2",
+        "headers": {
+          "Prefer": "count=exact"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "0-0/1"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:249",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 249,
+      "category": "embedding",
+      "description": "filters source tables when a two levels below embedded table is filtered",
+      "example": "EmbedInnerJoinSpec:it:248",
+      "request": {
+        "method": "GET",
+        "path": "/products",
+        "query": "select=id,suppliers!inner(id,trade_unions!inner(id))&suppliers.trade_unions.id=eq.3",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "suppliers": [
+              {
+                "id": 2,
+                "trade_unions": [
+                  {
+                    "id": 3
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:253",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 253,
+      "category": "embedding",
+      "description": "filters source tables when a two levels below embedded table is filtered",
+      "example": "EmbedInnerJoinSpec:it:248",
+      "request": {
+        "method": "GET",
+        "path": "/products",
+        "query": "select=id,suppliers!inner(id,trade_unions!inner(id))&suppliers.trade_unions.id=eq.4",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "suppliers": [
+              {
+                "id": 2,
+                "trade_unions": [
+                  {
+                    "id": 4
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:257",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 257,
+      "category": "embedding",
+      "description": "filters source tables when a two levels below embedded table is filtered",
+      "example": "EmbedInnerJoinSpec:it:248",
+      "request": {
+        "method": "HEAD",
+        "path": "/products",
+        "query": "select=id,suppliers!inner(id,trade_unions!inner(id))&suppliers.trade_unions.id=eq.3",
+        "headers": {
+          "Prefer": "count=exact"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "0-0/1"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:265",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 265,
+      "category": "embedding",
+      "description": "only affects the source table rows if his direct embedding is an inner join",
+      "example": "EmbedInnerJoinSpec:it:264",
+      "request": {
+        "method": "GET",
+        "path": "/products",
+        "query": "select=id,suppliers!inner(id,trade_unions(id))&suppliers.trade_unions.id=eq.3",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "suppliers": [
+              {
+                "id": 1,
+                "trade_unions": []
+              },
+              {
+                "id": 2,
+                "trade_unions": [
+                  {
+                    "id": 3
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": 2,
+            "suppliers": [
+              {
+                "id": 1,
+                "trade_unions": []
+              },
+              {
+                "id": 3,
+                "trade_unions": []
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:270",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 270,
+      "category": "embedding",
+      "description": "only affects the source table rows if his direct embedding is an inner join",
+      "example": "EmbedInnerJoinSpec:it:264",
+      "request": {
+        "method": "HEAD",
+        "path": "/products",
+        "query": "select=id,suppliers!inner(id,trade_unions(id))&suppliers.trade_unions.id=eq.3",
+        "headers": {
+          "Prefer": "count=exact"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "0-1/2"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:278",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 278,
+      "category": "embedding",
+      "description": "works with views",
+      "example": "EmbedInnerJoinSpec:it:277",
+      "request": {
+        "method": "GET",
+        "path": "/actors",
+        "query": "select=*,films!inner(*)&films.title=eq.douze%20commandements",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "john",
+            "films": [
+              {
+                "id": 12,
+                "title": "douze commandements"
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:281",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 281,
+      "category": "embedding",
+      "description": "works with views",
+      "example": "EmbedInnerJoinSpec:it:277",
+      "request": {
+        "method": "GET",
+        "path": "/films",
+        "query": "select=*,actors!inner(*)&actors.name=eq.john",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 12,
+            "title": "douze commandements",
+            "actors": [
+              {
+                "id": 1,
+                "name": "john"
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:284",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 284,
+      "category": "embedding",
+      "description": "works with views",
+      "example": "EmbedInnerJoinSpec:it:277",
+      "request": {
+        "method": "HEAD",
+        "path": "/actors",
+        "query": "select=*,films!inner(*)&films.title=eq.douze%20commandements",
+        "headers": {
+          "Prefer": "count=exact"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "0-0/1"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:292",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 292,
+      "category": "embedding",
+      "description": "works with m2o and m2m relationships combined",
+      "example": "EmbedInnerJoinSpec:it:291",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "select=name,clients!inner(name),users!inner(name)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Windows 7",
+            "clients": {
+              "name": "Microsoft"
+            },
+            "users": [
+              {
+                "name": "Angela Martin"
+              },
+              {
+                "name": "Dwight Schrute"
+              }
+            ]
+          },
+          {
+            "name": "Windows 10",
+            "clients": {
+              "name": "Microsoft"
+            },
+            "users": [
+              {
+                "name": "Angela Martin"
+              }
+            ]
+          },
+          {
+            "name": "IOS",
+            "clients": {
+              "name": "Apple"
+            },
+            "users": [
+              {
+                "name": "Michael Scott"
+              },
+              {
+                "name": "Dwight Schrute"
+              }
+            ]
+          },
+          {
+            "name": "OSX",
+            "clients": {
+              "name": "Apple"
+            },
+            "users": [
+              {
+                "name": "Michael Scott"
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:299",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 299,
+      "category": "embedding",
+      "description": "works with m2o and m2m relationships combined",
+      "example": "EmbedInnerJoinSpec:it:291",
+      "request": {
+        "method": "HEAD",
+        "path": "/projects",
+        "query": "select=name,clients!inner(name),users!inner(name)",
+        "headers": {
+          "Prefer": "count=exact"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "0-3/4"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:307",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 307,
+      "category": "embedding",
+      "description": "works with rpc",
+      "example": "EmbedInnerJoinSpec:it:306",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/getallprojects",
+        "query": "select=id,clients!inner(id)&clients.id=eq.1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "clients": {
+              "id": 1
+            }
+          },
+          {
+            "id": 2,
+            "clients": {
+              "id": 1
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:310",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 310,
+      "category": "embedding",
+      "description": "works with rpc",
+      "example": "EmbedInnerJoinSpec:it:306",
+      "request": {
+        "method": "HEAD",
+        "path": "/rpc/getallprojects",
+        "query": "select=id,clients!inner(id)&clients.id=eq.1",
+        "headers": {
+          "Prefer": "count=exact"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "0-1/2"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:318",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 318,
+      "category": "embedding",
+      "description": "works when using hints",
+      "example": "EmbedInnerJoinSpec:it:317",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "select=id,clients!client!inner(id)&clients.id=eq.2",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 3,
+            "clients": {
+              "id": 2
+            }
+          },
+          {
+            "id": 4,
+            "clients": {
+              "id": 2
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:321",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 321,
+      "category": "embedding",
+      "description": "works when using hints",
+      "example": "EmbedInnerJoinSpec:it:317",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "select=id,client!inner(id)&client.id=eq.2",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 3,
+            "client": {
+              "id": 2
+            }
+          },
+          {
+            "id": 4,
+            "client": {
+              "id": 2
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:324",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 324,
+      "category": "embedding",
+      "description": "works when using hints",
+      "example": "EmbedInnerJoinSpec:it:317",
+      "request": {
+        "method": "HEAD",
+        "path": "/projects",
+        "query": "select=id,clients!client!inner(id)&clients.id=eq.2",
+        "headers": {
+          "Prefer": "count=exact"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "0-1/2"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:333",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 333,
+      "category": "embedding",
+      "description": "works with many one-to-many relationships",
+      "example": "EmbedInnerJoinSpec:it:331",
+      "request": {
+        "method": "GET",
+        "path": "/client",
+        "query": "select=id,name,contact!inner(name),clientinfo!inner(other)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "Walmart",
+            "contact": [
+              {
+                "name": "Wally Walton"
+              },
+              {
+                "name": "Wilma Wellers"
+              }
+            ],
+            "clientinfo": [
+              {
+                "other": "123 Main St"
+              }
+            ]
+          },
+          {
+            "id": 2,
+            "name": "Target",
+            "contact": [
+              {
+                "name": "Tabby Targo"
+              }
+            ],
+            "clientinfo": [
+              {
+                "other": "456 South 3rd St"
+              }
+            ]
+          },
+          {
+            "id": 3,
+            "name": "Big Lots",
+            "contact": [
+              {
+                "name": "Bobby Bots"
+              },
+              {
+                "name": "Bonnie Bits"
+              },
+              {
+                "name": "Billy Boats"
+              }
+            ],
+            "clientinfo": [
+              {
+                "other": "789 Palm Tree Ln"
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:340",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 340,
+      "category": "embedding",
+      "description": "works with many one-to-many relationships",
+      "example": "EmbedInnerJoinSpec:it:331",
+      "request": {
+        "method": "GET",
+        "path": "/client",
+        "query": "select=id,name,contact!inner(name),clientinfo!inner(other)&contact.name=eq.Wally%20Walton",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "Walmart",
+            "contact": [
+              {
+                "name": "Wally Walton"
+              }
+            ],
+            "clientinfo": [
+              {
+                "other": "123 Main St"
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:345",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 345,
+      "category": "embedding",
+      "description": "works with many one-to-many relationships",
+      "example": "EmbedInnerJoinSpec:it:331",
+      "request": {
+        "method": "GET",
+        "path": "/client",
+        "query": "select=id,name,contact!inner(name),clientinfo!inner(other)&clientinfo.other=eq.456%20South%203rd%20St",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 2,
+            "name": "Target",
+            "clientinfo": [
+              {
+                "other": "456 South 3rd St"
+              }
+            ],
+            "contact": [
+              {
+                "name": "Tabby Targo"
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:350",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 350,
+      "category": "embedding",
+      "description": "works with many one-to-many relationships",
+      "example": "EmbedInnerJoinSpec:it:331",
+      "request": {
+        "method": "HEAD",
+        "path": "/client",
+        "query": "select=id,name,contact!inner(name),clientinfo!inner(other)",
+        "headers": {
+          "Prefer": "count=exact"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "0-2/3"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:359",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 359,
+      "category": "embedding",
+      "description": "works alongside another embedding",
+      "example": "EmbedInnerJoinSpec:it:357",
+      "request": {
+        "method": "GET",
+        "path": "/books",
+        "query": "select=id,authors(name),publishers!inner(name)&id=gte.7",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 7,
+            "authors": {
+              "name": "Harper Lee"
+            },
+            "publishers": {
+              "name": "J. B. Lippincott & Co."
+            }
+          },
+          {
+            "id": 8,
+            "authors": {
+              "name": "Kurt Vonnegut"
+            },
+            "publishers": {
+              "name": "Delacorte"
+            }
+          },
+          {
+            "id": 9,
+            "authors": {
+              "name": "Ken Kesey"
+            },
+            "publishers": {
+              "name": "Viking Press & Signet Books"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:366",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 366,
+      "category": "embedding",
+      "description": "works alongside another embedding",
+      "example": "EmbedInnerJoinSpec:it:357",
+      "request": {
+        "method": "HEAD",
+        "path": "/books",
+        "query": "select=id,authors(name),publishers!inner(name)&id=gte.7",
+        "headers": {
+          "Prefer": "count=exact"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "0-2/3"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedInnerJoinSpec:372",
+      "source": "Feature/Query/EmbedInnerJoinSpec.hs",
+      "line": 372,
+      "category": "embedding",
+      "description": "works alongside another embedding",
+      "example": "EmbedInnerJoinSpec:it:357",
+      "request": {
+        "method": "HEAD",
+        "path": "/books",
+        "query": "select=id,publishers!inner(name),authors(name)&id=gte.7",
+        "headers": {
+          "Prefer": "count=exact"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "0-2/3"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    }
+  ]
+}

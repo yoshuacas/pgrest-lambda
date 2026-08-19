@@ -1,0 +1,2446 @@
+{
+  "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+  "extractedCases": 58,
+  "skippedSites": 0,
+  "needsConfigCases": 0,
+  "cases": [
+    {
+      "id": "EmbedDisambiguationSpec:15",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 15,
+      "category": "embedding",
+      "description": "errs when there are o2m and m2m cardinalities to the target table",
+      "example": "EmbedDisambiguationSpec:it:14",
+      "request": {
+        "method": "GET",
+        "path": "/sites",
+        "query": "select=*,big_projects(*)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 300,
+        "body": {
+          "details": [
+            {
+              "cardinality": "many-to-one",
+              "relationship": "main_project using sites(main_project_id) and big_projects(big_project_id)",
+              "embedding": "sites with big_projects"
+            },
+            {
+              "cardinality": "many-to-many",
+              "relationship": "jobs using jobs_site_id_fkey(site_id) and jobs_big_project_id_fkey(big_project_id)",
+              "embedding": "sites with big_projects"
+            },
+            {
+              "cardinality": "many-to-many",
+              "relationship": "main_jobs using jobs_site_id_fkey(site_id) and jobs_big_project_id_fkey(big_project_id)",
+              "embedding": "sites with big_projects"
+            }
+          ],
+          "hint": "Try changing 'big_projects' to one of the following: 'big_projects!main_project', 'big_projects!jobs', 'big_projects!main_jobs'. Find the desired relationship in the 'details' key.",
+          "message": "Could not embed because more than one relationship was found for 'sites' and 'big_projects'",
+          "code": "PGRST201"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Length": "828"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:46",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 46,
+      "category": "embedding",
+      "description": "errs on an ambiguous embed that has a circular reference",
+      "example": "EmbedDisambiguationSpec:it:45",
+      "request": {
+        "method": "GET",
+        "path": "/agents",
+        "query": "select=*,departments(*)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 300,
+        "body": {
+          "details": [
+            {
+              "cardinality": "one-to-many",
+              "relationship": "departments_head_id_fkey using agents(id) and departments(head_id)",
+              "embedding": "agents with departments"
+            },
+            {
+              "cardinality": "many-to-one",
+              "relationship": "agents_department_id_fkey using agents(department_id) and departments(id)",
+              "embedding": "agents with departments"
+            }
+          ],
+          "hint": "Try changing 'departments' to one of the following: 'departments!departments_head_id_fkey', 'departments!agents_department_id_fkey'. Find the desired relationship in the 'details' key.",
+          "message": "Could not embed because more than one relationship was found for 'agents' and 'departments'",
+          "code": "PGRST201"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:72",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 72,
+      "category": "embedding",
+      "description": "errs when there are more than two fks on a junction table but it can be disambiguated with spread embeds",
+      "example": "EmbedDisambiguationSpec:it:70",
+      "request": {
+        "method": "GET",
+        "path": "/whatev_sites",
+        "query": "select=*,whatev_projects(*)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 300,
+        "body": {
+          "details": [
+            {
+              "cardinality": "many-to-many",
+              "relationship": "whatev_jobs using whatev_jobs_site_id_1_fkey(site_id_1) and whatev_jobs_project_id_1_fkey(project_id_1)",
+              "embedding": "whatev_sites with whatev_projects"
+            },
+            {
+              "cardinality": "many-to-many",
+              "relationship": "whatev_jobs using whatev_jobs_site_id_1_fkey(site_id_1) and whatev_jobs_project_id_2_fkey(project_id_2)",
+              "embedding": "whatev_sites with whatev_projects"
+            },
+            {
+              "cardinality": "many-to-many",
+              "relationship": "whatev_jobs using whatev_jobs_site_id_2_fkey(site_id_2) and whatev_jobs_project_id_1_fkey(project_id_1)",
+              "embedding": "whatev_sites with whatev_projects"
+            },
+            {
+              "cardinality": "many-to-many",
+              "relationship": "whatev_jobs using whatev_jobs_site_id_2_fkey(site_id_2) and whatev_jobs_project_id_2_fkey(project_id_2)",
+              "embedding": "whatev_sites with whatev_projects"
+            }
+          ],
+          "hint": "Try changing 'whatev_projects' to one of the following: 'whatev_projects!whatev_jobs', 'whatev_projects!whatev_jobs', 'whatev_projects!whatev_jobs', 'whatev_projects!whatev_jobs'. Find the desired relationship in the 'details' key.",
+          "message": "Could not embed because more than one relationship was found for 'whatev_sites' and 'whatev_projects'",
+          "code": "PGRST201"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:106",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 106,
+      "category": "embedding",
+      "description": "errs when there are more than two fks on a junction table but it can be disambiguated with spread embeds",
+      "example": "EmbedDisambiguationSpec:it:70",
+      "request": {
+        "method": "GET",
+        "path": "/whatev_sites",
+        "query": "select=*,whatev_jobs!site_id_1(...whatev_projects!project_id_1(*))",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:107",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 107,
+      "category": "embedding",
+      "description": "errs when there are more than two fks on a junction table but it can be disambiguated with spread embeds",
+      "example": "EmbedDisambiguationSpec:it:70",
+      "request": {
+        "method": "GET",
+        "path": "/whatev_sites",
+        "query": "select=*,whatev_jobs!site_id_1(...whatev_projects!project_id_2(*))",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:108",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 108,
+      "category": "embedding",
+      "description": "errs when there are more than two fks on a junction table but it can be disambiguated with spread embeds",
+      "example": "EmbedDisambiguationSpec:it:70",
+      "request": {
+        "method": "GET",
+        "path": "/whatev_sites",
+        "query": "select=*,whatev_jobs!site_id_2(...whatev_projects!project_id_1(*))",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:109",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 109,
+      "category": "embedding",
+      "description": "errs when there are more than two fks on a junction table but it can be disambiguated with spread embeds",
+      "example": "EmbedDisambiguationSpec:it:70",
+      "request": {
+        "method": "GET",
+        "path": "/whatev_sites",
+        "query": "select=*,whatev_jobs!site_id_2(...whatev_projects!project_id_2(*))",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:112",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 112,
+      "category": "embedding",
+      "description": "can disambiguate a recursive m2m with spread embeds",
+      "example": "EmbedDisambiguationSpec:it:111",
+      "request": {
+        "method": "GET",
+        "path": "/posters",
+        "query": "select=*,subscribers:subscriptions!subscribed(...posters!subscriber(*))&limit=1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "Mark",
+            "subscribers": [
+              {
+                "id": 3,
+                "name": "Bill"
+              },
+              {
+                "id": 4,
+                "name": "Jeff"
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:117",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 117,
+      "category": "embedding",
+      "description": "can disambiguate a recursive m2m with spread embeds",
+      "example": "EmbedDisambiguationSpec:it:111",
+      "request": {
+        "method": "GET",
+        "path": "/posters",
+        "query": "select=*,subscriptions!subscriber(...posters!subscribed(*))&limit=1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "Mark",
+            "subscriptions": [
+              {
+                "id": 2,
+                "name": "Elon"
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:124",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 124,
+      "category": "embedding",
+      "description": "errs on an ambiguous embed that has two one-to-one relationships",
+      "example": "EmbedDisambiguationSpec:it:123",
+      "request": {
+        "method": "GET",
+        "path": "/first",
+        "query": "select=second(*)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 300,
+        "body": {
+          "code": "PGRST201",
+          "details": [
+            {
+              "cardinality": "one-to-one",
+              "embedding": "first with second",
+              "relationship": "first_second_id_1_fkey using first(second_id_1) and second(id)"
+            },
+            {
+              "cardinality": "one-to-one",
+              "embedding": "first with second",
+              "relationship": "first_second_id_2_fkey using first(second_id_2) and second(id)"
+            }
+          ],
+          "hint": "Try changing 'second' to one of the following: 'second!first_second_id_1_fkey', 'second!first_second_id_2_fkey'. Find the desired relationship in the 'details' key.",
+          "message": "Could not embed because more than one relationship was found for 'first' and 'second'"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:138",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 138,
+      "category": "embedding",
+      "description": "errs with multiple references to the same composite key columns in a view",
+      "example": "EmbedDisambiguationSpec:it:137",
+      "request": {
+        "method": "GET",
+        "path": "/i2459_composite_v2",
+        "query": "select=*,i2459_composite_v1(*)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 300,
+        "body": {
+          "code": "PGRST201",
+          "details": [
+            {
+              "cardinality": "many-to-one",
+              "embedding": "i2459_composite_v2 with i2459_composite_v1",
+              "relationship": "i2459_composite_t2_t1_a_t1_b_fkey using i2459_composite_v2(t1_a1, t1_b1) and i2459_composite_v1(a, b)"
+            },
+            {
+              "cardinality": "many-to-one",
+              "embedding": "i2459_composite_v2 with i2459_composite_v1",
+              "relationship": "i2459_composite_t2_t1_a_t1_b_fkey using i2459_composite_v2(t1_a1, t1_b2) and i2459_composite_v1(a, b)"
+            },
+            {
+              "cardinality": "many-to-one",
+              "embedding": "i2459_composite_v2 with i2459_composite_v1",
+              "relationship": "i2459_composite_t2_t1_a_t1_b_fkey using i2459_composite_v2(t1_a2, t1_b1) and i2459_composite_v1(a, b)"
+            },
+            {
+              "cardinality": "many-to-one",
+              "embedding": "i2459_composite_v2 with i2459_composite_v1",
+              "relationship": "i2459_composite_t2_t1_a_t1_b_fkey using i2459_composite_v2(t1_a2, t1_b2) and i2459_composite_v1(a, b)"
+            }
+          ],
+          "hint": "Try changing 'i2459_composite_v1' to one of the following: 'i2459_composite_v1!i2459_composite_t2_t1_a_t1_b_fkey', 'i2459_composite_v1!i2459_composite_t2_t1_a_t1_b_fkey', 'i2459_composite_v1!i2459_composite_t2_t1_a_t1_b_fkey', 'i2459_composite_v1!i2459_composite_t2_t1_a_t1_b_fkey'. Find the desired relationship in the 'details' key.",
+          "message": "Could not embed because more than one relationship was found for 'i2459_composite_v2' and 'i2459_composite_v1'"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:176",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 176,
+      "category": "embedding",
+      "description": "can embed by FK name",
+      "example": "EmbedDisambiguationSpec:it:175",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "id=in.(1,3)&select=id,name,client(id,name)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "Windows 7",
+            "client": {
+              "id": 1,
+              "name": "Microsoft"
+            }
+          },
+          {
+            "id": 3,
+            "name": "IOS",
+            "client": {
+              "id": 2,
+              "name": "Apple"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:181",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 181,
+      "category": "embedding",
+      "description": "can embed by FK name and select the FK column at the same time",
+      "example": "EmbedDisambiguationSpec:it:180",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "id=in.(1,3)&select=id,name,client_id,client(id,name)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "Windows 7",
+            "client_id": 1,
+            "client": {
+              "id": 1,
+              "name": "Microsoft"
+            }
+          },
+          {
+            "id": 3,
+            "name": "IOS",
+            "client_id": 2,
+            "client": {
+              "id": 2,
+              "name": "Apple"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:186",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 186,
+      "category": "embedding",
+      "description": "can embed parent with view!fk and grandparent by using fk",
+      "example": "EmbedDisambiguationSpec:it:185",
+      "request": {
+        "method": "GET",
+        "path": "/tasks",
+        "query": "id=eq.1&select=id,name,projects_view!project(id,name,client(id,name))",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "Design w7",
+            "projects_view": {
+              "id": 1,
+              "name": "Windows 7",
+              "client": {
+                "id": 1,
+                "name": "Microsoft"
+              }
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:190",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 190,
+      "category": "embedding",
+      "description": "can embed by using a composite FK name",
+      "example": "EmbedDisambiguationSpec:it:189",
+      "request": {
+        "method": "GET",
+        "path": "/unit_workdays",
+        "query": "select=unit_id,day,fst_shift(car_id,schedule(name)),snd_shift(camera_id,schedule(name))",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "day": "2019-12-02",
+            "fst_shift": {
+              "car_id": "CAR-349",
+              "schedule": {
+                "name": "morning"
+              }
+            },
+            "snd_shift": {
+              "camera_id": "CAM-123",
+              "schedule": {
+                "name": "night"
+              }
+            },
+            "unit_id": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:212",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 212,
+      "category": "embedding",
+      "description": "embeds by using two fks pointing to the same table",
+      "example": "EmbedDisambiguationSpec:it:211",
+      "request": {
+        "method": "GET",
+        "path": "/orders",
+        "query": "id=eq.1&select=id, name, billing(address), shipping(address)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "order 1",
+            "billing": {
+              "address": "address 1"
+            },
+            "shipping": {
+              "address": "address 2"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:217",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 217,
+      "category": "embedding",
+      "description": "fails if the fk is not known",
+      "example": "EmbedDisambiguationSpec:it:216",
+      "request": {
+        "method": "GET",
+        "path": "/message",
+        "query": "select=id,sender:person!space(name)&id=lt.4",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "hint": null,
+          "message": "Could not find a relationship between 'message' and 'person' in the schema cache",
+          "code": "PGRST200",
+          "details": "Searched for a foreign key relationship between 'message' and 'person' using the hint 'space' in the schema 'test', but no matches were found."
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:227",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 227,
+      "category": "embedding",
+      "description": "can request a parent with fk",
+      "example": "EmbedDisambiguationSpec:it:226",
+      "request": {
+        "method": "GET",
+        "path": "/comments",
+        "query": "select=content,user(name)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "content": "Needs to be delivered ASAP",
+            "user": {
+              "name": "Angela Martin"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:232",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 232,
+      "category": "embedding",
+      "description": "can request two parents with fks",
+      "example": "EmbedDisambiguationSpec:it:231",
+      "request": {
+        "method": "GET",
+        "path": "/articleStars",
+        "query": "select=createdAt,article:articles(id),user(name)&limit=1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "createdAt": "2015-12-08T04:22:57.472738",
+            "article": {
+              "id": 1
+            },
+            "user": {
+              "name": "Angela Martin"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:237",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 237,
+      "category": "embedding",
+      "description": "can specify a view!fk",
+      "example": "EmbedDisambiguationSpec:it:236",
+      "request": {
+        "method": "GET",
+        "path": "/message",
+        "query": "select=id,body,sender:person_detail!message_sender_fkey(name,sent),recipient:person_detail!message_recipient_fkey(name,received)&id=lt.4&order=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "body": "Hello Jane",
+            "sender": {
+              "name": "John",
+              "sent": 2
+            },
+            "recipient": {
+              "name": "Jane",
+              "received": 2
+            }
+          },
+          {
+            "id": 2,
+            "body": "Hi John",
+            "sender": {
+              "name": "Jane",
+              "sent": 1
+            },
+            "recipient": {
+              "name": "John",
+              "received": 1
+            }
+          },
+          {
+            "id": 3,
+            "body": "How are you doing?",
+            "sender": {
+              "name": "John",
+              "sent": 2
+            },
+            "recipient": {
+              "name": "Jane",
+              "received": 2
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:245",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 245,
+      "category": "embedding",
+      "description": "can specify a table!fk hint and request children 2 levels",
+      "example": "EmbedDisambiguationSpec:it:244",
+      "request": {
+        "method": "GET",
+        "path": "/clients",
+        "query": "id=eq.1&select=id,projects:projects!client(id,tasks(id))",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "projects": [
+              {
+                "id": 1,
+                "tasks": [
+                  {
+                    "id": 1
+                  },
+                  {
+                    "id": 2
+                  }
+                ]
+              },
+              {
+                "id": 2,
+                "tasks": [
+                  {
+                    "id": 3
+                  },
+                  {
+                    "id": 4
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:250",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 250,
+      "category": "embedding",
+      "description": "can disambiguate with the fk in case of an o2m and m2m relationship to the same table",
+      "example": "EmbedDisambiguationSpec:it:249",
+      "request": {
+        "method": "GET",
+        "path": "/sites",
+        "query": "select=name,main_project(name)&site_id=eq.1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "site 1",
+            "main_project": {
+              "name": "big project 1"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:256",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 256,
+      "category": "embedding",
+      "description": "can embed by column",
+      "example": "EmbedDisambiguationSpec:it:255",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "id=in.(1,3)&select=id,name,client_id(id,name)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "Windows 7",
+            "client_id": {
+              "id": 1,
+              "name": "Microsoft"
+            }
+          },
+          {
+            "id": 3,
+            "name": "IOS",
+            "client_id": {
+              "id": 2,
+              "name": "Apple"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:261",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 261,
+      "category": "embedding",
+      "description": "can embed by column and select the column at the same time, if aliased",
+      "example": "EmbedDisambiguationSpec:it:260",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "id=in.(1,3)&select=id,name,client_id,client:client_id(id,name)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "Windows 7",
+            "client_id": 1,
+            "client": {
+              "id": 1,
+              "name": "Microsoft"
+            }
+          },
+          {
+            "id": 3,
+            "name": "IOS",
+            "client_id": 2,
+            "client": {
+              "id": 2,
+              "name": "Apple"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:266",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 266,
+      "category": "embedding",
+      "description": "can embed parent by using view!column and grandparent by using the column",
+      "example": "EmbedDisambiguationSpec:it:265",
+      "request": {
+        "method": "GET",
+        "path": "/tasks",
+        "query": "id=eq.1&select=id,name,project:projects_view!project_id(id,name,client:client_id(id,name))",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "Design w7",
+            "project": {
+              "id": 1,
+              "name": "Windows 7",
+              "client": {
+                "id": 1,
+                "name": "Microsoft"
+              }
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:270",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 270,
+      "category": "embedding",
+      "description": "can specify table!column",
+      "example": "EmbedDisambiguationSpec:it:269",
+      "request": {
+        "method": "GET",
+        "path": "/message",
+        "query": "select=id,body,sender:person!sender(name),recipient:person!recipient(name)&id=lt.4",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "body": "Hello Jane",
+            "sender": {
+              "name": "John"
+            },
+            "recipient": {
+              "name": "Jane"
+            }
+          },
+          {
+            "id": 2,
+            "body": "Hi John",
+            "sender": {
+              "name": "Jane"
+            },
+            "recipient": {
+              "name": "John"
+            }
+          },
+          {
+            "id": 3,
+            "body": "How are you doing?",
+            "sender": {
+              "name": "John"
+            },
+            "recipient": {
+              "name": "Jane"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:278",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 278,
+      "category": "embedding",
+      "description": "will embed using a column that has uppercase chars",
+      "example": "EmbedDisambiguationSpec:it:277",
+      "request": {
+        "method": "GET",
+        "path": "/ghostBusters",
+        "query": "select=escapeId(*)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "escapeId": {
+              "so6meIdColumn": 1
+            }
+          },
+          {
+            "escapeId": {
+              "so6meIdColumn": 3
+            }
+          },
+          {
+            "escapeId": {
+              "so6meIdColumn": 5
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:283",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 283,
+      "category": "embedding",
+      "description": "embeds by using two columns pointing to the same table",
+      "example": "EmbedDisambiguationSpec:it:282",
+      "request": {
+        "method": "GET",
+        "path": "/orders",
+        "query": "id=eq.1&select=id, name, billing_address_id(id), shipping_address_id(id)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "order 1",
+            "billing_address_id": {
+              "id": 1
+            },
+            "shipping_address_id": {
+              "id": 2
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:288",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 288,
+      "category": "embedding",
+      "description": "can disambiguate with the column in case of an o2m and m2m relationship to the same table",
+      "example": "EmbedDisambiguationSpec:it:287",
+      "request": {
+        "method": "GET",
+        "path": "/sites",
+        "query": "select=name,main_project_id(name)&site_id=eq.1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "site 1",
+            "main_project_id": {
+              "name": "big project 1"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:293",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 293,
+      "category": "embedding",
+      "description": "can specify all view column names that reference the same base column",
+      "example": "EmbedDisambiguationSpec:it:292",
+      "request": {
+        "method": "GET",
+        "path": "/i2459_simple_v1",
+        "query": "select=*,i2459_simple_v2!t1_id1(*)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:296",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 296,
+      "category": "embedding",
+      "description": "can specify all view column names that reference the same base column",
+      "example": "EmbedDisambiguationSpec:it:292",
+      "request": {
+        "method": "GET",
+        "path": "/i2459_simple_v1",
+        "query": "select=*,i2459_simple_v2!t1_id2(*)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:299",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 299,
+      "category": "embedding",
+      "description": "can specify all view column names that reference the same base column",
+      "example": "EmbedDisambiguationSpec:it:292",
+      "request": {
+        "method": "GET",
+        "path": "/i2459_simple_v2",
+        "query": "select=*,i2459_simple_v1!t1_id1(*)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:302",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 302,
+      "category": "embedding",
+      "description": "can specify all view column names that reference the same base column",
+      "example": "EmbedDisambiguationSpec:it:292",
+      "request": {
+        "method": "GET",
+        "path": "/i2459_simple_v2",
+        "query": "select=*,i2459_simple_v1!t1_id2(*)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:308",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 308,
+      "category": "embedding",
+      "description": "can specify the junction of an m2m relationship",
+      "example": "EmbedDisambiguationSpec:it:307",
+      "request": {
+        "method": "GET",
+        "path": "/sites",
+        "query": "select=*,big_projects!jobs(name)&site_id=in.(1,2)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "big_projects": [
+              {
+                "name": "big project 1"
+              }
+            ],
+            "main_project_id": 1,
+            "name": "site 1",
+            "site_id": 1
+          },
+          {
+            "big_projects": [
+              {
+                "name": "big project 1"
+              },
+              {
+                "name": "big project 2"
+              }
+            ],
+            "main_project_id": null,
+            "name": "site 2",
+            "site_id": 2
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:336",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 336,
+      "category": "embedding",
+      "description": "can specify the junction of an m2m relationship",
+      "example": "EmbedDisambiguationSpec:it:307",
+      "request": {
+        "method": "GET",
+        "path": "/sites",
+        "query": "select=*,big_projects!main_jobs(name)&site_id=in.(1,2)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "big_projects": [
+              {
+                "name": "big project 1"
+              }
+            ],
+            "main_project_id": 1,
+            "name": "site 1",
+            "site_id": 1
+          },
+          {
+            "big_projects": [],
+            "main_project_id": null,
+            "name": "site 2",
+            "site_id": 2
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:361",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 361,
+      "category": "embedding",
+      "description": "embeds by using a column and a fk pointing to the same table",
+      "example": "EmbedDisambiguationSpec:it:360",
+      "request": {
+        "method": "GET",
+        "path": "/orders",
+        "query": "id=eq.1&select=id, name, billing_address_id(id), shipping(id)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "order 1",
+            "billing_address_id": {
+              "id": 1
+            },
+            "shipping": {
+              "id": 2
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:368",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 368,
+      "category": "embedding",
+      "description": "embeds parents recursively",
+      "example": "EmbedDisambiguationSpec:it:367",
+      "request": {
+        "method": "GET",
+        "path": "/family_tree",
+        "query": "id=in.(3,4)&select=id,parent(id,name,parent(*))&order=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": "3",
+            "parent": {
+              "id": "1",
+              "name": "Parental Unit",
+              "parent": null
+            }
+          },
+          {
+            "id": "4",
+            "parent": {
+              "id": "2",
+              "name": "Kid One",
+              "parent": {
+                "id": "1",
+                "name": "Parental Unit",
+                "parent": null
+              }
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:376",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 376,
+      "category": "embedding",
+      "description": "embeds children recursively",
+      "example": "EmbedDisambiguationSpec:it:375",
+      "request": {
+        "method": "GET",
+        "path": "/family_tree",
+        "query": "id=eq.1&select=id,name, children:family_tree!parent(id,name,children:family_tree!parent(id,name))",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": "1",
+            "name": "Parental Unit",
+            "children": [
+              {
+                "id": "2",
+                "name": "Kid One",
+                "children": [
+                  {
+                    "id": "4",
+                    "name": "Grandkid One"
+                  }
+                ]
+              },
+              {
+                "id": "3",
+                "name": "Kid Two",
+                "children": [
+                  {
+                    "id": "5",
+                    "name": "Grandkid Two"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:385",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 385,
+      "category": "embedding",
+      "description": "embeds parent and then embeds children",
+      "example": "EmbedDisambiguationSpec:it:384",
+      "request": {
+        "method": "GET",
+        "path": "/family_tree",
+        "query": "id=eq.2&select=id,name,parent(id,name,children:family_tree!parent(id,name))",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": "2",
+            "name": "Kid One",
+            "parent": {
+              "id": "1",
+              "name": "Parental Unit",
+              "children": [
+                {
+                  "id": "2",
+                  "name": "Kid One"
+                },
+                {
+                  "id": "3",
+                  "name": "Kid Two"
+                }
+              ]
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:393",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 393,
+      "category": "embedding",
+      "description": "embeds parent and then embeds children on a view",
+      "example": "EmbedDisambiguationSpec:it:392",
+      "request": {
+        "method": "GET",
+        "path": "/job",
+        "query": "select=id,parent_id(*),children:job!parent_id(id,parent_id)&order=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "parent_id": null,
+            "children": [
+              {
+                "id": 2,
+                "parent_id": 1
+              }
+            ]
+          },
+          {
+            "id": 2,
+            "parent_id": {
+              "id": 1,
+              "parent_id": null
+            },
+            "children": []
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:408",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 408,
+      "category": "embedding",
+      "description": "can specify all view column names that reference the same base column",
+      "example": "EmbedDisambiguationSpec:it:407",
+      "request": {
+        "method": "GET",
+        "path": "/i2459_self_v1",
+        "query": "select=*,parent(*),grandparent(*)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:411",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 411,
+      "category": "embedding",
+      "description": "can specify all view column names that reference the same base column",
+      "example": "EmbedDisambiguationSpec:it:407",
+      "request": {
+        "method": "GET",
+        "path": "/i2459_self_v2",
+        "query": "select=*,parent(*),grandparent(*)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:417",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 417,
+      "category": "embedding",
+      "description": "embeds parents",
+      "example": "EmbedDisambiguationSpec:it:416",
+      "request": {
+        "method": "GET",
+        "path": "/organizations",
+        "query": "select=id,name,referee(id,name),auditor(id,name)&id=eq.3",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 3,
+            "name": "Acme",
+            "referee": {
+              "id": 1,
+              "name": "Referee Org"
+            },
+            "auditor": {
+              "id": 2,
+              "name": "Auditor Org"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:431",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 431,
+      "category": "embedding",
+      "description": "embeds children",
+      "example": "EmbedDisambiguationSpec:it:430",
+      "request": {
+        "method": "GET",
+        "path": "/organizations",
+        "query": "select=id,name,refereeds:organizations!referee(id,name)&id=eq.1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "Referee Org",
+            "refereeds": [
+              {
+                "id": 3,
+                "name": "Acme"
+              },
+              {
+                "id": 4,
+                "name": "Umbrella"
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:445",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 445,
+      "category": "embedding",
+      "description": "embeds children",
+      "example": "EmbedDisambiguationSpec:it:430",
+      "request": {
+        "method": "GET",
+        "path": "/organizations",
+        "query": "select=id,name,auditees:organizations!auditor(id,name)&id=eq.2",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 2,
+            "name": "Auditor Org",
+            "auditees": [
+              {
+                "id": 3,
+                "name": "Acme"
+              },
+              {
+                "id": 4,
+                "name": "Umbrella"
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:461",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 461,
+      "category": "embedding",
+      "description": "embeds other relations(manager) besides the self reference",
+      "example": "EmbedDisambiguationSpec:it:460",
+      "request": {
+        "method": "GET",
+        "path": "/organizations",
+        "query": "select=name,manager(name),referee(name,manager(name),auditor(name,manager(name))),auditor(name,manager(name),referee(name,manager(name)))&id=eq.5",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Cyberdyne",
+            "manager": {
+              "name": "Cyberdyne Manager"
+            },
+            "referee": {
+              "name": "Acme",
+              "manager": {
+                "name": "Acme Manager"
+              },
+              "auditor": {
+                "name": "Auditor Org",
+                "manager": {
+                  "name": "Auditor Manager"
+                }
+              }
+            },
+            "auditor": {
+              "name": "Umbrella",
+              "manager": {
+                "name": "Umbrella Manager"
+              },
+              "referee": {
+                "name": "Referee Org",
+                "manager": {
+                  "name": "Referee Manager"
+                }
+              }
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:479",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 479,
+      "category": "embedding",
+      "description": "embeds other relations(manager) besides the self reference",
+      "example": "EmbedDisambiguationSpec:it:460",
+      "request": {
+        "method": "GET",
+        "path": "/organizations",
+        "query": "select=name,manager(name),auditees:organizations!auditor(name,manager(name),refereeds:organizations!referee(name,manager(name)))&id=eq.2",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Auditor Org",
+            "manager": {
+              "name": "Auditor Manager"
+            },
+            "auditees": [
+              {
+                "name": "Acme",
+                "manager": {
+                  "name": "Acme Manager"
+                },
+                "refereeds": [
+                  {
+                    "name": "Cyberdyne",
+                    "manager": {
+                      "name": "Cyberdyne Manager"
+                    }
+                  },
+                  {
+                    "name": "Oscorp",
+                    "manager": {
+                      "name": "Oscorp Manager"
+                    }
+                  }
+                ]
+              },
+              {
+                "name": "Umbrella",
+                "manager": {
+                  "name": "Umbrella Manager"
+                },
+                "refereeds": []
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:499",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 499,
+      "category": "embedding",
+      "description": "works with no ambiguity when there's an exposed view of the junction",
+      "example": "EmbedDisambiguationSpec:it:498",
+      "request": {
+        "method": "GET",
+        "path": "/screens",
+        "query": "select=labels(name)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "labels": [
+              {
+                "name": "fruit"
+              }
+            ]
+          },
+          {
+            "labels": [
+              {
+                "name": "vehicles"
+              }
+            ]
+          },
+          {
+            "labels": [
+              {
+                "name": "vehicles"
+              },
+              {
+                "name": "fruit"
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:502",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 502,
+      "category": "embedding",
+      "description": "works with no ambiguity when there's an exposed view of the junction",
+      "example": "EmbedDisambiguationSpec:it:498",
+      "request": {
+        "method": "GET",
+        "path": "/actors",
+        "query": "select=*,films(*)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "john",
+            "films": [
+              {
+                "id": 12,
+                "title": "douze commandements"
+              }
+            ]
+          },
+          {
+            "id": 2,
+            "name": "mary",
+            "films": [
+              {
+                "id": 2001,
+                "title": "odyssée de l'espace"
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:507",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 507,
+      "category": "embedding",
+      "description": "doesn't work if the junction is only internal",
+      "example": "EmbedDisambiguationSpec:it:506",
+      "request": {
+        "method": "GET",
+        "path": "/end_1",
+        "query": "select=end_2(*)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "hint": null,
+          "message": "Could not find a relationship between 'end_1' and 'end_2' in the schema cache",
+          "code": "PGRST200",
+          "details": "Searched for a foreign key relationship between 'end_1' and 'end_2' in the schema 'test', but no matches were found."
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:518",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 518,
+      "category": "embedding",
+      "description": "shouldn't try to embed if the private junction has an exposed homonym",
+      "example": "EmbedDisambiguationSpec:it:515",
+      "request": {
+        "method": "GET",
+        "path": "/schauspieler",
+        "query": "select=filme(*)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "hint": null,
+          "message": "Could not find a relationship between 'schauspieler' and 'filme' in the schema cache",
+          "code": "PGRST200",
+          "details": "Searched for a foreign key relationship between 'schauspieler' and 'filme' in the schema 'test', but no matches were found."
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:530",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 530,
+      "category": "embedding",
+      "description": "works with self reference both ways(m2o and o2m)",
+      "example": "EmbedDisambiguationSpec:it:529",
+      "request": {
+        "method": "GET",
+        "path": "/test",
+        "query": "select=id,parent_id,parent:parent_id(id)&order=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "parent_id": null,
+            "parent": null
+          },
+          {
+            "id": 2,
+            "parent_id": 1,
+            "parent": {
+              "id": 1
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:536",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 536,
+      "category": "embedding",
+      "description": "works with self reference both ways(m2o and o2m)",
+      "example": "EmbedDisambiguationSpec:it:529",
+      "request": {
+        "method": "GET",
+        "path": "/test",
+        "query": "select=id,parent_id,childs:test(id)&order=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "parent_id": null,
+            "childs": [
+              {
+                "id": 2
+              }
+            ]
+          },
+          {
+            "id": 2,
+            "parent_id": 1,
+            "childs": []
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:546",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 546,
+      "category": "embedding",
+      "description": "has to be explicit for a view embedding",
+      "example": "EmbedDisambiguationSpec:it:545",
+      "request": {
+        "method": "GET",
+        "path": "/adaptation_notifications",
+        "query": "select=id,status,series(*)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:549",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 549,
+      "category": "embedding",
+      "description": "has to be explicit for a view embedding",
+      "example": "EmbedDisambiguationSpec:it:545",
+      "request": {
+        "method": "GET",
+        "path": "/adaptation_notifications",
+        "query": "select=id,status,series_popularity(*)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:554",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 554,
+      "category": "embedding",
+      "description": "resolves when there's a table and view that point to the same col",
+      "example": "EmbedDisambiguationSpec:it:553",
+      "request": {
+        "method": "GET",
+        "path": "/message",
+        "query": "select=id,body,sender(id,name)&id=eq.5",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 5,
+            "body": "What's up Jake",
+            "sender": {
+              "id": 4,
+              "name": "Julie"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:568",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 568,
+      "category": "embedding",
+      "description": "resolves when there's a table and view that point to the same fk (composite pk)",
+      "example": "EmbedDisambiguationSpec:it:567",
+      "request": {
+        "method": "GET",
+        "path": "/activities",
+        "query": "select=fst_shift(*)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "fst_shift": [
+              {
+                "unit_id": 1,
+                "day": "2019-12-02",
+                "fst_shift_activity_id": 1,
+                "fst_shift_schedule_id": 1,
+                "snd_shift_activity_id": 2,
+                "snd_shift_schedule_id": 3
+              }
+            ]
+          },
+          {
+            "fst_shift": []
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "EmbedDisambiguationSpec:582",
+      "source": "Feature/Query/EmbedDisambiguationSpec.hs",
+      "line": 582,
+      "category": "embedding",
+      "description": "should not expose hidden FKs",
+      "example": "EmbedDisambiguationSpec:it:581",
+      "request": {
+        "method": "GET",
+        "path": "/va",
+        "query": "select=vb(*)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    }
+  ]
+}

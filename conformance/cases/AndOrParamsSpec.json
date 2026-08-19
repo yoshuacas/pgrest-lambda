@@ -1,0 +1,2728 @@
+{
+  "source": "Feature/Query/AndOrParamsSpec.hs",
+  "extractedCases": 73,
+  "skippedSites": 0,
+  "needsConfigCases": 0,
+  "cases": [
+    {
+      "id": "AndOrParamsSpec:17",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 17,
+      "category": "filters",
+      "description": "can do simple logic",
+      "example": "AndOrParamsSpec:it:16",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "or=(id.eq.1,id.eq.2)&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          },
+          {
+            "id": 2
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:20",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 20,
+      "category": "filters",
+      "description": "can negate simple logic",
+      "example": "AndOrParamsSpec:it:19",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "not.or=(id.eq.1,id.eq.2)&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 3
+          },
+          {
+            "id": 4
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:23",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 23,
+      "category": "filters",
+      "description": "can be combined with traditional filters",
+      "example": "AndOrParamsSpec:it:22",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "or=(id.eq.1,id.eq.2)&name=eq.entity 1&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:28",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 28,
+      "category": "embedding",
+      "description": "can do logic on the second level",
+      "example": "AndOrParamsSpec:it:27",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "child_entities.or=(id.eq.1,name.eq.child entity 2)&select=id,child_entities(id)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "child_entities": [
+              {
+                "id": 1
+              },
+              {
+                "id": 2
+              }
+            ]
+          },
+          {
+            "id": 2,
+            "child_entities": []
+          },
+          {
+            "id": 3,
+            "child_entities": []
+          },
+          {
+            "id": 4,
+            "child_entities": []
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:35",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 35,
+      "category": "embedding",
+      "description": "can do logic on the third level",
+      "example": "AndOrParamsSpec:it:34",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "child_entities.grandchild_entities.or=(id.eq.1,id.eq.2)&select=id,child_entities(id,grandchild_entities(id))",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "child_entities": [
+              {
+                "id": 1,
+                "grandchild_entities": [
+                  {
+                    "id": 1
+                  },
+                  {
+                    "id": 2
+                  }
+                ]
+              },
+              {
+                "id": 2,
+                "grandchild_entities": []
+              },
+              {
+                "id": 4,
+                "grandchild_entities": []
+              },
+              {
+                "id": 5,
+                "grandchild_entities": []
+              }
+            ]
+          },
+          {
+            "id": 2,
+            "child_entities": [
+              {
+                "id": 3,
+                "grandchild_entities": []
+              },
+              {
+                "id": 6,
+                "grandchild_entities": []
+              }
+            ]
+          },
+          {
+            "id": 3,
+            "child_entities": []
+          },
+          {
+            "id": 4,
+            "child_entities": []
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:54",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 54,
+      "category": "filters",
+      "description": "can be nested inside the same expression",
+      "example": "AndOrParamsSpec:it:53",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "or=(and(name.eq.entity 2,id.eq.2),and(name.eq.entity 1,id.eq.1))&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          },
+          {
+            "id": 2
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:57",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 57,
+      "category": "filters",
+      "description": "can be negated while nested",
+      "example": "AndOrParamsSpec:it:56",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "or=(not.and(name.eq.entity 2,id.eq.2),not.and(name.eq.entity 1,id.eq.1))&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          },
+          {
+            "id": 2
+          },
+          {
+            "id": 3
+          },
+          {
+            "id": 4
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:60",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 60,
+      "category": "filters",
+      "description": "can be combined unnested",
+      "example": "AndOrParamsSpec:it:59",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "and=(id.eq.1,name.eq.entity 1)&or=(id.eq.1,id.eq.2)&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:65",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 65,
+      "category": "filters",
+      "description": "can handle eq and neq",
+      "example": "AndOrParamsSpec:it:64",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "and=(id.eq.1,id.neq.2))&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:68",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 68,
+      "category": "filters",
+      "description": "can handle lt and gt",
+      "example": "AndOrParamsSpec:it:67",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "or=(id.lt.2,id.gt.3)&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          },
+          {
+            "id": 4
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:71",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 71,
+      "category": "filters",
+      "description": "can handle lte and gte",
+      "example": "AndOrParamsSpec:it:70",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "or=(id.lte.2,id.gte.3)&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          },
+          {
+            "id": 2
+          },
+          {
+            "id": 3
+          },
+          {
+            "id": 4
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:74",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 74,
+      "category": "filters",
+      "description": "can handle like and ilike",
+      "example": "AndOrParamsSpec:it:73",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "or=(name.like.*1,name.ilike.*ENTITY 2)&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          },
+          {
+            "id": 2
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:77",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 77,
+      "category": "filters",
+      "description": "can handle in",
+      "example": "AndOrParamsSpec:it:76",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "or=(id.in.(1,2),id.in.(3,4))&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          },
+          {
+            "id": 2
+          },
+          {
+            "id": 3
+          },
+          {
+            "id": 4
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:80",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 80,
+      "category": "filters",
+      "description": "can handle is",
+      "example": "AndOrParamsSpec:it:79",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "and=(name.is.null,arr.is.null)&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 4
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:83",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 83,
+      "category": "filters",
+      "description": "can handle fts on tsvector columns",
+      "example": "AndOrParamsSpec:it:82",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "or=(text_search_vector.fts.bar,text_search_vector.fts.baz)&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          },
+          {
+            "id": 2
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:85",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 85,
+      "category": "filters",
+      "description": "can handle fts on tsvector columns",
+      "example": "AndOrParamsSpec:it:82",
+      "request": {
+        "method": "GET",
+        "path": "/tsearch",
+        "query": "or=(text_search_vector.plfts(german).Art%20Spass, text_search_vector.plfts(french).amusant%20impossible, text_search_vector.fts(english).impossible)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "text_search_vector": "'fun':5 'imposs':9 'kind':3"
+          },
+          {
+            "text_search_vector": "'amus':5 'fair':7 'impossibl':9 'peu':4"
+          },
+          {
+            "text_search_vector": "'art':4 'spass':5 'unmog':7"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:92",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 92,
+      "category": "filters",
+      "description": "can handle fts on text and json columns",
+      "example": "AndOrParamsSpec:it:91",
+      "request": {
+        "method": "GET",
+        "path": "/grandchild_entities",
+        "query": "or=(jsonb_col.fts.bar,jsonb_col.fts.foo)&select=jsonb_col",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "jsonb_col": {
+              "a": {
+                "b": "foo"
+              }
+            }
+          },
+          {
+            "jsonb_col": {
+              "b": "bar"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:97",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 97,
+      "category": "filters",
+      "description": "can handle fts on text and json columns",
+      "example": "AndOrParamsSpec:it:91",
+      "request": {
+        "method": "GET",
+        "path": "/tsearch_to_tsvector",
+        "query": "and=(text_search.not.plfts(german).Art%20Spass, text_search.not.plfts(french).amusant%20impossible, text_search.not.fts(english).impossible)&select=text_search",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "text_search": "But also fun to do what is possible"
+          },
+          {
+            "text_search": "Fat cats ate rats"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:103",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 103,
+      "category": "filters",
+      "description": "can handle isdistinct",
+      "example": "AndOrParamsSpec:it:102",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "and=(id.gte.2,arr.isdistinct.{1,2})&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 3
+          },
+          {
+            "id": 4
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:107",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 107,
+      "category": "filters",
+      "description": "can handle wfts (websearch_to_tsquery)",
+      "example": "AndOrParamsSpec:it:106",
+      "request": {
+        "method": "GET",
+        "path": "/tsearch",
+        "query": "or=(text_search_vector.plfts(german).Art,text_search_vector.plfts(french).amusant,text_search_vector.not.wfts(english).impossible)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "text_search_vector": "'also':2 'fun':3 'possibl':8"
+          },
+          {
+            "text_search_vector": "'ate':3 'cat':2 'fat':1 'rat':4"
+          },
+          {
+            "text_search_vector": "'amus':5 'fair':7 'impossibl':9 'peu':4"
+          },
+          {
+            "text_search_vector": "'art':4 'spass':5 'unmog':7"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:118",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 118,
+      "category": "filters",
+      "description": "can handle cs and cd",
+      "example": "AndOrParamsSpec:it:117",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "or=(arr.cs.{1,2,3},arr.cd.{1})&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          },
+          {
+            "id": 3
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:122",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 122,
+      "category": "filters",
+      "description": "can handle range operators",
+      "example": "AndOrParamsSpec:it:121",
+      "request": {
+        "method": "GET",
+        "path": "/ranges",
+        "query": "range=eq.[1,3]&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:124",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 124,
+      "category": "filters",
+      "description": "can handle range operators",
+      "example": "AndOrParamsSpec:it:121",
+      "request": {
+        "method": "GET",
+        "path": "/ranges",
+        "query": "range=neq.[1,3]&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 2
+          },
+          {
+            "id": 3
+          },
+          {
+            "id": 4
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:126",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 126,
+      "category": "filters",
+      "description": "can handle range operators",
+      "example": "AndOrParamsSpec:it:121",
+      "request": {
+        "method": "GET",
+        "path": "/ranges",
+        "query": "range=lt.[1,10]&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:128",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 128,
+      "category": "filters",
+      "description": "can handle range operators",
+      "example": "AndOrParamsSpec:it:121",
+      "request": {
+        "method": "GET",
+        "path": "/ranges",
+        "query": "range=gt.[8,11]&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 4
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:130",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 130,
+      "category": "filters",
+      "description": "can handle range operators",
+      "example": "AndOrParamsSpec:it:121",
+      "request": {
+        "method": "GET",
+        "path": "/ranges",
+        "query": "range=lte.[1,3]&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:132",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 132,
+      "category": "filters",
+      "description": "can handle range operators",
+      "example": "AndOrParamsSpec:it:121",
+      "request": {
+        "method": "GET",
+        "path": "/ranges",
+        "query": "range=gte.[2,3]&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 2
+          },
+          {
+            "id": 3
+          },
+          {
+            "id": 4
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:134",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 134,
+      "category": "filters",
+      "description": "can handle range operators",
+      "example": "AndOrParamsSpec:it:121",
+      "request": {
+        "method": "GET",
+        "path": "/ranges",
+        "query": "range=cs.[1,2]&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:136",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 136,
+      "category": "filters",
+      "description": "can handle range operators",
+      "example": "AndOrParamsSpec:it:121",
+      "request": {
+        "method": "GET",
+        "path": "/ranges",
+        "query": "range=cd.[1,6]&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          },
+          {
+            "id": 2
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:138",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 138,
+      "category": "filters",
+      "description": "can handle range operators",
+      "example": "AndOrParamsSpec:it:121",
+      "request": {
+        "method": "GET",
+        "path": "/ranges",
+        "query": "range=ov.[0,4]&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          },
+          {
+            "id": 2
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:140",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 140,
+      "category": "filters",
+      "description": "can handle range operators",
+      "example": "AndOrParamsSpec:it:121",
+      "request": {
+        "method": "GET",
+        "path": "/ranges",
+        "query": "range=sl.[9,10]&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          },
+          {
+            "id": 2
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:142",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 142,
+      "category": "filters",
+      "description": "can handle range operators",
+      "example": "AndOrParamsSpec:it:121",
+      "request": {
+        "method": "GET",
+        "path": "/ranges",
+        "query": "range=sr.[3,4]&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 3
+          },
+          {
+            "id": 4
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:144",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 144,
+      "category": "filters",
+      "description": "can handle range operators",
+      "example": "AndOrParamsSpec:it:121",
+      "request": {
+        "method": "GET",
+        "path": "/ranges",
+        "query": "range=nxr.[4,7]&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          },
+          {
+            "id": 2
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:146",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 146,
+      "category": "filters",
+      "description": "can handle range operators",
+      "example": "AndOrParamsSpec:it:121",
+      "request": {
+        "method": "GET",
+        "path": "/ranges",
+        "query": "range=nxl.[4,7]&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 3
+          },
+          {
+            "id": 4
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:148",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 148,
+      "category": "filters",
+      "description": "can handle range operators",
+      "example": "AndOrParamsSpec:it:121",
+      "request": {
+        "method": "GET",
+        "path": "/ranges",
+        "query": "range=adj.(3,10]&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:150",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 150,
+      "category": "filters",
+      "description": "can handle range operators",
+      "example": "AndOrParamsSpec:it:121",
+      "request": {
+        "method": "GET",
+        "path": "/ranges",
+        "query": "range=isdistinct.[1,3]&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 2
+          },
+          {
+            "id": 3
+          },
+          {
+            "id": 4
+          },
+          {
+            "id": 5
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:154",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 154,
+      "category": "filters",
+      "description": "can handle array operators",
+      "example": "AndOrParamsSpec:it:153",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "arr=eq.{1,2,3}&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 3
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:156",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 156,
+      "category": "filters",
+      "description": "can handle array operators",
+      "example": "AndOrParamsSpec:it:153",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "arr=neq.{1,2}&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          },
+          {
+            "id": 3
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:158",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 158,
+      "category": "filters",
+      "description": "can handle array operators",
+      "example": "AndOrParamsSpec:it:153",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "arr=lt.{2,3}&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          },
+          {
+            "id": 2
+          },
+          {
+            "id": 3
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:160",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 160,
+      "category": "filters",
+      "description": "can handle array operators",
+      "example": "AndOrParamsSpec:it:153",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "arr=lt.{2,0}&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          },
+          {
+            "id": 2
+          },
+          {
+            "id": 3
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:162",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 162,
+      "category": "filters",
+      "description": "can handle array operators",
+      "example": "AndOrParamsSpec:it:153",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "arr=gt.{1,1}&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 2
+          },
+          {
+            "id": 3
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:164",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 164,
+      "category": "filters",
+      "description": "can handle array operators",
+      "example": "AndOrParamsSpec:it:153",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "arr=gt.{3}&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:166",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 166,
+      "category": "filters",
+      "description": "can handle array operators",
+      "example": "AndOrParamsSpec:it:153",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "arr=lte.{2,1}&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          },
+          {
+            "id": 2
+          },
+          {
+            "id": 3
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:168",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 168,
+      "category": "filters",
+      "description": "can handle array operators",
+      "example": "AndOrParamsSpec:it:153",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "arr=lte.{1,2,3}&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          },
+          {
+            "id": 2
+          },
+          {
+            "id": 3
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:170",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 170,
+      "category": "filters",
+      "description": "can handle array operators",
+      "example": "AndOrParamsSpec:it:153",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "arr=lte.{1,2}&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          },
+          {
+            "id": 2
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:172",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 172,
+      "category": "filters",
+      "description": "can handle array operators",
+      "example": "AndOrParamsSpec:it:153",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "arr=cs.{1,2}&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 2
+          },
+          {
+            "id": 3
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:174",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 174,
+      "category": "filters",
+      "description": "can handle array operators",
+      "example": "AndOrParamsSpec:it:153",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "arr=cd.{1,2,6}&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          },
+          {
+            "id": 2
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:176",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 176,
+      "category": "filters",
+      "description": "can handle array operators",
+      "example": "AndOrParamsSpec:it:153",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "arr=ov.{3}&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 3
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:178",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 178,
+      "category": "filters",
+      "description": "can handle array operators",
+      "example": "AndOrParamsSpec:it:153",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "arr=ov.{2,3}&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 2
+          },
+          {
+            "id": 3
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:180",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 180,
+      "category": "filters",
+      "description": "can handle array operators",
+      "example": "AndOrParamsSpec:it:153",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "arr=isdistinct.{1,2}&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          },
+          {
+            "id": 3
+          },
+          {
+            "id": 4
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:185",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 185,
+      "category": "filters",
+      "description": "eq, cs, like can be negated",
+      "example": "AndOrParamsSpec:it:184",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "and=(arr.not.cs.{1,2,3},and(id.not.eq.2,name.not.like.*3))&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:188",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 188,
+      "category": "filters",
+      "description": "in, is, fts can be negated",
+      "example": "AndOrParamsSpec:it:187",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "and=(id.not.in.(1,3),and(name.not.is.null,text_search_vector.not.fts.foo))&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 2
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:191",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 191,
+      "category": "filters",
+      "description": "lt, gte, cd can be negated",
+      "example": "AndOrParamsSpec:it:190",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "and=(arr.not.cd.{1},or(id.not.lt.1,id.not.gte.3))&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 2
+          },
+          {
+            "id": 3
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:194",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 194,
+      "category": "filters",
+      "description": "gt, lte, ilike can be negated",
+      "example": "AndOrParamsSpec:it:193",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "and=(name.not.ilike.*ITY2,or(id.not.gt.4,id.not.lte.1))&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          },
+          {
+            "id": 2
+          },
+          {
+            "id": 3
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:197",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 197,
+      "category": "filters",
+      "description": "isdistinct can be negated",
+      "example": "AndOrParamsSpec:it:196",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "and=(id.not.eq.2,arr.not.isdistinct.{1,2,3})&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 3
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:202",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 202,
+      "category": "filters",
+      "description": "eq can have quotes",
+      "example": "AndOrParamsSpec:it:201",
+      "request": {
+        "method": "GET",
+        "path": "/grandchild_entities",
+        "query": "or=(name.eq.\"(grandchild,entity,4)\",name.eq.\"(grandchild,entity,5)\")&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 4
+          },
+          {
+            "id": 5
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:205",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 205,
+      "category": "filters",
+      "description": "like and ilike can have quotes",
+      "example": "AndOrParamsSpec:it:204",
+      "request": {
+        "method": "GET",
+        "path": "/grandchild_entities",
+        "query": "or=(name.like.\"*ity,4*\",name.ilike.\"*ITY,5)\")&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 4
+          },
+          {
+            "id": 5
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:208",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 208,
+      "category": "filters",
+      "description": "in can have quotes",
+      "example": "AndOrParamsSpec:it:207",
+      "request": {
+        "method": "GET",
+        "path": "/grandchild_entities",
+        "query": "or=(id.in.(\"1\",\"2\"),id.in.(\"3\",\"4\"))&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          },
+          {
+            "id": 2
+          },
+          {
+            "id": 3
+          },
+          {
+            "id": 4
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:212",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 212,
+      "category": "filters",
+      "description": "allows whitespace",
+      "example": "AndOrParamsSpec:it:211",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "and=( and ( id.in.( 1, 2, 3 ) , id.eq.3 ) , or ( id.eq.2 , id.eq.3 ) )&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 3
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:217",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 217,
+      "category": "filters",
+      "description": "cannot have zero conditions",
+      "example": "AndOrParamsSpec:it:216",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "or=()",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "details": "unexpected \")\" expecting field name (* or [a..z0..9_$]), negation operator (not) or logic operator (and, or)",
+          "message": "\"failed to parse logic tree (())\" (line 1, column 4)",
+          "code": "PGRST100",
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:225",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 225,
+      "category": "filters",
+      "description": "can have a single condition",
+      "example": "AndOrParamsSpec:it:224",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "or=(id.eq.1)&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:227",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 227,
+      "category": "filters",
+      "description": "can have a single condition",
+      "example": "AndOrParamsSpec:it:224",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "and=(id.eq.1)&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:230",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 230,
+      "category": "filters",
+      "description": "can have three conditions",
+      "example": "AndOrParamsSpec:it:229",
+      "request": {
+        "method": "GET",
+        "path": "/grandchild_entities",
+        "query": "or=(id.eq.1, id.eq.2, id.eq.3)&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          },
+          {
+            "id": 2
+          },
+          {
+            "id": 3
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:232",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 232,
+      "category": "filters",
+      "description": "can have three conditions",
+      "example": "AndOrParamsSpec:it:229",
+      "request": {
+        "method": "GET",
+        "path": "/grandchild_entities",
+        "query": "and=(id.in.(1,2), id.in.(3,1), id.in.(1,4))&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:235",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 235,
+      "category": "filters",
+      "description": "can have four conditions combining and/or",
+      "example": "AndOrParamsSpec:it:234",
+      "request": {
+        "method": "GET",
+        "path": "/grandchild_entities",
+        "query": "or=( id.eq.1, id.eq.2, and(id.in.(1,3), id.in.(2,3)), id.eq.4 )&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          },
+          {
+            "id": 2
+          },
+          {
+            "id": 3
+          },
+          {
+            "id": 4
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:237",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 237,
+      "category": "filters",
+      "description": "can have four conditions combining and/or",
+      "example": "AndOrParamsSpec:it:234",
+      "request": {
+        "method": "GET",
+        "path": "/grandchild_entities",
+        "query": "and=( id.eq.1, not.or(id.eq.2, id.eq.3), id.in.(1,4), or(id.eq.1, id.eq.4) )&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:242",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 242,
+      "category": "filters",
+      "description": "includes related data with filters",
+      "example": "AndOrParamsSpec:it:241",
+      "request": {
+        "method": "POST",
+        "path": "/child_entities",
+        "query": "select=id,entities(id)&entities.or=(id.eq.2,id.eq.3)&entities.order=id",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": [
+          {
+            "id": 7,
+            "name": "entity 4",
+            "parent_id": 1
+          },
+          {
+            "id": 8,
+            "name": "entity 5",
+            "parent_id": 2
+          },
+          {
+            "id": 9,
+            "name": "entity 6",
+            "parent_id": 3
+          }
+        ],
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "id": 7,
+            "entities": null
+          },
+          {
+            "id": 8,
+            "entities": {
+              "id": 2
+            }
+          },
+          {
+            "id": 9,
+            "entities": {
+              "id": 3
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:255",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 255,
+      "category": "filters",
+      "description": "succeeds when using and/or params",
+      "example": "AndOrParamsSpec:it:254",
+      "request": {
+        "method": "PATCH",
+        "path": "/grandchild_entities",
+        "query": "or=(id.eq.1,id.eq.2)&select=id,name",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "name": "updated grandchild entity"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "updated grandchild entity"
+          },
+          {
+            "id": 2,
+            "name": "updated grandchild entity"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:261",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 261,
+      "category": "filters",
+      "description": "succeeds when the filtered column is modified",
+      "example": "AndOrParamsSpec:it:260",
+      "request": {
+        "method": "PATCH",
+        "path": "/entities",
+        "query": "select=id,name&or=(name.is.null,name.like.*test*)",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "name": "updated entity"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 4,
+            "name": "updated entity"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:267",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 267,
+      "category": "filters",
+      "description": "succeeds when the filtered column is not selected in the returned representation",
+      "example": "AndOrParamsSpec:it:266",
+      "request": {
+        "method": "PATCH",
+        "path": "/entities",
+        "query": "select=id&or=(name.is.null,name.like.*test*)",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "name": "updated entity"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 4
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:275",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 275,
+      "category": "delete",
+      "description": "succeeds when using and/or params",
+      "example": "AndOrParamsSpec:it:274",
+      "request": {
+        "method": "DELETE",
+        "path": "/grandchild_entities",
+        "query": "or=(id.eq.1,id.eq.2)&select=id,name",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "grandchild entity 1"
+          },
+          {
+            "id": 2,
+            "name": "grandchild entity 2"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:281",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 281,
+      "category": "delete",
+      "description": "succeeds when the filtered column is not selected in the returned representation",
+      "example": "AndOrParamsSpec:it:280",
+      "request": {
+        "method": "DELETE",
+        "path": "/entities",
+        "query": "select=id&or=(name.is.null,name.like.*test*)",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 4
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AndOrParamsSpec:288",
+      "source": "Feature/Query/AndOrParamsSpec.hs",
+      "line": 288,
+      "category": "filters",
+      "description": "can query columns that begin with and/or reserved words",
+      "example": "AndOrParamsSpec:it:287",
+      "request": {
+        "method": "GET",
+        "path": "/grandchild_entities",
+        "query": "or=(and_starting_col.eq.smth, or_starting_col.eq.smth)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    }
+  ]
+}
