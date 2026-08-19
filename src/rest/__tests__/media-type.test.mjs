@@ -5,7 +5,8 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   decodeMediaType, mediaContentType, negotiateMedia, stripNulls, toCsv,
-  success, MEDIA_JSON, MEDIA_SINGULAR, MEDIA_CSV, MEDIA_OPENAPI, MEDIA_OTHER,
+  success, mediaProducible, mediaUnavailable, mediaTypeDomain, rawMediaFor,
+  MEDIA_JSON, MEDIA_SINGULAR, MEDIA_CSV, MEDIA_OPENAPI, MEDIA_OTHER,
 } from '../response.mjs';
 
 describe('decodeMediaType', () => {
@@ -172,5 +173,115 @@ describe('success Content-Type', () => {
     const res = success(200, [{ a: 1 }],
       { media: { kind: MEDIA_SINGULAR, stripNulls: false } });
     assert.deepEqual(JSON.parse(res.body), { a: 1 });
+  });
+});
+
+// Content negotiation against what the engine can produce. Upstream
+// `Plan/Negotiate.hs` intersects the Accept header with the media handlers in
+// the schema cache; nothing in the intersection is `MediaTypeError` — 406
+// PGRST107 (Error.hs:181).
+describe('mediaProducible / mediaUnavailable', () => {
+  it('accepts json, csv, the vendored types and the wildcard', () => {
+    for (const accept of ['', '*/*', 'application/json', 'text/csv',
+      'application/vnd.pgrst.object+json',
+      'application/vnd.pgrst.array+json;nulls=stripped',
+      'application/openapi+json']) {
+      assert.equal(mediaProducible(negotiateMedia(accept)), true, accept);
+    }
+  });
+
+  it('refuses a media type the engine has no handler for', () => {
+    for (const accept of ['text/plain', 'text/unknowntype', 'undefined',
+      'application/vnd.twkb', 'application/octet-stream']) {
+      assert.equal(mediaProducible(negotiateMedia(accept)), false, accept);
+    }
+  });
+
+  it('accepts when any entry is producible, whatever its position', () => {
+    assert.equal(mediaProducible(negotiateMedia('text/unknowntype, */*')), true);
+    assert.equal(
+      mediaProducible(negotiateMedia('text/unknowntype, text/csv')), true);
+  });
+
+  // QuerySpec.hs:1192 pins the message; CustomMediaSpec.hs:396 sends a garbage
+  // token and expects it echoed as-is.
+  it('builds the PGRST107 error listing every media type asked for', () => {
+    const err = mediaUnavailable('text/unknowntype');
+    assert.equal(err.statusCode, 406);
+    assert.equal(err.code, 'PGRST107');
+    assert.equal(err.message,
+      'None of these media types are available: text/unknowntype');
+    assert.equal(err.details, null);
+    assert.equal(err.hint, null);
+    assert.equal(mediaUnavailable('undefined').message,
+      'None of these media types are available: undefined');
+    assert.equal(mediaUnavailable('text/plain, image/png').message,
+      'None of these media types are available: text/plain, image/png');
+  });
+});
+
+// `create domain "text/plain" as text` names a media type, and a function
+// returning that domain produces it (upstream `SchemaCache.mediaHandlers`).
+describe('mediaTypeDomain', () => {
+  it('reads the media type off a domain name', () => {
+    assert.equal(mediaTypeDomain('text/plain'), 'text/plain');
+    assert.equal(mediaTypeDomain('application/vnd.twkb'),
+      'application/vnd.twkb');
+    assert.equal(mediaTypeDomain('text/tab-separated-values'),
+      'text/tab-separated-values');
+  });
+
+  it('resolves the wildcard domain to octet-stream', () => {
+    assert.equal(mediaTypeDomain('*/*'), 'application/octet-stream');
+  });
+
+  it('is null for an ordinary type', () => {
+    for (const t of ['text', 'int4', 'json', 'items', '', null]) {
+      assert.equal(mediaTypeDomain(t), null, String(t));
+    }
+  });
+});
+
+describe('rawMediaFor', () => {
+  it('matches the domain the client asked for', () => {
+    const media = rawMediaFor('text/plain', 'text/plain');
+    assert.equal(media.contentType, 'text/plain; charset=utf-8');
+    assert.equal(media.kind, MEDIA_OTHER);
+    assert.equal(mediaContentType(media), 'text/plain; charset=utf-8');
+  });
+
+  it('leaves the charset off a media type upstream does not name', () => {
+    assert.equal(rawMediaFor('text/html', 'text/html').contentType,
+      'text/html');
+  });
+
+  it('matches any Accept for the wildcard domain, as octet-stream', () => {
+    for (const accept of ['*/*', 'app/bingo', 'image/boingo', '']) {
+      assert.equal(rawMediaFor(accept, '*/*').contentType,
+        'application/octet-stream', accept);
+    }
+  });
+
+  // CustomMediaSpec.hs:117 — `welcome` returns the "text/plain" domain, so
+  // text/xml is not available and upstream answers 406 rather than raw bytes.
+  it('does not match a different media type', () => {
+    assert.equal(rawMediaFor('text/xml', 'text/plain'), null);
+    assert.equal(rawMediaFor('application/json', 'text/plain'), null);
+  });
+
+  // Plan/Negotiate.hs only looks up `(RelId, MTAny)`, which only the wildcard
+  // domain registers, so `Accept: */*` on a text/plain function is JSON.
+  it('does not match a wildcard Accept against a named domain', () => {
+    assert.equal(rawMediaFor('*/*', 'text/plain'), null);
+  });
+
+  it('is null for a function that returns an ordinary type', () => {
+    assert.equal(rawMediaFor('text/plain', 'text'), null);
+  });
+
+  it('picks the domain out of a multi-entry Accept', () => {
+    assert.equal(
+      rawMediaFor('text/xml, text/plain', 'text/plain').contentType,
+      'text/plain; charset=utf-8');
   });
 });

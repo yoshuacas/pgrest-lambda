@@ -182,7 +182,11 @@ describe('sql-builder !inner + embed filters', () => {
     },
   );
 
-  it('many-to-one !inner without filter uses IS NOT NULL',
+  // `!inner` is an INNER JOIN LATERAL upstream, which needs a matching row on
+  // the other side — not merely a non-null foreign key. A key pointing at a
+  // row that is filtered away, or at nothing at all, must drop the parent row,
+  // so the condition is an EXISTS in both directions.
+  it('many-to-one !inner without filter uses EXISTS',
     () => {
       const parsed = parseQuery({
         select: 'id,customers!inner(name)',
@@ -192,13 +196,9 @@ describe('sql-builder !inner + embed filters', () => {
       assert.deepStrictEqual(values, []);
       const sql = norm(text);
       assert.ok(
-        sql.includes('"orders"."customer_id" IS NOT NULL'),
-        `!inner without filter should use IS NOT NULL, `
-        + `got: ${sql}`);
-      assert.ok(
-        !sql.includes('EXISTS'),
-        `!inner without filter should not use EXISTS, `
-        + `got: ${sql}`);
+        sql.includes('EXISTS (SELECT 1 FROM "customers" WHERE '
+          + '"customers"."id" = "orders"."customer_id")'),
+        `!inner many-to-one should use EXISTS, got: ${sql}`);
     },
   );
 

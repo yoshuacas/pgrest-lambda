@@ -84,14 +84,19 @@ export const DEFAULT_MAX_EMBED_DEPTH = 5;
 
 // Upstream `pRelationSelect` is the only alternative that may be followed
 // by a parenthesised sub-select, and it accepts nothing but
-// `[alias:]name[!hint][!inner]` before the '(' — with an explicit
+// `[...][alias:]name[!hint][!inner]` before the '(' — with an explicit
 // `guard (name /= "count")` so that `count()` can never be read as an
 // embed. Everything else that reaches a '(' is a field, which is what
 // makes `select=data->(x` a json-path parse error rather than an embed
 // with an empty select list.
+//
+// The leading `...` is upstream's spread marker (`pSpreadRelationSelect`):
+// `...clients(name)` merges the embedded row's keys into the parent object
+// instead of nesting them under a key of its own.
 function looksLikeEmbedPrefix(prefix) {
   const sc = new Scanner(prefix);
   sc.ws();
+  if (sc.src.startsWith('...', sc.pos)) sc.pos += 3;
   const before = sc.pos;
   const maybeAlias = pFieldName(sc);
   if (maybeAlias !== FAIL && sc.src[sc.pos] === ':'
@@ -119,8 +124,16 @@ export function parseSelectList(
   const nodes = [];
   let i = 0;
   const len = input.length;
+  // A `)` that closes nothing ends the field forest, and whatever follows it
+  // is dropped. Upstream reads `select` with Parsec's `parse`
+  // (QueryParams.hs:220 `P.parse pFieldForest`), which does not demand `eof`,
+  // so `pFieldForest`'s `sepBy` simply stops at the first character it cannot
+  // use and the parse still succeeds. SpreadQueriesSpec:391 sends
+  // `...processes(process:name,...process_costs(cost)))` — one paren too many
+  // — and expects 200.
+  let forestEnded = false;
 
-  while (i < len) {
+  while (i < len && !forestEnded) {
     // Skip leading whitespace
     while (i < len && input[i] === ' ') i++;
     if (i >= len) break;
@@ -146,8 +159,8 @@ export function parseSelectList(
         parenDepth++;
       } else if (ch === ')') {
         if (parenDepth === 0) {
-          throw new PostgRESTError(400, 'PGRST100',
-            'Unbalanced parentheses in select parameter');
+          forestEnded = true;
+          break;
         }
         parenDepth--;
         if (parenDepth === 0) {
@@ -183,16 +196,17 @@ export function parseSelectList(
         innerContent, maxEmbedDepth, depth + 1,
         source, offset + parenStart + 1);
       const embed = parseEmbedToken(embedToken);
-      if (childNodes.length === 0) {
-        throw new PostgRESTError(400, 'PGRST100',
-          `Empty select list in embed '${embed.name}'`);
-      }
+      // An embed with an empty select list — `?select=*,clients()` — is
+      // legal upstream: it contributes no key to the response and exists
+      // only so `?clients=is.null` has something to filter on
+      // (Plan.hs `rsEmptyEmbed` / `addNullEmbedFilters`).
       nodes.push({
         type: 'embed',
         name: embed.name,
         alias: embed.alias,
         hint: embed.hint,
         inner: embed.inner,
+        spread: embed.spread,
         select: childNodes,
         filters: [],
         order: [],
@@ -217,6 +231,9 @@ export function parseSelectList(
       }
       keys.add(key);
     } else if (node.type === 'embed') {
+      // A spread embed carries no key of its own (its members are merged
+      // into the parent object) and an empty embed carries none either.
+      if (node.spread || node.select.length === 0) continue;
       const key = node.alias || node.name;
       if (keys.has(key)) {
         throw new PostgRESTError(400, 'PGRST100',
@@ -238,6 +255,50 @@ function buildEmbedAliasMap(selectNodes) {
     }
   }
   return map;
+}
+
+// `?<embed>=is.null` / `?<embed>=not.is.null` is not a filter on a column
+// called `<embed>`: it asks whether the embedded row exists at all. Upstream
+// rewrites it to `<join alias> IS [NOT] DISTINCT FROM NULL`
+// (Plan.hs `addNullEmbedFilters`, SqlFragment.hs `CoercibleFilterNullEmbed`),
+// and it only does so for that one operator — `?status=eq.3` on an embed
+// named `status` still filters the column of that name.
+//
+// `exists` is upstream's `hasNot`: `not.is.null` keeps the rows that have a
+// match, `is.null` keeps the rows that have none.
+//
+// `?or=(clientinfo.not.is.null,contact.not.is.null)` puts the is-null form
+// inside a logic tree, so the rewrite has to reach the leaves too
+// (upstream `newNullFilters` recurses through `CoercibleExpr`).
+function rewriteEmbedNullLeaves(filters, embedMap) {
+  for (let i = 0; i < filters.length; i++) {
+    const f = filters[i];
+    if (f.type === 'logicalGroup') {
+      rewriteEmbedNullLeaves(f.conditions, embedMap);
+      continue;
+    }
+    if (f.type !== 'filter') continue;
+    if (f.operator !== 'is') continue;
+    if (f.jsonPath && f.jsonPath.length > 0) continue;
+    if (String(f.value).toLowerCase() !== 'null') continue;
+    const node = embedMap.get(f.column);
+    if (!node) continue;
+    filters[i] = {
+      type: 'embedNull', embed: node, exists: Boolean(f.negate),
+    };
+  }
+}
+
+// Walk the select tree and rewrite is-null leaves at every level against
+// the embeds visible at that level.
+function rewriteEmbedNulls(selectNodes, filters) {
+  const map = buildEmbedAliasMap(selectNodes);
+  if (map.size > 0) rewriteEmbedNullLeaves(filters, map);
+  for (const node of selectNodes) {
+    if (node.type === 'embed') {
+      rewriteEmbedNulls(node.select, node.filters);
+    }
+  }
 }
 
 function routeEmbedParam(embedNode, prefix, rest, rawValue) {
@@ -271,10 +332,19 @@ function routeEmbedParam(embedNode, prefix, rest, rawValue) {
     return;
   }
 
-  if (rest.includes('.')) {
-    throw new PostgRESTError(400, 'PGRST100',
-      `Filter nesting deeper than one level is `
-      + `not supported: '${prefix}.${rest}'`);
+  // `?children.gChildren.id=eq.1` targets an embed two levels down. Upstream
+  // walks the whole dotted path down the read plan tree
+  // (Plan.hs `updateNode`), so the nesting is not limited to one level.
+  const split = embedPathSplit(rest);
+  if (split) {
+    const nextPrefix = split.prefix;
+    const nested = buildEmbedAliasMap(embedNode.select).get(nextPrefix);
+    if (nested) {
+      routeEmbedParam(
+        nested, `${prefix}.${nextPrefix}`, split.rest, rawValue);
+      return;
+    }
+    throw notEmbeddedError(nextPrefix, embedNode.select);
   }
 
   embedNode.filters.push(parseFilter(rest, rawValue));
@@ -284,9 +354,58 @@ function hasAnyEmbed(selectNodes) {
   return selectNodes.some(n => n.type === 'embed');
 }
 
+/**
+ * The dotted prefix of a filter/order/limit key, or null when the key is a
+ * plain field.
+ *
+ * Upstream's `pTreePath` parses the key as `pFieldName sepBy1 '.'` followed by
+ * an optional json path, so every dot-separated component but the last names a
+ * level of the embed tree — and the json path is only looked for *after* the
+ * names, which is why `children.data->>x` splits on the dot before `data` and
+ * `data->>a.b` does not split at all. A quoted name may itself contain dots
+ * (`?"a.b"=eq.1`), so it is never a path.
+ */
+function embedPathSplit(key) {
+  if (key.startsWith('"')) return null;
+  const arrowIdx = key.indexOf('->');
+  const head = arrowIdx === -1 ? key : key.slice(0, arrowIdx);
+  const dotIdx = head.indexOf('.');
+  if (dotIdx === -1) return null;
+  return { prefix: key.slice(0, dotIdx), rest: key.slice(dotIdx + 1) };
+}
+
+/**
+ * Upstream's `NotEmbedded` error (Error.hs): a filter, order or limit named a
+ * resource the select list does not embed. Status 400, code PGRST108.
+ *
+ * When the name is a relation that *is* embedded but under an alias, upstream
+ * points at the alias instead of telling the caller to add it to `select`
+ * (Plan.hs `NotEmbedded`, with `configUrlUseLegacyTargetNames` off — the
+ * default since v12).
+ */
+function notEmbeddedError(resource, selectNodes) {
+  const message = `'${resource}' is not an embedded resource in this request`;
+  const aliased = (selectNodes || []).find(
+    n => n.type === 'embed' && n.alias && n.name === resource);
+  if (aliased) {
+    return new PostgRESTError(400, 'PGRST108', message,
+      'Target names are not allowed in filters if they have an alias',
+      `Change '${resource}' to '${aliased.alias}' in filters, orders or `
+      + 'limits.');
+  }
+  return new PostgRESTError(400, 'PGRST108', message, null,
+    `Verify that '${resource}' is included in the 'select' query parameter.`);
+}
+
 function parseEmbedToken(token) {
   let alias = null;
   let remainder = token;
+  let spread = false;
+
+  if (remainder.startsWith('...')) {
+    spread = true;
+    remainder = remainder.slice(3).trim();
+  }
 
   const colonIdx = remainder.indexOf(':');
   if (colonIdx !== -1) {
@@ -324,13 +443,20 @@ function parseEmbedToken(token) {
     }
   }
 
-  return { name, alias, hint, inner };
+  return { name, alias, hint, inner, spread };
 }
 
 export function parseQuery(
     params, method, multiValueParams,
-    maxEmbedDepth = DEFAULT_MAX_EMBED_DEPTH) {
+    maxEmbedDepth = DEFAULT_MAX_EMBED_DEPTH, options = {}) {
   params = params || {};
+  // `rpcRead` is upstream's `isRpcRead` (QueryParams.parse): on a GET to
+  // /rpc/fn a query parameter that does not parse as an operator expression is
+  // not an error, it is an argument to the function. `?id=5&id=gt.2` is both —
+  // the argument id=5 and the filter id>2 — which is why the two are collected
+  // side by side here rather than the key being classified once.
+  const rpcRead = Boolean(options.rpcRead);
+  const rpcArgs = [];
 
   const select = params.select
     ? parseSelectList(params.select, maxEmbedDepth)
@@ -391,10 +517,9 @@ export function parseQuery(
         ? repeated
         : [rawValue];
 
-      const dotIdx = key.indexOf('.');
-      if (dotIdx !== -1) {
-        const prefix = key.slice(0, dotIdx);
-        const rest = key.slice(dotIdx + 1);
+      const split = embedPathSplit(key);
+      if (split) {
+        const { prefix, rest } = split;
         const embedNode = embedMap.get(prefix);
         if (embedNode) {
           for (const v of rawValues) {
@@ -402,14 +527,21 @@ export function parseQuery(
           }
           continue;
         }
-        if (hasAnyEmbed(select) && !LOGICAL_OPS.has(prefix)
-            && prefix !== 'not') {
-          throw new PostgRESTError(400, 'PGRST100',
-            `Cannot filter on '${key}' -- no embed `
-            + `named '${prefix}' in select`);
+        // Upstream errors whether or not anything is embedded: the key names a
+        // path into the read plan tree, and there is no node at it
+        // (QuerySpec.hs:528 asks for `select=*&non_existent_projects.name=...`
+        // with no embed in the select at all and expects PGRST108). The one
+        // exception is a function call, where an unrecognised parameter whose
+        // value is not an operator expression is an argument, not a filter.
+        if (!(rpcRead && rawValues.every(v => isRpcArgValue(v)))) {
+          throw notEmbeddedError(prefix, select);
         }
       }
       for (const v of rawValues) {
+        if (rpcRead && isRpcArgValue(v)) {
+          rpcArgs.push([key, v]);
+          continue;
+        }
         filters.push(parseFilter(key, v));
       }
     }
@@ -426,7 +558,30 @@ export function parseQuery(
     ? params.columns.split(',').map(c => c.trim().replace(/^"|"$/g, ''))
     : null;
 
-  return { select, filters, order, limit, offset, onConflict, columns };
+  rewriteEmbedNulls(select, filters);
+
+  const parsed = {
+    select, filters, order, limit, offset, onConflict, columns,
+  };
+  if (rpcRead) parsed.rpcArgs = rpcArgs;
+  return parsed;
+}
+
+/**
+ * Is this query-parameter value a function argument rather than a filter?
+ *
+ * Upstream writes it as `pOpExpr pSingleVal <|> pure (NoOpExpr v)`, and
+ * Parsec's `<|>` only reaches the second alternative when the first failed
+ * *without consuming input*. So `5` is an argument, `gt.2` is a filter, and
+ * `is.blah` is neither — it consumed `is.` and stays a parse error.
+ */
+export function isRpcArgValue(raw) {
+  // `?col=not_null` is a pgrest-lambda shorthand parseFilter answers directly;
+  // keep it a filter here too.
+  if (raw === 'not_null') return false;
+  const sc = new Scanner(raw);
+  const opExpr = pOpExpr(sc, pSingleVal);
+  return opExpr === FAIL && sc.pos === 0;
 }
 
 // --- Query-string grammar --------------------------------------------------
@@ -1297,8 +1452,80 @@ function parseLogicalGroup(op, negate, raw, depth = 0) {
 const VALID_ORDER_DIRECTIONS = new Set(['asc', 'desc']);
 const VALID_ORDER_NULLS = new Set(['nullsfirst', 'nullslast']);
 
+// Commas separate order terms, but a related order term carries its own
+// parentheses (`order=clients(name).asc`), so the split has to respect them.
+function splitOrderTerms(raw) {
+  const out = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < raw.length; i += 1) {
+    const ch = raw[i];
+    if (ch === '(') depth += 1;
+    else if (ch === ')') depth -= 1;
+    else if (ch === ',' && depth === 0) {
+      out.push(raw.slice(start, i));
+      start = i + 1;
+    }
+  }
+  out.push(raw.slice(start));
+  return out;
+}
+
+// `order=<relation>(<field>)[.dir][.nulls]` — upstream `pOrderRelationTerm`.
+// It orders the parent rows by a column of an embedded to-one resource; a
+// to-many one is rejected at planning time, not here.
+const RELATED_ORDER_TERM = /^([A-Za-z_][A-Za-z0-9_]*)\(([^()]+)\)(.*)$/;
+
+function parseOrderMods(mods) {
+  let direction = mods[0] || 'asc';
+  let nulls = mods[1] || null;
+  // `order=col.nullsfirst` — a nulls option with no direction is legal
+  // upstream (`optionMaybe pOrdDir` before `optionMaybe pNulls`).
+  if (mods.length === 1 && VALID_ORDER_NULLS.has(mods[0])) {
+    direction = 'asc';
+    nulls = mods[0];
+  }
+  if (!VALID_ORDER_DIRECTIONS.has(direction)) {
+    throw new PostgRESTError(
+      400, 'PGRST100',
+      `Invalid order direction '${direction}'. Must be 'asc' or 'desc'`);
+  }
+  if (nulls && !VALID_ORDER_NULLS.has(nulls)) {
+    throw new PostgRESTError(
+      400, 'PGRST100',
+      `Invalid nulls option '${nulls}'. Must be 'nullsfirst' or 'nullslast'`);
+  }
+  return { direction, nulls };
+}
+
+// A field in order position: a name and an optional json path.
+function parseOrderField(text) {
+  if (text.includes('->')) {
+    const sc = new Scanner(text);
+    const name = pFieldName(sc);
+    const jp = name === FAIL ? FAIL : pJsonPath(sc);
+    if (name !== FAIL && jp !== FAIL && jp.length > 0 && sc.pos === text.length) {
+      return { column: name, jsonPath: jp };
+    }
+  }
+  return { column: text, jsonPath: null };
+}
+
 function parseOrder(raw) {
-  return raw.split(',').map((entry) => {
+  return splitOrderTerms(raw).map((entry) => {
+    const related = RELATED_ORDER_TERM.exec(entry.trim());
+    if (related) {
+      const field = parseOrderField(related[2]);
+      const mods = related[3].startsWith('.')
+        ? related[3].slice(1).split('.')
+        : (related[3] ? related[3].split('.') : []);
+      const { direction, nulls } = parseOrderMods(mods);
+      const term = {
+        relation: related[1], column: field.column, direction, nulls,
+      };
+      if (field.jsonPath) term.jsonPath = field.jsonPath;
+      return term;
+    }
     // Upstream `pOrderTerm` parses a full field — name plus an optional json
     // path — before the direction/nulls modifiers, so `order=data->>k.desc`
     // sorts on the json path and not on a column called `data->>k`.
@@ -1325,24 +1552,7 @@ function parseOrder(raw) {
       mods = parts.slice(1);
     }
 
-    let direction = mods[0] || 'asc';
-    let nulls = mods[1] || null;
-    // `order=col.nullsfirst` — a nulls option with no direction is legal
-    // upstream (`optionMaybe pOrdDir` before `optionMaybe pNulls`).
-    if (mods.length === 1 && VALID_ORDER_NULLS.has(mods[0])) {
-      direction = 'asc';
-      nulls = mods[0];
-    }
-    if (!VALID_ORDER_DIRECTIONS.has(direction)) {
-      throw new PostgRESTError(
-        400, 'PGRST100',
-        `Invalid order direction '${direction}'. Must be 'asc' or 'desc'`);
-    }
-    if (nulls && !VALID_ORDER_NULLS.has(nulls)) {
-      throw new PostgRESTError(
-        400, 'PGRST100',
-        `Invalid nulls option '${nulls}'. Must be 'nullsfirst' or 'nullslast'`);
-    }
+    const { direction, nulls } = parseOrderMods(mods);
     const term = { column, direction, nulls };
     if (jsonPath) term.jsonPath = jsonPath;
     return term;

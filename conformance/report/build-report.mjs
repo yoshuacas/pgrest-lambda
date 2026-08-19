@@ -115,6 +115,82 @@ const DSQL_SUBSTITUTE_NEEDED = new Set([
 // promise. Still counted as failures in the headline — only the label differs.
 const OUT_OF_SCOPE_FAILURES = new Set(['row-order-unspecified']);
 
+// Fixture-drop families that are permanent properties of Aurora DSQL rather
+// than a backlog item: the construct cannot be created, so the assertions that
+// need it cannot run on this database however good the engine gets. The value
+// says why there is no substitute (or what the substitute is, when one exists).
+// Families not listed here are consequences (a cascade from a dropped object),
+// harness mechanics (COPY from a file, schema teardown) or transform
+// workarounds, and are left out of the "permanent" table rather than inflating
+// it. Every family, permanent or not, still appears in the DSQL section below.
+const PERMANENT_ON_DSQL = {
+  'FOREIGN KEY constraints': {
+    why: 'DSQL rejects FOREIGN KEY and ALTER TABLE ADD CONSTRAINT, and pg_constraint returns no rows for contype=\'f\'.',
+    substitute: 'A declared-relationship manifest (<code>PGREST_RELATIONSHIPS_PATH</code>) replaces the catalog for embedding. Measured, and the reason the embedding category runs at all.'
+  },
+  'plpgsql functions': {
+    why: 'CREATE FUNCTION ... LANGUAGE plpgsql is rejected. LANGUAGE sql works, including RETURNS SETOF and RETURNS TABLE.',
+    substitute: 'None for a body that needs procedural code. The dependent cases are blocked, never scored.'
+  },
+  triggers: {
+    why: 'CREATE TRIGGER needs a plpgsql function, so it fails for the same reason.',
+    substitute: 'None.'
+  },
+  'column types DSQL rejects': {
+    why: 'Arrays (integer[], int[][]), ranges (numrange, int4range), money, xml, tsvector and the geometric types are rejected as column types. Arrays and ranges still work in expressions and as function arguments.',
+    substitute: 'None. The operators are implemented and unit-tested; this suite cannot confirm them because upstream tests them through columns.'
+  },
+  'domain base types DSQL rejects': {
+    why: 'A domain over a type DSQL will not store is rejected with the same error as the type.',
+    substitute: 'None.'
+  },
+  'CREATE TYPE (enum / composite)': {
+    why: 'CREATE TYPE is rejected for both enums and composites.',
+    substitute: 'None.'
+  },
+  extensions: {
+    why: 'CREATE EXTENSION is rejected, so postgis, citext, ltree, hstore and isn are all absent.',
+    substitute: 'None.'
+  },
+  'partitioned tables': {
+    why: 'PARTITION BY and PARTITION OF are rejected.',
+    substitute: 'None.'
+  },
+  'materialized views': {
+    why: 'DSQL rejects the CreateTableAs statement a materialized view compiles to.',
+    substitute: 'None.'
+  },
+  'user-defined aggregates': { why: 'CREATE AGGREGATE is rejected.', substitute: 'None.' },
+  'user-defined casts': { why: 'CREATE CAST is rejected.', substitute: 'None.' },
+  rules: { why: 'CREATE RULE is rejected.', substitute: 'None.' },
+  procedures: { why: 'CREATE PROCEDURE is rejected.', substitute: 'None.' },
+  'CREATE TABLE AS': { why: 'CREATE TABLE AS is rejected.', substitute: 'None.' },
+  'namespaced run-time parameters (response.*, request.*)': {
+    why: 'set_config(\'response.headers\', ...) and SET "request.jwt.claims" are both rejected, and because DSQL parses SQL function bodies at CREATE time the SET form also fails the CREATE FUNCTION.',
+    substitute: 'None. PostgREST\'s GUC-driven response headers and claim passing have no equivalent here; those cases are reported out of scope.'
+  },
+  'session settings DSQL rejects': {
+    why: 'ALTER DATABASE ... SET and session GUCs, including role, are rejected.',
+    substitute: 'None. This is also why SET ROLE and row-level security are unreachable, so PostgREST\'s authorization model has to be replaced by engine-side authorization.'
+  },
+  'functions returning or taking an unsupported type': {
+    why: 'A function whose signature names a type DSQL will not store fails at CREATE time.',
+    substitute: 'None.'
+  },
+  'DSQL 10-schema limit': {
+    why: 'DSQL allows at most 10 schemas per database.',
+    substitute: 'None. The skipped schema only held postgis and isn objects DSQL cannot create anyway.'
+  },
+  'writes to pg_catalog': {
+    why: 'pg_catalog is not writable on DSQL.',
+    substitute: 'None.'
+  },
+  'tables where every column type is unsupported': {
+    why: 'Nothing is left of the table once DSQL rejects every column type in it.',
+    substitute: 'None.'
+  }
+};
+
 const LABELS = {
   'engine-fixable': 'engine-fixable',
   'dsql-substitute-needed': 'dsql-substitute-needed',
@@ -135,13 +211,13 @@ function classifyGap(slug, statuses) {
 // entries fall back to the measured symptom taken from the first case reason.
 const GAP_NOTES = {
   'no-foreign-keys':
-    'DSQL stores no foreign keys, so <code>pg_constraint</code> reports none and the engine reads its relationships from the declared manifest instead (<code>PGREST_RELATIONSHIPS_PATH</code>, reconstructed by the fixture transform into conformance/fixtures/relationships.json). What is left is what a manifest of foreign keys cannot express: cases where upstream derives a relationship from a function returning <code>SETOF</code> a table (PostgREST calls these computed relationships), disambiguation cases that need more than one relationship between the same pair of relations, and one case whose table is partitioned and therefore absent on DSQL. Run without the manifest, this gap is 189 failures instead — the trend above keeps that run for comparison.',
+    'DSQL stores no foreign keys, so <code>pg_constraint</code> reports none and the engine reads its relationships from the declared manifest instead (<code>PGREST_RELATIONSHIPS_PATH</code>, reconstructed by the fixture transform into conformance/fixtures/relationships.json). What is left is what a manifest of foreign keys cannot express: relationships upstream derives from a view\'s column provenance rather than from a constraint, and disambiguation between two relationships that join the same pair of relations. Measured without the manifest on commit <code>3fbf941</code>, this gap was 189 failures — the trend above keeps that run for comparison.',
   'unimplemented-json-path':
     'Top-level JSON paths work. What fails is a JSON path used to pick a column inside an embedded resource (<code>trash_details(jsonb_col-&gt;key)</code>), which the embed resolver reports as a missing column.',
   'unimplemented-feature-aggregates':
-    'Aggregates in a top-level select list parse and emit GROUP BY. Every remaining failure puts the aggregate inside an embedded resource, and 21 of the 22 inside a spread embed (<code>...processes(cost.sum())</code>), which the select parser rejects before it reaches SQL generation.',
+    'Aggregates in a top-level select list parse and emit GROUP BY. What is left is aggregates inside a spread embed (<code>...processes(cost.sum())</code>): the engine computes them per parent row instead of grouping at the parent level, which is also what the larger <code>body-mismatch-aggregates</code> gap is.',
   'missing-operator-fts':
-    'The <code>fts</code>, <code>plfts</code>, <code>phfts</code> and <code>wfts</code> operators are implemented and 6 upstream cases pass with them. Every failure here is DSQL: 17 name a text search configuration (<code>english</code>, <code>french</code>, <code>german</code>) that DSQL\'s <code>pg_ts_config</code> does not contain, and the rest use a <code>tsvector</code> column, domain or function argument DSQL rejects at fixture load. There is no substitute — DSQL ships one configuration, <code>simple</code>, which is what <code>PGREST_DEFAULT_TS_CONFIG</code> is set to for these runs.',
+    'The <code>fts</code>, <code>plfts</code>, <code>phfts</code> and <code>wfts</code> operators are implemented and upstream cases pass with them. Every failure here is DSQL: 19 name a text search configuration (<code>english</code>, <code>french</code>, <code>german</code>) that DSQL\'s <code>pg_ts_config</code> does not contain, and 3 use a <code>tsvector</code> column or function DSQL dropped at fixture load. There is no substitute — DSQL ships one configuration, <code>simple</code>, which is what <code>PGREST_DEFAULT_TS_CONFIG</code> is set to for these runs.',
   'no-set-role':
     'Upstream asserts authorization performed with SET ROLE + GRANT + RLS. DSQL rejects SET ROLE and has no RLS, so the engine needs its own authorization model to answer the same 401/403 bodies.',
   'extraction-skipped':
@@ -151,7 +227,7 @@ const GAP_NOTES = {
   'fixture-missing':
     'The object the case needs does not exist on DSQL. Each one is named with its drop reason in conformance/fixtures/load-report.json.',
   'engine-error':
-    'The database raised an error the engine does not translate into the PostgREST body upstream returns: two inserts through a view DSQL will not write to (SQLSTATE 55000) and one relation whose rules recurse (42P17).',
+    'The database raised an error the engine does not translate into the PostgREST body upstream returns: both cases insert through a view DSQL will not write to (SQLSTATE 55000), where upstream returns 201.',
   'no-plpgsql': 'The fixture function is plpgsql, which DSQL cannot create.',
   'row-order-unspecified':
     'Same rows, different order. DSQL does not promise a physical row order and adding an implicit ORDER BY would change engine semantics. Counted as a failure here, not hidden.',
@@ -363,6 +439,77 @@ export function buildTrend(runs) {
   };
 }
 
+/**
+ * Case-level delta between two runs, matched by case id. This is the honest
+ * comparison when two runs were measured with different runner flags: totals
+ * can move because the denominator moved, but a case id that went from a
+ * non-pass status to `pass` is a real change and a case that went the other way
+ * is a real regression. `gained` / `lost` never net each other out here.
+ */
+export function idMatchedDelta(baselineCases, currentCases) {
+  const before = new Map((baselineCases || []).map((c) => [c.id, c.status]));
+  const transitions = new Map();
+  let matched = 0;
+  let gained = 0;
+  let lost = 0;
+  let onlyInCurrent = 0;
+  for (const c of currentCases || []) {
+    const was = before.get(c.id);
+    if (was === undefined) {
+      onlyInCurrent += 1;
+      continue;
+    }
+    matched += 1;
+    const key = `${was} → ${c.status}`;
+    transitions.set(key, (transitions.get(key) || 0) + 1);
+    if (was !== 'pass' && c.status === 'pass') gained += 1;
+    if (was === 'pass' && c.status !== 'pass') lost += 1;
+  }
+  const seen = new Set((currentCases || []).map((c) => c.id));
+  const onlyInBaseline = [...before.keys()].filter((id) => !seen.has(id)).length;
+  return {
+    matched,
+    gained,
+    lost,
+    onlyInCurrent,
+    onlyInBaseline,
+    transitions: [...transitions.entries()].sort((a, b) => b[1] - a[1])
+  };
+}
+
+/** Cases the runner classified as order-dependent, and still counted as failures. */
+export function rowOrderFailures(cases) {
+  const hits = (cases || []).filter(
+    (c) => c.gap === 'row-order-unspecified' && c.status === 'fail'
+  );
+  return { count: hits.length, ids: hits.map((c) => c.id) };
+}
+
+/**
+ * The measured cost of per-spec fixture reload, taken from the trend rather than
+ * asserted. Only a pair of runs on the same commit whose flags differ by nothing
+ * except `--reload-per-spec` is quotable; anything else would mix an engine
+ * change into the number. Returns the newest such pair, or nulls.
+ */
+export function isolationEvidence(runs) {
+  const reload = (r) => /--reload-per-spec/.test(r.flags || '');
+  const withoutFlag = (r) =>
+    (r.flags || '')
+      .replace(/--reload-per-spec/g, '')
+      .replace(/\s+/g, ' ')
+      .replace(/\s*,\s*/g, ', ')
+      .trim();
+  const ordered = [...(runs || [])].reverse();
+  for (const a of ordered) {
+    if (!reload(a) || !a.commit) continue;
+    const b = ordered.find(
+      (r) => r !== a && !reload(r) && r.commit === a.commit && withoutFlag(r) === withoutFlag(a)
+    );
+    if (b) return { withReload: a, withoutReload: b };
+  }
+  return { withReload: null, withoutReload: null };
+}
+
 // ---------------------------------------------------------------- model
 
 function buildModel(results, loadReport, trend = null) {
@@ -512,6 +659,63 @@ function buildModel(results, loadReport, trend = null) {
   // ---- zero-pass categories (used in the plain-spoken verdict)
   const zeroPass = categories.filter((c) => c.ran > 0 && c.passed === 0).map((c) => c.name);
 
+  // ---- how to read the number: the three things that bias or bound it
+  //
+  // 1. fixture isolation. The flags the run was measured with decide this, so
+  //    they are read back out of the trend entry rather than assumed.
+  const flags = trend?.current?.flags || '';
+  const isolation = {
+    flags: flags || null,
+    reloadPerSpec: /--reload-per-spec/.test(flags),
+    targetedReset: /--reset-touched/.test(flags),
+    fullReset: /--reset-mutations/.test(flags),
+    evidence: trend ? isolationEvidence(trend.runs) : { withReload: null, withoutReload: null },
+    // A concrete instance, quoted from this run rather than described: a read
+    // that fails because an earlier case in the same spec file wrote the row.
+    example: results.cases.find((c) => c.id === 'UpsertSpec:417' && c.status === 'fail') || null
+  };
+
+  // 2. order-dependent assertions, left as failures on purpose.
+  const rowOrder = {
+    ...rowOrderFailures(results.cases),
+    byRun: trend?.rowOrderByRun || null
+  };
+
+  // 3. what DSQL makes impossible, with the cases it costs. `blocked`,
+  //    `out-of-scope` and the `dsql-substitute-needed` failures are three
+  //    different accounting buckets for the same underlying cause.
+  const permanentFamilies = dropFamilies
+    .filter((f) => PERMANENT_ON_DSQL[f.family])
+    .map((f) => ({ ...f, ...PERMANENT_ON_DSQL[f.family] }));
+  const permanent = {
+    families: permanentFamilies,
+    droppedObjects: permanentFamilies.reduce((a, f) => a + f.count, 0),
+    droppedTotal: (loadReport.dropped || []).length,
+    blocked: t.blocked || 0,
+    blockedByGap: topN(blockedByGap, 20),
+    outOfScope: t.outOfScope || 0,
+    dsqlFailures: failuresByFixability['dsql-substitute-needed'],
+    dsqlFailureGaps: gaps
+      .filter((g) => g.fixability === 'dsql-substitute-needed')
+      .map((g) => ({ slug: g.slug, failed: g.failed }))
+  };
+  permanent.casesTotal = permanent.blocked + permanent.outOfScope + permanent.dsqlFailures;
+
+  // 4. cases that left the denominator since the last comparable run. Every one
+  //    of them lifts the rate without the engine passing anything new, so the
+  //    report states the rate recomputed as if they had all stayed failures.
+  const prevTransitions = new Map(trend?.idMatched?.previous?.delta?.transitions || []);
+  const leftDenominator = {
+    toOutOfScope: prevTransitions.get('fail → out-of-scope') || 0,
+    toBlocked: prevTransitions.get('fail → blocked') || 0,
+    against: trend?.idMatched?.previous?.run || null
+  };
+  leftDenominator.total = leftDenominator.toOutOfScope + leftDenominator.toBlocked;
+  leftDenominator.conservativeRan = ran + leftDenominator.total;
+  leftDenominator.conservativeRate = leftDenominator.conservativeRan
+    ? (t.passed || 0) / leftDenominator.conservativeRan
+    : null;
+
   return {
     meta: {
       generatedAt: results.generatedAt,
@@ -532,6 +736,7 @@ function buildModel(results, loadReport, trend = null) {
     },
     totals: t,
     trend,
+    measurement: { isolation, rowOrder, permanent, leftDenominator },
     categories,
     gaps,
     byFixability,
@@ -619,29 +824,63 @@ function verdictParagraphs(m) {
   const tr = m.trend;
   // When the two runs used different runner flags, a percentage-point jump is
   // not a like-for-like claim: fixture state differs, so it would overstate the
-  // engine's progress. Quote the case delta, which is measured by matching case
-  // ids, and send the reader to the flag-matched figure instead.
+  // engine's progress. Lead with the case delta measured by matching case ids
+  // between the two results files, and send the reader to the flag-matched
+  // figure for a rate comparison.
+  const im = tr?.idMatched?.baseline || null;
+  const flagNote = tr && !tr.isSelfComparison
+    ? tr.sameFlags
+      ? ` Both runs used the same runner flags, so the rate moved `
+        + `${pct(tr.baseline.rate)} → ${pct(tr.current.rate)}.`
+      : ` The two runs used different runner flags, so their rates are not compared here: `
+        + `fixture state differs between them, and a percentage-point jump would credit the engine `
+        + `with the flag's effect. See <a href="#progress">Progress since the baseline</a> for the `
+        + `flag-matched pair.`
+    : '';
   const progress =
     tr && !tr.isSelfComparison
-      ? tr.sameFlags
-        ? ` The baseline run (<code>${esc(tr.baseline.generatedAt)}</code>) passed `
-          + `${num(tr.baseline.passed)} of ${num(tr.baseline.ran)}, so this is `
-          + `${signed(tr.deltaPassed)} cases and ${pct(tr.baseline.rate)} → ${pct(tr.current.rate)}.`
+      ? im
+        ? ` Matched by case id against the baseline run (<code>${esc(tr.baseline.generatedAt)}</code>, `
+          + `${num(tr.baseline.passed)} of ${num(tr.baseline.ran)}), ${num(im.gained)} cases went `
+          + `from not passing to passing and ${num(im.lost)} went the other way, over `
+          + `${num(im.matched)} ids present in both runs.${flagNote}`
         : ` That is ${signed(tr.deltaPassed)} cases against the baseline run `
           + `(<code>${esc(tr.baseline.generatedAt)}</code>, ${num(tr.baseline.passed)} of `
-          + `${num(tr.baseline.ran)}). The two runs used different runner flags, so `
-          + `${pct(tr.baseline.rate)} → ${pct(tr.current.rate)} is <em>not</em> a `
-          + `like-for-like comparison and is not the claim being made — see `
-          + `<a href="#progress">Progress since the baseline</a> for the flag-matched figure.`
+          + `${num(tr.baseline.ran)}).${flagNote}`
       : '';
+  const repeat = tr?.idMatched?.repeat
+    ? ` The same tree was measured twice: `
+      + `<code>${esc(tr.idMatched.repeat.run.label)}</code> passed `
+      + `${num(tr.idMatched.repeat.run.passed)} of ${num(tr.idMatched.repeat.run.ran)} `
+      + `(${pct(tr.idMatched.repeat.run.rate)}) with the same flags, differing on `
+      + `${num(tr.idMatched.repeat.delta.gained + tr.idMatched.repeat.delta.lost)} cases. `
+      + `That is the run-to-run noise on this database, not progress.`
+    : '';
+  const previous = tr?.idMatched?.previous
+    ? ` The last run measured with these same flags `
+      + `(<code>${esc(tr.idMatched.previous.run.label)}</code>, `
+      + `${num(tr.idMatched.previous.run.passed)} of ${num(tr.idMatched.previous.run.ran)}, `
+      + `${pct(tr.idMatched.previous.run.rate)}) is directly comparable: `
+      + `${num(tr.idMatched.previous.delta.gained)} cases gained and `
+      + `${num(tr.idMatched.previous.delta.lost)} lost, `
+      + `${pct(tr.idMatched.previous.run.rate)} → ${pct(m.headline.rate)}.`
+    : '';
 
   const out = [];
   out.push(
     `<p><strong>${level}</strong> The engine passes ${num(m.headline.passed)} of the ` +
       `${num(m.headline.ran)} upstream assertions that ran and are in scope.` +
-      `${progress} ` +
+      `${progress}${previous}${repeat} ` +
       `Do not quote a higher figure: the denominator already excludes everything ` +
-      `Aurora DSQL or this architecture makes unmeasurable.</p>`
+      `Aurora DSQL or this architecture makes unmeasurable. ` +
+      (m.measurement.leftDenominator?.total
+        ? `Counting the ${num(m.measurement.leftDenominator.total)} cases that were failures in the `
+          + `comparable run and left the denominator by reclassification as failures instead gives `
+          + `${num(m.headline.passed)} of ${num(m.measurement.leftDenominator.conservativeRan)} = `
+          + `${pct(m.measurement.leftDenominator.conservativeRate)}. `
+        : '') +
+      `<a href="#measurement">How to read this number</a> states the residual measurement bias, ` +
+      `the order-dependent failures and what DSQL makes impossible.</p>`
   );
   out.push(
     `<p>Of the ${num(failed)} failures, ${num(engineFail)} ` +
@@ -731,18 +970,25 @@ excluded move into the denominator and fail there first, and a category that rea
 spec mutates scores differently depending on the run flags.</p>`
     : '<p>No category is below its baseline.</p>';
 
+  // A rate-to-rate comparison is only quoted when both runs used the same
+  // flags. Across different flags the case delta is the claim.
+  const ratePair = tr.sameFlags
+    ? ` (${pct(tr.baseline.rate)} → ${pct(tr.current.rate)})`
+    : '';
+
   return `<p>Baseline is the first entry in <code>conformance/results/history.json</code>:
 ${num(tr.baseline.passed)} passed and ${num(tr.baseline.failed)} failed of
 ${num(tr.baseline.total)} extracted cases, measured
 <code>${esc(tr.baseline.generatedAt)}</code>. Current is
 ${num(tr.current.passed)} passed and ${num(tr.current.failed)} failed of
 ${num(tr.current.total)} extracted, a change of ${signed(tr.deltaPassed)} passing cases and
-${signed(tr.deltaFailed)} failing ones on a denominator that moved by ${signed(tr.deltaRan)}
-(${pct(tr.baseline.rate)} → ${pct(tr.current.rate)}). The denominator moves in both directions:
+${signed(tr.deltaFailed)} failing ones on a denominator that moved by
+${signed(tr.deltaRan)}${ratePair}. The denominator moves in both directions:
 a case leaves the excluded groups when the harness or the engine learns to run it, and enters them
 when a closer look shows its fixture cannot exist on DSQL. A rate on its own would hide that, so
 the counts are shown next to it.</p>
 ${flagWarning}
+${renderIdMatched(tr)}
 
 <h3>Every measured run</h3>
 <table class="grid">
@@ -767,6 +1013,235 @@ ${catRows}
 </tbody>
 </table>
 ${regressions}`;
+}
+
+/**
+ * The case-level delta, matched by id between two results files. This is the
+ * comparison that survives a change of runner flags, so it is the one the
+ * headline quotes.
+ */
+function renderIdMatched(tr) {
+  const im = tr.idMatched;
+  if (!im || !im.baseline) {
+    return `<p class="fine">No case-level delta: one of the two results files is not on disk,
+so only the totals above can be compared.</p>`;
+  }
+  const table = (d) => `<table class="grid">
+<thead><tr><th scope="col">Status change</th><th scope="col" class="n">Cases</th></tr></thead>
+<tbody>
+${d.transitions
+    .map(([k, n]) => `<tr><th scope="row"><code>${esc(k)}</code></th><td class="n">${num(n)}</td></tr>`)
+    .join('\n')}
+</tbody>
+</table>`;
+
+  const prev = im.previous
+    ? `<h3>Against the last run with the same flags</h3>
+<p><code>${esc(im.previous.run.label)}</code> (<code>${esc(im.previous.run.generatedAt)}</code>)
+was measured with the same flags as this run and passed ${num(im.previous.run.passed)} of
+${num(im.previous.run.ran)}. Matched by id: ${num(im.previous.delta.gained)} cases gained,
+${num(im.previous.delta.lost)} lost, over ${num(im.previous.delta.matched)} shared ids. Because the
+flags match, the rate comparison holds: ${pct(im.previous.run.rate)} → ${pct(tr.current.rate)}.</p>
+${table(im.previous.delta)}`
+    : '';
+
+  const repeat = im.repeat
+    ? `<h3>The same tree, measured twice</h3>
+<p><code>${esc(im.repeat.run.label)}</code> (<code>${esc(im.repeat.run.generatedAt)}</code>) is the
+same commit and the same flags as this run and passed ${num(im.repeat.run.passed)} of
+${num(im.repeat.run.ran)} (${pct(im.repeat.run.rate)}). Matched by id, the two disagree on
+${num(im.repeat.delta.gained + im.repeat.delta.lost)} cases — ${num(im.repeat.delta.gained)} pass
+here and not there, ${num(im.repeat.delta.lost)} the other way round. That is the measurement noise
+on this database, mostly order luck and fixture-reload conflicts. Both runs are kept in the trend so
+the noise is visible; a difference of that size is never progress.</p>`
+    : '';
+
+  return `<h3>Case-level delta since the baseline</h3>
+<p>Totals can move because the denominator moved. Matching case ids between the two results files
+cannot: ${num(im.baseline.gained)} cases went from a non-pass status to <code>pass</code> and
+${num(im.baseline.lost)} went from <code>pass</code> to a non-pass status, over
+${num(im.baseline.matched)} ids present in both runs${
+  im.baseline.onlyInCurrent || im.baseline.onlyInBaseline
+    ? ` (${num(im.baseline.onlyInCurrent)} ids are new since the baseline and ${num(im.baseline.onlyInBaseline)} are gone)`
+    : ''
+}. Every transition is listed, including the ones that left the denominator.</p>
+${table(im.baseline)}
+${prev}
+${repeat}`;
+}
+
+/**
+ * How to read the number: the residual measurement bias, the failures left in
+ * on purpose, and the ceiling DSQL puts on the whole exercise. Everything here
+ * is computed from the results file, the trend and the fixture load report; the
+ * why-there-is-no-substitute column is the editorial part and is marked as such.
+ */
+function renderMeasurement(m) {
+  const { isolation, rowOrder, permanent, leftDenominator } = m.measurement;
+  const ev = isolation.evidence;
+
+  const isolationEffect =
+    ev.withReload && ev.withoutReload
+      ? `The size of the effect is measured, on one commit
+(<code>${esc(ev.withReload.commit || 'unknown')}</code>) with every other flag held constant:
+${num(ev.withReload.passed)} of ${num(ev.withReload.ran)} with the flag
+(<code>${esc(ev.withReload.label)}</code>) against ${num(ev.withoutReload.passed)} of
+${num(ev.withoutReload.ran)} without it (<code>${esc(ev.withoutReload.label)}</code>). That
+${num(Math.abs(ev.withReload.passed - ev.withoutReload.passed))}-case difference is reading specs
+being scored against rows an earlier mutating spec left behind.`
+      : 'The trend holds no pair of runs on one commit that differ only in this flag, so the size of the effect is not quoted here.';
+
+  const exampleBlock = isolation.example
+    ? `<p>A worked example from this run, not a hypothetical.
+<code>${esc(isolation.example.id)}</code> failed:</p>
+<pre class="cmd">${esc(String(isolation.example.reason).trim())}</pre>
+<p>Earlier cases in the same spec file write that row with the other value and no later case
+restores it, so the read is scored against a database upstream never sees. Upstream never hits this
+because it rolls the row back before the next example starts.</p>`
+    : '';
+
+  const resetBlock = isolation.targetedReset || isolation.fullReset
+    ? `<p>This run was measured with
+<code>${isolation.fullReset ? '--reset-mutations' : '--reset-touched'}</code>, so the residual bias
+above is removed for the cases that flag covers.</p>`
+    : `<p><strong>The targeted reset does not remove this bias in the published number.</strong>
+The runner has <code>--reset-touched</code>, which restores only the tables a mutating case wrote
+to, and <code>--reset-mutations</code>, which re-applies the whole data fixture after every
+mutating case. Both default to off, both need <code>--concurrency 1</code>, and neither is in the
+flags this run was measured with (<code>${esc(isolation.flags || 'not recorded')}</code>). A
+three-spec control run during verification (<code>UpsertSpec</code>, <code>InsertSpec</code>,
+<code>UpdateSpec</code>) moved cases in both directions with the targeted reset on — 11 from fail to
+pass and 4 from pass to fail — so it makes the measurement more faithful rather than higher. That
+control is not in the trend, because a three-spec run is not a suite score.</p>`;
+
+  // The set of order-dependent assertions is larger than any one run's count:
+  // whether a given one fails depends on the order DSQL happened to return.
+  const prevRowOrder = m.trend?.idMatched?.previous
+    ? (rowOrder.byRun || []).find(
+      (r) => r.label === m.trend.idMatched.previous.run.label
+        && r.generatedAt === m.trend.idMatched.previous.run.generatedAt
+    )
+    : null;
+  const counts = (rowOrder.byRun || []).map((r) => r.count);
+  const rowOrderSpread = counts.length > 1 && Math.min(...counts) !== Math.max(...counts)
+    ? `<p>Do not read ${num(rowOrder.count)} as the size of the problem. Across the measured runs
+this count ranges from ${num(Math.min(...counts))} to ${num(Math.max(...counts))}
+${prevRowOrder ? `(the previous run with the same flags, <code>${esc(prevRowOrder.label)}</code>, recorded ${num(prevRowOrder.count)})` : ''}
+— the order-dependent assertions are a fixed set, and how many of them happen to come back in the
+order upstream expects is luck. Counts per measured run:</p>`
+    : '';
+
+  const rowOrderRuns = (rowOrder.byRun || []).length
+    ? `${rowOrderSpread}<table class="grid">
+<thead><tr><th scope="col">Run</th><th scope="col">Measured</th>
+<th scope="col" class="n">Order-dependent failures</th></tr></thead>
+<tbody>
+${rowOrder.byRun
+      .map(
+        (r) => `<tr><th scope="row"><code>${esc(r.label)}</code></th>
+  <td class="fine mono">${esc(r.generatedAt)}</td><td class="n">${num(r.count)}</td></tr>`
+      )
+      .join('\n')}
+</tbody>
+</table>
+<p class="fine">The count is not stable between runs, which is the point: the same assertion passes
+or fails depending on the order DSQL happens to return rows in. Runs whose results file is no longer
+on disk are omitted.</p>`
+    : '';
+
+  const permRows = permanent.families
+    .map(
+      (f) => `<tr>
+  <th scope="row">${esc(f.family)}</th>
+  <td class="n">${num(f.count)}</td>
+  <td>${f.kinds.map(([k, n]) => `${esc(k)} ${n}`).join(', ')}</td>
+  <td>${esc(f.why)}</td>
+  <td>${note(f.substitute)}</td>
+</tr>`
+    )
+    .join('\n');
+
+  const conservative = leftDenominator?.total && leftDenominator.against
+    ? `<h3>4. Cases that left the denominator since the comparable run</h3>
+<p>${num(leftDenominator.total)} cases were failures in
+<code>${esc(leftDenominator.against.label)}</code> and are not failures here because they were
+reclassified, not because they now pass: ${num(leftDenominator.toOutOfScope)} moved to out of scope
+and ${num(leftDenominator.toBlocked)} to blocked. Both moves lift the rate on their own, so the
+conservative reading — every one of them counted as a failure — is
+<strong>${num(m.headline.passed)} of ${num(leftDenominator.conservativeRan)} =
+${pct(leftDenominator.conservativeRate)}</strong> against the headline
+${pct(m.headline.rate)}. Quote either, but quote the denominator with it.</p>
+<p class="fine">Each reclassification is evidence-gated and listed in
+<a href="#notcounted">Not counted</a>: an out-of-scope case names a namespaced run-time parameter
+DSQL rejects outright, and a blocked case names a fixture column the load report confirms was
+dropped. The reason they only surfaced now is that the engine started forwarding the database's own
+error text, which made the cause visible to the classifier.</p>`
+    : '';
+
+  return `<p>Three things bound this measurement. The first biases it, the second is left failing on
+purpose, and the third is a ceiling no amount of engine work moves.</p>
+
+<h3>1. Fixture isolation is per spec file, not per request</h3>
+<p>Upstream runs its suite with <code>configDbTxRollbackAll = True</code>
+(<code>test/spec/SpecHelper.hs</code>), so every request is rolled back and no upstream example ever
+sees another example's writes. That is not available here: Aurora DSQL has no <code>SAVEPOINT</code>
+and the engine holds no transaction open across a request. The runner's closest approximation is
+<code>--reload-per-spec</code>, which reloads the fixtures once per spec file and
+${isolation.reloadPerSpec ? 'was used for this run' : '<strong>was not used for this run</strong>'}.
+${isolationEffect}</p>
+<p>The residual bias is what per-spec reload cannot reach: a case that mutates data still changes
+what <em>later cases in the same spec file</em> read. Upstream's own ordering assumes a pristine row
+at every example.</p>
+${exampleBlock}
+${resetBlock}
+<p class="fine">Direction of the bias: mostly downward. A read that upstream scores against pristine
+data is scored here against data an earlier case in the same file changed, which produces a failure,
+not a pass. It can also flatter a case in the other direction — a read that happens to want the
+mutated row — which is why the residual is called a bias and not a discount.</p>
+
+<h3>2. Order-dependent assertions: ${num(rowOrder.count)} failures kept as failures</h3>
+<p>${num(rowOrder.count)} cases in this run failed with the right rows in the wrong order.
+Aurora DSQL is distributed and keeps no heap the way PostgreSQL does, so a query with no
+<code>ORDER BY</code> comes back in whatever order the storage layer produces and insertion order is
+not preserved. Upstream's assertions were written against PostgreSQL, where a sequential scan of a
+freshly loaded table returns rows in heap order, which is insertion order — so upstream can assert a
+row sequence without ever writing <code>order=</code>. The engine adds no implicit
+<code>ORDER BY</code>, because inventing one would change its semantics for every caller in order to
+make a test pass.</p>
+<p>These are counted as <strong>failures</strong> in the headline. Reclassifying them as skipped or
+out of scope would lift the rate on a technicality, so the report leaves them in and names them:
+${rowOrder.ids.length
+    ? rowOrder.ids.map((id) => `<code>${esc(id)}</code>`).join(', ')
+    : 'none in this run'}.</p>
+${rowOrderRuns}
+
+<h3>3. Permanently impossible on Aurora DSQL</h3>
+<p>${num(permanent.droppedObjects)} of the ${num(permanent.droppedTotal)} constructs dropped at
+fixture load are dropped because DSQL cannot create them at all, not because the transform gave up.
+Every one is listed with its reason in <code>conformance/fixtures/load-report.json</code>. The cost
+in cases is ${num(permanent.casesTotal)}: ${num(permanent.blocked)} blocked (the object under test
+does not exist, so the assertion cannot run either way), ${num(permanent.outOfScope)} out of scope
+(namespaced run-time parameters), and ${num(permanent.dsqlFailures)} counted as failures anyway
+because the request still ran and returned the wrong thing —
+${permanent.dsqlFailureGaps
+    .map((g) => `<code>${esc(g.slug)}</code> ${num(g.failed)}`)
+    .join(', ')}.</p>
+<p class="fine">Blocked cases by cause: ${permanent.blockedByGap
+    .map(([g, n]) => `<code>${esc(g)}</code> ${num(n)}`)
+    .join(', ')}.</p>
+<table class="grid">
+<thead><tr><th scope="col">What DSQL will not create</th><th scope="col" class="n">Objects</th>
+<th scope="col">Kinds</th><th scope="col">Why</th><th scope="col">Substitute</th></tr></thead>
+<tbody>
+${permRows}
+</tbody>
+</table>
+<p class="fine">Object counts and kinds come from the load report. The "Why" and "Substitute"
+columns are editorial, like the gap notes, and are the only hand-written text in this section.
+Families that are consequences of another drop — a view that referenced a table DSQL refused, a
+GRANT on a schema that was skipped — are in <a href="#dsql">Aurora DSQL limitations</a> below rather
+than here, so this table is not padded with knock-on effects.</p>
+${conservative}`;
 }
 
 function renderCategories(m) {
@@ -1150,6 +1625,9 @@ ${verdictParagraphs(m)}
 <h2 id="progress">Progress since the baseline</h2>
 ${renderProgress(m)}
 
+<h2 id="measurement">How to read this number</h2>
+${renderMeasurement(m)}
+
 <h2>By category</h2>
 <p class="fine">Sorted by gap size — failures first, then blocked cases. "Needs config" is cases
 that only hold under a non-default PostgREST setting; "Excluded" is skipped plus out-of-scope.
@@ -1171,10 +1649,10 @@ The fixability label and the notes are the only editorial content on this page.<
 ${renderGaps(m)}
 </ol>
 
-<h2>Aurora DSQL limitations</h2>
+<h2 id="dsql">Aurora DSQL limitations</h2>
 ${renderDsql(m)}
 
-<h2>Not counted: needs-config, skipped, blocked and out of scope</h2>
+<h2 id="notcounted">Not counted: needs-config, skipped, blocked and out of scope</h2>
 ${renderExcluded(m)}
 
 <footer>
@@ -1203,6 +1681,80 @@ function readHistory(path) {
   return JSON.parse(readFileSync(path, 'utf8'));
 }
 
+/**
+ * Cases of a trend entry's results file, or null when it is gone. An entry that
+ * points at a mutable path (`latest.json`) can end up describing a different run
+ * than the one it was written for, so the file's own `generatedAt` has to agree
+ * with the entry's before its cases are used for a delta.
+ */
+function casesOfRun(run) {
+  if (!run?.results) return null;
+  const path = resolve(REPO, run.results);
+  if (!existsSync(path)) return null;
+  try {
+    const parsed = JSON.parse(readFileSync(path, 'utf8'));
+    if (run.generatedAt && parsed.generatedAt && parsed.generatedAt !== run.generatedAt) {
+      process.stderr.write(
+        `warning: ${run.results} now holds run ${parsed.generatedAt}, not `
+          + `${run.generatedAt} — skipping the case delta for "${run.label}"\n`
+      );
+      return null;
+    }
+    return parsed.cases || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Case-level deltas and the per-run order-dependent counts, both of which need
+ * the other runs' results files rather than the counts the trend stores. Absent
+ * or unreadable files degrade to null instead of failing the build.
+ */
+function attachCaseDeltas(trend, runs, results) {
+  if (!trend || trend.isSelfComparison) return;
+  const currentCases = results.cases || [];
+  const baselineCases = casesOfRun(runs[0]);
+  const current = runs[runs.length - 1];
+  // The newest earlier run measured with exactly the flags this one used: the
+  // only pair in the trend a rate comparison is honest about.
+  const sameFlags = (r) => (r.flags || '') === (current.flags || '');
+  const earlier = [...runs.slice(0, -1)].reverse();
+  const previousRun = earlier.find((r) => sameFlags(r) && r.commit !== current.commit);
+  // A second measurement of the same tree with the same flags is not progress;
+  // it is the run-to-run noise, and the report says so rather than hiding it.
+  const repeatRun = earlier.find((r) => sameFlags(r) && r.commit === current.commit);
+
+  const pair = (run) => {
+    const cases = run ? casesOfRun(run) : null;
+    if (!run || !cases) return null;
+    return {
+      run: trend.runs.find(
+        (r) => r.label === run.label && r.generatedAt === run.generatedAt
+      ),
+      delta: idMatchedDelta(cases, currentCases)
+    };
+  };
+
+  trend.idMatched = {
+    baseline: baselineCases ? idMatchedDelta(baselineCases, currentCases) : null,
+    previous: pair(previousRun),
+    repeat: pair(repeatRun)
+  };
+
+  trend.rowOrderByRun = runs
+    .map((r) => {
+      const cases = r === current ? currentCases : casesOfRun(r);
+      if (!cases) return null;
+      return {
+        label: r.label,
+        generatedAt: r.generatedAt,
+        count: rowOrderFailures(cases).count
+      };
+    })
+    .filter(Boolean);
+}
+
 function main() {
   const opts = parseArgs(process.argv.slice(2));
   const results = JSON.parse(readFileSync(opts.results, 'utf8'));
@@ -1226,6 +1778,7 @@ function main() {
       (r) => !(r.label === entry.label && r.generatedAt === entry.generatedAt)
     );
     trend = buildTrend([...ordered, entry]);
+    attachCaseDeltas(trend, [...ordered, entry], results);
     process.stdout.write(
       `history ${relative(REPO, opts.history)}: ${history.runs.length} run(s), `
         + `baseline ${history.runs[0].label} ${history.runs[0].totals.passed}`
@@ -1241,15 +1794,34 @@ function main() {
   writeFileSync(opts.out, html);
   const h = model.headline;
   process.stdout.write(
-    `wrote ${opts.out} (${num(html.length)} bytes)\n` +
+    // Byte length, not character count: the report contains non-ASCII text
+    // (— in the prose, é in fixture data), so the two differ and only the
+    // byte count matches what the file system reports.
+    `wrote ${opts.out} (${num(Buffer.byteLength(html))} bytes)\n` +
       `pass rate ${h.passed}/${h.ran} = ${pct(h.rate)}  ` +
       `[extracted ${h.total}, needs-config ${model.totals.needsConfig || 0}, ` +
       `skipped ${model.totals.skipped}, blocked ${model.totals.blocked}, ` +
       `out-of-scope ${model.totals.outOfScope}]\n` +
       `${model.gaps.length} gap slugs, ${model.dsql.families.length} DSQL drop families\n` +
+      `${model.measurement.rowOrder.count} order-dependent failures kept as failures\n` +
       (trend && !trend.isSelfComparison
         ? `vs baseline ${trend.baseline.label}: ${signed(trend.deltaPassed)} passed, `
           + `${signed(trend.deltaFailed)} failed, denominator ${signed(trend.deltaRan)}\n`
+        : '') +
+      (trend?.idMatched?.baseline
+        ? `id-matched vs baseline: +${trend.idMatched.baseline.gained} pass, `
+          + `-${trend.idMatched.baseline.lost} regress `
+          + `(${trend.idMatched.baseline.matched} shared ids)\n`
+        : '') +
+      (trend?.idMatched?.previous
+        ? `id-matched vs ${trend.idMatched.previous.run.label} (same flags): `
+          + `+${trend.idMatched.previous.delta.gained} pass, `
+          + `-${trend.idMatched.previous.delta.lost} regress\n`
+        : '') +
+      (trend?.idMatched?.repeat
+        ? `noise vs ${trend.idMatched.repeat.run.label} (same tree, same flags): `
+          + `${trend.idMatched.repeat.delta.gained + trend.idMatched.repeat.delta.lost} `
+          + `cases differ\n`
         : '')
   );
 }

@@ -30,6 +30,21 @@ const OID_NUMERIC = 1700;
 const OID_INT8_ARRAY = 1016;
 const OID_NUMERIC_ARRAY = 1231;
 
+// Temporal types. node-postgres turns these into JavaScript `Date`, which
+// JSON.stringify then renders as UTC with millisecond precision — so
+// `timestamp '2015-12-08 04:22:57.472738'` reaches the client as
+// "2015-12-08T04:22:57.472Z": four digits of microsecond precision thrown
+// away and a UTC marker invented for a type that has no time zone.
+// PostgREST never converts: the value goes through PostgreSQL's own
+// datum-to-json path, so the client sees "2015-12-08T04:22:57.472738"
+// (QuerySpec:891, EmbedDisambiguationSpec:190, :232, QuerySpec:1700).
+const OID_DATE = 1082;
+const OID_TIMESTAMP = 1114;
+const OID_TIMESTAMPTZ = 1184;
+const OID_DATE_ARRAY = 1182;
+const OID_TIMESTAMP_ARRAY = 1115;
+const OID_TIMESTAMPTZ_ARRAY = 1185;
+
 /**
  * Convert a Postgres numeric literal to a JS number when the conversion is
  * exactly reversible, otherwise return the original text.
@@ -66,6 +81,55 @@ function canonicalDecimal(text) {
   return text.replace(/\.?0+$/, '') || '0';
 }
 
+/**
+ * Render a `date`/`timestamp`/`timestamptz` the way PostgreSQL's own
+ * datum-to-json conversion does, given the type's text output.
+ *
+ * PostgreSQL's `JsonEncodeDateTime` (src/backend/utils/adt/json.c) prints the
+ * value with `USE_XSD_DATES`, which differs from the default `ISO, MDY` text
+ * output in exactly two ways:
+ *
+ *   date        2019-12-02                    (identical)
+ *   timestamp   2015-12-08 04:22:57.472738 -> 2015-12-08T04:22:57.472738
+ *   timestamptz 2018-01-02 00:00:00+00     -> 2018-01-02T00:00:00+00:00
+ *
+ * i.e. the date/time separator becomes `T` and a numeric zone offset is
+ * padded to `±HH:MM`. Verified against PostgreSQL 16: `to_json` of those three
+ * values returns exactly the right-hand column.
+ *
+ * Anything that is not a plain timestamp — `infinity`, `-infinity`, a `BC`
+ * era suffix — is returned untouched, because PostgreSQL prints those as their
+ * text form too and guessing a rewrite would be worse than passing them
+ * through.
+ *
+ * @param {string|null} text raw text from the wire
+ * @returns {string|null}
+ */
+export function formatPgTimestamp(text) {
+  if (typeof text !== 'string' || text === '') return text;
+  // infinity / -infinity, and any era-qualified value.
+  if (!/^\d/.test(text) || text.endsWith(' BC') || text.endsWith(' AD')) {
+    return text;
+  }
+  const m = /^(\d{4,}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2}(?:\.\d+)?)(.*)$/.exec(text);
+  if (!m) return text; // bare date, or a shape we do not recognise
+  const [, day, time, zoneRaw] = m;
+  return `${day}T${time}${normalizeZoneOffset(zoneRaw)}`;
+}
+
+/**
+ * Pad a Postgres zone offset to the `±HH:MM` form `to_json` emits. Postgres
+ * prints the shortest form (`+00`, `-07`, `-05:30`, `+00:53:28` for a few
+ * pre-1900 LMT zones); XSD dates always carry at least hours and minutes.
+ */
+function normalizeZoneOffset(zone) {
+  if (!zone) return '';
+  const m = /^([+-])(\d{2})(?::(\d{2}))?(?::(\d{2}))?$/.exec(zone);
+  if (!m) return zone;
+  const [, sign, hh, mm, ss] = m;
+  return `${sign}${hh}:${mm || '00'}${ss ? `:${ss}` : ''}`;
+}
+
 let installed = false;
 
 /**
@@ -90,3 +154,79 @@ export function installPgTypeParsers() {
     });
   }
 }
+
+// Temporal parsers are NOT installed globally. `pg.types` is process-wide, and
+// the auth layer (better-auth) runs its own pool through the same registry and
+// expects `Date` objects for its `createdAt`/`expiresAt` columns. Handing it
+// strings would break session expiry comparisons in a library this project does
+// not control. So the REST engine passes its own registry to its own pools:
+// `types` on a `pg` Pool/Client overrides the global one for that connection
+// only (`Client` reads `options.types` and every result parses through it).
+const REST_TEXT_PARSERS = new Map([
+  [OID_DATE, (text) => text],
+  [OID_TIMESTAMP, formatPgTimestamp],
+  [OID_TIMESTAMPTZ, formatPgTimestamp],
+]);
+
+// pg's array tokenizer applies its own Date-producing element parser, and
+// recovering text from a `Date` it already produced has lost the
+// sub-millisecond digits. So arrays of temporal values are tokenized from the
+// raw literal here instead. Splitting a Postgres array literal means honouring
+// quotes and backslash escapes; that is what this does. A shape it does not
+// recognise (a nested array) returns null and falls back to pg.
+function splitArrayLiteral(text) {
+  if (typeof text !== 'string' || !text.startsWith('{') || !text.endsWith('}')) {
+    return null;
+  }
+  const body = text.slice(1, -1);
+  if (body === '') return [];
+  const out = [];
+  let cur = '';
+  let quoted = false;
+  let sawQuote = false;
+  for (let i = 0; i < body.length; i += 1) {
+    const ch = body[i];
+    if (ch === '\\' && i + 1 < body.length) { cur += body[i + 1]; i += 1; continue; }
+    if (ch === '"') { quoted = !quoted; sawQuote = true; continue; }
+    if (ch === ',' && !quoted) {
+      out.push(cur === 'NULL' && !sawQuote ? null : cur);
+      cur = '';
+      sawQuote = false;
+      continue;
+    }
+    cur += ch;
+  }
+  out.push(cur === 'NULL' && !sawQuote ? null : cur);
+  return out;
+}
+
+for (const [arrayOid, elementParser] of [
+  [OID_DATE_ARRAY, (t) => t],
+  [OID_TIMESTAMP_ARRAY, formatPgTimestamp],
+  [OID_TIMESTAMPTZ_ARRAY, formatPgTimestamp],
+]) {
+  REST_TEXT_PARSERS.set(arrayOid, (text) => {
+    const parts = splitArrayLiteral(text);
+    if (parts) return parts.map((v) => (v == null ? v : elementParser(v)));
+    // A shape splitArrayLiteral does not handle (a nested array). Resolved
+    // here rather than at module load: `pg.types` must not be touched while
+    // this module is being imported, or a test that mocks `pg` with just a
+    // Pool cannot import anything that reaches here.
+    return pg.types.getTypeParser(arrayOid, 'text')(text);
+  });
+}
+
+/**
+ * The type registry the REST engine's own pools use: everything the global
+ * registry does, plus temporal types rendered as PostgreSQL's json conversion
+ * renders them. Pass as `types` when constructing a Pool.
+ */
+export const restPoolTypes = {
+  getTypeParser(oid, format = 'text') {
+    if (format === 'text' || format === undefined) {
+      const parser = REST_TEXT_PARSERS.get(oid);
+      if (parser) return parser;
+    }
+    return pg.types.getTypeParser(oid, format);
+  },
+};

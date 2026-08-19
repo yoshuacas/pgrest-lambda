@@ -163,9 +163,9 @@ describe('errors', () => {
       },
     };
 
-    describe('sanitized mode (default)', () => {
+    describe('sanitize mode (opt-in)', () => {
       it('23505 sanitized — safe message, null details/hint', () => {
-        const result = mapPgError(pgErrors['23505']);
+        const result = mapPgError(pgErrors['23505'], { sanitize: true });
         assert.equal(result.statusCode, 409,
           'statusCode should be 409');
         assert.equal(result.code, '23505',
@@ -179,7 +179,7 @@ describe('errors', () => {
       });
 
       it('23503 sanitized — safe message', () => {
-        const result = mapPgError(pgErrors['23503']);
+        const result = mapPgError(pgErrors['23503'], { sanitize: true });
         assert.equal(result.statusCode, 409,
           'statusCode should be 409');
         assert.equal(result.code, '23503',
@@ -193,7 +193,7 @@ describe('errors', () => {
       });
 
       it('23502 sanitized — safe message', () => {
-        const result = mapPgError(pgErrors['23502']);
+        const result = mapPgError(pgErrors['23502'], { sanitize: true });
         assert.equal(result.statusCode, 400,
           'statusCode should be 400');
         assert.equal(result.code, '23502',
@@ -207,7 +207,7 @@ describe('errors', () => {
       });
 
       it('42P01 sanitized — safe message', () => {
-        const result = mapPgError(pgErrors['42P01']);
+        const result = mapPgError(pgErrors['42P01'], { sanitize: true });
         assert.equal(result.statusCode, 404,
           'statusCode should be 404');
         assert.equal(result.code, '42P01',
@@ -221,7 +221,7 @@ describe('errors', () => {
       });
 
       it('42703 sanitized — safe message', () => {
-        const result = mapPgError(pgErrors['42703']);
+        const result = mapPgError(pgErrors['42703'], { sanitize: true });
         assert.equal(result.statusCode, 400,
           'statusCode should be 400');
         assert.equal(result.code, '42703',
@@ -235,7 +235,7 @@ describe('errors', () => {
       });
 
       it('unmapped code sanitized — fallback safe message', () => {
-        const result = mapPgError(pgErrors['55P03']);
+        const result = mapPgError(pgErrors['55P03'], { sanitize: true });
         assert.equal(result.statusCode, 500,
           'statusCode should be 500');
         assert.equal(result.code, '55P03',
@@ -258,7 +258,7 @@ describe('errors', () => {
           { code: '42703', substr: 'secret_col' },
         ];
         for (const { code, substr } of leakChecks) {
-          const result = mapPgError(pgErrors[code]);
+          const result = mapPgError(pgErrors[code], { sanitize: true });
           assert.ok(
             !result.message.toLowerCase().includes(substr),
             `sanitized message for ${code} must not contain "${substr}"`,
@@ -269,10 +269,10 @@ describe('errors', () => {
       });
     });
 
-    describe('verbose mode', () => {
-      it('23505 verbose — raw passthrough', () => {
+    describe('default mode — upstream passthrough', () => {
+      it('23505 default — raw passthrough', () => {
         const err = pgErrors['23505'];
-        const result = mapPgError(err, { verbose: true });
+        const result = mapPgError(err);
         assert.equal(result.statusCode, 409,
           'statusCode should be 409');
         assert.equal(result.message, err.message,
@@ -283,9 +283,9 @@ describe('errors', () => {
           'hint should be null (no hint on source error)');
       });
 
-      it('unmapped code verbose — raw passthrough', () => {
+      it('unmapped code default — raw passthrough', () => {
         const err = pgErrors['55P03'];
-        const result = mapPgError(err, { verbose: true });
+        const result = mapPgError(err);
         assert.equal(result.statusCode, 500,
           'statusCode should be 500');
         assert.equal(result.message,
@@ -298,22 +298,53 @@ describe('errors', () => {
           'See server log for query details.',
           'hint should be the raw PG hint');
       });
+
+      // Upstream has no sanitized form of a PG error: the body is the
+      // server's own code/message/detail/hint (PostgREST.Error,
+      // `instance ToJSON PgError`), and the upstream test suite asserts those
+      // strings verbatim — e.g. `invalid input syntax for type integer: ""`
+      // for `?int_data=in.( ,3,4)` (QuerySpec.hs:1395) and
+      // `Failing row contains (null, foo).` as the *detail* of a 23502
+      // (InsertSpec.hs:210). `verbose` must not change any of that.
+      it('the legacy verbose flag no longer changes the body', () => {
+        const err = pgErrors['23502'];
+        for (const opts of [undefined, { verbose: false }, { verbose: true }]) {
+          const result = mapPgError(err, opts);
+          assert.equal(result.message, err.message,
+            'message must be the raw PG message whatever verbose says');
+          assert.equal(result.details, err.detail,
+            'details must be the raw PG detail whatever verbose says');
+        }
+      });
+
+      it('every SQLSTATE class reaches the client with its own message', () => {
+        const { errorMap, safeMessage } = _getMapKeys();
+        const message = 'invalid input syntax for type integer: ""';
+        for (const code of [...new Set([...errorMap, ...safeMessage,
+          '22P02', '42601', '99999', 'XX000', 'PT402'])]) {
+          const mapped = mapPgError({ code, message, detail: 'd', hint: 'h' });
+          assert.equal(mapped.message, message,
+            `${code} must forward the server message`);
+          assert.equal(mapped.details, 'd', `${code} must forward the detail`);
+          assert.equal(mapped.hint, 'h', `${code} must forward the hint`);
+        }
+      });
     });
 
     describe('code preservation', () => {
       it('SQLSTATE code preserved in sanitized mode', () => {
         for (const code of ['23505', '23503', '23502', '42P01', '42703', '55P03']) {
-          const result = mapPgError(pgErrors[code]);
+          const result = mapPgError(pgErrors[code], { sanitize: true });
           assert.equal(result.code, code,
             `code ${code} must be preserved in sanitized mode`);
         }
       });
 
-      it('SQLSTATE code preserved in verbose mode', () => {
+      it('SQLSTATE code preserved in default mode', () => {
         for (const code of ['23505', '55P03']) {
-          const result = mapPgError(pgErrors[code], { verbose: true });
+          const result = mapPgError(pgErrors[code]);
           assert.equal(result.code, code,
-            `code ${code} must be preserved in verbose mode`);
+            `code ${code} must be preserved in default mode`);
         }
       });
     });
@@ -330,7 +361,7 @@ describe('errors', () => {
       const leaky = 'Key (email)=(alice@example.com) already exists';
       for (const code of [...new Set([...errorMap, ...safeMessage,
         '22P02', '99999', 'XX000', 'PT402'])]) {
-        const mapped = mapPgError({ code, message: leaky, detail: leaky });
+        const mapped = mapPgError({ code, message: leaky, detail: leaky }, { sanitize: true });
         assert.notEqual(mapped.message, leaky,
           `sanitized mode leaked the server message for ${code}`);
         assert.ok(mapped.message.length > 0,

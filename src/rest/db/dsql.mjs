@@ -1,6 +1,7 @@
 // dsql.mjs — Aurora DSQL provider (IAM token auth)
 
 import pg from 'pg';
+import { restPoolTypes } from '../pg-types.mjs';
 
 const { Pool } = pg;
 const TOKEN_LIFETIME_MS = 10 * 60 * 1000; // 10 minutes
@@ -84,6 +85,8 @@ export function createDsqlProvider(config) {
       ssl: { rejectUnauthorized: true },
       max: 5,
       idleTimeoutMillis: 60000,
+      // REST results only; the auth pool keeps the global registry.
+      types: restPoolTypes,
     });
 
     tokenRefreshedAt = now;

@@ -144,7 +144,11 @@ describe('REST + auth integration', () => {
       assert.equal(sel.statusCode, 400);
       const err = JSON.parse(sel.body);
       assert.equal(err.code, 'PGRST204');
-      assert.ok(err.message.includes('does not exist'));
+      // Upstream's `ColumnNotFound` wording (Error.hs): the column is missing
+      // from the schema cache, not from the database.
+      assert.equal(err.message,
+        "Could not find the 'nonexistent' column of 'notes' in the schema "
+        + 'cache');
     });
   });
 

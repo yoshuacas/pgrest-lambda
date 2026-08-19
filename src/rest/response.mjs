@@ -61,10 +61,37 @@ function classify({ main, sub, params }) {
   return null;
 }
 
+// The media types upstream knows by name (`MediaType.decodeMediaType`). Their
+// Content-Type carries `; charset=utf-8`; everything else — `MTOther`, and
+// `application/octet-stream` — is sent bare (`MediaType.toContentType`).
+const CHARSET_MIMES = new Set([
+  'application/json',
+  'application/geo+json',
+  'application/openapi+json',
+  'application/x-www-form-urlencoded',
+  'application/vnd.pgrst.array+json',
+  'application/vnd.pgrst.object+json',
+  'text/csv',
+  'text/plain',
+  'text/xml',
+]);
+
+/**
+ * The Content-Type bytes for one mime string, adding `; charset=utf-8` only for
+ * the media types upstream has a constructor for.
+ *
+ * @param {string} mime
+ */
+export function mimeContentType(mime) {
+  const bare = String(mime).split(';')[0].trim().toLowerCase();
+  return CHARSET_MIMES.has(bare) ? `${mime}${CHARSET}` : String(mime);
+}
+
 /**
  * The exact Content-Type bytes for a negotiated media type.
  *
- * @param {{kind: string, stripNulls: boolean, mime?: string}} media
+ * @param {{kind: string, stripNulls: boolean, mime?: string,
+ *          contentType?: string}} media
  */
 export function mediaContentType(media) {
   const strip = media.stripNulls ? ';nulls=stripped' : '';
@@ -76,7 +103,7 @@ export function mediaContentType(media) {
     case MEDIA_OPENAPI:
       return `application/openapi+json${CHARSET}`;
     case MEDIA_OTHER:
-      return media.mime || `application/json${CHARSET}`;
+      return media.contentType || media.mime || `application/json${CHARSET}`;
     default:
       return media.stripNulls
         ? `application/vnd.pgrst.array+json;nulls=stripped${CHARSET}`
@@ -123,6 +150,90 @@ export function negotiateMedia(accept) {
     stripNulls: false,
     mime: first ? `${first.decoded.main}/${first.decoded.sub}` : undefined,
   };
+}
+
+/**
+ * Split an Accept header into its entries, trimmed, in the order sent.
+ *
+ * @param {string} accept
+ */
+export function acceptEntries(accept) {
+  return String(accept || '')
+    .split(',')
+    .map((e) => e.trim())
+    .filter(Boolean);
+}
+
+/**
+ * Upstream's `MediaTypeError` (Error.hs:181): 406 PGRST107, message listing
+ * every media type the client asked for.
+ *
+ * @param {string} accept
+ */
+export function mediaUnavailable(accept) {
+  return new PostgRESTError(
+    406,
+    'PGRST107',
+    'None of these media types are available: '
+      + acceptEntries(accept).join(', '),
+    null,
+    null,
+  );
+}
+
+/**
+ * Can this engine produce the negotiated media type? Upstream negotiates
+ * against the media handlers in the schema cache; the ones every relation gets
+ * are the wildcard, `application/json`, `text/csv` and `application/geo+json`
+ * (`SchemaCache.initialMediaHandlers`), plus the vendored `vnd.pgrst.*` types,
+ * which cannot be overridden. This engine has no geojson aggregate — that needs
+ * PostGIS — so geo+json is not producible here either.
+ *
+ * @param {{kind: string}} media
+ */
+export function mediaProducible(media) {
+  return media?.kind !== MEDIA_OTHER;
+}
+
+/**
+ * A domain whose name is a media type — `create domain "text/plain" as text` —
+ * declares the media type a function returning it produces (upstream
+ * `SchemaCache.mediaHandlers`). The wildcard domain is the catch-all: it
+ * resolves to `application/octet-stream`.
+ *
+ * @param {string} typeName  the return type's `pg_type.typname`
+ * @returns {string|null} the media type this type declares, or null
+ */
+export function mediaTypeDomain(typeName) {
+  const name = String(typeName || '');
+  if (name === '*/*') return 'application/octet-stream';
+  return /^[A-Za-z0-9.-]+\/[A-Za-z0-9.+-]+$/.test(name)
+    ? name.toLowerCase()
+    : null;
+}
+
+/**
+ * The media type to serve a scalar with, when its Postgres type is a media type
+ * domain and the client asked for that type. A wildcard domain matches any
+ * Accept; any other domain matches only its own name. A wildcard Accept does
+ * not match a
+ * named domain — upstream falls back to the built-in JSON handler there
+ * (`Plan/Negotiate.hs lookupHandler` looks up `(RelId, MTAny)`, which only the
+ * wildcard domain registers).
+ *
+ * @param {string} accept
+ * @param {string} typeName  the routine's return `typname`
+ * @returns {{kind: string, stripNulls: boolean, contentType: string}|null}
+ */
+export function rawMediaFor(accept, typeName) {
+  const domain = mediaTypeDomain(typeName);
+  if (!domain) return null;
+  const raw = { kind: MEDIA_OTHER, stripNulls: false, raw: true,
+    contentType: mimeContentType(domain) };
+  if (domain === 'application/octet-stream' && typeName === '*/*') return raw;
+  const asked = acceptEntries(accept)
+    .map((e) => `${decodeMediaType(e).main}/${decodeMediaType(e).sub}`);
+  return asked.includes(domain) ? raw : null;
 }
 
 /**

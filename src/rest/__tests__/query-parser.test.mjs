@@ -965,13 +965,21 @@ describe('select validation', () => {
       );
     });
 
-    it('throws on extra closing paren', () => {
-      assert.throws(
-        () => parseSelectList('id,customers(name))'),
-        (err) => err.code === 'PGRST100'
-          && err.message.includes('Unbalanced parentheses'),
-        'extra closing paren should throw PGRST100',
-      );
+    // Upstream runs `P.parse pFieldForest` (QueryParams.hs:220) without
+    // `eof`, so a `)` that closes nothing ends the forest and the rest of the
+    // string is dropped rather than reported. SpreadQueriesSpec:391 relies on
+    // it: it asks for `...processes(process:name,...process_costs(cost)))`
+    // and expects 200.
+    it('ignores an extra closing paren and everything after it', () => {
+      const nodes = parseSelectList('id,customers(name))');
+      assert.deepStrictEqual(nodes.map(n => n.name), ['id', 'customers']);
+      assert.deepStrictEqual(
+        nodes[1].select.map(n => n.name), ['name']);
+    });
+
+    it('ignores trailing text after an unmatched closing paren', () => {
+      const nodes = parseSelectList('id)name,other');
+      assert.deepStrictEqual(nodes.map(n => n.name), ['id']);
     });
 
     it('throws on nested unclosed paren', () => {
@@ -984,14 +992,27 @@ describe('select validation', () => {
     });
   });
 
+  // An empty embed is legal upstream (Plan.hs `rsEmptyEmbed`): it adds no
+  // key to the response and exists so `?customers=is.null` can filter on it.
   describe('empty embed select', () => {
-    it('throws on empty embed select list', () => {
-      assert.throws(
-        () => parseSelectList('id,customers()'),
-        (err) => err.code === 'PGRST100'
-          && err.message.includes('Empty select list'),
-        'empty embed select should throw PGRST100',
-      );
+    it('accepts an empty embed select list', () => {
+      const nodes = parseSelectList('id,customers()');
+      assert.equal(nodes.length, 2);
+      assert.equal(nodes[1].type, 'embed');
+      assert.equal(nodes[1].name, 'customers');
+      assert.deepStrictEqual(nodes[1].select, []);
+    });
+
+    it('accepts an empty embed nested in an embed', () => {
+      const nodes = parseSelectList('id,customers(orders())');
+      const orders = nodes[1].select[0];
+      assert.equal(orders.type, 'embed');
+      assert.deepStrictEqual(orders.select, []);
+    });
+
+    it('does not treat two empty embeds as duplicate keys', () => {
+      const nodes = parseSelectList('id,customers(),customers()');
+      assert.equal(nodes.length, 3);
     });
   });
 });

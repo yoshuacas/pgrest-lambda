@@ -128,11 +128,14 @@ describe('json path SQL', () => {
     assert.deepStrictEqual(values, ['a', '1', 'b', '2']);
   });
 
+  // ORDER BY columns are table-qualified: a bare name would bind to an
+  // output column of the select list before it bound to the table's own.
   it('applies a path in ORDER BY', () => {
     const { sql, values } = build('docs',
       { select: 'id', order: 'data->>id.desc.nullslast' });
     assert.equal(sql,
-      'SELECT "id" FROM "docs" ORDER BY "data"->>$1 DESC NULLS LAST');
+      'SELECT "id" FROM "docs" '
+      + 'ORDER BY "docs"."data"->>$1 DESC NULLS LAST');
     assert.deepStrictEqual(values, ['id']);
   });
 
@@ -140,7 +143,8 @@ describe('json path SQL', () => {
     const { sql, values } = build('docs',
       { select: 'id', order: 'data->0->>x' });
     assert.equal(sql,
-      'SELECT "id" FROM "docs" ORDER BY "data"->$1::int->>$2 ASC');
+      'SELECT "id" FROM "docs" '
+      + 'ORDER BY "docs"."data"->$1::int->>$2 ASC');
     assert.deepStrictEqual(values, [0, 'x']);
   });
 
@@ -233,9 +237,12 @@ describe('aggregate SQL', () => {
 
 describe('json paths and aggregates on set-returning functions', () => {
   const fnSchema = {
+    name: 'get_docs',
     args: [],
     returnType: 'record',
+    returnRelation: 'record',
     returnsSet: true,
+    returnsComposite: true,
     isScalar: false,
     numDefaults: 0,
     returnColumns: [

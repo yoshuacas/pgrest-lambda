@@ -229,7 +229,12 @@ describe('RPC integration tests', () => {
     assert.equal(body, 15, '5 + default 10 = 15');
   });
 
-  it('missing required argument returns PGRST209', async () => {
+  // Argument names are what select the function, so a call whose argument
+  // names do not fit any overload has not found a function at all: upstream
+  // answers 404 PGRST202 for both a missing and an extra argument (Plan.hs
+  // `findProc` returns `NoRpc`), and hints the closest parameter list. The
+  // earlier pgrest-lambda-only PGRST207/PGRST209 400s were not upstream codes.
+  it('missing required argument returns 404 PGRST202', async () => {
     const res = await handler(event({
       method: 'POST',
       path: '/rest/v1/rpc/add_numbers',
@@ -237,14 +242,22 @@ describe('RPC integration tests', () => {
       body: { a: 3 },
       authorizer: { role: 'service_role' },
     }));
-    assert.equal(res.statusCode, 400);
+    assert.equal(res.statusCode, 404);
     const body = JSON.parse(res.body);
-    assert.equal(body.code, 'PGRST209');
-    assert.ok(body.message.includes('b'),
-      'error should mention missing arg "b"');
+    assert.equal(body.code, 'PGRST202');
+    assert.equal(body.message,
+      'Could not find the function public.add_numbers(a) in the schema cache');
+    assert.equal(body.details,
+      'Searched for the function public.add_numbers with parameter a or with '
+      + 'a single unnamed json/jsonb parameter, but no matches were found in '
+      + 'the schema cache.');
+    // No hint: "a" is too far from "a, b" for upstream's 0.33 similarity
+    // threshold on the parameter list. Dropping an argument gets no
+    // suggestion; adding a stray one does (see RpcSpec:239).
+    assert.equal(body.hint, null);
   });
 
-  it('unknown argument returns PGRST207', async () => {
+  it('unknown argument returns 404 PGRST202', async () => {
     const res = await handler(event({
       method: 'POST',
       path: '/rest/v1/rpc/add_numbers',
@@ -252,11 +265,16 @@ describe('RPC integration tests', () => {
       body: { a: 3, b: 4, c: 5 },
       authorizer: { role: 'service_role' },
     }));
-    assert.equal(res.statusCode, 400);
+    assert.equal(res.statusCode, 404);
     const body = JSON.parse(res.body);
-    assert.equal(body.code, 'PGRST207');
-    assert.ok(body.message.includes('c'),
-      'error should mention unknown arg "c"');
+    assert.equal(body.code, 'PGRST202');
+    assert.equal(body.message,
+      'Could not find the function public.add_numbers(a, b, c) '
+      + 'in the schema cache');
+    assert.equal(body.details,
+      'Searched for the function public.add_numbers with parameters a, b, c '
+      + 'or with a single unnamed json/jsonb parameter, but no matches were '
+      + 'found in the schema cache.');
   });
 
   it('function not found returns PGRST202', async () => {
@@ -420,10 +438,31 @@ describe('RPC integration tests', () => {
     assert.equal(body.code, 'PGRST101');
   });
 
-  it('invalid function name returns PGRST100', async () => {
+  // A PostgreSQL function name is an arbitrary identifier, so upstream's router
+  // takes the path segment verbatim (`["rpc", pName] -> TargetProc`) and lets
+  // routine resolution decide whether it exists. `my-func!` is a legal name for
+  // a function that simply is not there, so the answer is 404 PGRST202, not 400
+  // from a router character class. (That class also made real upstream cases
+  // unreachable: CustomMediaSpec:75 GET /rpc/welcome.html, :110 /rpc/welcome.xml.)
+  it('unknown function name returns PGRST202, whatever characters it uses', async () => {
     const res = await handler(event({
       method: 'POST',
       path: '/rest/v1/rpc/my-func!',
+      headers: { apikey: service, 'Content-Type': 'application/json' },
+      body: {},
+      authorizer: { role: 'service_role' },
+    }));
+    assert.equal(res.statusCode, 404);
+    const body = JSON.parse(res.body);
+    assert.equal(body.code, 'PGRST202');
+  });
+
+  // The router still refuses a path it cannot decode, because there is no
+  // identifier to look up at all.
+  it('malformed percent escape in the function name returns PGRST100', async () => {
+    const res = await handler(event({
+      method: 'POST',
+      path: '/rest/v1/rpc/%zz',
       headers: { apikey: service, 'Content-Type': 'application/json' },
       body: {},
       authorizer: { role: 'service_role' },

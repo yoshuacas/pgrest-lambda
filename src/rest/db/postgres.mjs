@@ -1,6 +1,7 @@
 // postgres.mjs — Standard PostgreSQL provider
 
 import pg from 'pg';
+import { restPoolTypes } from '../pg-types.mjs';
 
 const { Pool } = pg;
 
@@ -38,6 +39,8 @@ export function createPostgresProvider(config) {
         connectionString: config.connectionString,
         max: 5,
         idleTimeoutMillis: 60000,
+        // REST results only; the auth pool keeps the global registry.
+        types: restPoolTypes,
       });
     } else {
       pool = new Pool({
@@ -49,6 +52,8 @@ export function createPostgresProvider(config) {
         ssl: resolveSsl(config.ssl),
         max: 5,
         idleTimeoutMillis: 60000,
+        // REST results only; the auth pool keeps the global registry.
+        types: restPoolTypes,
       });
     }
 

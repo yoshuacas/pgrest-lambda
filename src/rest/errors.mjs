@@ -19,6 +19,92 @@ export class PostgRESTError extends Error {
   }
 }
 
+// Upstream skips the fuzzy index entirely for a large schema
+// (SchemaCache.hs:139 `maxDbTablesForFuzzySearch = 500`), so a schema with 500
+// or more relations gets no hint at all.
+const MAX_TABLES_FOR_FUZZY_SEARCH = 500;
+
+// `Data.FuzzySet.getOneWithMinScore 0.75` (Error.hs:396-403). FuzzySet scores
+// its final candidates with a Levenshtein ratio — 1 - distance/max(len) — which
+// is what the 75% in upstream's own test comments refers to: `projectx` and
+// `projecxx` are 0.875 and 0.75 against `projects` and get a hint, `projxxxx`
+// is 0.5 and does not (ErrorSpec.hs:79-101).
+const FUZZY_MIN_SCORE = 0.75;
+
+/** Levenshtein edit distance. Two rows, so memory is O(min(len)). */
+function levenshtein(a, b) {
+  if (a === b) return 0;
+  if (a.length === 0) return b.length;
+  if (b.length === 0) return a.length;
+  let prev = new Array(b.length + 1);
+  let cur = new Array(b.length + 1);
+  for (let j = 0; j <= b.length; j += 1) prev[j] = j;
+  for (let i = 1; i <= a.length; i += 1) {
+    cur[0] = i;
+    for (let j = 1; j <= b.length; j += 1) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      cur[j] = Math.min(cur[j - 1] + 1, prev[j] + 1, prev[j - 1] + cost);
+    }
+    const swap = prev; prev = cur; cur = swap;
+  }
+  return prev[b.length];
+}
+
+/** FuzzySet's `_distance`: 1 - levenshtein / length of the longer string. */
+export function fuzzyScore(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return 0;
+  const longest = Math.max(a.length, b.length);
+  if (longest === 0) return 1;
+  return 1 - levenshtein(a, b) / longest;
+}
+
+/**
+ * The name a caller most likely meant, or null when nothing is close enough.
+ *
+ * @param {string} name the name that was not found
+ * @param {string[]} candidates every name in the schema
+ * @param {number} minScore
+ */
+export function fuzzyHint(name, candidates, minScore = FUZZY_MIN_SCORE) {
+  if (!Array.isArray(candidates)
+      || candidates.length === 0
+      || candidates.length >= MAX_TABLES_FOR_FUZZY_SEARCH) {
+    return null;
+  }
+  // FuzzySet normalizes to lower case before scoring.
+  const needle = String(name).toLowerCase();
+  let best = null;
+  let bestScore = 0;
+  // Sorted so a tie resolves the same way on every run rather than following
+  // catalog order.
+  for (const candidate of [...candidates].sort()) {
+    const score = fuzzyScore(needle, String(candidate).toLowerCase());
+    if (score > bestScore) {
+      bestScore = score;
+      best = candidate;
+    }
+  }
+  return bestScore >= minScore ? best : null;
+}
+
+/**
+ * 404 PGRST205 for a relation that is not in the schema cache, with upstream's
+ * message and fuzzy hint (Error.hs:242,255,286,386-390).
+ *
+ * @param {string} schemaName the exposed schema the request selected
+ * @param {string} relName the relation the caller asked for
+ * @param {string[]} tableNames every relation name in that schema
+ */
+export function tableNotFound(schemaName, relName, tableNames = []) {
+  const perhaps = fuzzyHint(relName, tableNames);
+  return new PostgRESTError(
+    404, 'PGRST205',
+    `Could not find the table '${schemaName}.${relName}' in the schema cache`,
+    null,
+    perhaps ? `Perhaps you meant the table '${schemaName}.${perhaps}'` : null,
+  );
+}
+
 // SQLSTATE -> HTTP status, ported from upstream PostgREST's `mapSQLtoHTTP`
 // (src/library/PostgREST/Error.hs). Two things about that function matter and
 // were previously inverted here:
@@ -117,17 +203,6 @@ export function pgStatusFor(code, message = '', authed = true) {
   return 400; // upstream's fall-through
 }
 
-const PG_SAFE_MESSAGE = {
-  '23505': 'Uniqueness violation.',
-  '23503': 'Foreign key violation.',
-  '23502': 'Not-null constraint violation.',
-  '42P01': 'Undefined table.',
-  '42703': 'Undefined column.',
-};
-
-const PG_SAFE_FALLBACK =
-  'Request failed with a database error.';
-
 // PostgREST-compatible error codes used by resource embedding
 // (thrown directly via PostgRESTError, not mapped from PG):
 //
@@ -182,6 +257,20 @@ const PG_SAFE_FALLBACK =
 // PGRST209 — Missing required function argument.
 //            HTTP 400. pgrest-lambda-specific.
 
+// Generic per-SQLSTATE wording for `sanitize` mode (V-09). It is no longer the
+// default — see mapPgError — but the substitution itself is kept, because it is
+// the only thing a deployment that must not echo server strings can turn on.
+const PG_SAFE_MESSAGE = {
+  '23505': 'Uniqueness violation.',
+  '23503': 'Foreign key violation.',
+  '23502': 'Not-null constraint violation.',
+  '42P01': 'Undefined table.',
+  '42703': 'Undefined column.',
+};
+
+const PG_SAFE_FALLBACK =
+  'Request failed with a database error.';
+
 export function _getMapKeys() {
   return {
     errorMap: Object.keys(PG_STATUS_BY_CODE).sort(),
@@ -189,26 +278,50 @@ export function _getMapKeys() {
   };
 }
 
-export function mapPgError(pgError, { verbose = false, authed = true } = {}) {
+/**
+ * A PostgreSQL error → the PostgREST error body.
+ *
+ * Upstream builds this body straight out of the `PgError` it got from the
+ * server (`PostgREST.Error`, `instance JSON.ToJSON PgError`): `code` is the
+ * SQLSTATE, `message`/`details`/`hint` are the server's own strings, verbatim.
+ * There is no second, redacted form of it — a client that asks for
+ * `?id=eq.abc` on an integer column is told
+ * `invalid input syntax for type integer: "abc"`, and the whole PostgREST
+ * error contract (project rule 7: wire compatibility with supabase-js and with
+ * upstream's own test suite) rests on that being what comes back.
+ *
+ * This engine used to substitute a fixed sentence per SQLSTATE
+ * ("Request failed with a database error.") unless `errors.verbose` was on
+ * (security finding V-09). That is not upstream behaviour and it is not
+ * compatible: 83 upstream assertions read the message, the detail or the hint,
+ * so the substitution is now opt-in through `sanitize` rather than the default,
+ * and `verbose` — which used to be how a caller opted *out* of it — no longer
+ * changes the body. What `verbose` still controls is the extra server-side log
+ * line the handler writes when it is off.
+ *
+ * @param {{code: string, message: string, detail?: string, hint?: string}} pgError
+ * @param {{sanitize?: boolean, verbose?: boolean, authed?: boolean}} [options]
+ *        `sanitize` replaces the server's strings with generic wording and
+ *        drops details/hint; it breaks upstream compatibility by design.
+ */
+export function mapPgError(pgError, { authed = true, sanitize = false } = {}) {
   const statusCode = pgStatusFor(pgError.code, pgError.message, authed);
 
-  if (verbose) {
+  if (sanitize) {
     return new PostgRESTError(
       statusCode,
       pgError.code,
-      pgError.message,
-      pgError.detail || null,
-      pgError.hint || null,
+      PG_SAFE_MESSAGE[pgError.code] || PG_SAFE_FALLBACK,
+      null,
+      null,
     );
   }
 
-  const safeMessage =
-    PG_SAFE_MESSAGE[pgError.code] || PG_SAFE_FALLBACK;
   return new PostgRESTError(
     statusCode,
     pgError.code,
-    safeMessage,
-    null,
-    null,
+    pgError.message,
+    pgError.detail || null,
+    pgError.hint || null,
   );
 }

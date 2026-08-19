@@ -5,6 +5,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   normalizeCounts, entryFromResults, appendRun, buildTrend,
+  idMatchedDelta, rowOrderFailures, isolationEvidence,
 } from '../report/build-report.mjs';
 
 function results(over = {}) {
@@ -201,5 +202,124 @@ describe('buildTrend', () => {
     assert.deepEqual(tr.runs.map((r) => r.label), ['baseline', 'mid', 'current']);
     assert.equal(tr.baseline.label, 'baseline');
     assert.equal(tr.current.label, 'current');
+  });
+});
+
+describe('idMatchedDelta', () => {
+  // Two runs measured with different flags have different denominators, so the
+  // totals delta is not a case-level claim. Matching ids is.
+  const before = [
+    { id: 'a:1', status: 'fail' },
+    { id: 'a:2', status: 'pass' },
+    { id: 'a:3', status: 'skip' },
+    { id: 'a:4', status: 'fail' },
+    { id: 'a:5', status: 'fail' },
+  ];
+  const after = [
+    { id: 'a:1', status: 'pass' },
+    { id: 'a:2', status: 'fail' },
+    { id: 'a:3', status: 'pass' },
+    { id: 'a:4', status: 'blocked' },
+    { id: 'a:6', status: 'pass' },
+  ];
+
+  it('counts a non-pass becoming a pass as gained, and the reverse as lost', () => {
+    const d = idMatchedDelta(before, after);
+    assert.equal(d.gained, 2); // a:1 fail->pass, a:3 skip->pass
+    assert.equal(d.lost, 1); // a:2 pass->fail
+  });
+
+  it('never nets gains against losses', () => {
+    const d = idMatchedDelta(before, after);
+    assert.equal(d.gained - d.lost, 1);
+    assert.notEqual(d.gained, 1);
+  });
+
+  it('does not count a case that only left the denominator as a gain', () => {
+    // a:4 went fail -> blocked: it stopped failing without passing.
+    const d = idMatchedDelta(before, after);
+    const moved = d.transitions.find(([k]) => k === 'fail → blocked');
+    assert.deepEqual(moved, ['fail → blocked', 1]);
+  });
+
+  it('reports ids present in only one of the two runs instead of matching them', () => {
+    const d = idMatchedDelta(before, after);
+    assert.equal(d.matched, 4);
+    assert.equal(d.onlyInCurrent, 1); // a:6
+    assert.equal(d.onlyInBaseline, 1); // a:5
+  });
+
+  it('sorts transitions by size so the largest movement reads first', () => {
+    const d = idMatchedDelta(
+      [{ id: '1', status: 'fail' }, { id: '2', status: 'fail' }, { id: '3', status: 'skip' }],
+      [{ id: '1', status: 'pass' }, { id: '2', status: 'pass' }, { id: '3', status: 'pass' }],
+    );
+    assert.deepEqual(d.transitions[0], ['fail → pass', 2]);
+  });
+});
+
+describe('rowOrderFailures', () => {
+  it('counts only the order-dependent cases that are still failures', () => {
+    const r = rowOrderFailures([
+      { id: 'q:1', gap: 'row-order-unspecified', status: 'fail' },
+      { id: 'q:2', gap: 'row-order-unspecified', status: 'pass' },
+      { id: 'q:3', gap: 'body-mismatch-filters', status: 'fail' },
+      { id: 'q:4', gap: 'row-order-unspecified', status: 'fail' },
+    ]);
+    assert.equal(r.count, 2);
+    assert.deepEqual(r.ids, ['q:1', 'q:4']);
+  });
+
+  it('is empty rather than undefined with no cases', () => {
+    assert.deepEqual(rowOrderFailures([]), { count: 0, ids: [] });
+    assert.deepEqual(rowOrderFailures(null), { count: 0, ids: [] });
+  });
+});
+
+describe('isolationEvidence', () => {
+  const run = (over) => ({
+    label: 'r', commit: 'aaa', flags: '--target dsql, PGREST_RELATIONSHIPS_PATH set', ...over,
+  });
+
+  it('pairs two runs on one commit that differ only by --reload-per-spec', () => {
+    const withFlag = run({
+      label: 'with', flags: '--target dsql --reload-per-spec, PGREST_RELATIONSHIPS_PATH set',
+    });
+    const without = run({ label: 'without' });
+    const ev = isolationEvidence([without, withFlag]);
+    assert.equal(ev.withReload.label, 'with');
+    assert.equal(ev.withoutReload.label, 'without');
+  });
+
+  it('refuses a pair from different commits, which would mix in engine work', () => {
+    const ev = isolationEvidence([
+      run({ label: 'without', commit: 'bbb' }),
+      run({ label: 'with', flags: '--target dsql --reload-per-spec, PGREST_RELATIONSHIPS_PATH set' }),
+    ]);
+    assert.equal(ev.withReload, null);
+    assert.equal(ev.withoutReload, null);
+  });
+
+  it('refuses a pair whose other flags differ', () => {
+    const ev = isolationEvidence([
+      run({ label: 'without', flags: '--target dsql' }),
+      run({ label: 'with', flags: '--target dsql --reload-per-spec, PGREST_RELATIONSHIPS_PATH set' }),
+    ]);
+    assert.equal(ev.withReload, null);
+  });
+
+  it('prefers the newest qualifying pair', () => {
+    const ev = isolationEvidence([
+      run({ label: 'old-without' }),
+      run({ label: 'old-with', flags: '--target dsql --reload-per-spec, PGREST_RELATIONSHIPS_PATH set' }),
+      run({ label: 'new-without', commit: 'ccc' }),
+      run({
+        label: 'new-with',
+        commit: 'ccc',
+        flags: '--target dsql --reload-per-spec, PGREST_RELATIONSHIPS_PATH set',
+      }),
+    ]);
+    assert.equal(ev.withReload.label, 'new-with');
+    assert.equal(ev.withoutReload.label, 'new-without');
   });
 });

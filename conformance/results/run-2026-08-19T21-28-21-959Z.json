@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-08-19T22:42:21Z",
+  "generatedAt": "2026-08-19T21:28:21Z",
   "target": "dsql",
   "commit": "eeb1ac9",
   "totals": {
     "total": 1539,
-    "passed": 945,
-    "failed": 340,
+    "passed": 943,
+    "failed": 342,
     "skipped": 35,
     "needsConfig": 16,
     "blocked": 188,
@@ -37,8 +37,8 @@
     },
     "embedding": {
       "total": 299,
-      "passed": 268,
-      "failed": 20,
+      "passed": 267,
+      "failed": 21,
       "skipped": 0,
       "needsConfig": 0,
       "blocked": 11,
@@ -147,8 +147,8 @@
     },
     "insert": {
       "total": 85,
-      "passed": 40,
-      "failed": 31,
+      "passed": 39,
+      "failed": 32,
       "skipped": 4,
       "needsConfig": 0,
       "blocked": 10,
@@ -157,8 +157,8 @@
     },
     "json-operators": {
       "total": 65,
-      "passed": 47,
-      "failed": 0,
+      "passed": 46,
+      "failed": 1,
       "skipped": 2,
       "needsConfig": 0,
       "blocked": 16,
@@ -187,8 +187,8 @@
     },
     "update": {
       "total": 70,
-      "passed": 41,
-      "failed": 27,
+      "passed": 40,
+      "failed": 28,
       "skipped": 0,
       "needsConfig": 0,
       "blocked": 2,
@@ -227,8 +227,8 @@
     },
     "rpc": {
       "total": 205,
-      "passed": 132,
-      "failed": 12,
+      "passed": 134,
+      "failed": 10,
       "skipped": 2,
       "needsConfig": 1,
       "blocked": 43,
@@ -263,17 +263,17 @@
     "no-array-columns": 33,
     "no-plpgsql": 32,
     "no-column-type": 31,
-    "missing-operator-fts": 28,
     "body-mismatch-filters": 27,
+    "missing-operator-fts": 26,
     "unimplemented-feature-media-types": 23,
+    "unimplemented-feature-insert": 18,
     "body-mismatch-aggregates": 17,
-    "unimplemented-feature-insert": 17,
     "needs-engine-config": 16,
     "no-custom-gucs": 15,
+    "row-order-unspecified": 14,
     "no-partitioned-tables": 14,
     "unimplemented-feature-update": 13,
     "body-mismatch-embedding": 11,
-    "row-order-unspecified": 11,
     "body-mismatch-upsert": 10,
     "header-mismatch-server-timing": 9,
     "body-mismatch-update": 9,
@@ -6422,20 +6422,20 @@
     {
       "id": "EmbedDisambiguationSpec:278",
       "category": "embedding",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "the same rows came back in a different order; DSQL does not guarantee the physical order this assertion depends on\nbody (exact) mismatch — same rows, different order:\n  expected: [{\"escapeId\":{\"so6meIdColumn\":1}},{\"escapeId\":{\"so6meIdColumn\":3}},{\"escapeId\":{\"so6meIdColumn\":5}}]\n  actual:   [{\"escapeId\":{\"so6meIdColumn\":3}},{\"escapeId\":{\"so6meIdColumn\":1}},{\"escapeId\":{\"so6meIdColumn\":5}}]\n  at $[0].escapeId.so6meIdColumn: expected 1, actual 3\n  at $[1].escapeId.so6meIdColumn: expected 3, actual 1",
+      "gap": "row-order-unspecified",
       "actual": {
         "status": 200,
         "body": [
           {
             "escapeId": {
-              "so6meIdColumn": 1
+              "so6meIdColumn": 3
             }
           },
           {
             "escapeId": {
-              "so6meIdColumn": 3
+              "so6meIdColumn": 1
             }
           },
           {
@@ -9788,13 +9788,13 @@
       "id": "InsertSpec:397",
       "category": "insert",
       "status": "fail",
-      "reason": "body (exact) mismatch:\n  expected: [{\"id\":20}]\n  actual:   [{\"id\":8}]\n  at $[0].id: expected 20, actual 8",
+      "reason": "body (exact) mismatch:\n  expected: [{\"id\":20}]\n  actual:   [{\"id\":4}]\n  at $[0].id: expected 20, actual 4",
       "gap": "body-mismatch-insert",
       "actual": {
         "status": 201,
         "body": [
           {
-            "id": 8
+            "id": 4
           }
         ]
       }
@@ -10126,17 +10126,17 @@
     {
       "id": "InsertSpec:596",
       "category": "insert",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "23505: duplicate key value violates unique constraint \"simple_pk2_pkey\"\nstatus: expected 201, actual 409\nbody (exact) mismatch:\n  expected: [{\"k\":\"棋圍\",\"extra\":\"￥\"}]\n  actual:   {\"code\":\"23505\",\"message\":\"duplicate key value violates unique constraint \\\"simple_pk2_pkey\\\"\",\"details\":\"Key (k)=(棋圍) already exists.\",\"hint\":null}\n  at $: expected array [{\"k\":\"棋圍\",\"extra\":\"￥\"}], actual object {\"code\":\"23505\",\"message\":\"duplicate key value violates unique constraint \\\"simple_pk2_pkey\\\"\",\"details\":\"Key (k)=(棋圍) already exists.\",\"hint\":null}",
+      "gap": "unimplemented-feature-insert",
       "actual": {
-        "status": 201,
-        "body": [
-          {
-            "extra": "￥",
-            "k": "棋圍"
-          }
-        ]
+        "status": 409,
+        "body": {
+          "code": "23505",
+          "message": "duplicate key value violates unique constraint \"simple_pk2_pkey\"",
+          "details": "Key (k)=(棋圍) already exists.",
+          "hint": null
+        }
       }
     },
     {
@@ -10318,7 +10318,7 @@
       "id": "InsertSpec:716",
       "category": "insert",
       "status": "fail",
-      "reason": "status: expected 401, actual 201\nbody (exact) mismatch:\n  expected: {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}\n  actual:   [{\"article_id\":2,\"user_id\":2,\"created_at\":\"2026-08-19T22:36:29.322689\"}]\n  at $: expected object {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}, actual array [{\"article_id\":2,\"user_id\":2,\"created_at\":\"2026-08-19T22:36:29.322689\"}]",
+      "reason": "status: expected 401, actual 201\nbody (exact) mismatch:\n  expected: {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}\n  actual:   [{\"article_id\":2,\"user_id\":2,\"created_at\":\"2026-08-19T21:22:27.883723\"}]\n  at $: expected object {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}, actual array [{\"article_id\":2,\"user_id\":2,\"created_at\":\"2026-08-19T21:22:27.883723\"}]",
       "gap": "no-set-role",
       "actual": {
         "status": 201,
@@ -10326,7 +10326,7 @@
           {
             "article_id": 2,
             "user_id": 2,
-            "created_at": "2026-08-19T22:36:29.322689"
+            "created_at": "2026-08-19T21:22:27.883723"
           }
         ]
       }
@@ -10335,7 +10335,7 @@
       "id": "InsertSpec:724",
       "category": "insert",
       "status": "fail",
-      "reason": "status: expected 401, actual 201\nbody (exact) mismatch:\n  expected: {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}\n  actual:   [{\"article_id\":3,\"user_id\":1,\"created_at\":\"2026-08-19T22:36:29.336809\"}]\n  at $: expected object {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}, actual array [{\"article_id\":3,\"user_id\":1,\"created_at\":\"2026-08-19T22:36:29.336809\"}]",
+      "reason": "status: expected 401, actual 201\nbody (exact) mismatch:\n  expected: {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}\n  actual:   [{\"article_id\":3,\"user_id\":1,\"created_at\":\"2026-08-19T21:22:27.898165\"}]\n  at $: expected object {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}, actual array [{\"article_id\":3,\"user_id\":1,\"created_at\":\"2026-08-19T21:22:27.898165\"}]",
       "gap": "no-set-role",
       "actual": {
         "status": 201,
@@ -10343,7 +10343,7 @@
           {
             "article_id": 3,
             "user_id": 1,
-            "created_at": "2026-08-19T22:36:29.336809"
+            "created_at": "2026-08-19T21:22:27.898165"
           }
         ]
       }
@@ -11459,20 +11459,20 @@
     {
       "id": "JsonOperatorSpec:248",
       "category": "json-operators",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "the same rows came back in a different order; DSQL does not guarantee the physical order this assertion depends on\nbody (exact) mismatch — same rows, different order:\n  expected: [{\"data\":{\"id\":3}},{\"data\":{\"id\":0}},{\"data\":{\"id\":1,\"foo\":{\"bar\":\"baz\"}}}]\n  actual:   [{\"data\":{\"id\":0}},{\"data\":{\"id\":3}},{\"data\":{\"foo\":{\"bar\":\"baz\"},\"id\":1}}]\n  at $[0].data.id: expected 3, actual 0\n  at $[1].data.id: expected 0, actual 3",
+      "gap": "row-order-unspecified",
       "actual": {
         "status": 200,
         "body": [
           {
             "data": {
-              "id": 3
+              "id": 0
             }
           },
           {
             "data": {
-              "id": 0
+              "id": 3
             }
           },
           {
@@ -15082,25 +15082,25 @@
       "id": "QuerySpec:436",
       "category": "filters",
       "status": "fail",
-      "reason": "body (exact) mismatch:\n  expected: [{\"text_search\":\"It's kind of fun to do the impossible\"},{\"text_search\":\"But also fun to do what is possible\"},{\"text_search\":\"C'est un peu amusant de faire l'impossible\"},{\"text_search\":\"Es ist eine Art Spaß, das Unmögliche zu machen\"}]\n  actual:   [{\"text_search\":\"Es ist eine Art Spaß, das Unmögliche zu machen\"},{\"text_search\":\"It's kind of fun to do the impossible\"},{\"text_search\":\"C'est un peu amusant de faire l'impossible\"},{\"text_search\":\"Fat cats ate rats\"},{\"text_search\":\"But also fun to do what is possible\"}]\n  at $: expected 4 element(s), actual 5\n  at $[0].text_search: expected \"It's kind of fun to do the impossible\", actual \"Es ist eine Art Spaß, das Unmögliche zu machen\"\n  at $[1].text_search: expected \"But also fun to do what is possible\", actual \"It's kind of fun to do the impossible\"\n  at $[3].text_search: expected \"Es ist eine Art Spaß, das Unmögliche zu machen\", actual \"Fat cats ate rats\"",
+      "reason": "body (exact) mismatch:\n  expected: [{\"text_search\":\"It's kind of fun to do the impossible\"},{\"text_search\":\"But also fun to do what is possible\"},{\"text_search\":\"C'est un peu amusant de faire l'impossible\"},{\"text_search\":\"Es ist eine Art Spaß, das Unmögliche zu machen\"}]\n  actual:   [{\"text_search\":\"It's kind of fun to do the impossible\"},{\"text_search\":\"Es ist eine Art Spaß, das Unmögliche zu machen\"},{\"text_search\":\"C'est un peu amusant de faire l'impossible\"},{\"text_search\":\"But also fun to do what is possible\"},{\"text_search\":\"Fat cats ate rats\"}]\n  at $: expected 4 element(s), actual 5\n  at $[1].text_search: expected \"But also fun to do what is possible\", actual \"Es ist eine Art Spaß, das Unmögliche zu machen\"\n  at $[3].text_search: expected \"Es ist eine Art Spaß, das Unmögliche zu machen\", actual \"But also fun to do what is possible\"",
       "gap": "body-mismatch-filters",
       "actual": {
         "status": 200,
         "body": [
           {
-            "text_search": "Es ist eine Art Spaß, das Unmögliche zu machen"
+            "text_search": "It's kind of fun to do the impossible"
           },
           {
-            "text_search": "It's kind of fun to do the impossible"
+            "text_search": "Es ist eine Art Spaß, das Unmögliche zu machen"
           },
           {
             "text_search": "C'est un peu amusant de faire l'impossible"
           },
           {
-            "text_search": "Fat cats ate rats"
+            "text_search": "But also fun to do what is possible"
           },
           {
-            "text_search": "But also fun to do what is possible"
+            "text_search": "Fat cats ate rats"
           }
         ]
       }
@@ -15109,19 +15109,19 @@
       "id": "QuerySpec:444",
       "category": "filters",
       "status": "fail",
-      "reason": "body (exact) mismatch:\n  expected: [{\"jsonb_search\":{\"text_search\":\"It's kind of fun to do the impossible\"}},{\"jsonb_search\":{\"text_search\":\"But also fun to do what is possible\"}},{\"jsonb_search\":{\"text_search\":\"C'est un peu amusant de faire l'impossible\"}},{\"jsonb_search\":{\"text_search\":\"Es ist eine Art Spaß, das Unmögliche zu machen\"}}]\n  actual:   [{\"jsonb_search\":{\"text_search\":\"Es ist eine Art Spaß, das Unmögliche zu machen\"}},{\"jsonb_search\":{\"text_search\":\"It's kind of fun to do the impossible\"}},{\"jsonb_search\":{\"text_search\":\"C'est un peu amusant de faire l'impossible\"}},{\"jsonb_search\":{\"text_search\":\"Fat cats ate rats\"}},{\"jsonb_search\":{\"text_search\":\"But also fun to do what is possible\"}}]\n  at $: expected 4 element(s), actual 5\n  at $[0].jsonb_search.text_search: expected \"It's kind of fun to do the impossible\", actual \"Es ist eine Art Spaß, das Unmögliche zu machen\"\n  at $[1].jsonb_search.text_search: expected \"But also fun to do what is possible\", actual \"It's kind of fun to do the impossible\"\n  at $[3].jsonb_search.text_search: expected \"Es ist eine Art Spaß, das Unmögliche zu machen\", actual \"Fat cats ate rats\"",
+      "reason": "body (exact) mismatch:\n  expected: [{\"jsonb_search\":{\"text_search\":\"It's kind of fun to do the impossible\"}},{\"jsonb_search\":{\"text_search\":\"But also fun to do what is possible\"}},{\"jsonb_search\":{\"text_search\":\"C'est un peu amusant de faire l'impossible\"}},{\"jsonb_search\":{\"text_search\":\"Es ist eine Art Spaß, das Unmögliche zu machen\"}}]\n  actual:   [{\"jsonb_search\":{\"text_search\":\"It's kind of fun to do the impossible\"}},{\"jsonb_search\":{\"text_search\":\"Es ist eine Art Spaß, das Unmögliche zu machen\"}},{\"jsonb_search\":{\"text_search\":\"C'est un peu amusant de faire l'impossible\"}},{\"jsonb_search\":{\"text_search\":\"But also fun to do what is possible\"}},{\"jsonb_search\":{\"text_search\":\"Fat cats ate rats\"}}]\n  at $: expected 4 element(s), actual 5\n  at $[1].jsonb_search.text_search: expected \"But also fun to do what is possible\", actual \"Es ist eine Art Spaß, das Unmögliche zu machen\"\n  at $[3].jsonb_search.text_search: expected \"Es ist eine Art Spaß, das Unmögliche zu machen\", actual \"But also fun to do what is possible\"",
       "gap": "body-mismatch-filters",
       "actual": {
         "status": 200,
         "body": [
           {
             "jsonb_search": {
-              "text_search": "Es ist eine Art Spaß, das Unmögliche zu machen"
+              "text_search": "It's kind of fun to do the impossible"
             }
           },
           {
             "jsonb_search": {
-              "text_search": "It's kind of fun to do the impossible"
+              "text_search": "Es ist eine Art Spaß, das Unmögliche zu machen"
             }
           },
           {
@@ -15131,12 +15131,12 @@
           },
           {
             "jsonb_search": {
-              "text_search": "Fat cats ate rats"
+              "text_search": "But also fun to do what is possible"
             }
           },
           {
             "jsonb_search": {
-              "text_search": "But also fun to do what is possible"
+              "text_search": "Fat cats ate rats"
             }
           }
         ]
@@ -18144,13 +18144,13 @@
       "id": "QuerySpec:1282",
       "category": "filters",
       "status": "fail",
-      "reason": "body (exact) mismatch:\n  expected: [{\"Just A Server Model\":\" IBM,9113-550 (P5-550)\"},{\"Just A Server Model\":\" IBM,9113-550 (P5-550)\"},{\"Just A Server Model\":\" IBM,9131-52A (P5-52A)\"},{\"Just A Server Model\":\" IBM,9133-55A (P5-55A)\"}]\n  actual:   [{\"Just A Server Model\":\"IBM,9131-52A (P5-52A)\"},{\"Just A Server Model\":\"IBM,9133-55A (P5-55A)\"},{\"Just A Server Model\":\"IBM,9113-550 (P5-550)\"},{\"Just A Server Model\":\"IBM,9113-550 (P5-550)\"}]\n  at $[0].Just A Server Model: expected \" IBM,9113-550 (P5-550)\", actual \"IBM,9131-52A (P5-52A)\"\n  at $[1].Just A Server Model: expected \" IBM,9113-550 (P5-550)\", actual \"IBM,9133-55A (P5-55A)\"\n  at $[2].Just A Server Model: expected \" IBM,9131-52A (P5-52A)\", actual \"IBM,9113-550 (P5-550)\"\n  at $[3].Just A Server Model: expected \" IBM,9133-55A (P5-55A)\", actual \"IBM,9113-550 (P5-550)\"",
+      "reason": "body (exact) mismatch:\n  expected: [{\"Just A Server Model\":\" IBM,9113-550 (P5-550)\"},{\"Just A Server Model\":\" IBM,9113-550 (P5-550)\"},{\"Just A Server Model\":\" IBM,9131-52A (P5-52A)\"},{\"Just A Server Model\":\" IBM,9133-55A (P5-55A)\"}]\n  actual:   [{\"Just A Server Model\":\"IBM,9113-550 (P5-550)\"},{\"Just A Server Model\":\"IBM,9133-55A (P5-55A)\"},{\"Just A Server Model\":\"IBM,9113-550 (P5-550)\"},{\"Just A Server Model\":\"IBM,9131-52A (P5-52A)\"}]\n  at $[0].Just A Server Model: expected \" IBM,9113-550 (P5-550)\", actual \"IBM,9113-550 (P5-550)\"\n  at $[1].Just A Server Model: expected \" IBM,9113-550 (P5-550)\", actual \"IBM,9133-55A (P5-55A)\"\n  at $[2].Just A Server Model: expected \" IBM,9131-52A (P5-52A)\", actual \"IBM,9113-550 (P5-550)\"\n  at $[3].Just A Server Model: expected \" IBM,9133-55A (P5-55A)\", actual \"IBM,9131-52A (P5-52A)\"",
       "gap": "body-mismatch-filters",
       "actual": {
         "status": 200,
         "body": [
           {
-            "Just A Server Model": "IBM,9131-52A (P5-52A)"
+            "Just A Server Model": "IBM,9113-550 (P5-550)"
           },
           {
             "Just A Server Model": "IBM,9133-55A (P5-55A)"
@@ -18159,7 +18159,7 @@
             "Just A Server Model": "IBM,9113-550 (P5-550)"
           },
           {
-            "Just A Server Model": "IBM,9113-550 (P5-550)"
+            "Just A Server Model": "IBM,9131-52A (P5-52A)"
           }
         ]
       }
@@ -18235,19 +18235,19 @@
       "id": "QuerySpec:1308",
       "category": "filters",
       "status": "fail",
-      "reason": "body (exact) mismatch:\n  expected: [{\"name\":\"David White\"},{\"name\":\"Larry Thompson\"},{\"name\":\"Double O Seven(007)\"}]\n  actual:   [{\"name\":\"/\\\\Slash/\\\\Beast/\\\\\"},{\"name\":\"\\\\\"},{\"name\":\"David White\"}]\n  at $[0].name: expected \"David White\", actual \"/\\\\Slash/\\\\Beast/\\\\\"\n  at $[1].name: expected \"Larry Thompson\", actual \"\\\\\"\n  at $[2].name: expected \"Double O Seven(007)\", actual \"David White\"",
+      "reason": "body (exact) mismatch:\n  expected: [{\"name\":\"David White\"},{\"name\":\"Larry Thompson\"},{\"name\":\"Double O Seven(007)\"}]\n  actual:   [{\"name\":\"Double\\\"Quote\\\"McGraw\\\"\"},{\"name\":\"David White\"},{\"name\":\"/\\\\Slash/\\\\Beast/\\\\\"}]\n  at $[0].name: expected \"David White\", actual \"Double\\\"Quote\\\"McGraw\\\"\"\n  at $[1].name: expected \"Larry Thompson\", actual \"David White\"\n  at $[2].name: expected \"Double O Seven(007)\", actual \"/\\\\Slash/\\\\Beast/\\\\\"",
       "gap": "body-mismatch-filters",
       "actual": {
         "status": 200,
         "body": [
           {
-            "name": "/\\Slash/\\Beast/\\"
-          },
-          {
-            "name": "\\"
+            "name": "Double\"Quote\"McGraw\""
           },
           {
             "name": "David White"
+          },
+          {
+            "name": "/\\Slash/\\Beast/\\"
           }
         ]
       }
@@ -18274,19 +18274,19 @@
       "id": "QuerySpec:1316",
       "category": "filters",
       "status": "fail",
-      "reason": "body (exact) mismatch:\n  expected: [{\"name\":\"Williams, Mary\"},{\"name\":\"David White\"},{\"name\":\"Double O Seven(007)\"}]\n  actual:   [{\"name\":\"/\\\\Slash/\\\\Beast/\\\\\"},{\"name\":\"Williams, Mary\"},{\"name\":\"\\\\\"}]\n  at $[0].name: expected \"Williams, Mary\", actual \"/\\\\Slash/\\\\Beast/\\\\\"\n  at $[1].name: expected \"David White\", actual \"Williams, Mary\"\n  at $[2].name: expected \"Double O Seven(007)\", actual \"\\\\\"",
+      "reason": "body (exact) mismatch:\n  expected: [{\"name\":\"Williams, Mary\"},{\"name\":\"David White\"},{\"name\":\"Double O Seven(007)\"}]\n  actual:   [{\"name\":\"Double\\\"Quote\\\"McGraw\\\"\"},{\"name\":\"Williams, Mary\"},{\"name\":\"David White\"}]\n  at $[0].name: expected \"Williams, Mary\", actual \"Double\\\"Quote\\\"McGraw\\\"\"\n  at $[1].name: expected \"David White\", actual \"Williams, Mary\"\n  at $[2].name: expected \"Double O Seven(007)\", actual \"David White\"",
       "gap": "body-mismatch-filters",
       "actual": {
         "status": 200,
         "body": [
           {
-            "name": "/\\Slash/\\Beast/\\"
+            "name": "Double\"Quote\"McGraw\""
           },
           {
             "name": "Williams, Mary"
           },
           {
-            "name": "\\"
+            "name": "David White"
           }
         ]
       }
@@ -23744,22 +23744,22 @@
       "id": "RpcSpec:646",
       "category": "rpc",
       "status": "fail",
-      "reason": "body (exact) mismatch:\n  expected: 1\n  actual:   56\n  at $: expected 1, actual 56",
+      "reason": "body (exact) mismatch:\n  expected: 1\n  actual:   52\n  at $: expected 1, actual 52",
       "gap": "body-mismatch-rpc",
       "actual": {
         "status": 200,
-        "body": 56
+        "body": 52
       }
     },
     {
       "id": "RpcSpec:651",
       "category": "rpc",
       "status": "fail",
-      "reason": "body (exact) mismatch:\n  expected: 2\n  actual:   57\n  at $: expected 2, actual 57",
+      "reason": "body (exact) mismatch:\n  expected: 2\n  actual:   53\n  at $: expected 2, actual 53",
       "gap": "body-mismatch-rpc",
       "actual": {
         "status": 200,
-        "body": 57
+        "body": 53
       }
     },
     {
@@ -24590,17 +24590,17 @@
     {
       "id": "RpcSpec:985",
       "category": "rpc",
-      "status": "fail",
-      "reason": "[pgrest-lambda] rpc: get_tsearch_to_tsvector()\nbody (exact) mismatch — same rows, different order:\n  expected: [{\"text_search\":\"It's kind of fun to do the impossible\"},{\"text_search\":\"C'est un peu amusant de faire l'impossible\"}]\n  actual:   [{\"text_search\":\"C'est un peu amusant de faire l'impossible\"},{\"text_search\":\"It's kind of fun to do the impossible\"}]\n  at $[0].text_search: expected \"It's kind of fun to do the impossible\", actual \"C'est un peu amusant de faire l'impossible\"\n  at $[1].text_search: expected \"C'est un peu amusant de faire l'impossible\", actual \"It's kind of fun to do the impossible\"",
-      "gap": "missing-operator-fts",
+      "status": "pass",
+      "reason": null,
+      "gap": null,
       "actual": {
         "status": 200,
         "body": [
           {
-            "text_search": "C'est un peu amusant de faire l'impossible"
+            "text_search": "It's kind of fun to do the impossible"
           },
           {
-            "text_search": "It's kind of fun to do the impossible"
+            "text_search": "C'est un peu amusant de faire l'impossible"
           }
         ]
       }
@@ -24624,17 +24624,17 @@
     {
       "id": "RpcSpec:997",
       "category": "rpc",
-      "status": "fail",
-      "reason": "[pgrest-lambda] rpc: get_tsearch_to_tsvector()\nbody (exact) mismatch — same rows, different order:\n  expected: [{\"text_search\":\"It's kind of fun to do the impossible\"},{\"text_search\":\"C'est un peu amusant de faire l'impossible\"}]\n  actual:   [{\"text_search\":\"C'est un peu amusant de faire l'impossible\"},{\"text_search\":\"It's kind of fun to do the impossible\"}]\n  at $[0].text_search: expected \"It's kind of fun to do the impossible\", actual \"C'est un peu amusant de faire l'impossible\"\n  at $[1].text_search: expected \"C'est un peu amusant de faire l'impossible\", actual \"It's kind of fun to do the impossible\"",
-      "gap": "missing-operator-fts",
+      "status": "pass",
+      "reason": null,
+      "gap": null,
       "actual": {
         "status": 200,
         "body": [
           {
-            "text_search": "C'est un peu amusant de faire l'impossible"
+            "text_search": "It's kind of fun to do the impossible"
           },
           {
-            "text_search": "It's kind of fun to do the impossible"
+            "text_search": "C'est un peu amusant de faire l'impossible"
           }
         ]
       }
@@ -29875,17 +29875,17 @@
     {
       "id": "UpdateSpec:120",
       "category": "update",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "the same rows came back in a different order; DSQL does not guarantee the physical order this assertion depends on\nbody (exact) mismatch — same rows, different order:\n  expected: [{\"a\":\"1\"},{\"a\":\"2\"}]\n  actual:   [{\"a\":\"2\"},{\"a\":\"1\"}]\n  at $[0].a: expected \"1\", actual \"2\"\n  at $[1].a: expected \"2\", actual \"1\"",
+      "gap": "row-order-unspecified",
       "actual": {
         "status": 200,
         "body": [
           {
-            "a": "1"
+            "a": "2"
           },
           {
-            "a": "2"
+            "a": "1"
           }
         ]
       }
@@ -30335,13 +30335,13 @@
       "id": "UpdateSpec:444",
       "category": "update",
       "status": "fail",
-      "reason": "body (exact) mismatch:\n  expected: [{\"a\":null,\"b\":\"1\"},{\"a\":\"2\",\"b\":\"1\"},{\"a\":\"1\",\"b\":\"1\"}]\n  actual:   [{\"a\":\"圍棋\",\"b\":\"1\"},{\"a\":\"2\",\"b\":\"1\"},{\"a\":null,\"b\":\"1\"}]\n  at $[0].a: expected null null, actual string \"圍棋\"\n  at $[2].a: expected string \"1\", actual null null",
+      "reason": "body (exact) mismatch:\n  expected: [{\"a\":null,\"b\":\"1\"},{\"a\":\"2\",\"b\":\"1\"},{\"a\":\"1\",\"b\":\"1\"}]\n  actual:   [{\"a\":null,\"b\":\"1\"},{\"a\":\"2\",\"b\":\"1\"},{\"a\":\"圍棋\",\"b\":\"1\"}]\n  at $[2].a: expected \"1\", actual \"圍棋\"",
       "gap": "body-mismatch-update",
       "actual": {
         "status": 200,
         "body": [
           {
-            "a": "圍棋",
+            "a": null,
             "b": "1"
           },
           {
@@ -30349,7 +30349,7 @@
             "b": "1"
           },
           {
-            "a": null,
+            "a": "圍棋",
             "b": "1"
           }
         ]

@@ -31,6 +31,8 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHmac } from 'node:crypto';
 
 import { createPgrest } from '../../src/index.mjs';
+import { splitStatements, tokenize, parseQualifiedName, norm }
+  from '../fixtures/sqlsplit.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = join(HERE, '..', '..');
@@ -45,6 +47,7 @@ const DEFAULT_REGION = 'us-east-1';
 
 const MAX_ACTUAL_BODY_CHARS = 8000;
 const DATA_FILE = '07-data.sql';
+const DATA_PATH = join(REPO, 'conformance', 'fixtures', 'dsql', DATA_FILE);
 
 // ---------------------------------------------------------------- CLI
 
@@ -87,6 +90,20 @@ const USAGE = `conformance runner
                             scores 17/76 alone and 13/76 in a full run because
                             DeleteSpec/UpdateSpec empty 'items' first. Costs
                             ~7 s per spec file and needs --concurrency 1.
+  --reset-touched           restore only the tables a mutating case touched,
+                            instead of re-applying all of 07-data.sql. Same
+                            intent as --reset-mutations (upstream rolls back
+                            every request) at a fraction of the cost: 2-4
+                            statements instead of 562. Falls back to a full
+                            reload when the touched set cannot be derived.
+                            Needs --concurrency 1.
+  --no-per-case-config      do not boot per-case engine configurations; leave
+                            every 'requires non-default PostgREST config' case
+                            reported as needs-config. On by default: a case
+                            records the config fields it needs and the runner
+                            boots a second engine with them (see
+                            ENGINE_CONFIGS) so the case passes or fails for
+                            real.
   --verbose-errors          run the engine with errors.verbose (changes bodies)
   --list                    print the selected case ids and exit
   --help
@@ -106,6 +123,8 @@ function parseArgs(argv) {
     reloadData: false,
     reloadPerSpec: false,
     resetMutations: false,
+    resetTouched: false,
+    perCaseConfig: true,
     verboseErrors: false,
     list: false,
   };
@@ -131,6 +150,8 @@ function parseArgs(argv) {
       case '--reload-data': opts.reloadData = true; break;
       case '--reload-per-spec': opts.reloadPerSpec = true; break;
       case '--reset-mutations': opts.resetMutations = true; break;
+      case '--reset-touched': opts.resetTouched = true; break;
+      case '--no-per-case-config': opts.perCaseConfig = false; break;
       case '--verbose-errors': opts.verboseErrors = true; break;
       case '--list': opts.list = true; break;
       case '--help': case '-h': process.stdout.write(USAGE); process.exit(0);
@@ -1036,7 +1057,14 @@ function triageInner({ testCase, actual, comparison, thrown, logs, ctx }) {
 
   // 2b. A column the case filters on or selects could not be created. The
   // engine's PGRST204 is correct; the fixture cannot carry the column.
-  const colMatch = /Column '([^'.]+)' does not exist in '([^']+)'/.exec(message);
+  // Two spellings are matched on purpose. The engine now emits upstream's
+  // wording (Error.hs:254, "Could not find the '<col>' column of '<rel>' in
+  // the schema cache"); the older pgrest-lambda text is kept so a result file
+  // produced before that change still classifies the same way.
+  const colMatch =
+    /Could not find the '([^'.]+)' column of '([^']+)' in the schema cache/
+      .exec(message)
+    || /Column '([^'.]+)' does not exist in '([^']+)'/.exec(message);
   if (colMatch) {
     const [, col, rel] = colMatch;
     const drop = ctx.dropIndex.get(`public.${rel}.${col}`)
@@ -1282,6 +1310,46 @@ const FN_SQL = `
     JOIN pg_namespace n ON n.oid = p.pronamespace
    WHERE n.nspname NOT IN ('pg_catalog','information_schema')`;
 
+// Function bodies, for --reset-touched: `POST /rpc/f` writes whatever `f`
+// writes, and the case format does not say which tables those are. Every
+// function that survived the fixture load is SQL-bodied (DSQL has no plpgsql),
+// so its prosrc is the statement list and the write targets can be read off it.
+const FN_SRC_SQL = `
+  SELECT n.nspname AS schema, p.proname AS name, p.prosrc AS src
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+   WHERE n.nspname NOT IN ('pg_catalog','information_schema')`;
+
+// `insert into x`, `update x.y`, `delete from x` — quoted or bare, one or two
+// parts. Matches the identifier characters sqlsplit's WORD_RE accepts, so a
+// unicode table name is found too.
+const WRITE_TARGET_RE =
+  /\b(?:insert\s+into|update|delete\s+from)\s+((?:"(?:[^"]|"")+"|[A-Za-z_-￿][A-Za-z0-9_$-￿]*)(?:\s*\.\s*(?:"(?:[^"]|"")+"|[A-Za-z_-￿][A-Za-z0-9_$-￿]*))?)/gi;
+
+function unquoteIdent(raw) {
+  const s = String(raw).trim();
+  return s.startsWith('"')
+    ? s.slice(1, -1).replace(/""/g, '"')
+    : s.toLowerCase();
+}
+
+/** Qualified names a function body writes to, as `schema.table` keys. */
+export function functionWriteTargets(src, defaultSchema = 'public') {
+  const out = new Set();
+  if (!src) return out;
+  WRITE_TARGET_RE.lastIndex = 0;
+  let m;
+  while ((m = WRITE_TARGET_RE.exec(src)) !== null) {
+    const parts = m[1].split('.');
+    if (parts.length === 2) {
+      out.add(`${unquoteIdent(parts[0])}.${unquoteIdent(parts[1])}`);
+    } else {
+      out.add(`${defaultSchema}.${unquoteIdent(parts[0])}`);
+    }
+  }
+  return out;
+}
+
 async function readCatalog(pool) {
   const relations = new Map();
   const functions = new Map();
@@ -1301,11 +1369,48 @@ async function readCatalog(pool) {
   }
   const fns = await pool.query(FN_SQL);
   for (const row of fns.rows) add(functions, row);
+  // One entry per function name: the union of the write targets of every
+  // overload, so a name that any overload writes through is always restored.
+  const srcs = await pool.query(FN_SRC_SQL);
+  const directWrites = new Map();
+  const calls = new Map();
+  const known = new Set(srcs.rows.map(r => r.name));
+  for (const row of srcs.rows) {
+    const w = directWrites.get(row.name) || new Set();
+    for (const t of functionWriteTargets(row.src, row.schema)) w.add(t);
+    directWrites.set(row.name, w);
+    // `select insert_and_return()` writes whatever the callee writes, so the
+    // scan is closed over the fixture functions a body calls.
+    const c = calls.get(row.name) || new Set();
+    for (const m of String(row.src || '')
+      .matchAll(/([A-Za-z_][A-Za-z0-9_$]*)\s*\(/g)) {
+      const callee = known.has(m[1]) ? m[1]
+        : (known.has(m[1].toLowerCase()) ? m[1].toLowerCase() : null);
+      if (callee && callee !== row.name) c.add(callee);
+    }
+    calls.set(row.name, c);
+  }
+  const functionWrites = new Map();
+  for (const name of directWrites.keys()) {
+    const out = new Set();
+    const seen = new Set();
+    const stack = [name];
+    while (stack.length) {
+      const cur = stack.pop();
+      if (seen.has(cur)) continue;
+      seen.add(cur);
+      for (const t of directWrites.get(cur) || []) out.add(t);
+      for (const callee of calls.get(cur) || []) stack.push(callee);
+    }
+    functionWrites.set(name, out);
+  }
   const inPublic = (map) => new Set(
     [...map.entries()].filter(([, s]) => s.includes('public')).map(([n]) => n));
   return {
     relations,
     functions,
+    functionWrites,
+    tablesInPublic,
     relationsInPublic: inPublic(relations),
     functionsInPublic: inPublic(functions),
     // A name that is only a view in public: the engine's schema cache reads
@@ -1313,6 +1418,490 @@ async function readCatalog(pool) {
     viewsInPublic: new Set(
       [...viewsInPublic].filter(n => !tablesInPublic.has(n))),
   };
+}
+
+// ------------------------------------------------ per-case engine config
+//
+// Upstream boots more than one PostgREST process. Most specs run under
+// `baseCfg` (test/spec/SpecHelper.hs), but 20-odd describe blocks run under
+// `withConfig`/`withConfigDbs` with specific fields changed
+// (test/spec/Main.hs). The extractor records which fields a case needs in its
+// `skipReason` — "requires non-default PostgREST config (configDbSchemas)" —
+// and marks it `needs-engine-config`.
+//
+// The table below translates each of those blocks into this engine's
+// configuration surface (docs/configuration.md). A case whose required fields
+// are all covered by a matching entry is run against a second engine instance
+// built with that configuration, so it becomes a pass or an honest fail. A case
+// whose fields are not covered (configDbPreparedStatements,
+// configServerTraceHeader, configOpenApiMode, configDbRootSpec,
+// configUrlUseLegacyTargetNames, configClientErrorVerbosity, configDbPreConfig,
+// configJwtCacheMaxEntries, configServerTimingEnabled) keeps its needs-config
+// status: the engine has no equivalent switch, and inventing one that only the
+// runner sets would be measuring the runner.
+//
+// `provides` lists the config field names the entry answers for. `from`/`to`
+// bound it to the upstream source lines of that describe block, because a spec
+// file can boot several configurations (CorsSpec, ErrorSpec, PgSafeUpdateSpec).
+// `substitute` records where the entry reproduces upstream's wire behaviour by
+// another mechanism than upstream's; it is printed with the run summary so a
+// pass under it is never read as "the same thing upstream does".
+
+// SpecHelper.hs: `baseCfg` signs with "reallyreallyreallyreallyverysafe", and
+// `generateSecret` is the base64 of the same bytes.
+const SPEC_JWT_SECRET = 'reallyreallyreallyreallyverysafe';
+
+// Feature/Auth/AsymmetricJwtSpec.hs: the RS256 public key, as a JWK and as a
+// JWK Set. Verbatim from the spec file.
+const SPEC_JWK = '{"alg":"RS256","e":"AQAB","key_ops":["verify"],"kty":"RSA",'
+  + '"n":"0etQ2Tg187jb04MWfpuogYGV75IFrQQBxQaGH75eq_FpbkyoLcEpRUEWSbECP2eeFya'
+  + '2yZ9vIO5ScD-lPmovePk4Aa4SzZ8jdjhmAbNykleRPCxMg0481kz6PQhnHRUv3nF5WP479Cn'
+  + 'ObJKqTVdEagVL66oxnX9VhZG9IZA7k0Th5PfKQwrKGyUeTGczpOjaPqbxlunP73j9AfnAt4X'
+  + 'CS8epa-n3WGz1j-wfpr_ys57Aq-zBCfqP67UYzNpeI1AoXsJhD9xSDOzvJgFRvc3vm2wjAW4'
+  + 'LEMwi48rCplamOpZToIHEPIaPzpveYQwDnB1HFTR1ove9bpKJsHmi-e2uzQ","use":"sig"}';
+const SPEC_JWKS = `{"keys": [${SPEC_JWK}]}`;
+
+// Every JWT block below keeps `anonRole: 'service_role'`. Upstream's
+// `db-anon-role` is `postgrest_test_anonymous`, a database role with GRANTs;
+// this engine authorizes with Cedar and has no such role, and the runner's
+// default for a request without a token is already service_role — so holding
+// that constant means the only thing these entries change is that the engine
+// verifies the token itself, which is what the block is about.
+const JWT_KEYS = ['configJwtSecret', 'configJWKS', 'configJwtAudience',
+  'configDbAnonRole'];
+
+export const ENGINE_CONFIGS = [
+  // test/spec/Feature/Query/MultipleSchemaSpec.hs:21
+  {
+    spec: 'MultipleSchemaSpec',
+    label: 'db-schemas=v1,v2,SPECIAL',
+    provides: ['configDbSchemas'],
+    config: { dbSchemas: ['v1', 'v2', 'SPECIAL "@/\\#~_-'] },
+  },
+  // test/spec/Feature/Query/UnicodeSpec.hs:15
+  {
+    spec: 'UnicodeSpec',
+    label: 'db-schemas=تست',
+    provides: ['configDbSchemas'],
+    config: { dbSchemas: ['تست'] },
+  },
+  // test/spec/Feature/ExtraSearchPathSpec.hs:14
+  {
+    spec: 'ExtraSearchPathSpec',
+    label: 'db-extra-search-path=public,extensions,EXTRA',
+    provides: ['configDbExtraSearchPath'],
+    config: { dbExtraSearchPath: ['public', 'extensions', 'EXTRA "@/\\#~_-'] },
+  },
+  // test/spec/Feature/Query/PostGISSpec.hs:14
+  {
+    spec: 'PostGISSpec',
+    label: 'db-extra-search-path=public,extensions',
+    provides: ['configDbExtraSearchPath'],
+    config: { dbExtraSearchPath: ['public', 'extensions'] },
+  },
+  // test/spec/Feature/Query/QueryLimitedSpec.hs:14
+  {
+    spec: 'QueryLimitedSpec',
+    label: 'db-max-rows=2',
+    provides: ['configDbMaxRows'],
+    config: { dbMaxRows: 2 },
+  },
+  // test/spec/Feature/Query/AggregateFunctionsSpec.hs:310 (`disallowed`)
+  {
+    spec: 'AggregateFunctionsSpec',
+    from: 309,
+    label: 'db-aggregates-enabled=false',
+    provides: ['db-aggregates-enabled', 'configDbAggregates'],
+    config: { dbAggregatesEnabled: false },
+  },
+  // test/spec/Feature/Query/PlanSpec.hs:544 (`disabledSpec`) — upstream's
+  // default, which is this engine's default too, so no second engine is needed.
+  {
+    spec: 'PlanSpec',
+    from: 543,
+    label: 'db-plan-enabled=false',
+    provides: ['db-plan-enabled', 'configDbPlanEnabled'],
+    config: { dbPlanEnabled: false },
+  },
+  // test/spec/Feature/RpcPreRequestGucsSpec.hs:15
+  {
+    spec: 'RpcPreRequestGucsSpec',
+    label: 'db-pre-request=custom_headers',
+    provides: ['configDbPreRequest'],
+    config: { dbPreRequest: 'custom_headers' },
+  },
+  // test/spec/Feature/HttpHeaderSpec.hs:15
+  {
+    spec: 'HttpHeaderSpec',
+    to: 25,
+    label: 'db-pre-request=custom_vary_hdr',
+    provides: ['configDbPreRequest'],
+    config: { dbPreRequest: 'custom_vary_hdr' },
+  },
+  // test/spec/Feature/Query/PgSafeUpdateSpec.hs:15. Upstream's guard is the
+  // pg-safeupdate extension, loaded by a `db-pre-request` function; DSQL has no
+  // extensions and no plpgsql. The engine has its own filterless-mutation guard
+  // and `safeupdate` mode makes it answer with pg-safeupdate's wire error, so
+  // the assertion is measured against the same status and body.
+  {
+    spec: 'PgSafeUpdateSpec',
+    to: 52,
+    label: 'bulk-mutation-guard=safeupdate',
+    provides: ['configDbPreRequest'],
+    config: { bulkMutationGuard: 'safeupdate' },
+    substitute: 'engine guard in safeupdate mode instead of the pg-safeupdate '
+      + 'extension (no extensions on DSQL); same 400 / SQLSTATE 21000 body',
+  },
+  // test/spec/Feature/CorsSpec.hs:72
+  {
+    spec: 'CorsSpec',
+    from: 72,
+    to: 110,
+    label: 'server-cors-allowed-origins=example.com,example2.com',
+    provides: ['configServerCorsAllowedOrigins'],
+    config: {
+      cors: {
+        allowedOrigins: ['http://example.com', 'http://example2.com'],
+        allowCredentials: true,
+      },
+    },
+  },
+  // test/spec/Feature/CorsSpec.hs:111 — the empty list, i.e. the default.
+  {
+    spec: 'CorsSpec',
+    from: 111,
+    label: 'server-cors-allowed-origins=[]',
+    provides: ['configServerCorsAllowedOrigins'],
+    config: {},
+  },
+  // test/spec/Feature/Auth/AudienceJwtSecretSpec.hs:13
+  {
+    spec: 'AudienceJwtSecretSpec',
+    to: 156,
+    label: 'jwt-secret+jwt-aud=youraudience',
+    provides: JWT_KEYS,
+    config: {
+      restJwt: {
+        secret: SPEC_JWT_SECRET, audience: 'youraudience',
+        anonRole: 'service_role',
+      },
+    },
+  },
+  // test/spec/Feature/Query/ErrorSpec.hs:176
+  {
+    spec: 'ErrorSpec',
+    from: 176,
+    to: 188,
+    label: 'jwt-aud=spec tests',
+    provides: JWT_KEYS,
+    config: {
+      restJwt: {
+        secret: SPEC_JWT_SECRET, audience: 'spec tests',
+        anonRole: 'service_role',
+      },
+    },
+  },
+  // test/spec/Feature/Auth/BinaryJwtSecretSpec.hs:13
+  {
+    spec: 'BinaryJwtSecretSpec',
+    label: 'jwt-secret=binary',
+    provides: JWT_KEYS,
+    config: {
+      restJwt: { secret: SPEC_JWT_SECRET, anonRole: 'service_role' },
+    },
+  },
+  // test/spec/Feature/Auth/AsymmetricJwtSpec.hs:23 (JWK) and :32 (JWK Set)
+  {
+    spec: 'AsymmetricJwtSpec',
+    to: 31,
+    label: 'jwt-secret=JWK',
+    provides: JWT_KEYS,
+    config: { restJwt: { secret: SPEC_JWK, anonRole: 'service_role' } },
+  },
+  {
+    spec: 'AsymmetricJwtSpec',
+    from: 32,
+    label: 'jwt-secret=JWKSet',
+    provides: JWT_KEYS,
+    config: { restJwt: { secret: SPEC_JWKS, anonRole: 'service_role' } },
+  },
+  // test/spec/Feature/Auth/NoJwtSecretSpec.hs:14
+  {
+    spec: 'NoJwtSecretSpec',
+    label: 'jwt-secret=<none>',
+    provides: JWT_KEYS,
+    config: {
+      restJwt: { verify: true, secret: '', anonRole: 'service_role' },
+    },
+  },
+  // test/spec/Feature/Auth/NoAnonSpec.hs:14
+  {
+    spec: 'NoAnonSpec',
+    label: 'db-anon-role=<none>',
+    provides: JWT_KEYS,
+    config: { restJwt: { secret: SPEC_JWT_SECRET, anonRole: '' } },
+  },
+];
+
+/**
+ * The PostgREST config fields a case says it needs.
+ *
+ * The extractor writes them into `skipReason` as the upstream `AppConfig`
+ * field names in the first parenthesised group; the two "off by default"
+ * reasons name the config key instead (`db-aggregates-enabled`).
+ */
+export function requiredConfigKeys(testCase) {
+  const m = /\(([^)]*)\)/.exec(String(testCase.skipReason || ''));
+  if (!m) return [];
+  return m[1].split(',').map(s => s.trim()).filter(Boolean);
+}
+
+function specName(testCase) {
+  const src = String(testCase.source || '');
+  const base = src.split('/').pop().replace(/\.hs$/, '');
+  return base || String(testCase.id || '').split(':')[0];
+}
+
+/** The ENGINE_CONFIGS entry that covers this case, or null. */
+export function engineConfigFor(testCase) {
+  const spec = specName(testCase);
+  const line = Number(testCase.line) || 0;
+  const needed = testCase.skipClass === 'needs-engine-config'
+    ? requiredConfigKeys(testCase)
+    : [];
+  for (const entry of ENGINE_CONFIGS) {
+    if (entry.spec !== spec) continue;
+    if (entry.from !== undefined && line < entry.from) continue;
+    if (entry.to !== undefined && line > entry.to) continue;
+    // A case that already runs (not needs-config) still belongs to the block's
+    // configuration when it sits inside its line range.
+    if (needed.length && !needed.every(k => entry.provides.includes(k))) {
+      continue;
+    }
+    return entry;
+  }
+  return null;
+}
+
+// ------------------------------------------------ targeted fixture restore
+//
+// --reset-mutations restores by re-applying all 562 statements of 07-data.sql
+// (~8 s), which is too slow to run after every mutating case on the full suite.
+// A mutating case writes to the tables it addresses and nothing else — there
+// are no foreign keys on DSQL and no triggers survived the fixture load — so
+// restoring just those tables is equivalent and costs 2-4 statements.
+//
+// 07-data.sql is DELETE-then-INSERT per table with `SET search_path` blocks
+// deciding what an unqualified name means, so the groups have to be parsed with
+// the same search_path bookkeeping the loader applies.
+
+/**
+ * Group 07-data.sql by the table each statement restores.
+ *
+ * @returns {{groups: Map<string, {schema: string, table: string,
+ *   statements: string[]}>, order: string[]}} groups keyed `schema.table`,
+ *   `order` in file order (a table appearing in two blocks keeps one entry
+ *   holding every statement, in file order).
+ */
+export function parseFixtureGroups(sql) {
+  const groups = new Map();
+  const order = [];
+  let schema = 'public';
+  let lastKey = null;
+
+  const at = (toks, i) => {
+    const q = parseQualifiedName(toks, i);
+    if (!q.name) return null;
+    return `${q.schema || schema}.${q.name}`;
+  };
+
+  for (const st of splitStatements(sql)) {
+    if (st.kind !== 'sql' || !norm(st.text)) continue;
+    const toks = tokenize(st.text).filter(t => t.kind !== 'comment');
+    if (!toks.length) continue;
+    const head = toks[0].v.toLowerCase();
+    const second = (toks[1]?.v || '').toLowerCase();
+
+    if (head === 'set' && second === 'search_path') {
+      const eq = toks.findIndex(t => t.v === '=');
+      const q = eq === -1 ? null : parseQualifiedName(toks, eq + 1);
+      if (q && q.name) schema = q.name;
+      continue;
+    }
+
+    let key = null;
+    if (head === 'insert' && second === 'into') key = at(toks, 2);
+    else if (head === 'delete' && second === 'from') key = at(toks, 2);
+    else if (head === 'update') key = at(toks, 1);
+    else if (head === 'select' && /setval/i.test(st.text)) key = lastKey;
+    if (!key) continue;
+
+    let group = groups.get(key);
+    if (!group) {
+      const dot = key.indexOf('.');
+      group = {
+        schema: key.slice(0, dot), table: key.slice(dot + 1), statements: [],
+      };
+      groups.set(key, group);
+      order.push(key);
+    }
+    group.statements.push(st.text);
+    lastKey = key;
+  }
+  return { groups, order };
+}
+
+let fixtureGroupsCache = null;
+function fixtureGroups() {
+  if (!fixtureGroupsCache) {
+    fixtureGroupsCache = parseFixtureGroups(readFileSync(DATA_PATH, 'utf8'));
+  }
+  return fixtureGroupsCache;
+}
+
+function quoteIdent(name) {
+  return `"${String(name).replace(/"/g, '""')}"`;
+}
+
+/**
+ * The `schema.table` keys a case's writes can have reached, or null when that
+ * cannot be decided (the caller then falls back to a full reload).
+ */
+export function touchedTables(testCase, ctx, groups) {
+  const target = caseTarget(testCase);
+  if (!target.name) return null;
+
+  // 07-data.sql is the only fixture file that inserts, so a table it never
+  // populates was empty when the fixtures loaded, and nothing — not even a full
+  // reload — clears it again. A row a case inserts there therefore survives the
+  // run and every run after it (measured: InsertSpec:596 fails with 23505
+  // against the `棋圍` row an earlier run left in simple_pk2). Restoring such a
+  // table means emptying it. Only tables in the default exposed schema qualify:
+  // a namesake in another schema is not what the request reached.
+  const emptyOnLoad = (name) =>
+    ctx.catalog.tablesInPublic?.has(name) ? `public.${name}` : null;
+
+  if (target.kind === 'function') {
+    const writes = ctx.catalog.functionWrites?.get(target.name);
+    // A name pg_proc does not have cannot have written anything: the request
+    // was a 404 or a schema-cache error, so there is nothing to restore.
+    if (!writes) {
+      return ctx.catalog.functions?.has(target.name) ? null : new Set();
+    }
+    const keys = new Set();
+    for (const key of writes) {
+      if (groups.groups.has(key)) {
+        keys.add(key);
+        continue;
+      }
+      const dot = key.indexOf('.');
+      const empty = key.slice(0, dot) === 'public'
+        ? emptyOnLoad(key.slice(dot + 1)) : null;
+      if (empty) keys.add(empty);
+    }
+    return keys;
+  }
+
+  // A write through a view lands in a base table the view name does not name.
+  if (ctx.catalog.viewsInPublic.has(target.name)) return null;
+
+  const schemas = ctx.catalog.relations.get(target.name) || ['public'];
+  const keys = new Set();
+  for (const s of schemas) {
+    if (groups.groups.has(`${s}.${target.name}`)) keys.add(`${s}.${target.name}`);
+  }
+  if (keys.size === 0) {
+    const empty = emptyOnLoad(target.name);
+    if (empty) keys.add(empty);
+  }
+  return keys;
+}
+
+// A restore statement races whatever the engine's pool is still committing, and
+// Aurora DSQL answers a write conflict with OC000 / 40001 rather than blocking
+// (DSQL-CAPABILITIES.md). AWS documents both as retryable; without a retry a
+// single conflict aborts the whole run (measured on SingularSpec: `delete from
+// bets` conflicted once in 36 cases).
+const RESTORE_RETRIES = 4;
+
+function isConflict(err) {
+  return err?.code === 'OC000' || err?.code === '40001'
+    || /conflicts with another transaction/i.test(err?.message || '');
+}
+
+async function queryRetrying(target, sql, values) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      return await target.query(sql, values);
+    } catch (err) {
+      if (!isConflict(err) || attempt >= RESTORE_RETRIES) throw err;
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise(r => setTimeout(r, 50 * (attempt + 1)));
+    }
+  }
+}
+
+/**
+ * Restore `keys` to the state the fixture load left them in: re-apply the
+ * 07-data.sql statements for a table the file populates, in file order, and
+ * empty a table it does not.
+ */
+export async function restoreTables(pool, keys, groups) {
+  if (!keys || keys.size === 0) return 0;
+  const client = typeof pool.connect === 'function'
+    ? await pool.connect() : null;
+  const target = client || pool;
+  let applied = 0;
+  // The restore borrows a connection from the engine's own pool, and
+  // `set_config('search_path', ..., false)` is session-wide: left behind, it
+  // decides how the *next* request's unqualified names resolve (measured: a
+  // restore of a `private` table left that path on the connection and the next
+  // `rpc/is_superuser` came back 404 / 42883). The connection's own path is
+  // read once and put back before it is released.
+  let entryPath = null;
+  const pinPath = async (value) => {
+    if (entryPath === null) {
+      const shown = await target.query('show search_path');
+      entryPath = shown.rows[0]?.search_path ?? '';
+    }
+    await queryRetrying(target, 'select set_config($1, $2, false)',
+      ['search_path', value]);
+  };
+  try {
+    for (const key of keys) {
+      if (groups.groups.has(key)) continue;
+      const dot = key.indexOf('.');
+      // Identifiers cannot be bound; they come from pg_catalog, not from a
+      // request, and are quoted.
+      // eslint-disable-next-line no-await-in-loop
+      await queryRetrying(target,
+        `DELETE FROM ${quoteIdent(key.slice(0, dot))}`
+        + `.${quoteIdent(key.slice(dot + 1))}`);
+      applied += 1;
+    }
+    for (const key of groups.order) {
+      if (!keys.has(key)) continue;
+      const group = groups.groups.get(key);
+      // Restore under the same search_path the file's block ran with: the
+      // statements are unqualified. set_config is a plain statement, so it
+      // works on DSQL, which rejects `SET search_path` outside a session.
+      // eslint-disable-next-line no-await-in-loop
+      await pinPath(`${quoteIdent(group.schema)}, pg_catalog`);
+      for (const sql of group.statements) {
+        // eslint-disable-next-line no-await-in-loop
+        await queryRetrying(target, sql);
+        applied += 1;
+      }
+    }
+  } finally {
+    if (entryPath !== null) {
+      await queryRetrying(target, 'select set_config($1, $2, false)',
+        ['search_path', entryPath]).catch(() => {});
+    }
+    if (client) client.release();
+  }
+  return applied;
 }
 
 // ---------------------------------------------------------------- run
@@ -1478,9 +2067,15 @@ async function mapWithConcurrency(items, limit, fn) {
 // has not finished settling ("change conflicts with another transaction",
 // OC000/40001). Measured once mid-run on `delete from bets;`. The conflict says
 // nothing about the fixture, so the reload is retried before giving up.
+// A DELETE that lost that race leaves its table populated, so the INSERTs that
+// follow it in the same block fail with a duplicate key. Those are the same
+// conflict reported twice, so a reload whose failures are conflicts plus
+// duplicate keys is retried too (measured on a full run: 34 conflicts and 21
+// duplicate keys in one reload, all of them gone on the next attempt).
 const CONFLICT_RE = /OC000|40001|conflicts with another transaction/i;
+const DUP_KEY_RE = /duplicate key value|23505/i;
 
-function reloadData(target, label, attempts = 3) {
+function reloadData(target, label, attempts = 4) {
   if (target !== 'dsql') {
     throw new Error('--reload-data is implemented for --target dsql only');
   }
@@ -1497,8 +2092,13 @@ function reloadData(target, label, attempts = 3) {
       + `${report.statementsFailed} failed`
       + `${attempt > 1 ? ` (attempt ${attempt})` : ''}\n`);
     if (report.statementsFailed === 0) return;
-    const conflictsOnly = (report.failures || []).length > 0
-      && report.failures.every((f) => CONFLICT_RE.test(f.error || ''));
+    // The loader's stdout carries `topErrors` ([message, count] pairs), not the
+    // per-statement list it writes to load-failures-partial.json, so the
+    // classification has to read those messages.
+    const errors = (report.topErrors || []).map(([message]) => String(message));
+    const conflictsOnly = errors.length > 0
+      && errors.some((m) => CONFLICT_RE.test(m))
+      && errors.every((m) => CONFLICT_RE.test(m) || DUP_KEY_RE.test(m));
     if (!conflictsOnly) break;
   }
   throw new Error(`${report.statementsFailed} data statement(s) failed to `
@@ -1572,6 +2172,32 @@ export function buildResults({ target, cases, outcomes, occ }) {
   };
 }
 
+/**
+ * A `db-pre-request` block whose function does not exist on this database.
+ *
+ * Upstream's pre-request functions are plpgsql and set namespaced run-time
+ * parameters; DSQL has neither, so the fixture loader dropped them
+ * (load-report.json). Running the case anyway would score the engine on a
+ * missing fixture, so it is reported blocked with the drop reason — the same
+ * treatment any other unbuildable fixture gets.
+ *
+ * @returns an outcome, or null when the case can run.
+ */
+async function preRequestBlocked(entry, testCase, ctx) {
+  const fn = entry?.config?.dbPreRequest;
+  if (!fn || testCase.skip) return null;
+  const bare = String(fn).split('.').pop();
+  if (ctx.catalog.functions.has(bare)) return null;
+  const drop = ctx.dropIndex.get(bare) || ctx.dropIndex.get(`public.${bare}`);
+  return {
+    status: 'blocked',
+    gap: drop ? gapForDropReason(drop.reason) : 'fixture-missing',
+    reason: `db-pre-request function ${fn} does not exist on this database`
+      + (drop ? `: ${drop.reason}` : ''),
+    actual: { status: null, body: null },
+  };
+}
+
 async function main() {
   const opts = parseArgs(process.argv.slice(2));
 
@@ -1597,6 +2223,11 @@ async function main() {
     throw new Error('--reset-mutations needs --concurrency 1: the reset is a '
       + 'blocking DELETE/INSERT over the whole fixture set');
   }
+  if (opts.resetTouched && opts.concurrency !== 1) {
+    throw new Error('--reset-touched needs --concurrency 1: it restores the '
+      + 'tables the previous case wrote, which only has a meaning when cases '
+      + 'run one at a time');
+  }
   if (opts.reloadPerSpec && opts.concurrency !== 1) {
     throw new Error('--reload-per-spec needs --concurrency 1: the reload is a '
       + 'blocking DELETE/INSERT over the whole fixture set and would land in '
@@ -1616,9 +2247,10 @@ async function main() {
     process.env.PGREST_DEFAULT_TS_CONFIG = 'simple';
   }
 
-  // The engine needs a JWT secret to boot; conformance never verifies a token
-  // (the authorizer context is built by the runner), so a fixed dummy is fine.
-  const pgrest = createPgrest({
+  // The engine needs a JWT secret to boot; unless a case's configuration turns
+  // REST-level verification on, conformance never verifies a token (the
+  // authorizer context is built by the runner), so a fixed dummy is fine.
+  const baseEngineConfig = {
     database: resolveTargetConfig(opts.target),
     jwtSecret: process.env.JWT_SECRET
       || 'conformance-runner-secret-not-used-for-verification',
@@ -1630,7 +2262,30 @@ async function main() {
     production: false,
     errors: { verbose: opts.verboseErrors },
     cors: { allowedOrigins: '*', allowCredentials: false },
-  });
+    // Upstream has no filterless-mutation guard of its own: `PATCH /items` with
+    // no filter updates every row, and the 400 upstream asserts in
+    // PgSafeUpdateSpec comes from the pg-safeupdate extension loaded by a
+    // db-pre-request function. This engine's guard is on by default; measuring
+    // upstream's behaviour means running with the guard in upstream's state.
+    bulkMutationGuard: 'off',
+  };
+
+  // One engine per configuration, built on first use. Each one holds its own
+  // connection pool and its own schema cache (db-schemas changes what gets
+  // introspected), so they are created lazily and all closed at the end.
+  const engines = new Map();
+  const engineFor = (label, extra) => {
+    let engine = engines.get(label);
+    if (!engine) {
+      engine = createPgrest({ ...baseEngineConfig, ...extra });
+      engines.set(label, engine);
+      if (label !== 'base') {
+        process.stderr.write(`[runner] engine "${label}" booted\n`);
+      }
+    }
+    return engine;
+  };
+  const pgrest = engineFor('base', {});
 
   const restore = installLogCapture();
   let results;
@@ -1656,26 +2311,70 @@ async function main() {
     // previous spec changed (measured: 15 QuerySpec cases differ between a
     // select-only run and a full run, 4 of them pass/fail flips).
     let loadedFor = null;
+    // --reset-touched bookkeeping: which tables the previous case can have
+    // written, and how often that could not be decided.
+    const groups = opts.resetTouched ? fixtureGroups() : null;
+    let touched = null;
+    let fallbacks = 0;
+    let restored = 0;
+    // Per-case engine configuration (ENGINE_CONFIGS): how many cases ran under
+    // each, so the summary can say what the number was measured with.
+    const configUse = new Map();
     const outcomes = await mapWithConcurrency(cases, opts.concurrency,
-      async (testCase) => {
+      async (rawCase) => {
+        const entry = opts.perCaseConfig ? engineConfigFor(rawCase) : null;
+        // A needs-config case whose configuration the runner can supply is run
+        // for real; it stops being held out of the denominator.
+        const testCase = entry && rawCase.skip
+            && rawCase.skipClass === 'needs-engine-config'
+          ? { ...rawCase, skip: false, skipReason: null, skipClass: null }
+          : rawCase;
+        if (entry) {
+          configUse.set(entry.label, (configUse.get(entry.label) || 0) + 1);
+        }
         if (opts.reloadPerSpec && !testCase.skip
             && testCase.source !== loadedFor) {
           loadedFor = testCase.source;
           reloadData(opts.target, testCase.source);
           dirty = false;
         }
-        if (opts.resetMutations && !testCase.skip && dirty) {
-          const carryOver = prev && prev.txCommit && prev.example
-            && prev.example === testCase.example;
-          if (!carryOver) {
-            reloadData(opts.target, `${testCase.id} (reset ${resets + 1})`);
-            resets += 1;
-            dirty = false;
-          }
+        const carryOver = () => prev && prev.txCommit && prev.example
+          && prev.example === testCase.example;
+        if (opts.resetMutations && !testCase.skip && dirty && !carryOver()) {
+          reloadData(opts.target, `${testCase.id} (reset ${resets + 1})`);
+          resets += 1;
+          dirty = false;
         }
-        const o = await runCase(pgrest.rest, testCase, opts, ctx);
+        if (opts.resetTouched && !testCase.skip && dirty && !carryOver()) {
+          if (touched === null) {
+            // The previous case's writes cannot be attributed to tables (a
+            // write through a view, or an RPC whose body is not on record).
+            // Restore everything rather than guess.
+            reloadData(opts.target, `${testCase.id} (full reset ${resets + 1})`);
+            resets += 1;
+            fallbacks += 1;
+          } else {
+            // Ask the provider for the pool every time: the DSQL provider
+            // ends the pool and opens a new one when the IAM token it was
+            // built with is close to expiring, so a pool captured at startup
+            // is dead about 50 minutes into a full run.
+            restored += await restoreTables(
+              await pgrest._db.getPool(), touched, groups);
+            resets += 1;
+          }
+          dirty = false;
+          touched = null;
+        }
+        const handler = entry
+          ? engineFor(entry.label, entry.config).rest
+          : pgrest.rest;
+        const o = await preRequestBlocked(entry, testCase, ctx)
+          || await runCase(handler, testCase, opts, ctx);
         if (!testCase.skip) {
-          if (isMutating(testCase)) dirty = true;
+          if (isMutating(testCase)) {
+            dirty = true;
+            if (opts.resetTouched) touched = touchedTables(testCase, ctx, groups);
+          }
           prev = {
             example: testCase.example || null,
             txCommit: /tx=commit/i
@@ -1689,11 +2388,32 @@ async function main() {
         return o;
       });
 
+    if (configUse.size) {
+      const labels = [...configUse.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .map(([label, n]) => `${label} (${n})`);
+      process.stderr.write(
+        `[runner] per-case engine config: ${labels.join(', ')}\n`);
+      for (const e of ENGINE_CONFIGS) {
+        if (e.substitute && configUse.has(e.label)) {
+          process.stderr.write(
+            `[runner]   substitute in "${e.label}": ${e.substitute}\n`);
+        }
+      }
+    }
+    if (opts.resetTouched) {
+      process.stderr.write(
+        `[runner] targeted resets: ${resets} (${restored} statement(s) `
+        + `re-applied, ${fallbacks} full reload fallback(s))\n`);
+    }
     results = buildResults({ target: opts.target, cases, outcomes, occ: ctx });
   } finally {
     restore();
-    if (typeof pgrest._db.close === 'function') {
-      await Promise.resolve(pgrest._db.close()).catch(() => {});
+    for (const engine of engines.values()) {
+      if (typeof engine._db.close === 'function') {
+        // eslint-disable-next-line no-await-in-loop
+        await Promise.resolve(engine._db.close()).catch(() => {});
+      }
     }
   }
 

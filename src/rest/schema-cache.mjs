@@ -5,6 +5,7 @@ import {
   parseViewTargetLists,
   resolveViewColumnSources,
 } from './view-sources.mjs';
+import { ROUTINES_SQL, buildRoutineMap } from './routines.mjs';
 
 // Relation kinds the engine exposes as endpoints. Matches PostgREST:
 // ordinary tables, views, materialised views, foreign tables and
@@ -186,6 +187,43 @@ const FUNCTIONS_SQL = `
        p.proargmodes IS NULL
        OR NOT p.proargmodes::text[] && ARRAY['o','b','v']
      )
+   ORDER BY p.proname`;
+
+// Computed relationships: a one-argument function whose argument is the row
+// type of a served relation and whose return type is the row type of another
+// (upstream `allComputedRels`). `single_row` is upstream's test verbatim —
+// a plain composite return, or `SETOF ... ROWS 1`, is a to-one embed.
+//
+// The row type of a table carries the table's name, which is why the type
+// names are what come back: `videogames` the type is `videogames` the table.
+const COMPUTED_RELS_SQL = `
+  WITH all_relations AS (
+    SELECT c.reltype, n.nspname
+      FROM pg_catalog.pg_class c
+      JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+     WHERE c.relkind IN ('v', 'r', 'm', 'f', 'p')
+  )
+  SELECT p.proname AS function_name,
+         arg_type.typname AS from_table,
+         ret_type.typname AS to_table,
+         (NOT p.proretset OR p.prorows = 1) AS single_row
+    FROM pg_catalog.pg_proc p
+    JOIN pg_catalog.pg_namespace fn_schema
+      ON fn_schema.oid = p.pronamespace
+    JOIN pg_catalog.pg_type arg_type
+      ON arg_type.oid = p.proargtypes[0]
+    JOIN pg_catalog.pg_namespace arg_schema
+      ON arg_schema.oid = arg_type.typnamespace
+    JOIN pg_catalog.pg_type ret_type
+      ON ret_type.oid = p.prorettype
+    JOIN pg_catalog.pg_namespace ret_schema
+      ON ret_schema.oid = ret_type.typnamespace
+   WHERE fn_schema.nspname = 'public'
+     AND arg_schema.nspname = 'public'
+     AND ret_schema.nspname = 'public'
+     AND p.pronargs = 1
+     AND p.proargtypes[0] IN (SELECT reltype FROM all_relations)
+     AND p.prorettype IN (SELECT reltype FROM all_relations)
    ORDER BY p.proname`;
 
 const EXCLUDED_ARG_MODES = new Set(['o', 'b', 'v']);
@@ -656,6 +694,34 @@ export function deriveManyToManyRelationships(tables, rels, primaryKeys) {
   return out;
 }
 
+/**
+ * Turn `COMPUTED_RELS_SQL` rows into relationship records.
+ *
+ * Only relations the engine serves can take part in an embed, which is the
+ * same rule the key-based relationships go through.
+ *
+ * @param {Array<object>} rows  COMPUTED_RELS_SQL result rows
+ * @param {object} tables       served relations, keyed by name
+ * @returns {Array<object>} computed relationships
+ */
+export function buildComputedRelationships(rows, tables) {
+  const out = [];
+  for (const row of rows) {
+    if (!tables[row.from_table] || !tables[row.to_table]) continue;
+    out.push({
+      computed: true,
+      function: row.function_name,
+      fromSchema: 'public',
+      fromTable: row.from_table,
+      toSchema: 'public',
+      toTable: row.to_table,
+      toOne: Boolean(row.single_row),
+      source: 'computed',
+    });
+  }
+  return out;
+}
+
 function dedupeRelationships(lists) {
   const seen = new Set();
   const out = [];
@@ -881,13 +947,32 @@ async function pgIntrospect(pool, capabilities, options = {}) {
     relationships = inferConventionRelationships(tables);
   }
 
+  // Computed relationships are embedded by function name, so they cannot
+  // collide with the key-based relationships above and are appended rather
+  // than deduplicated against them. Which of the two wins when the names do
+  // collide is decided at resolution time, where upstream decides it.
+  if (!capabilities || capabilities.supportsRpc) {
+    const cRelResult = await pool.query(COMPUTED_RELS_SQL);
+    relationships = [
+      ...relationships,
+      ...buildComputedRelationships(cRelResult.rows, tables),
+    ];
+  }
+
   let functions = {};
+  // Every candidate of every overloaded name, keyed by name. `functions` above
+  // keeps one entry per name for the OpenAPI spec and the policy entities;
+  // `routines` is what a request resolves against (src/rest/routines.mjs).
+  let routines = {};
   if (!capabilities || capabilities.supportsRpc) {
     const fnResult = await pool.query(FUNCTIONS_SQL);
     functions = await buildFunctionsMap(fnResult.rows, pool);
+    const routineResult = await pool.query(
+      ROUTINES_SQL, [options.schema || 'public']);
+    routines = buildRoutineMap(routineResult.rows);
   }
 
-  return { tables, relationships, functions };
+  return { tables, relationships, functions, routines };
 }
 
 export function createSchemaCache(config) {

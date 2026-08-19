@@ -62,7 +62,7 @@ When adding new database features, ensure they work with both modes. Do not add 
 6. **REST API Gateway, not HTTP API** — required for REQUEST-type Lambda authorizer with header caching.
 7. **`@supabase/supabase-js` compatibility is a hard requirement** — the REST and auth APIs must remain wire-compatible with Supabase client libraries. Test against supabase-js before breaking response formats.
 8. **Auth providers are swappable** — better-auth is the default (`AUTH_PROVIDER=better-auth`), stores users in the `better_auth` schema of the same PostgreSQL database, signs asymmetric JWTs via EdDSA, and has no AWS dependency. Amazon Cognito is available as an opt-in (`AUTH_PROVIDER=cognito`) for deployments already standardized on a Cognito user pool. The provider interface in `src/auth/providers/interface.mjs` defines the contract; `issuesOwnAccessToken` is the dispatch flag the handler uses — when true the provider returns fully-baked tokens, when false the handler mints HS256. Future providers (Auth0, etc.) must implement the same interface.
-9. **Schema introspection targets the `public` schema only** — this is intentional and matches PostgREST defaults.
+9. **`public` is the only introspected schema by default** — matching PostgREST's default. The exposed set is configurable with `db-schemas` (`PGREST_DB_SCHEMAS` / `createPgrest({ dbSchemas })`): each exposed schema gets its own cache, and a request selects one with `Accept-Profile`/`Content-Profile`. Do not hardcode `public` in new introspection SQL — take the schema as a bind parameter.
 10. **OpenAPI spec is auto-generated** — never hand-write endpoint definitions. The spec comes from live schema introspection.
 
 ## Authorizer Contract

@@ -44,6 +44,58 @@ your `.gitignore` too.
 | `POLICIES_PATH` | Cedar policy source. Accepts a filesystem path (`./policies`), `file:///absolute/path`, or `s3://<bucket>/<prefix>/`. See below. |
 | `PGREST_RELATIONSHIPS_PATH` | Path to a declared-relationship manifest. Adds foreign keys the catalog cannot report, so resource embedding works on databases that reject `FOREIGN KEY`. See below. |
 | `PGREST_DEFAULT_TS_CONFIG` | Text search configuration for `fts`/`plfts`/`phfts` filters that name none. See below. |
+| `PGREST_DB_SCHEMAS`, `PGREST_DB_EXTRA_SEARCH_PATH`, `PGREST_DB_MAX_ROWS`, `PGREST_DB_PRE_REQUEST`, `PGREST_DB_AGGREGATES_ENABLED`, `PGREST_DB_PLAN_ENABLED`, `PGREST_DB_BULK_MUTATION_GUARD`, `PGREST_SERVER_CORS_ALLOWED_ORIGINS`, `PGREST_JWT_*` | PostgREST engine options. See below. |
+
+## PostgREST engine options
+
+These options carry upstream PostgREST's names, so a `postgrest.conf` can be
+translated one line at a time: `db-schemas` becomes `PGREST_DB_SCHEMAS`,
+`db-max-rows` becomes `PGREST_DB_MAX_ROWS`, and so on. Every one is also a
+`createPgrest({ ... })` key. Each default is the behaviour the engine had
+before the option existed, which is upstream's default except where noted.
+
+| Env var | PostgREST option | Default | Purpose |
+|---|---|---|---|
+| `PGREST_DB_SCHEMAS` | `db-schemas` | `public` | Comma-separated list of exposed schemas. The first is the default; a request selects another with `Accept-Profile` (reads) or `Content-Profile` (writes). |
+| `PGREST_DB_EXTRA_SEARCH_PATH` | `db-extra-search-path` | `public` | Extra schemas appended to each request's `search_path`, for extensions and helper functions that live outside the exposed schema. |
+| `PGREST_DB_MAX_ROWS` | `db-max-rows` | unset | Cap on rows returned per resource, top level and embeds alike. A smaller client `limit` still wins. |
+| `PGREST_DB_PRE_REQUEST` | `db-pre-request` | unset | Function run as `SELECT <fn>()` at the start of every request, in the request's transaction. A bare or schema-qualified name; anything else is rejected at boot. |
+| `PGREST_DB_AGGREGATES_ENABLED` | `db-aggregates-enabled` | `true` | Set to `false` to refuse `select=col.sum()` and friends with `PGRST123`. Upstream defaults this off; this engine has always served aggregates, so the default stays `true` here. |
+| `PGREST_DB_PLAN_ENABLED` | `db-plan-enabled` | `false` | Allow `Accept: application/vnd.pgrst.plan`. Off by default, like upstream: the plan exposes the generated SQL. |
+| `PGREST_DB_BULK_MUTATION_GUARD` | — (upstream uses the `pg_safeupdate` extension) | `on` | What a `PATCH`/`DELETE` with no filter does. `on` refuses it; `off` runs it, which is upstream's behaviour with no extension loaded; `safeupdate` refuses it with `pg_safeupdate`'s wire error (400, SQLSTATE `21000`, `UPDATE requires a WHERE clause`). |
+| `PGREST_SERVER_CORS_ALLOWED_ORIGINS` | `server-cors-allowed-origins` | unset (`*`, no credentials) | Comma-separated origin allow-list. When set, a request whose `Origin` is on the list gets that origin echoed back plus `Access-Control-Allow-Credentials: true`; one that is not gets no CORS headers. |
+
+### Schema selection
+
+With one exposed schema, nothing changes: no `Content-Profile` is echoed and a
+profile header naming any other schema is a `406` with code `PGRST106`
+(`Invalid schema: <name>`, hinting the exposed set). With more than one, the
+engine echoes `Content-Profile` on every response — upstream's behaviour —
+because the client can no longer assume which schema answered.
+
+Each exposed schema gets its own schema cache, introspected independently. A
+declared-relationship manifest (`PGREST_RELATIONSHIPS_PATH`) is filtered per
+schema: an entry is visible to a schema only when both of its ends live there.
+
+### In-engine JWT verification
+
+The normal deployment verifies tokens in the API Gateway Lambda authorizer,
+which hands the engine a role. Set `PGREST_JWT_SECRET` and the REST engine
+verifies the bearer token itself and takes the role from the claims — what a
+standalone (non-API-Gateway) deployment needs.
+
+| Env var | PostgREST option | Default | Purpose |
+|---|---|---|---|
+| `PGREST_JWT_SECRET` | `jwt-secret` | unset | HMAC secret, or a JSON JWK / JWK Set for asymmetric verification (`RS256`/`384`/`512`). Setting it turns in-engine verification on. |
+| `PGREST_JWT_SECRET_IS_BASE64` | `jwt-secret-is-base64` | `false` | Treat the secret as base64-encoded bytes. |
+| `PGREST_JWT_AUD` | `jwt-aud` | unset | Required audience. A token with no `aud` claim, or a null one, is still accepted; any other value must contain this one, or the request is `401` `PGRST303`. |
+| `PGREST_DB_ANON_ROLE` | `db-anon-role` | `anon` | Role a request with no token runs as. Set it empty to disable anonymous access (`401` `PGRST302` with `WWW-Authenticate: Bearer`). |
+| `PGREST_JWT_VERIFY` | — | on when a secret is set | Force in-engine verification on or off independently of the secret. |
+
+Error codes follow upstream `Error.hs`: `PGRST300` (`500`) when the server has
+no secret, `PGRST301` (`401`) when a token fails to decode or verify,
+`PGRST302` (`401`) when anonymous access is disabled, `PGRST303` (`401`) for a
+rejected claim.
 
 ## Text search configuration
 

@@ -792,7 +792,12 @@ describe('handler integration', () => {
       };
     }
 
-    it('PG error through handler uses safe message', async () => {
+    // The handler forwards the server's own code/message/detail/hint, which is
+    // what upstream does (PostgREST.Error, `instance ToJSON PgError`) and what
+    // its test suite asserts. V-09's generic wording is still implemented in
+    // errors.mjs behind `mapPgError(err, { sanitize: true })`; it is no longer
+    // the default because it is not wire-compatible.
+    it('PG error through handler forwards the server message', async () => {
       const errCtx = createTestContext(createPgErrorPool());
       const errHandler = createRestHandler(errCtx).handler;
 
@@ -809,16 +814,14 @@ describe('handler integration', () => {
         'statusCode should be 409');
       assert.equal(body.code, '23505',
         'code should be 23505');
-      assert.equal(body.message, 'Uniqueness violation.',
-        'message should be the safe text');
-      assert.equal(body.details, null,
-        'details should be null');
+      assert.equal(body.message,
+        'duplicate key value violates unique constraint "users_email_key"',
+        'message should be the server message');
+      assert.equal(body.details,
+        'Key (email)=(alice@example.com) already exists.',
+        'details should be the server detail');
       assert.equal(body.hint, null,
-        'hint should be null');
-      assert.ok(!body.message.includes('duplicate'),
-        'message must not contain "duplicate"');
-      assert.ok(!body.message.includes('email'),
-        'message must not contain "email"');
+        'hint should be null — the source error carries none');
     });
 
     it('PG error through handler with verbose ctx uses raw text', async () => {
@@ -916,7 +919,7 @@ describe('handler integration', () => {
       }
     });
 
-    it('PG error with hint sanitized in handler', async () => {
+    it('PG error with hint reaches the client', async () => {
       function createHintErrorPool() {
         const pgErr = new Error(
           'could not obtain lock on relation "accounts"',
@@ -951,10 +954,10 @@ describe('handler integration', () => {
       const res = await errHandler(event);
       const body = JSON.parse(res.body);
 
-      assert.equal(body.hint, null,
-        'hint should be null in sanitized mode');
-      assert.equal(body.details, null,
-        'details should be null in sanitized mode');
+      assert.equal(body.hint, 'See server log for query details.',
+        'hint should be the server hint');
+      assert.equal(body.details, 'Process 1234 waits for ...',
+        'details should be the server detail');
       assert.equal(body.code, '55P03',
         'code should be preserved');
     });

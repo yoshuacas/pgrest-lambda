@@ -3,20 +3,40 @@
 import { PostgRESTError } from './errors.mjs';
 import { hasColumn } from './schema-cache.mjs';
 
-// Defense-in-depth identifier guard. Every raw identifier that
-// reaches a template literal must pass through q(). The schema
-// cache still validates up-front; this catches any future code
-// path that forgets to.
+// Identifiers that are ASCII-simple. Used to decide *formatting* (a bare word
+// can be emitted unquoted as a JSON key, an alias label, or an ORDER BY term),
+// never to decide safety — see q().
 const IDENT = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
+/**
+ * Quote an identifier, upstream's `escapeIdent`
+ * (SchemaCache/Identifiers.hs:56-59): truncate at the first NUL, double every
+ * internal quote, wrap in quotes.
+ *
+ * This is the whole defence, and it is complete: a double-quoted PostgreSQL
+ * identifier ends at the first unescaped `"`, so doubling every quote makes it
+ * impossible for any input to terminate the identifier early — there is no
+ * remaining character with syntactic power inside the quotes. That matters
+ * because relation, column and function names are arbitrary identifiers
+ * upstream: a table can be called `Escap3e;` or `تست`, and rejecting those on
+ * an ASCII character class turned a legal request into an error
+ * (QuerySpec:1277, EmbedDisambiguationSpec:278, UnicodeSpec) without adding
+ * safety that the quoting does not already give.
+ *
+ * Every name that reaches here has additionally been matched against the
+ * schema cache by the router / column validators, so in practice it came out
+ * of pg_class in the first place.
+ */
 function q(name) {
-  if (typeof name !== 'string' || !IDENT.test(name)) {
+  if (typeof name !== 'string' || name === '') {
     throw new PostgRESTError(
       400, 'PGRST204',
       `'${name}' is not a valid identifier`,
     );
   }
-  return `"${name}"`;
+  const nul = name.indexOf('\u0000');
+  const trimmed = nul === -1 ? name : name.slice(0, nul);
+  return `"${trimmed.replaceAll('"', '""')}"`;
 }
 
 // Operator SQL, from upstream SqlFragment.hs `simpleOperator`,
@@ -82,12 +102,20 @@ export function _supportedOperators() {
   ]);
 }
 
+// Upstream's `ColumnNotFound` (Error.hs): PGRST204, 400, and this exact
+// sentence — five upstream cases assert it verbatim for `?columns=` naming a
+// column the schema cache does not have (InsertSpec.hs:466,845,901,
+// UpdateSpec.hs:348,724).
+function columnNotFound(table, column) {
+  return new PostgRESTError(
+    400, 'PGRST204',
+    `Could not find the '${column}' column of '${table}' in the schema cache`,
+  );
+}
+
 function validateCol(schema, table, column) {
   if (!hasColumn(schema, table, column)) {
-    throw new PostgRESTError(
-      400, 'PGRST204',
-      `Column '${column}' does not exist in '${table}'`,
-    );
+    throw columnNotFound(table, column);
   }
 }
 
@@ -258,6 +286,17 @@ function directedCandidates(schema, parentTable) {
   for (const r of schema.relationships || []) {
     const isSelf = r.fromTable === r.toTable;
 
+    // A computed relationship is a function of the parent row, so it is
+    // directed by construction: `computed_designers(videogames)` embeds
+    // designers into videogames and there is no reading of it the other way
+    // round (upstream `ComputedRelationship`).
+    if (r.computed) {
+      if (r.fromTable === parentTable) {
+        out.push({ ...r, isSelf, inverse: false });
+      }
+      continue;
+    }
+
     if (r.cardinality === 'many-to-many') {
       // Normalized so `fromTable` is always the parent side; the mirror
       // of an m2m is the same relationship read from the other end.
@@ -360,6 +399,10 @@ function resolveRelationship(schema, parentTable, embedName, hint) {
   const isView = (name) => Boolean(schema.tables?.[name]?.isView);
 
   const matches = (cand) => {
+    // A computed relationship is named by its function, never by the table
+    // it returns, and takes no hint.
+    if (cand.computed) return cand.function === embedName;
+
     const ft = foreignTableOf(cand);
     const cols = candidateColumns(cand);
     const single = cols.origin.length === 1;
@@ -403,8 +446,13 @@ function resolveRelationship(schema, parentTable, embedName, hint) {
       || (cols.foreign.length === 1 && cols.foreign[0] === hint);
   };
 
+  const candidates = directedCandidates(schema, parentTable).filter(matches);
+  // A computed relationship shadows a key-based one that answers to the same
+  // name: upstream unions the computed map over the detected one and lets the
+  // computed entries prevail (SchemaCache.hs `getOverrideRelationshipsMap`).
+  const computed = candidates.filter(c => c.computed);
   const found = sortCandidates(
-    directedCandidates(schema, parentTable).filter(matches));
+    computed.length > 0 ? computed : candidates);
 
   if (found.length === 1) return found[0];
   if (found.length === 0) {
@@ -494,267 +542,255 @@ function junctionFromClause(rel, ref) {
   return ref === table ? relation : `${relation} AS ${q(ref)}`;
 }
 
-function buildEmbedSubquery(
-    node, rel, parentTable, schema, values, authzFilters,
-    parentRef = parentTable, scope = [parentRef]
-) {
-  if (rel.cardinality === 'many-to-many') {
-    return buildManyToManySubquery(
-      node, rel, parentTable, schema, values, authzFilters,
-      parentRef, scope);
-  }
-  if (rel.inverse) {
-    // The foreign key sits on the child row. A one-to-one key means at
-    // most one such row, so it is returned as an object, not an array
-    // (PostgREST returns `null` when there is none).
-    return buildOneToManySubquery(
-      node, rel, parentTable, schema, values, authzFilters,
-      parentRef, scope, rel.cardinality === 'one-to-one');
-  }
-  return buildManyToOneSubquery(
-    node, rel, parentTable, schema, values, authzFilters,
-    parentRef, scope);
+// --- Embedding: relation bodies -------------------------------------------
+//
+// Upstream builds one SELECT per node of the read plan and stitches the
+// children in with LEFT JOIN LATERAL (QueryBuilder.hs `getJoin`). This engine
+// keeps a to-one/to-many embed as a correlated subquery in the select list —
+// the shape `json_build_object` wants anyway — and only reaches for a LATERAL
+// where the correlated form cannot work: a spread embed, whose members must
+// all be aggregated in the *same* pass over the child rows, or element N of
+// one array would not line up with element N of the next.
+
+// Aliases the builder invents. `pgrst_` is upstream's own reserved prefix for
+// generated aliases, so it cannot collide with a fixture column.
+function newBuildEnv() {
+  return { lateralSeq: 0 };
 }
 
-function buildManyToOneSubquery(
-    node, rel, parentTable, schema, values, authzFilters,
-    parentRef = parentTable, scope = [parentRef]
-) {
-  const childTable = rel.toTable;
-  const childRef = pickRef(childTable, scope);
-  const { pairs: childCols, groupTerms } = buildJsonBuildObject(
-    node.select, childTable, schema, values, authzFilters,
-    childRef, [...scope, childRef]);
-  const joinCond = rel.fromColumns.map((fc, i) =>
-    `${q(childRef)}.${q(rel.toColumns[i])} = `
-    + `${q(parentRef)}.${q(fc)}`
-  ).join(' AND ');
-
-  let where = joinCond;
-
-  if (node.filters?.length > 0) {
-    const childValidator = makeColumnValidator(schema, childTable);
-    const filterConds = buildFilterConditions(
-      node.filters, values, childValidator);
-    where += ' AND ' + filterConds.join(' AND ');
-  }
-
-  const childAuthz = authzFilters?.[childTable];
-  if (childAuthz?.conditions?.length > 0) {
-    const renumbered = renumberConditions(
-      childAuthz.conditions, values.length + 1);
-    where += ' AND ' + renumbered.join(' AND ');
-    values.push(...childAuthz.values);
-  }
-
-  return `(SELECT json_build_object(${childCols})`
-    + ` FROM ${fromClause(childTable, childRef)} WHERE ${where}`
-    + `${groupClause(groupTerms)})`;
+function nextLateralRef(env) {
+  env.lateralSeq += 1;
+  return `pgrst_spread_${env.lateralSeq}`;
 }
 
-function buildOneToManySubquery(
-    node, rel, parentTable, schema, values, authzFilters,
-    parentRef = parentTable, scope = [parentRef], single = false
-) {
-  const childTable = rel.fromTable;
-  const childRef = pickRef(childTable, scope);
-  const { pairs: childCols, groupTerms } = buildJsonBuildObject(
-    node.select, childTable, schema, values, authzFilters,
-    childRef, [...scope, childRef]);
-  const joinCond = rel.fromColumns.map((fc, i) =>
-    `${q(childRef)}.${q(fc)} = `
-    + `${q(parentRef)}.${q(rel.toColumns[i])}`
-  ).join(' AND ');
-
-  let where = joinCond;
-
-  if (node.filters?.length > 0) {
-    const childValidator = makeColumnValidator(schema, childTable);
-    const filterConds = buildFilterConditions(
-      node.filters, values, childValidator);
-    where += ' AND ' + filterConds.join(' AND ');
-  }
-
-  const childAuthz = authzFilters?.[childTable];
-  if (childAuthz?.conditions?.length > 0) {
-    const renumbered = renumberConditions(
-      childAuthz.conditions, values.length + 1);
-    where += ' AND ' + renumbered.join(' AND ');
-    values.push(...childAuthz.values);
-  }
-
-  if (single) {
-    return `(SELECT json_build_object(${childCols})`
-      + ` FROM ${fromClause(childTable, childRef)} WHERE ${where}`
-      + `${groupClause(groupTerms)})`;
-  }
-
-  // An aggregate inside the embed cannot sit under `json_agg` — that would
-  // nest one aggregate in another — so the grouped rows are built first and
-  // aggregated into the array from a derived table.
-  if (isAggregated(node.select)) {
-    return `COALESCE((SELECT json_agg(${q('pgrst_agg')})`
-      + ` FROM (SELECT json_build_object(${childCols})`
-      + ` AS ${q('pgrst_agg')} FROM ${fromClause(childTable, childRef)}`
-      + ` WHERE ${where}${groupClause(groupTerms)})`
-      + ` AS ${q('pgrst_grouped')}), '[]'::json)`;
-  }
-
-  return `COALESCE((SELECT json_agg(json_build_object(`
-    + `${childCols})) FROM ${fromClause(childTable, childRef)}`
-    + ` WHERE ${where}), '[]'::json)`;
+// The table on the far side of a resolved embed.
+function embedTargetTable(rel) {
+  if (rel.computed) return rel.toTable;
+  if (rel.cardinality === 'many-to-many') return rel.toTable;
+  return rel.inverse ? rel.fromTable : rel.toTable;
 }
 
-// Many-to-many: parent and child are joined through a junction table
-// whose primary key covers both foreign keys. The junction is reached
-// with EXISTS rather than a JOIN so the child stays the only relation in
-// the subquery's FROM — that keeps the unqualified column references
-// produced by filters unambiguous.
-function buildManyToManySubquery(
-    node, rel, parentTable, schema, values, authzFilters,
-    parentRef = parentTable, scope = [parentRef]
-) {
-  // resolveRelationship normalizes an m2m so the parent is the `from`
-  // side, whichever end the request came in on.
-  const parentCols = rel.fromColumns;
-  const junctionParentCols = rel.junctionFromColumns;
-  const childTable = rel.toTable;
-  const childCols = rel.toColumns;
-  const junctionChildCols = rel.junctionToColumns;
-  const junction = rel.junctionTable;
+// At most one child row: the embed is a json object, not an array
+// (upstream `relIsToOne`). A one-to-one key is to-one read from either end,
+// which is why the cardinality and not `inverse` decides it there.
+function embedIsToOne(rel) {
+  if (rel.computed) return Boolean(rel.toOne);
+  if (rel.cardinality === 'many-to-many') return false;
+  if (rel.cardinality === 'one-to-one') return true;
+  return !rel.inverse;
+}
 
+// An embed with an empty select list contributes no key to the response, and
+// neither does one whose whole subtree is empty (upstream `rsEmptyEmbed`). It
+// exists only so `?<embed>=is.null` and `!inner` have something to filter on.
+function isEmptyEmbed(node) {
+  return node.select.every(
+    n => n.type === 'embed' && isEmptyEmbed(n));
+}
+
+/**
+ * The child relation of an embed: what the subquery reads from and the
+ * conditions that correlate it with the parent row.
+ *
+ * A computed relationship needs no correlation condition — the parent row is
+ * the function's argument (upstream `fromF`, which casts the alias back to
+ * the table type so an overloaded function still resolves).
+ */
+function embedChild(rel, parentRef, scope) {
+  const childTable = embedTargetTable(rel);
   const childRef = pickRef(childTable, scope);
   const childScope = [...scope, childRef];
-  const junctionRef = pickRef(junction, childScope);
+  const conds = [];
+  let from;
 
-  const { pairs: childJson, groupTerms } = buildJsonBuildObject(
-    node.select, childTable, schema, values, authzFilters,
-    childRef, childScope);
-
-  const linkConds = [
-    ...junctionChildCols.map((jc, i) =>
-      `${q(junctionRef)}.${q(jc)} = ${q(childRef)}.${q(childCols[i])}`),
-    ...junctionParentCols.map((jc, i) =>
-      `${q(junctionRef)}.${q(jc)} = ${q(parentRef)}.${q(parentCols[i])}`),
-  ].join(' AND ');
-
-  let where = `EXISTS (SELECT 1 FROM `
-    + `${junctionFromClause(rel, junctionRef)}`
-    + ` WHERE ${linkConds})`;
-
-  if (node.filters?.length > 0) {
-    const childValidator = makeColumnValidator(schema, childTable);
-    const filterConds = buildFilterConditions(
-      node.filters, values, childValidator);
-    where += ' AND ' + filterConds.join(' AND ');
+  if (rel.computed) {
+    from = `${q(rel.function)}(${q(parentRef)}::${q(rel.fromTable)})`
+      + ` AS ${q(childRef)}`;
+  } else if (rel.cardinality === 'many-to-many') {
+    const junctionRef = pickRef(rel.junctionTable, childScope);
+    childScope.push(junctionRef);
+    from = fromClause(childTable, childRef);
+    const linkConds = [
+      ...rel.junctionToColumns.map((jc, i) =>
+        `${q(junctionRef)}.${q(jc)} = `
+        + `${q(childRef)}.${q(rel.toColumns[i])}`),
+      ...rel.junctionFromColumns.map((jc, i) =>
+        `${q(junctionRef)}.${q(jc)} = `
+        + `${q(parentRef)}.${q(rel.fromColumns[i])}`),
+    ].join(' AND ');
+    conds.push(`EXISTS (SELECT 1 FROM `
+      + `${junctionFromClause(rel, junctionRef)} WHERE ${linkConds})`);
+  } else if (rel.inverse) {
+    // The foreign key sits on the child row.
+    from = fromClause(childTable, childRef);
+    conds.push(rel.fromColumns.map((fc, i) =>
+      `${q(childRef)}.${q(fc)} = `
+      + `${q(parentRef)}.${q(rel.toColumns[i])}`
+    ).join(' AND '));
+  } else {
+    // The foreign key sits on the parent row.
+    from = fromClause(childTable, childRef);
+    conds.push(rel.fromColumns.map((fc, i) =>
+      `${q(childRef)}.${q(rel.toColumns[i])} = `
+      + `${q(parentRef)}.${q(fc)}`
+    ).join(' AND '));
   }
 
-  const childAuthz = authzFilters?.[childTable];
+  return { childTable, childRef, childScope, from, conds };
+}
+
+// The embed's own `?<embed>.<col>=` filters plus whatever the authorization
+// layer contributes for the child table.
+function addNodeFilters(
+    conds, node, child, schema, values, env, authzFilters) {
+  if (node.filters?.length > 0) {
+    const childValidator = makeColumnValidator(schema, child.childTable);
+    conds.push(...buildFilterConditions(
+      node.filters, values, childValidator,
+      filterCtx(schema, child.childTable, child.childRef,
+        child.childScope, env, authzFilters)));
+  }
+  const childAuthz = authzFilters?.[child.childTable];
   if (childAuthz?.conditions?.length > 0) {
-    const renumbered = renumberConditions(
-      childAuthz.conditions, values.length + 1);
-    where += ' AND ' + renumbered.join(' AND ');
+    conds.push(...renumberConditions(
+      childAuthz.conditions, values.length + 1));
     values.push(...childAuthz.values);
   }
-
-  if (isAggregated(node.select)) {
-    return `COALESCE((SELECT json_agg(${q('pgrst_agg')})`
-      + ` FROM (SELECT json_build_object(${childJson})`
-      + ` AS ${q('pgrst_agg')} FROM ${fromClause(childTable, childRef)}`
-      + ` WHERE ${where}${groupClause(groupTerms)})`
-      + ` AS ${q('pgrst_grouped')}), '[]'::json)`;
-  }
-
-  return `COALESCE((SELECT json_agg(json_build_object(`
-    + `${childJson})) FROM ${fromClause(childTable, childRef)}`
-    + ` WHERE ${where}), '[]'::json)`;
 }
 
-// `!inner` on an embed turns it into a filter on the parent row: the
-// parent only comes back when a matching child exists.
-function buildInnerJoinCondition(
-    node, rel, table, schema, values, scope = [table]
-) {
-  if (rel.cardinality === 'many-to-many') {
-    const parentCols = rel.fromColumns;
-    const junctionParentCols = rel.junctionFromColumns;
-    const childTable = rel.toTable;
-    const childCols = rel.toColumns;
-    const junctionChildCols = rel.junctionToColumns;
-    const junction = rel.junctionTable;
-
-    const childRef = pickRef(childTable, scope);
-    const junctionRef = pickRef(junction, [...scope, childRef]);
-
-    const linkConds = [
-      ...junctionChildCols.map((jc, i) =>
-        `${q(junctionRef)}.${q(jc)} = `
-        + `${q(childRef)}.${q(childCols[i])}`),
-      ...junctionParentCols.map((jc, i) =>
-        `${q(junctionRef)}.${q(jc)} = ${q(table)}.${q(parentCols[i])}`),
-    ].join(' AND ');
-
-    let where = `EXISTS (SELECT 1 FROM `
-      + `${junctionFromClause(rel, junctionRef)}`
-      + ` WHERE ${linkConds})`;
-    if (node.filters?.length > 0) {
-      const childValidator = makeColumnValidator(schema, childTable);
-      where += ' AND ' + buildFilterConditions(
-        node.filters, values, childValidator).join(' AND ');
-    }
-    return `EXISTS (SELECT 1 FROM `
-      + `${fromClause(childTable, childRef)} WHERE ${where})`;
-  }
-
-  if (!rel.inverse) {
-    // many-to-one (or the key side of a one-to-one): the FK is on the
-    // parent row.
-    if (node.filters?.length > 0) {
-      const childTable = rel.toTable;
-      const childRef = pickRef(childTable, scope);
-      const existsCond = rel.fromColumns.map((fc, i) =>
-        `${q(childRef)}.${q(rel.toColumns[i])} = `
-        + `${q(table)}.${q(fc)}`
-      ).join(' AND ');
-      const childValidator = makeColumnValidator(schema, childTable);
-      const filterConds = buildFilterConditions(
-        node.filters, values, childValidator);
-      return `EXISTS (SELECT 1 FROM `
-        + `${fromClause(childTable, childRef)}`
-        + ` WHERE ${existsCond}`
-        + ` AND ${filterConds.join(' AND ')})`;
-    }
-    return rel.fromColumns.map(fc =>
-      `${q(table)}.${q(fc)} IS NOT NULL`
-    ).join(' AND ');
-  }
-
-  // one-to-many (or the referenced side of a one-to-one): the FK is on
-  // the child row.
-  const childTable = rel.fromTable;
-  const childRef = pickRef(childTable, scope);
-  const existsCond = rel.fromColumns.map((fc, i) =>
-    `${q(childRef)}.${q(fc)} = `
-    + `${q(table)}.${q(rel.toColumns[i])}`
-  ).join(' AND ');
-  let existsWhere = existsCond;
-  if (node.filters?.length > 0) {
-    const childValidator = makeColumnValidator(schema, childTable);
-    const filterConds = buildFilterConditions(
-      node.filters, values, childValidator);
-    existsWhere += ' AND ' + filterConds.join(' AND ');
-  }
-  return `EXISTS (SELECT 1 FROM `
-    + `${fromClause(childTable, childRef)}`
-    + ` WHERE ${existsWhere})`;
+// Context a filter list needs when one of its leaves is an embed-existence
+// test rather than a column comparison.
+function filterCtx(schema, table, ref, scope, env, authzFilters) {
+  return { schema, table, ref, scope, env, authzFilters };
 }
 
-function buildJsonBuildObject(
-    selectNodes, table, schema, values, authzFilters,
-    ref = table, scope = [ref]
-) {
-  const pairs = [];
+/**
+ * "A matching child row exists."
+ *
+ * `!inner` and `?<embed>=not.is.null` are the same question asked twice.
+ * Upstream answers the first with an INNER JOIN LATERAL and the second with
+ * `<join alias> IS DISTINCT FROM NULL` on a LEFT one; against a correlated
+ * subquery both are an EXISTS over the child relation, carrying the embed's
+ * own filters and the inner joins below it.
+ */
+function buildEmbedExists(
+    node, rel, parentRef, schema, values, env, authzFilters, scope) {
+  const child = embedChild(rel, parentRef, scope);
+  const conds = [...child.conds];
+
+  for (const n of node.select) {
+    if (n.type === 'embed' && n.inner) {
+      const nestedRel = resolveRelationship(
+        schema, child.childTable, n.name, n.hint);
+      conds.push(buildEmbedExists(
+        n, nestedRel, child.childRef, schema, values, env,
+        authzFilters, child.childScope));
+    }
+  }
+
+  addNodeFilters(conds, node, child, schema, values, env, authzFilters);
+
+  return `EXISTS (SELECT 1 FROM ${child.from}`
+    + `${whereClause(conds)})`;
+}
+
+// Order terms of an embed, as both an ORDER BY clause for the child query and
+// the individual expressions a spread's `json_agg(... ORDER BY ...)` needs.
+/**
+ * `?order=<embed>(<column>)` orders the parent rows by a column of an embedded
+ * to-one resource (upstream `pOrderRelationTerm` / `OrderRelationTerm`).
+ *
+ * Upstream orders by the joined LATERAL's column. The correlated equivalent is
+ * the embed's own subquery selecting that one column — with the embed's
+ * filters applied, so the ordering agrees with what the embed returns.
+ */
+function relatedOrderExpr(
+    o, schema, table, ref, selectNodes, values, env, authzFilters, scope) {
+  const node = (selectNodes || []).find(n =>
+    n.type === 'embed' && (n.alias || n.name) === o.relation);
+  if (!node) {
+    throw new PostgRESTError(400, 'PGRST108',
+      `'${o.relation}' is not an embedded resource in this request`,
+      null,
+      `Verify that '${o.relation}' is included in the 'select' `
+      + `query parameter.`);
+  }
+  const rel = resolveRelationship(schema, table, node.name, node.hint);
+  if (!embedIsToOne(rel)) {
+    throw new PostgRESTError(400, 'PGRST118',
+      `A related order on '${o.relation}' is not possible`,
+      `'${table}' and '${o.relation}' do not form a many-to-one or `
+      + `one-to-one relationship`);
+  }
+  const child = embedChild(rel, ref, scope);
+  const validator = makeColumnValidator(schema, child.childTable);
+  validator(o.column);
+  const col = `${q(child.childRef)}.${q(o.column)}`;
+  const expr = o.jsonPath?.length > 0
+    ? jsonPathExpr(col, o.jsonPath, values, validator.typeOf(o.column))
+    : col;
+  const conds = [...child.conds];
+  addNodeFilters(conds, node, child, schema, values, env, authzFilters);
+  return `(SELECT ${expr} FROM ${child.from}${whereClause(conds)})`;
+}
+
+/**
+ * ORDER BY of one relation, as a clause and as the individual expressions a
+ * spread's `json_agg(... ORDER BY ...)` needs. `ref` qualifies every column,
+ * which upstream always does (`orderF` renders each term through
+ * `pgFmtField`): a bare name in ORDER BY binds to an *output* column first, so
+ * `?select=factory:name,...processes(name)&order=name` would otherwise sort by
+ * the spread json array instead of by `factories.name`.
+ */
+function relationOrder(
+    order, schema, table, ref, selectNodes, values, env, authzFilters, scope) {
+  if (!order || order.length === 0) return { terms: [], sql: '' };
+  const validator = makeColumnValidator(schema, table);
+  const terms = order.map((o) => {
+    let expr;
+    if (o.relation) {
+      expr = relatedOrderExpr(
+        o, schema, table, ref, selectNodes, values, env, authzFilters, scope);
+    } else {
+      validator(o.column);
+      const col = `${q(ref)}.${q(o.column)}`;
+      expr = o.jsonPath?.length > 0
+        ? jsonPathExpr(col, o.jsonPath, values, validator.typeOf(o.column))
+        : col;
+    }
+    return {
+      expr,
+      dir: o.direction.toUpperCase(),
+      nulls: o.nulls
+        ? ` NULLS ${o.nulls === 'nullsfirst' ? 'FIRST' : 'LAST'}`
+        : '',
+    };
+  });
+  const sql = ` ORDER BY ${terms
+    .map(t => `${t.expr} ${t.dir}${t.nulls}`).join(', ')}`;
+  return { terms, sql };
+}
+
+function jsonPairs(fields, values) {
+  return fields
+    .map(f => `${jsonKeyExpr(f.key, values)}, ${f.expr}`)
+    .join(', ');
+}
+
+/**
+ * The SELECT-list contribution of one relation.
+ *
+ * `ref` is the relation's name in the enclosing FROM. Returns the output
+ * fields in order, the GROUP BY terms an aggregate select needs, the LATERAL
+ * joins spread embeds want appended to the FROM, and the EXISTS conditions
+ * `!inner` embeds add to the WHERE.
+ */
+function buildRelationSelect(
+    selectNodes, table, ref, schema, values, env, authzFilters, scope) {
+  const fields = [];
   const groupTerms = [];
+  const laterals = [];
+  const innerConds = [];
   const aggregated = isAggregated(selectNodes);
   const typeOf = (col) =>
     schema.tables[table]?.columns?.[col]?.type || null;
@@ -762,35 +798,185 @@ function buildJsonBuildObject(
   for (const node of selectNodes) {
     if (node.type === 'column') {
       if (node.name === '*' && !node.agg) {
-        for (const c of Object.keys(
-            schema.tables[table].columns)) {
-          pairs.push(`'${c}', ${q(ref)}.${q(c)}`);
-          if (aggregated) groupTerms.push(`${q(ref)}.${q(c)}`);
+        for (const c of Object.keys(schema.tables[table].columns)) {
+          const expr = `${q(ref)}.${q(c)}`;
+          fields.push({ key: c, expr, explicitAlias: false });
+          if (aggregated) groupTerms.push(expr);
         }
-      } else {
-        const fnCount = functionalCountExpr(node, schema, table, ref);
-        const base = node.name === '*'
-          ? '*'
-          : (fnCount || `${q(ref)}.${q(node.name)}`);
-        if (node.name !== '*' && !fnCount) {
-          validateCol(schema, table, node.name);
-        }
-        const jsonKey = node.alias || node.name;
-        const colRef = selectItemExpr(node, base, values, typeOf);
-        pairs.push(`${jsonKeyExpr(jsonKey, values)}, ${colRef}`);
-        if (aggregated && !node.agg) groupTerms.push(colRef);
+        continue;
       }
-    } else if (node.type === 'embed') {
-      const rel = resolveRelationship(
-        schema, table, node.name, node.hint);
-      const alias = node.alias || node.name;
-      const subquery = buildEmbedSubquery(
-        node, rel, table, schema, values, authzFilters,
-        ref, scope);
-      pairs.push(`'${alias}', ${subquery}`);
+      const fnCount = functionalCountExpr(node, schema, table, ref);
+      const base = node.name === '*'
+        ? '*'
+        : (fnCount || `${q(ref)}.${q(node.name)}`);
+      if (node.name !== '*' && !fnCount) {
+        validateCol(schema, table, node.name);
+      }
+      const expr = selectItemExpr(node, base, values, typeOf);
+      fields.push({
+        key: node.alias || node.name,
+        expr,
+        explicitAlias: Boolean(node.alias)
+          || Boolean(node.cast && node.name !== '*'),
+      });
+      if (aggregated && !node.agg) groupTerms.push(expr);
+      continue;
     }
+
+    // Resource embed.
+    const rel = resolveRelationship(schema, table, node.name, node.hint);
+    if (node.inner) {
+      innerConds.push(buildEmbedExists(
+        node, rel, ref, schema, values, env, authzFilters, scope));
+    }
+    if (isEmptyEmbed(node)) continue;
+
+    if (node.spread) {
+      const spread = buildSpreadLateral(
+        node, rel, ref, schema, values, env, authzFilters, scope);
+      laterals.push(spread.lateral);
+      for (const f of spread.fields) {
+        fields.push({ key: f.key, expr: f.expr, explicitAlias: true });
+        if (aggregated) groupTerms.push(f.expr);
+      }
+      continue;
+    }
+
+    fields.push({
+      key: node.alias || node.name,
+      expr: buildEmbedSubquery(
+        node, rel, ref, schema, values, env, authzFilters, scope),
+      explicitAlias: true,
+    });
   }
-  return { pairs: pairs.join(', '), groupTerms };
+
+  return { fields, groupTerms, laterals, innerConds };
+}
+
+/**
+ * A to-one or to-many embed, as a correlated subquery yielding one json
+ * value: an object for a to-one relationship (`null` when there is no match,
+ * which is what a scalar subquery over no rows returns) and an array for a
+ * to-many one (`[]` when there is none).
+ */
+function buildEmbedSubquery(
+    node, rel, parentRef, schema, values, env, authzFilters, scope) {
+  const child = embedChild(rel, parentRef, scope);
+  const inner = buildRelationSelect(
+    node.select, child.childTable, child.childRef, schema, values, env,
+    authzFilters, child.childScope);
+
+  const conds = [...child.conds, ...inner.innerConds];
+  addNodeFilters(conds, node, child, schema, values, env, authzFilters);
+
+  const pairs = jsonPairs(inner.fields, values);
+  const from = `${child.from}${inner.laterals.join('')}`;
+  const order = relationOrder(
+    node.order, schema, child.childTable, child.childRef, node.select,
+    values, env, authzFilters, child.childScope);
+  const group = groupClause(inner.groupTerms);
+  const range = limitOffsetClause(node.limit, node.offset, values);
+
+  if (embedIsToOne(rel)) {
+    // `ROWS 1` is a promise the function makes, not one the database enforces.
+    // Upstream joins a LATERAL and reads its first row; a scalar subquery
+    // raises 21000 on the second, so the promise is enforced here instead.
+    const one = rel.computed && node.limit == null ? ' LIMIT 1' : '';
+    return `(SELECT json_build_object(${pairs})`
+      + ` FROM ${from}${whereClause(conds)}${group}${order.sql}`
+      + `${range}${one})`;
+  }
+
+  // An aggregate inside the embed cannot sit under `json_agg` — that would
+  // nest one aggregate in another — so the grouped rows are built first and
+  // aggregated into the array from a derived table. An ordered or limited
+  // embed needs the same shape, because `json_agg` has to be told the order
+  // explicitly rather than inherit it from a subquery.
+  if (isAggregated(node.select) || group || order.terms.length > 0 || range) {
+    const ordCols = order.terms.map((t, i) =>
+      `${t.expr} AS ${q(`pgrst_o${i + 1}`)}`);
+    const aggOrder = order.terms.length > 0
+      ? ` ORDER BY ${order.terms.map((t, i) =>
+        `${q(`pgrst_o${i + 1}`)} ${t.dir}${t.nulls}`).join(', ')}`
+      : '';
+    return `COALESCE((SELECT json_agg(`
+      + `${q('pgrst_agg')}${aggOrder})`
+      + ` FROM (SELECT json_build_object(${pairs})`
+      + ` AS ${q('pgrst_agg')}`
+      + `${ordCols.length > 0 ? `, ${ordCols.join(', ')}` : ''}`
+      + ` FROM ${from}${whereClause(conds)}${group}${order.sql}${range})`
+      + ` AS ${q('pgrst_grouped')}), '[]'::json)`;
+  }
+
+  return `COALESCE((SELECT json_agg(json_build_object(${pairs}))`
+    + ` FROM ${from}${whereClause(conds)}), '[]'::json)`;
+}
+
+/**
+ * A spread embed merges the embedded relation's members into the parent
+ * object instead of nesting them under a key of its own (upstream `Spread`
+ * and `pgFmtSpreadSelectItem`).
+ *
+ * On a to-one relationship each member is the child row's value. On a to-many
+ * one each member becomes a json array, and every one of those arrays has to
+ * come from the same pass over the child rows — which is why this is the one
+ * place the engine joins a LATERAL instead of correlating a subquery.
+ */
+function buildSpreadLateral(
+    node, rel, parentRef, schema, values, env, authzFilters, scope) {
+  const child = embedChild(rel, parentRef, scope);
+  const inner = buildRelationSelect(
+    node.select, child.childTable, child.childRef, schema, values, env,
+    authzFilters, child.childScope);
+
+  const conds = [...child.conds, ...inner.innerConds];
+  addNodeFilters(conds, node, child, schema, values, env, authzFilters);
+
+  const latRef = nextLateralRef(env);
+  scope.push(latRef);
+
+  const cols = inner.fields.map((f, i) => ({
+    key: f.key, expr: f.expr, col: `pgrst_s${i + 1}`,
+  }));
+  const order = relationOrder(
+    node.order, schema, child.childTable, child.childRef, node.select,
+    values, env, authzFilters, child.childScope);
+  const ordCols = order.terms.map((t, i) =>
+    `${t.expr} AS ${q(`pgrst_o${i + 1}`)}`);
+
+  const childQuery = `SELECT `
+    + [...cols.map(c => `${c.expr} AS ${q(c.col)}`), ...ordCols].join(', ')
+    + ` FROM ${child.from}${inner.laterals.join('')}`
+    + `${whereClause(conds)}${groupClause(inner.groupTerms)}`
+    + `${order.sql}`
+    + limitOffsetClause(node.limit, node.offset, values);
+
+  const fields = cols.map(c => ({
+    key: c.key, expr: `${q(latRef)}.${q(c.col)}`,
+  }));
+
+  if (embedIsToOne(rel)) {
+    return {
+      lateral: ` LEFT JOIN LATERAL (${childQuery})`
+        + ` AS ${q(latRef)} ON TRUE`,
+      fields,
+    };
+  }
+
+  const aggOrder = order.terms.length > 0
+    ? ` ORDER BY ${order.terms.map((t, i) =>
+      `${q('pgrst_src')}.${q(`pgrst_o${i + 1}`)} ${t.dir}${t.nulls}`)
+      .join(', ')}`
+    : '';
+  const aggQuery = `SELECT ${cols.map(c =>
+    `COALESCE(json_agg(${q('pgrst_src')}.${q(c.col)}${aggOrder}),`
+    + ` '[]'::json) AS ${q(c.col)}`).join(', ')}`
+    + ` FROM (${childQuery}) AS ${q('pgrst_src')}`;
+
+  return {
+    lateral: ` LEFT JOIN LATERAL (${aggQuery}) AS ${q(latRef)} ON TRUE`,
+    fields,
+  };
 }
 
 function renumberConditions(conditions, startParam) {
@@ -906,7 +1092,7 @@ function buildSingleCondition(f, values, columnValidator) {
 const MAX_NESTING_DEPTH = 10;
 
 function buildLogicalCondition(
-    group, values, columnValidator, depth = 0) {
+    group, values, columnValidator, ctx, depth = 0) {
   if (depth > MAX_NESTING_DEPTH) {
     throw new PostgRESTError(400, 'PGRST100',
       'Logical operator nesting exceeds maximum '
@@ -917,7 +1103,9 @@ function buildLogicalCondition(
   for (const cond of group.conditions) {
     if (cond.type === 'logicalGroup') {
       parts.push(buildLogicalCondition(
-        cond, values, columnValidator, depth + 1));
+        cond, values, columnValidator, ctx, depth + 1));
+    } else if (cond.type === 'embedNull') {
+      parts.push(buildEmbedNullCondition(cond, values, ctx));
     } else {
       parts.push(
         buildSingleCondition(cond, values, columnValidator));
@@ -932,12 +1120,36 @@ function buildLogicalCondition(
   return group.negate ? `NOT ${wrapped}` : wrapped;
 }
 
-function buildFilterConditions(filters, values, columnValidator) {
+/**
+ * `?<embed>=is.null` / `?<embed>=not.is.null` asks whether the embedded row
+ * exists at all, not whether a column of that name is null. Upstream rewrites
+ * it to `<join alias> IS [NOT] DISTINCT FROM NULL` against its LEFT JOIN
+ * LATERAL (Plan.hs `addNullEmbedFilters`, SqlFragment.hs
+ * `CoercibleFilterNullEmbed`); against a correlated subquery it is the same
+ * EXISTS the `!inner` form uses, negated for the `is.null` direction.
+ */
+function buildEmbedNullCondition(f, values, ctx) {
+  if (!ctx) {
+    throw new PostgRESTError(400, 'PGRST100',
+      `Cannot filter on the embedded resource `
+      + `'${f.embed.alias || f.embed.name}' here`);
+  }
+  const rel = resolveRelationship(
+    ctx.schema, ctx.table, f.embed.name, f.embed.hint);
+  const exists = buildEmbedExists(
+    f.embed, rel, ctx.ref, ctx.schema, values, ctx.env,
+    ctx.authzFilters, ctx.scope);
+  return f.exists ? exists : `NOT ${exists}`;
+}
+
+function buildFilterConditions(filters, values, columnValidator, ctx) {
   const conditions = [];
   for (const f of filters) {
     if (f.type === 'logicalGroup') {
       conditions.push(
-        buildLogicalCondition(f, values, columnValidator));
+        buildLogicalCondition(f, values, columnValidator, ctx));
+    } else if (f.type === 'embedNull') {
+      conditions.push(buildEmbedNullCondition(f, values, ctx));
     } else {
       conditions.push(
         buildSingleCondition(f, values, columnValidator));
@@ -952,15 +1164,19 @@ function whereClause(conditions) {
     : '';
 }
 
+// ORDER BY of a set-returning function call. A table read goes through
+// `relationOrder` instead, which qualifies its columns and can order by an
+// embedded resource; neither applies to a function's result set.
 function orderClause(order, columnValidator, values) {
   if (!order || order.length === 0) return '';
   const parts = order.map((o) => {
     columnValidator(o.column);
+    const col = q(o.column);
     const field = o.jsonPath?.length > 0
       ? jsonPathExpr(
-        q(o.column), o.jsonPath, values,
+        col, o.jsonPath, values,
         columnValidator.typeOf?.(o.column) || null)
-      : q(o.column);
+      : col;
     let sql = `${field} ${o.direction.toUpperCase()}`;
     if (o.nulls) {
       sql += ` NULLS ${o.nulls === 'nullsfirst' ? 'FIRST' : 'LAST'}`;
@@ -984,101 +1200,165 @@ function limitOffsetClause(limit, offset, values) {
 }
 
 export function buildSelect(table, parsed, schema, authzConditions) {
-  const values = [];
+  return buildSelectFrom(table, parsed, schema, authzConditions, {});
+}
+
+/**
+ * The SELECT list of a read with no embeds: `?select=pId:id::text,name` and
+ * friends, rendered against one relation.
+ *
+ * Factored out of `buildSelectFrom` because a mutation needs the same
+ * projection. Upstream applies it to the mutation's `pgrst_source` CTE
+ * (QueryBuilder.hs wraps every mutation in `WITH pgrst_source AS (... RETURNING
+ * ...) SELECT <the select list> FROM pgrst_source`), which is why
+ * `POST /projects?select=pId:id::text` answers `[{"pId":"7"}]` and not the
+ * whole row.
+ *
+ * Column references are unqualified, so the same string works over a table and
+ * over that CTE.
+ */
+function flatSelectList(selectNodes, schema, table, values, opts = {}) {
+  const columnValidator = opts.columnValidator
+    || makeColumnValidator(schema, table);
+  const allColumns = Object.keys(schema.tables[table].columns);
+  const aggregated = opts.aggregated === true;
+  const groupTerms = opts.groupTerms || [];
+
+  const cols = selectNodes.filter(
+    n => typeof n === 'string' || n.type === 'column');
+  const names = cols.map(n => typeof n === 'string' ? n : n.name);
+  const plainStar = names.length === 1 && names[0] === '*'
+    && !(typeof cols[0] === 'object' && cols[0].agg);
+  if (plainStar) {
+    return allColumns.map(c => q(c)).join(', ');
+  }
+
+  const expressions = [];
+  for (const n of cols) {
+    const node = typeof n === 'string' ? { name: n } : n;
+    if (node.name === '*' && !node.agg) {
+      for (const c of allColumns) {
+        expressions.push(q(c));
+        if (aggregated) groupTerms.push(q(c));
+      }
+      continue;
+    }
+    const fnCount = functionalCountExpr(node, schema, table, table);
+    if (node.name !== '*' && !fnCount) columnValidator(node.name);
+    const base = node.name === '*'
+      ? '*'
+      : (fnCount || q(node.name));
+    const ref = selectItemExpr(
+      node, base, values, columnValidator.typeOf);
+    if (node.alias) {
+      expressions.push(`${ref} AS ${qAlias(node.alias)}`);
+    } else {
+      expressions.push(ref);
+    }
+    if (aggregated && !node.agg) groupTerms.push(ref);
+  }
+  return expressions.join(', ');
+}
+
+/**
+ * Is this select list one a mutation can project with `flatSelectList`?
+ *
+ * `?select=*` (or no select at all) is already what `RETURNING *` gives, and an
+ * embed needs the join columns the projection would drop — the handler re-reads
+ * those rows by primary key, so the primary key has to survive RETURNING.
+ * Aggregates over a mutation are left alone for the same reason.
+ */
+function mutationProjects(selectNodes) {
+  if (!Array.isArray(selectNodes) || selectNodes.length === 0) return false;
+  if (selectNodes.some(n => n.type === 'embed')) return false;
+  if (isAggregated(selectNodes)) return false;
+  const cols = selectNodes.filter(
+    n => typeof n === 'string' || n.type === 'column');
+  if (cols.length !== selectNodes.length) return false;
+  const names = cols.map(n => typeof n === 'string' ? n : n.name);
+  if (names.length === 1 && names[0] === '*'
+      && !(typeof cols[0] === 'object'
+        && (cols[0].alias || cols[0].cast || cols[0].jsonPath))) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Wrap a mutation so the response carries the requested columns, aliases and
+ * casts instead of the whole row.
+ *
+ * `WITH pgrst_source AS (<mutation> RETURNING *) SELECT <select list> FROM
+ * pgrst_source` — upstream's shape (QueryBuilder.hs `mutateRequestToQuery` +
+ * `sourceCTE`), minus the typed RETURNING list, which is unnecessary here
+ * because the outer SELECT does the narrowing.
+ */
+function wrapMutationProjection(sql, table, parsed, schema, values) {
+  if (!mutationProjects(parsed.select)) return sql;
+  const projection = flatSelectList(
+    parsed.select, schema, table, values);
+  return `WITH ${MUTATION_SOURCE_CTE} AS (${sql})`
+    + ` SELECT ${projection} FROM ${MUTATION_SOURCE_CTE}`;
+}
+
+const MUTATION_SOURCE_CTE = 'pgrst_source';
+
+/**
+ * `buildSelect` with the FROM clause supplied by the caller.
+ *
+ * The read plan (select list, filters, order, limit, embeds) is written against
+ * one alias — `table` — everywhere, so a function call aliased to the relation
+ * it returns takes exactly the same plan a table read takes. That is how
+ * `?select=`/`?order=`/embeds work on `/rpc/fn` (upstream wraps the call in
+ * `WITH pgrst_source AS (...)` and plans over it; here the call *is* the FROM).
+ *
+ * @param {object} opts
+ * @param {string} [opts.fromSql] FROM clause; defaults to the quoted table
+ * @param {any[]} [opts.values] bind values to append to (RPC pre-seeds the
+ *   function arguments, which must keep their $n positions)
+ */
+function buildSelectFrom(table, parsed, schema, authzConditions, opts = {}) {
+  const values = opts.values || [];
   const columnValidator = makeColumnValidator(schema, table);
   const allColumns = Object.keys(schema.tables[table].columns);
   const hasEmbeds = parsed.select.some(
     n => n.type === 'embed');
 
   let colList;
+  let lateralJoins = '';
   const innerJoinConds = [];
   const aggregated = isAggregated(parsed.select);
   const groupTerms = [];
+  const env = newBuildEnv();
 
   if (hasEmbeds) {
-    const expressions = [];
-    for (const node of parsed.select) {
-      if (node.type === 'column') {
-        if (node.name === '*' && !node.agg) {
-          for (const c of allColumns) {
-            expressions.push(`${q(table)}.${q(c)}`);
-            if (aggregated) groupTerms.push(`${q(table)}.${q(c)}`);
-          }
-        } else {
-          const fnCount = functionalCountExpr(node, schema, table, table);
-          const base = node.name === '*'
-            ? '*'
-            : (fnCount || `${q(table)}.${q(node.name)}`);
-          if (node.name !== '*' && !fnCount) {
-            validateCol(schema, table, node.name);
-          }
-          const ref = selectItemExpr(
-            node, base, values, columnValidator.typeOf);
-          const alias = node.alias
-            || (node.cast && node.name !== '*' ? node.name : null);
-          if (alias) {
-            expressions.push(`${ref} AS ${qAlias(alias)}`);
-          } else {
-            expressions.push(ref);
-          }
-          if (aggregated && !node.agg) groupTerms.push(ref);
-        }
-      } else if (node.type === 'embed') {
-        const rel = resolveRelationship(
-          schema, table, node.name, node.hint);
-        const alias = node.alias || node.name;
-        const subquery = buildEmbedSubquery(
-          node, rel, table, schema, values,
-          authzConditions?.embeds);
-        expressions.push(`${subquery} AS ${q(alias)}`);
-
-        if (node.inner) {
-          innerJoinConds.push(buildInnerJoinCondition(
-            node, rel, table, schema, values));
-        }
-      }
+    const rs = buildRelationSelect(
+      parsed.select, table, table, schema, values, env,
+      authzConditions?.embeds, [table]);
+    colList = rs.fields
+      .map(f => f.explicitAlias
+        ? `${f.expr} AS ${qAlias(f.key)}`
+        : f.expr)
+      .join(', ');
+    // `?select=clients()` selects nothing but the empty embed. Upstream's
+    // `defSelect` falls back to the row when a select list comes out empty,
+    // so that is what happens here rather than emitting `SELECT FROM`.
+    if (rs.fields.length === 0) {
+      colList = allColumns.map(c => `${q(table)}.${q(c)}`).join(', ');
     }
-    colList = expressions.join(', ');
+    lateralJoins = rs.laterals.join('');
+    innerJoinConds.push(...rs.innerConds);
+    groupTerms.push(...rs.groupTerms);
   } else {
-    const cols = parsed.select.filter(
-      n => typeof n === 'string' || n.type === 'column');
-    const names = cols.map(n => typeof n === 'string' ? n : n.name);
-    const plainStar = names.length === 1 && names[0] === '*'
-      && !(typeof cols[0] === 'object' && cols[0].agg);
-    if (plainStar) {
-      colList = allColumns
-        .map(c => q(c)).join(', ');
-    } else {
-      const expressions = [];
-      for (const n of cols) {
-        const node = typeof n === 'string' ? { name: n } : n;
-        if (node.name === '*' && !node.agg) {
-          for (const c of allColumns) {
-            expressions.push(q(c));
-            if (aggregated) groupTerms.push(q(c));
-          }
-          continue;
-        }
-        const fnCount = functionalCountExpr(node, schema, table, table);
-        if (node.name !== '*' && !fnCount) columnValidator(node.name);
-        const base = node.name === '*'
-          ? '*'
-          : (fnCount || q(node.name));
-        const ref = selectItemExpr(
-          node, base, values, columnValidator.typeOf);
-        if (node.alias) {
-          expressions.push(`${ref} AS ${qAlias(node.alias)}`);
-        } else {
-          expressions.push(ref);
-        }
-        if (aggregated && !node.agg) groupTerms.push(ref);
-      }
-      colList = expressions.join(', ');
-    }
+    colList = flatSelectList(parsed.select, schema, table, values, {
+      columnValidator, aggregated, groupTerms,
+    });
   }
 
   const conds = buildFilterConditions(
-    parsed.filters, values, columnValidator);
+    parsed.filters, values, columnValidator,
+    filterCtx(schema, table, table, [table], env,
+      authzConditions?.embeds));
 
   for (const ijc of innerJoinConds) {
     conds.push(ijc);
@@ -1095,26 +1375,70 @@ export function buildSelect(table, parsed, schema, authzConditions) {
     values.push(...parentAuthz.values);
   }
 
-  let sql = `SELECT ${colList} FROM ${q(table)}`;
+  let sql = `SELECT ${colList} FROM ${opts.fromSql || q(table)}${lateralJoins}`;
   sql += whereClause(conds);
   sql += groupClause(groupTerms);
-  sql += orderClause(parsed.order, columnValidator, values);
+  sql += relationOrder(
+    parsed.order, schema, table, table, parsed.select, values, env,
+    authzConditions?.embeds, [table]).sql;
   sql += limitOffsetClause(parsed.limit, parsed.offset, values);
 
   return { text: sql, values };
 }
 
-export function buildInsert(table, body, schema, parsed) {
+/**
+ * Upstream's payload key-uniformity check (ApiRequest/Payload.hs
+ * `payloadAttributes`): a json array body must be an array of objects that all
+ * carry the same keys, because the INSERT has one column list for every row.
+ *
+ * It is skipped when `?columns=` is given — that parameter *is* the column
+ * list, so rows are free to differ (InsertSpec.hs:547 posts
+ * `[{"a":"val"},{"a":"val","b":"val"}]` with `?columns=a,b` and expects
+ * PostgreSQL's generated-column error, not this one).
+ */
+function assertUniformPayload(rows) {
+  if (rows.length === 0) return;
+  let keys = null;
+  for (const row of rows) {
+    if (row === null || typeof row !== 'object' || Array.isArray(row)) {
+      throw new PostgRESTError(400, 'PGRST102',
+        'All object keys must match');
+    }
+    const rowKeys = Object.keys(row).sort().join('\u0000');
+    if (keys === null) keys = rowKeys;
+    else if (rowKeys !== keys) {
+      throw new PostgRESTError(400, 'PGRST102',
+        'All object keys must match');
+    }
+  }
+}
+
+/**
+ * @param {object} [opts]
+ * @param {string|null} [opts.resolution] `Prefer: resolution=` —
+ *        `merge-duplicates` or `ignore-duplicates`. Upstream emits an
+ *        `ON CONFLICT` clause only when this preference is present
+ *        (Plan.hs `mutatePlan`: `(,) <$> preferResolution <*> Just confCols`),
+ *        and the conflict target is `?on_conflict=` when given, the primary key
+ *        otherwise.
+ * @param {boolean} [opts.applyDefaults] `Prefer: missing=default` — a key
+ *        absent from a row takes the column's default instead of NULL.
+ */
+export function buildInsert(table, body, schema, parsed, opts = {}) {
   const rows = Array.isArray(body) ? body : [body];
+  const explicitCols = parsed.columns && parsed.columns.length > 0
+    ? parsed.columns
+    : null;
+  const applyDefaults = opts.applyDefaults === true;
+  const resolution = opts.resolution || null;
+  const values = [];
 
   let columns;
-
-  if (parsed.columns && parsed.columns.length > 0) {
-    for (const col of parsed.columns) {
-      validateCol(schema, table, col);
-    }
-    columns = parsed.columns;
+  if (explicitCols) {
+    for (const col of explicitCols) validateCol(schema, table, col);
+    columns = [...new Set(explicitCols)];
   } else {
+    if (Array.isArray(body)) assertUniformPayload(rows);
     const colSet = new Set();
     for (const row of rows) {
       for (const key of Object.keys(row)) {
@@ -1125,64 +1449,143 @@ export function buildInsert(table, body, schema, parsed) {
     columns = [...colSet];
   }
 
-  const values = [];
-  const tuples = rows.map((row) => {
-    const placeholders = columns.map((col) => {
-      values.push(row[col] !== undefined ? row[col] : null);
-      return `$${values.length}`;
+  // `POST /t` with `[]` inserts nothing. Upstream gets there for free — its
+  // INSERT selects from `json_to_recordset(<body>)`, which yields no rows — but
+  // an explicit VALUES list cannot be empty, so the statement becomes a
+  // zero-row read of the same shape (the trick upstream itself uses for an
+  // empty PATCH payload).
+  if (Array.isArray(body) && rows.length === 0) {
+    const projection = mutationProjects(parsed.select)
+      ? flatSelectList(parsed.select, schema, table, values)
+      : Object.keys(schema.tables[table].columns).map(c => q(c)).join(', ');
+    return {
+      text: `SELECT ${projection} FROM ${q(table)} WHERE false`,
+      values,
+    };
+  }
+
+  const allColumns = Object.keys(schema.tables[table].columns);
+  // A payload with no keys at all (`{}`, `[{}, {}]`) asks for a row of
+  // defaults. `DEFAULT VALUES` says that for one row; for several, every
+  // column takes the DEFAULT keyword, which is what upstream's
+  // `jsonb_build_object` of column defaults amounts to.
+  const allDefaults = columns.length === 0;
+
+  let sql;
+  if (allDefaults && rows.length === 1) {
+    sql = `INSERT INTO ${q(table)} DEFAULT VALUES`;
+  } else {
+    const insertCols = allDefaults ? allColumns : columns;
+    const tuples = rows.map((row) => {
+      const placeholders = insertCols.map((col) => {
+        if (allDefaults) return 'DEFAULT';
+        if (row[col] === undefined) return applyDefaults ? 'DEFAULT' : 'NULL';
+        values.push(row[col]);
+        return `$${values.length}`;
+      });
+      return `(${placeholders.join(', ')})`;
     });
-    return `(${placeholders.join(', ')})`;
-  });
+    const colList = insertCols.map((c) => q(c)).join(', ');
+    sql = `INSERT INTO ${q(table)} (${colList}) VALUES ${tuples.join(', ')}`;
+  }
 
-  const colList = columns.map((c) => q(c)).join(', ');
-  let sql = `INSERT INTO ${q(table)} (${colList}) VALUES ${tuples.join(', ')}`;
-
-  if (parsed.onConflict) {
-    const conflictCols = parsed.onConflict
-      .split(',')
-      .map((c) => {
-        const col = c.trim();
-        validateCol(schema, table, col);
-        return q(col);
-      })
-      .join(', ');
-    const pk = schema.tables[table]?.primaryKey || [];
-    const updateCols = columns.filter(
-      (c) => !pk.includes(c),
-    );
-    if (updateCols.length > 0) {
-      const sets = updateCols
-        .map((c) => `${q(c)} = EXCLUDED.${q(c)}`)
-        .join(', ');
-      sql += ` ON CONFLICT (${conflictCols}) DO UPDATE SET ${sets}`;
-    } else {
-      sql += ` ON CONFLICT (${conflictCols}) DO NOTHING`;
+  if (resolution) {
+    const target = parsed.onConflict
+      ? parsed.onConflict.split(',').map((c) => c.trim())
+      : (schema.tables[table]?.primaryKey || []);
+    for (const col of target) validateCol(schema, table, col);
+    if (target.length > 0) {
+      const conflictCols = target.map((c) => q(c)).join(', ');
+      // Upstream sets *every* inserted column from EXCLUDED, the conflict
+      // target included (`DO UPDATE SET id = EXCLUDED.id, ...`), and only falls
+      // back to DO NOTHING when there is no column to set at all — a table
+      // whose columns are all defaulted. Excluding the primary key instead
+      // turned `?select=` upserts on a PK-only table into DO NOTHING, which
+      // silently returned nothing for the conflicting rows.
+      if (resolution === 'ignore-duplicates' || columns.length === 0) {
+        sql += ` ON CONFLICT (${conflictCols}) DO NOTHING`;
+      } else {
+        const sets = columns
+          .map((c) => `${q(c)} = EXCLUDED.${q(c)}`)
+          .join(', ');
+        sql += ` ON CONFLICT (${conflictCols}) DO UPDATE SET ${sets}`;
+      }
     }
   }
 
   sql += ' RETURNING *';
-  return { text: sql, values };
+  return {
+    text: wrapMutationProjection(sql, table, parsed, schema, values),
+    values,
+  };
 }
 
-export function buildUpdate(table, body, parsed, schema, authzConditions) {
-  if (parsed.filters.length === 0) {
+export function buildUpdate(
+    table, body, parsed, schema, authzConditions, opts = {}) {
+  // A PATCH payload may arrive as a one-element array: upstream accepts both
+  // `{"a":1}` and `[{"a":1}]` for an update (ApiRequest takes the payload as a
+  // row list and an update names the columns of one row). Reading the array
+  // itself with Object.entries would take its indices for column names and
+  // fail with PGRST204 `Column '0' does not exist`.
+  const payload = Array.isArray(body) && body.length === 1 ? body[0] : body;
+
+  const values = [];
+  const explicitCols = parsed.columns && parsed.columns.length > 0
+    ? [...new Set(parsed.columns)]
+    : null;
+  if (explicitCols) {
+    for (const col of explicitCols) validateCol(schema, table, col);
+  } else {
+    for (const col of Object.keys(payload)) validateCol(schema, table, col);
+  }
+  // `?columns=` is the column list, so a key the payload does not carry is
+  // still updated — to its default with `Prefer: missing=default`, to NULL
+  // without it (upstream's json_to_record yields NULL for an absent key).
+  const setCols = explicitCols || Object.keys(payload);
+  const setClauses = setCols.map((col) => {
+    if (payload[col] === undefined) {
+      return `${q(col)} = ${opts.applyDefaults === true ? 'DEFAULT' : 'NULL'}`;
+    }
+    values.push(payload[col]);
+    return `${q(col)} = $${values.length}`;
+  });
+
+  // An empty payload updates nothing. `UPDATE t SET` is a syntax error, so
+  // upstream answers the request with a zero-row read that still has the
+  // requested shape (QueryBuilder.hs: "if there are no columns we cannot do
+  // UPDATE table SET {empty} ... selecting an empty resultset from mainQi gives
+  // us the column names to prevent errors when using &select=").
+  if (setCols.length === 0) {
+    const projection = mutationProjects(parsed.select)
+      ? flatSelectList(parsed.select, schema, table, values)
+      : Object.keys(schema.tables[table].columns).map(c => q(c)).join(', ');
+    return {
+      text: `SELECT ${projection} FROM ${q(table)} WHERE false`,
+      values,
+    };
+  }
+
+  // `parsed.allowBulkMutation` is the caller's statement that a filterless
+  // mutation is intentional (the handler sets it when the engine's
+  // bulk-mutation guard is configured off, which is upstream's default: it has
+  // no guard of its own and relies on the pg-safeupdate extension). Absent, the
+  // guard refuses.
+  //
+  // The check sits after the empty-payload short-circuit above on purpose: an
+  // update that sets no columns changes no rows, so refusing it as a "bulk
+  // change" would answer 400 to a request upstream answers 204 to
+  // (UpdateSpec:245, :256, :279, :290) while protecting nothing.
+  if (parsed.filters.length === 0 && parsed.allowBulkMutation !== true) {
     throw new PostgRESTError(
       400, 'PGRST106',
       'UPDATE requires filters to prevent bulk change',
     );
   }
 
-  const values = [];
-  const setClauses = [];
-  for (const [col, val] of Object.entries(body)) {
-    validateCol(schema, table, col);
-    values.push(val);
-    setClauses.push(`${q(col)} = $${values.length}`);
-  }
-
   const columnValidator = makeColumnValidator(schema, table);
   const conds = buildFilterConditions(
     parsed.filters, values, columnValidator,
+    filterCtx(schema, table, table, [table], newBuildEnv(), undefined),
   );
   if (authzConditions?.conditions?.length > 0) {
     const renumbered = renumberConditions(
@@ -1197,11 +1600,15 @@ export function buildUpdate(table, body, parsed, schema, authzConditions) {
   sql += whereClause(conds);
   sql += ' RETURNING *';
 
-  return { text: sql, values };
+  return {
+    text: wrapMutationProjection(sql, table, parsed, schema, values),
+    values,
+  };
 }
 
 export function buildDelete(table, parsed, schema, authzConditions) {
-  if (parsed.filters.length === 0) {
+  // See buildUpdate: opt-in bypass for a deliberately filterless mutation.
+  if (parsed.filters.length === 0 && parsed.allowBulkMutation !== true) {
     throw new PostgRESTError(
       400, 'PGRST106',
       'DELETE requires filters to prevent bulk change',
@@ -1212,6 +1619,7 @@ export function buildDelete(table, parsed, schema, authzConditions) {
   const columnValidator = makeColumnValidator(schema, table);
   const conds = buildFilterConditions(
     parsed.filters, values, columnValidator,
+    filterCtx(schema, table, table, [table], newBuildEnv(), undefined),
   );
   if (authzConditions?.conditions?.length > 0) {
     const renumbered = renumberConditions(
@@ -1226,15 +1634,33 @@ export function buildDelete(table, parsed, schema, authzConditions) {
   sql += whereClause(conds);
   sql += ' RETURNING *';
 
-  return { text: sql, values };
+  return {
+    text: wrapMutationProjection(sql, table, parsed, schema, values),
+    values,
+  };
 }
 
 export function buildCount(table, parsed, schema, authzConditions) {
   const values = [];
+  const env = newBuildEnv();
   const columnValidator = makeColumnValidator(schema, table);
   const conds = buildFilterConditions(
     parsed.filters, values, columnValidator,
+    filterCtx(schema, table, table, [table], env, undefined),
   );
+
+  // An `!inner` embed drops parent rows that have no match, so the count has
+  // to see it too or `Content-Range` reports more rows than the body holds
+  // (upstream counts over the same read plan, joins included).
+  for (const node of parsed.select || []) {
+    if (node.type === 'embed' && node.inner) {
+      const rel = resolveRelationship(
+        schema, table, node.name, node.hint);
+      conds.push(buildEmbedExists(
+        node, rel, table, schema, values, env, undefined, [table]));
+    }
+  }
+
   if (authzConditions?.conditions?.length > 0) {
     const renumbered = renumberConditions(
       authzConditions.conditions, values.length + 1);
@@ -1276,99 +1702,193 @@ export function makeRpcColumnValidator(fnSchema) {
   return validator;
 }
 
-export function buildRpcCall(fnName, args, fnSchema, parsed) {
+/**
+ * Column the scalar return of a function arrives under. Upstream's name, and
+ * the handler unwraps it, so it is exported rather than spelled twice.
+ */
+export const RPC_SCALAR = 'pgrst_scalar';
+
+// A catalog type name, as `regtype::text` renders it: `integer`, `text[]`,
+// `character varying`, `"MyType"`, `public.dom`. Never user input — but an
+// interpolated string in SQL, so it is checked before it goes in.
+const CAST_TYPE = /^[A-Za-z_"][A-Za-z0-9_ ."[\]]*$/;
+
+function castSuffix(type) {
+  return type && CAST_TYPE.test(type) ? `::${type}` : '';
+}
+
+/**
+ * A JSON body value → a bind value for a parameter of `arg`'s type.
+ *
+ * Upstream feeds the whole payload through `json_to_recordset`, so a value's
+ * JSON type decides how it lands: an object/array stays JSON text for a
+ * json/jsonb parameter (which is why a quoted JSON string arrives as a JSON
+ * *string*, not a parsed object), and everything else is cast from its text
+ * form by the `::type` on the placeholder.
+ */
+function rpcJsonBind(arg, value) {
+  if (value === null || value === undefined) return null;
+  const t = arg.type;
+  if (t === 'json' || t === 'jsonb') return JSON.stringify(value);
+  if (Array.isArray(value)) {
+    return value.map(
+      v => (v !== null && typeof v === 'object') ? JSON.stringify(v) : v);
+  }
+  if (typeof value === 'object') return JSON.stringify(value);
+  return value;
+}
+
+/**
+ * The `(...)` of a routine call.
+ *
+ * Only the parameters the request actually supplied are named, so parameters
+ * with a DEFAULT keep their default instead of being overwritten with NULL.
+ */
+function rpcArgList(routine, call, values) {
+  if (call.mode === 'single') {
+    const p = routine.args[0];
+    values.push(call.raw);
+    return `$${values.length}${castSuffix(p.castType)}`;
+  }
+  const named = call.named || {};
+  const parts = [];
+  for (const a of routine.args) {
+    if (!Object.prototype.hasOwnProperty.call(named, a.name)) continue;
+    values.push(call.mode === 'json'
+      ? rpcJsonBind(a, named[a.name])
+      : named[a.name]);
+    parts.push(
+      `${a.variadic ? 'VARIADIC ' : ''}${q(a.name)} := `
+      + `$${values.length}${castSuffix(a.castType)}`);
+  }
+  return parts.join(', ');
+}
+
+function normalizeCall(callArgs) {
+  if (callArgs && typeof callArgs === 'object' && callArgs.mode) {
+    return callArgs;
+  }
+  return { mode: 'json', named: callArgs || {} };
+}
+
+const EMPTY_READ_PLAN = {
+  select: ['*'], filters: [], order: [], limit: null, offset: 0,
+};
+
+/**
+ * A stored function call.
+ *
+ * @param {string} fnName
+ * @param {object} callArgs `{mode: 'direct'|'json'|'single', named, raw}` —
+ *   `direct` is GET/urlencoded (values are text), `json` a JSON body, `single`
+ *   a raw body bound to a single unnamed parameter. A plain map is taken as
+ *   `json` arguments.
+ * @param {object} routine the resolved routine (src/rest/routines.mjs)
+ * @param {object} parsed the read plan to apply over the result, or null
+ * @param {object} [schema] schema cache — lets a function that returns a table
+ *   take the full read plan, embeds included
+ * @returns {{text: string, values: any[], resultMode: string}} `resultMode` is
+ *   `void` | `scalar` | `setofScalar` | `single` | `set`
+ */
+export function buildRpcCall(fnName, callArgs, routine, parsed, schema) {
+  const call = normalizeCall(callArgs);
   const values = [];
+  const argList = rpcArgList(routine, call, values);
+  const callSql = `${q(fnName)}(${argList})`;
+  const plan = parsed || EMPTY_READ_PLAN;
 
-  const argEntries = fnSchema.args
-    .filter(a => a.name in args)
-    .map(a => {
-      values.push(args[a.name]);
-      return `${q(a.name)} := $${values.length}`;
+  if (routine.returnType === 'void') {
+    return { text: `SELECT ${callSql}`, values, resultMode: 'void' };
+  }
+
+  // Not composite: one value per row, rendered under a fixed column name.
+  // `record` with no OUT parameters is a scalar too, and the only way to get
+  // its fields out is to let PostgreSQL render them (upstream's json_agg does
+  // the same job).
+  if (!routine.returnsComposite) {
+    const inner = routine.returnType === 'record'
+      ? `to_json(pgrst_call.${RPC_SCALAR})`
+      : `pgrst_call.${RPC_SCALAR}`;
+    let sql = `SELECT ${inner} AS ${RPC_SCALAR}`
+      + ` FROM (SELECT ${callSql} AS ${RPC_SCALAR}) pgrst_call`;
+    if (routine.returnsSet) {
+      sql += limitOffsetClause(plan.limit, plan.offset, values);
+      return { text: sql, values, resultMode: 'setofScalar' };
+    }
+    return { text: sql, values, resultMode: 'scalar' };
+  }
+
+  const resultMode = routine.returnsSet ? 'set' : 'single';
+  const rel = routine.returnRelation;
+
+  // Returns a relation the API exposes: plan it exactly like a read of that
+  // relation, which brings ?select= expansion, filters on unselected columns,
+  // order, limit and embeds along for free.
+  if (rel && schema?.tables?.[rel]) {
+    const built = buildSelectFrom(rel, plan, schema, null, {
+      fromSql: `${callSql} AS ${q(rel)}`,
+      values,
     });
-  const argList = argEntries.join(', ');
-
-  if (fnSchema.returnType === 'void') {
-    return {
-      text: `SELECT ${q(fnName)}(${argList})`,
-      values,
-      resultMode: 'void',
-    };
+    return { text: built.text, values: built.values, resultMode };
   }
 
-  if (fnSchema.isScalar && !fnSchema.returnsSet) {
-    return {
-      text: `SELECT ${q(fnName)}(${argList}) AS ${q(fnName)}`,
-      values,
-      resultMode: 'scalar',
-    };
-  }
+  // Returns an anonymous record (TABLE(...) or OUT parameters): the columns are
+  // the OUT parameters, and there is nothing to embed on.
+  const columnValidator = makeRpcColumnValidator(routine);
+  const allColumns = routine.returnColumns?.map(c => c.name);
+
+  const selectNodes = plan.select
+    .filter(s => typeof s === 'string' || s.type === 'column');
+  const selectNames = selectNodes
+    .map(s => typeof s === 'string' ? s : s.name);
+
+  const aggregated = isAggregated(plan.select);
+  const groupTerms = [];
+  const plainStar = selectNames.length === 1 && selectNames[0] === '*'
+    && !(typeof selectNodes[0] === 'object' && selectNodes[0].agg);
 
   let selectPart = '*';
-
-  if (parsed && fnSchema.returnsSet) {
-    const columnValidator = makeRpcColumnValidator(fnSchema);
-    const allColumns = fnSchema.returnColumns?.map(c => c.name);
-
-    const selectNodes = parsed.select
-      .filter(s => typeof s === 'string' || s.type === 'column');
-    const selectNames = selectNodes
-      .map(s => typeof s === 'string' ? s : s.name);
-
-    const aggregated = isAggregated(parsed.select);
-    const groupTerms = [];
-    const plainStar = selectNames.length === 1 && selectNames[0] === '*'
-      && !(typeof selectNodes[0] === 'object' && selectNodes[0].agg);
-
-    if (plainStar) {
-      if (allColumns) {
-        selectPart = allColumns.map(c => q(c)).join(', ');
-      }
-    } else {
-      const expressions = [];
-      for (const s of selectNodes) {
-        const node = typeof s === 'string' ? { name: s } : s;
-        if (node.name === '*' && !node.agg) {
-          if (allColumns) {
-            for (const c of allColumns) {
-              expressions.push(q(c));
-              if (aggregated) groupTerms.push(q(c));
-            }
-          } else {
-            expressions.push('*');
-          }
-          continue;
-        }
-        if (node.name !== '*') columnValidator(node.name);
-        const base = node.name === '*' ? '*' : q(node.name);
-        const ref = selectItemExpr(
-          node, base, values, columnValidator.typeOf);
-        if (node.alias) {
-          expressions.push(`${ref} AS ${qAlias(node.alias)}`);
-        } else {
-          expressions.push(ref);
-        }
-        if (aggregated && !node.agg) groupTerms.push(ref);
-      }
-      selectPart = expressions.join(', ');
+  if (plainStar) {
+    if (allColumns) {
+      selectPart = allColumns.map(c => q(c)).join(', ');
     }
-
-    let sql = `SELECT ${selectPart} FROM ${q(fnName)}(${argList})`;
-
-    const conds = buildFilterConditions(
-      parsed.filters, values, columnValidator);
-    sql += whereClause(conds);
-    sql += groupClause(groupTerms);
-    sql += orderClause(parsed.order, columnValidator, values);
-    sql += limitOffsetClause(parsed.limit, parsed.offset, values);
-
-    return { text: sql, values, resultMode: 'set' };
+  } else {
+    const expressions = [];
+    for (const s of selectNodes) {
+      const node = typeof s === 'string' ? { name: s } : s;
+      if (node.name === '*' && !node.agg) {
+        if (allColumns) {
+          for (const c of allColumns) {
+            expressions.push(q(c));
+            if (aggregated) groupTerms.push(q(c));
+          }
+        } else {
+          expressions.push('*');
+        }
+        continue;
+      }
+      if (node.name !== '*') columnValidator(node.name);
+      const base = node.name === '*' ? '*' : q(node.name);
+      const ref = selectItemExpr(
+        node, base, values, columnValidator.typeOf);
+      if (node.alias) {
+        expressions.push(`${ref} AS ${qAlias(node.alias)}`);
+      } else {
+        expressions.push(ref);
+      }
+      if (aggregated && !node.agg) groupTerms.push(ref);
+    }
+    selectPart = expressions.join(', ');
   }
 
-  return {
-    text: `SELECT * FROM ${q(fnName)}(${argList})`,
-    values,
-    resultMode: 'set',
-  };
+  let sql = `SELECT ${selectPart} FROM ${callSql}`;
+  const conds = buildFilterConditions(plan.filters, values, columnValidator);
+  sql += whereClause(conds);
+  sql += groupClause(groupTerms);
+  sql += orderClause(plan.order, columnValidator, values);
+  sql += limitOffsetClause(plan.limit, plan.offset, values);
+
+  return { text: sql, values, resultMode };
 }
 
 export { buildFilterConditions as _buildFilterConditions };
