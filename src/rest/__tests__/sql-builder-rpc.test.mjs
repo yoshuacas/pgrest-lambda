@@ -506,17 +506,21 @@ describe('sql-builder: buildRpcCall', () => {
       assert.ok(values.includes('active'));
     });
 
-    it('buildSelect throws PGRST204 for unknown table column', () => {
+    // A table read leaves an unknown field to PostgreSQL, qualified, the way
+    // upstream's `pgFmtField` does: that is what makes a computed column
+    // selectable and filterable, and an unknown name still fails, with
+    // PostgreSQL's own 42703 -> 400. (An RPC that returns an anonymous record
+    // keeps PGRST204 — the two tests above — because its field list is the
+    // function's OUT parameters and there is no row type to compute over.)
+    it('buildSelect qualifies an unknown table column', () => {
       const parsed = baseParsed({
         filters: [{
           column: 'nonexistent', operator: 'eq',
           value: 'x', negate: false,
         }],
       });
-      assert.throws(
-        () => buildSelect('todos', parsed, tableSchema),
-        (err) => err.code === 'PGRST204',
-      );
+      const { text } = buildSelect('todos', parsed, tableSchema);
+      assert.match(text, /"todos"\."nonexistent" = \$\d+/);
     });
 
     it('orderClause with table schema still validates columns', () => {

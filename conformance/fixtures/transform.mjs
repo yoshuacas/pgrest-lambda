@@ -38,6 +38,11 @@ const UPSTREAM = process.env.PGREST_UPSTREAM
   || '/home/ec2-user/postgrest-upstream/test/spec/fixtures';
 const OUT_DIR = join(HERE, 'dsql');
 
+// The two stages the sequence-rewind pass below needs by name: the runner
+// re-applies the data stage on its own, without the schema stage.
+const SCHEMA_STAGE = '03-schema.sql';
+const DATA_STAGE = '07-data.sql';
+
 const STAGES = [
   { file: 'database.sql', out: '01-database.sql' },
   { file: 'roles.sql', out: '02-roles.sql' },
@@ -1764,11 +1769,88 @@ function expandCopyStdin(src) {
     const d = delim ? delim[1] : '\t';
     const rows = data.split('\n').filter((l) => l.trim() !== '');
     const values = rows.map((line) => {
-      const cells = line.split(d).map((c) => c.trim());
-      return `(${cells.map((c) => (c === '\\N' ? 'NULL' : `'${c.replace(/'/g, "''")}'`)).join(', ')})`;
+      // COPY does not trim: every byte between two delimiters is part of the
+      // value, so a pipe-aligned block loads padded strings. Upstream's two
+      // COPY blocks rely on that — `Server Today` keeps `'argnim1    '` and a
+      // leading space on each model, `pgrst_reserved_chars` keeps a leading and
+      // trailing space on its text columns — and QuerySpec:1282/1291 assert the
+      // padded bytes. Trimming here silently changed the fixture's data.
+      const cells = line.split(d);
+      return `(${cells.map((c) => (c.trim() === '\\N' ? 'NULL' : `'${c.replace(/'/g, "''")}'`)).join(', ')})`;
     });
     return `INSERT INTO ${target} VALUES\n  ${values.join(',\n  ')};`;
   });
+}
+
+// ---------------------------------------------------------------------------
+// data-only reload: restore the sequence state a fresh load leaves
+// ---------------------------------------------------------------------------
+
+// The runner re-applies 07-data.sql between specs and never re-applies
+// 03-schema.sql, so every sequence keeps the value the previous spec (and the
+// previous run) left it at. Upstream never has to think about this: its fixture
+// load recreates the schema, so every sequence is fresh and its data.sql only
+// has to `setval` the four it advances past 1 itself.
+//
+// A data-only reload therefore has to rewind the rest by hand, to exactly the
+// state `CREATE SEQUENCE` / `GENERATED ... AS IDENTITY` leaves: last value 1,
+// not yet called, so the next `nextval` is 1. Without it the fixture rows whose
+// id comes from a sequence land somewhere else on every run (measured:
+// `surr_serial_upsert`'s single row at id 1140, where upstream has id 1, which
+// is why UpsertSpec's `id=1` payload inserted instead of updating) and
+// `callcounter()` never returns 1 again (measured: 59).
+//
+// This is fixture fidelity, not a test-literal fit: the target state is the one
+// a full `schema.sql` + `data.sql` load produces. Sequences data.sql sets itself
+// are left alone — its own `setval` is upstream's answer for those.
+function collectGeneratedIdColumns(schemaSql) {
+  const out = [];
+  const re = /CREATE\s+TABLE\s+([^\s(]+)\s*\(([\s\S]*?)\n\);/gi;
+  for (let m = re.exec(schemaSql); m; m = re.exec(schemaSql)) {
+    const table = m[1];
+    for (const line of m[2].split('\n')) {
+      const l = line.trim();
+      if (!/\bGENERATED\b[\s\S]*\bAS\s+IDENTITY\b/i.test(l)
+        && !/\bnextval\s*\(/i.test(l)) continue;
+      const col = identValue(tokenize(l)[0]);
+      if (col) out.push({ table, column: col });
+    }
+  }
+  return out;
+}
+
+function rewindStatements(dataSql, schemaSql) {
+  const already = (name) =>
+    new RegExp(`setval\\s*\\(\\s*'?"?${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"?'?`, 'i')
+      .test(dataSql);
+  const lines = [];
+
+  for (const { table, column } of collectGeneratedIdColumns(schemaSql)) {
+    // pg_get_serial_sequence() parses the name, so the quoting a
+    // case-sensitive identifier needs has to survive into the literal.
+    const bare = table.replace(/^"?[^".]+"?\./, '').replace(/"/g, '');
+    if (already(`${bare}_${column}_seq`)) continue;
+    lines.push('SELECT pg_catalog.setval(pg_get_serial_sequence('
+      + `'${table.replace(/'/g, "''")}', '${column.replace(/'/g, "''")}'), 1, false)`);
+  }
+
+  // Sequences that belong to no column — upstream's `callcounter_count`, read
+  // by `callcounter()`, which RpcSpec asserts returns 1 then 2. A sequence a
+  // column default draws from is already covered by the pass above, so only the
+  // ones no `DEFAULT nextval(...)` names are listed here.
+  const owned = new Set();
+  const defRe = /DEFAULT\s+nextval\s*\(\s*'([^']+)'/gi;
+  for (let m = defRe.exec(schemaSql); m; m = defRe.exec(schemaSql)) {
+    owned.add(m[1].replace(/"/g, '').replace(/^[^.]+\./, ''));
+  }
+  const seqRe = /CREATE\s+SEQUENCE\s+(?:IF\s+NOT\s+EXISTS\s+)?([^\s;(]+)/gi;
+  for (let m = seqRe.exec(schemaSql); m; m = seqRe.exec(schemaSql)) {
+    const name = m[1];
+    const bare = name.replace(/"/g, '').replace(/^[^.]+\./, '');
+    if (owned.has(bare) || already(bare)) continue;
+    lines.push(`SELECT pg_catalog.setval('${name.replace(/'/g, "''")}', 1, false)`);
+  }
+  return lines;
 }
 
 // ---------------------------------------------------------------------------
@@ -1850,6 +1932,9 @@ function main() {
   writeFileSync(join(OUT_DIR, '00-reset.sql'), `${reset}\n`);
 
   const stageStats = [];
+  // The schema stage's own output, kept so the data stage can see which columns
+  // draw from a sequence.
+  let schemaOut = null;
 
   for (const stage of STAGES) {
     let src = readFileSync(join(UPSTREAM, stage.file), 'utf8');
@@ -1900,7 +1985,25 @@ function main() {
       kept++;
     }
 
-    writeFileSync(join(OUT_DIR, stage.out), `${out.join('\n')}\n`);
+    // The data stage is the one the runner re-applies on its own, so it carries
+    // the sequence rewinds. They go first: the fixture rows that take their id
+    // from a sequence are inserted further down this same file, and they have to
+    // land on the ids a fresh load gives them.
+    if (stage.out === DATA_STAGE && schemaOut) {
+      const rewinds = rewindStatements(out.join('\n'), schemaOut);
+      out.splice(3, 0,
+        '-- Sequence state a data-only reload has to restore: CREATE SEQUENCE /',
+        '-- GENERATED AS IDENTITY leaves "last value 1, not yet called", and this',
+        '-- file is re-applied without 03-schema.sql. The four setvals data.sql',
+        '-- carries itself are further down and are not repeated here.',
+        ...rewinds.map((s) => `${s};`),
+        '');
+      kept += rewinds.length;
+    }
+
+    const stageText = `${out.join('\n')}\n`;
+    if (stage.out === SCHEMA_STAGE) schemaOut = stageText;
+    writeFileSync(join(OUT_DIR, stage.out), stageText);
     stageStats.push({ file: stage.out, source: stage.file, kept, removed });
   }
 

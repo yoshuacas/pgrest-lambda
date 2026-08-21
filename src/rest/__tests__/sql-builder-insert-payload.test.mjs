@@ -206,21 +206,22 @@ describe('buildInsert ON CONFLICT', () => {
 });
 
 // Plan.hs `inferColsEmbedNeeds`: a mutation returns the selected columns plus
-// the primary key, not `*`. The rows come back through a CTE so the projection
-// can name them once.
+// the primary key, not `*`. The projection is the RETURNING list, which is the
+// same rows and the same columns as upstream's outer SELECT over its
+// `pgrst_source` CTE, and keeps the projection over the table itself — the only
+// place a computed column's function can resolve (sql-builder
+// `mutationReturning`).
 describe('mutation projection', () => {
-  it('projects ?select= over the mutation CTE', () => {
+  it('projects ?select= in RETURNING', () => {
     const { text } = buildInsert('items', { name: 'a' }, schema,
       parsedWith({ select: [col('name')] }));
-    assert.match(text,
-      /^WITH pgrst_source AS \(INSERT INTO .* RETURNING \*\) SELECT "name" FROM pgrst_source$/);
+    assert.match(text, /^INSERT INTO .* RETURNING "name"$/);
   });
 
   it('leaves RETURNING * alone when select is empty or a bare star', () => {
     for (const select of [[], [col('*')]]) {
       const { text } = buildInsert('items', { name: 'a' }, schema,
         parsedWith({ select }));
-      assert.ok(!text.includes('pgrst_source'), text);
       assert.match(text, /RETURNING \*$/);
     }
   });
@@ -228,7 +229,7 @@ describe('mutation projection', () => {
   it('projects an alias and a cast', () => {
     const { text } = buildInsert('items', { name: 'a' }, schema,
       parsedWith({ select: [{ type: 'column', name: 'name', alias: 'nm' }] }));
-    assert.match(text, /SELECT "name" AS "nm" FROM pgrst_source$/);
+    assert.match(text, /RETURNING "name" AS "nm"$/);
   });
 
   it('projects a PATCH the same way', () => {
@@ -237,8 +238,7 @@ describe('mutation projection', () => {
         select: [col('id')],
         filters: [{ column: 'id', operator: 'eq', value: 1, negate: false }],
       }), schema, null);
-    assert.match(text,
-      /^WITH pgrst_source AS \(UPDATE .* RETURNING \*\) SELECT "id" FROM pgrst_source$/);
+    assert.match(text, /^UPDATE .* RETURNING "id"$/);
   });
 
   // An UPDATE with no column to set is not valid SQL; upstream answers with the

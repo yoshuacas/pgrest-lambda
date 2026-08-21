@@ -143,12 +143,14 @@ describe('REST + auth integration', () => {
       }));
       assert.equal(sel.statusCode, 400);
       const err = JSON.parse(sel.body);
-      assert.equal(err.code, 'PGRST204');
-      // Upstream's `ColumnNotFound` wording (Error.hs): the column is missing
-      // from the schema cache, not from the database.
-      assert.equal(err.message,
-        "Could not find the 'nonexistent' column of 'notes' in the schema "
-        + 'cache');
+      // A select item names a column the database resolves, so an unknown one
+      // is PostgreSQL's own 42703 and not a schema-cache error: upstream
+      // asserts exactly that for `select=id,label_color,banana`
+      // (QuerySpec.hs:1556 — `{"code":"42703", …, "message":"column
+      // datarep_todos.banana does not exist"}`, status 400). PGRST204 is for a
+      // *payload* column, which the schema cache does have to resolve.
+      assert.equal(err.code, '42703');
+      assert.match(err.message, /column notes\.nonexistent does not exist/);
     });
   });
 

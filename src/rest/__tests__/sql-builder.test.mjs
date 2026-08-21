@@ -106,7 +106,15 @@ describe('sql-builder', () => {
         'SQL should include OFFSET');
     });
 
-    it('throws PGRST204 for unknown column in filter', () => {
+    // Upstream does not check a filter field against its schema cache: it
+    // renders every one of them qualified (`pgFmtField` -> `pgFmtColumn`) and
+    // lets PostgreSQL answer, which is both how a filter on a computed column
+    // works (`always_true(items)` is `"items"."always_true"`, UpdateSpec.hs:144
+    // and :156) and how an unknown one reports itself — 42703 -> 400 `column
+    // todos.nonexistent does not exist`, the message QuerySpec.hs:1557 asserts.
+    // The PGRST204 this test used to expect is upstream's `?columns=` /
+    // payload-key error, not a read error, so the old expectation was wrong.
+    it('qualifies an unknown column in a filter instead of rejecting it', () => {
       const parsed = {
         select: [{ type: 'column', name: '*' }],
         filters: [{ column: 'nonexistent', operator: 'eq', value: 'x', negate: false }],
@@ -115,11 +123,8 @@ describe('sql-builder', () => {
         offset: 0,
         onConflict: null,
       };
-      assert.throws(
-        () => buildSelect('todos', parsed, schema),
-        (err) => err.code === 'PGRST204',
-        'should throw PGRST204 for unknown column'
-      );
+      const { text } = buildSelect('todos', parsed, schema);
+      assert.match(text, /"todos"\."nonexistent" = \$\d+/);
     });
 
     it('appends authzConditions to WHERE clause', () => {

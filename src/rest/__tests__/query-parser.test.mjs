@@ -185,11 +185,18 @@ describe('query-parser', () => {
         'direction should default to asc');
     });
 
+    // The four rejections below still reject exactly what they rejected
+    // before; only the message changed. The order value is now parsed with
+    // the same Parsec-shaped scanner as select and filters, so a malformed
+    // one reports the position and the expectation set upstream reports
+    // (QuerySpec:1174 asserts that body) instead of a hand-written
+    // "Invalid order direction/nulls option" sentence.
     it('rejects SQL injection via order direction (V-14)', () => {
       assert.throws(
         () => parseQuery({ order: 'col.asc;DROP TABLE x--' }, 'GET'),
         (err) => err.code === 'PGRST100'
-          && err.message.includes('Invalid order direction'),
+          && err.message.includes(
+            'failed to parse order (col.asc;DROP TABLE x--)'),
         'should reject injection payload in direction'
       );
     });
@@ -198,7 +205,7 @@ describe('query-parser', () => {
       assert.throws(
         () => parseQuery({ order: 'col.ascending' }, 'GET'),
         (err) => err.code === 'PGRST100'
-          && err.message.includes('Invalid order direction'),
+          && err.message.includes('failed to parse order (col.ascending)'),
         'should reject non-asc/desc direction'
       );
     });
@@ -207,7 +214,7 @@ describe('query-parser', () => {
       assert.throws(
         () => parseQuery({ order: 'col.asc.nullsfirst;DROP TABLE x' }, 'GET'),
         (err) => err.code === 'PGRST100'
-          && err.message.includes('Invalid nulls option'),
+          && err.details === 'unexpected \';\' expecting "," or end of input',
         'should reject injection payload in nulls'
       );
     });
@@ -216,7 +223,8 @@ describe('query-parser', () => {
       assert.throws(
         () => parseQuery({ order: 'col.desc.first' }, 'GET'),
         (err) => err.code === 'PGRST100'
-          && err.message.includes('Invalid nulls option'),
+          && err.details
+            === 'unexpected "f" expecting "nullsfirst" or "nullslast"',
         'should reject non-nullsfirst/nullslast value'
       );
     });
@@ -224,6 +232,83 @@ describe('query-parser', () => {
     it('accepts valid nullsfirst option', () => {
       const result = parseQuery({ order: 'col.asc.nullsfirst' }, 'GET');
       assert.equal(result.order[0].nulls, 'nullsfirst');
+    });
+
+    // QuerySpec:1174. The doctests in upstream's `pOrder` are the reference:
+    // the message names the position the scanner stopped at and the details
+    // name the offending token and every word that was acceptable there.
+    it('reports a bad nulls suffix where upstream reports it', () => {
+      assert.throws(
+        () => parseQuery({ order: 'id.asc.nullslasttt' }, 'GET'),
+        (err) => err.code === 'PGRST100'
+          && err.message
+            === '"failed to parse order (id.asc.nullslasttt)"'
+              + ' (line 1, column 17)'
+          && err.details === 'unexpected \'t\' expecting "," or end of input',
+      );
+    });
+
+    it('reports a bad direction where upstream reports it', () => {
+      assert.throws(
+        () => parseQuery({ order: 'id.ac' }, 'GET'),
+        (err) => err.code === 'PGRST100'
+          && err.message === '"failed to parse order (id.ac)" (line 1, column 4)'
+          && err.details === 'unexpected "c" expecting "asc", "desc",'
+            + ' "nullsfirst" or "nullslast"',
+      );
+    });
+
+    it('orders by a related column', () => {
+      const { order } = parseQuery({ order: 'clients(name).desc' }, 'GET');
+      assert.deepStrictEqual(order, [{
+        relation: 'clients', column: 'name', direction: 'desc', nulls: null,
+      }]);
+    });
+
+    it('takes a quoted column name with a dot in it as one column', () => {
+      const { order } = parseQuery({ order: '"a.dotted.column".desc' }, 'GET');
+      assert.deepStrictEqual(order, [{
+        column: 'a.dotted.column', direction: 'desc', nulls: null,
+      }]);
+    });
+  });
+
+  // QuerySpec:1291. A quoted field name is one token, so the characters
+  // PostgREST reserves are ordinary characters inside it.
+  describe('reserved characters in a quoted name', () => {
+    it('keeps a comma and parentheses inside a quoted select item', () => {
+      assert.deepStrictEqual(
+        parseSelectList('":arr->ow::cast","(inside,parens)","a.dotted.column"'),
+        [
+          { type: 'column', name: ':arr->ow::cast' },
+          { type: 'column', name: '(inside,parens)' },
+          { type: 'column', name: 'a.dotted.column' },
+        ]);
+    });
+
+    it('keeps the spaces inside a quoted select item', () => {
+      assert.deepStrictEqual(parseSelectList('"  col  w  space  "'),
+        [{ type: 'column', name: '  col  w  space  ' }]);
+    });
+
+    it('still reads an embed after a quoted item', () => {
+      const nodes = parseSelectList('"(inside,parens)",clients(name)');
+      assert.equal(nodes.length, 2);
+      assert.equal(nodes[0].name, '(inside,parens)');
+      assert.equal(nodes[1].type, 'embed');
+      assert.equal(nodes[1].name, 'clients');
+    });
+
+    it('filters on the column inside the quotes', () => {
+      const { filters } = parseQuery({ '"*id*"': 'eq.1' }, 'GET');
+      assert.equal(filters.length, 1);
+      assert.equal(filters[0].column, '*id*');
+      assert.equal(filters[0].value, '1');
+    });
+
+    it('leaves an unterminated quote to the grammar', () => {
+      const { filters } = parseQuery({ '"unterminated': 'eq.1' }, 'GET');
+      assert.equal(filters[0].column, '"unterminated');
     });
   });
 
@@ -769,29 +854,31 @@ describe('parseSelectList', () => {
       assert.equal(result[0].cast, undefined);
     });
 
-    it('rejects unknown cast type xml', () => {
-      assert.throws(
-        () => parseSelectList('col::xml'),
-        (err) => err.code === 'PGRST100'
-          && err.message.includes("Unsupported cast type 'xml'"),
-        'xml should be rejected',
-      );
+    // These three used to assert that anything outside a built-in-type
+    // allowlist was rejected with PGRST100. That was wrong: upstream parses a
+    // cast as a bare identifier and lets PostgreSQL decide whether the type
+    // exists, which is the only way a domain, enum or composite type can be
+    // cast to at all (QuerySpec:615 expects PostgreSQL's 42704 `type
+    // "fakecolumntype" does not exist`, not a parser error). The allowlist is
+    // gone; the charset guard stays.
+    it('accepts a built-in type outside the old allowlist', () => {
+      const result = parseSelectList('col::xml');
+      assert.equal(result[0].cast, 'xml');
     });
 
-    it('rejects unknown cast type money', () => {
-      assert.throws(
-        () => parseSelectList('col::money'),
-        (err) => err.code === 'PGRST100',
-        'money should be rejected',
-      );
+    it('accepts the money type', () => {
+      const result = parseSelectList('col::money');
+      assert.equal(result[0].cast, 'money');
     });
 
-    it('rejects unknown cast type custom_type', () => {
-      assert.throws(
-        () => parseSelectList('col::custom_type'),
-        (err) => err.code === 'PGRST100',
-        'custom_type should be rejected',
-      );
+    it('accepts a user-defined type name', () => {
+      const result = parseSelectList('col::custom_type');
+      assert.equal(result[0].cast, 'custom_type');
+    });
+
+    it('accepts an array type name spelled with a leading underscore', () => {
+      const result = parseSelectList('col::_int4');
+      assert.equal(result[0].cast, '_int4');
     });
 
     it('rejects array cast type int[]', () => {

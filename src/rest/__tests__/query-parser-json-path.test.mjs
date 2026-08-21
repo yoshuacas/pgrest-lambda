@@ -181,9 +181,15 @@ describe('json path in order', () => {
   });
 
   it('still rejects a bad direction', () => {
+    // Same rejection, upstream's message: the order value goes through the
+    // Parsec-shaped scanner now, so the error names the position and the
+    // words that were acceptable there.
     const e = err(() => parseQuery({ order: 'data->>id.up' }, 'GET'));
     assert.equal(e.code, 'PGRST100');
-    assert.match(e.message, /Invalid order direction 'up'/);
+    assert.match(e.message, /failed to parse order \(data->>id\.up\)/);
+    assert.equal(
+      e.details,
+      'unexpected "u" expecting "asc", "desc", "nullsfirst" or "nullslast"');
   });
 });
 

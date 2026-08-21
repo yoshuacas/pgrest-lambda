@@ -7,7 +7,8 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   parseList, parsePreRequest, parseBulkMutationGuard, relationshipsForSchema,
-  schemaIntrospectionPool,
+  schemaIntrospectionPool, parseQualifiedFunction, parseOpenApiMode,
+  parseClientErrorVerbosity, parseTraceHeader, parseCount, withTraceHeader,
 } from '../index.mjs';
 
 describe('parseList (db-schemas, db-extra-search-path, cors origins)', () => {
@@ -203,5 +204,144 @@ describe('schemaIntrospectionPool', () => {
     const pool = fakePool([]);
     const result = await schemaIntrospectionPool(pool, 'v1').query('select 1');
     assert.deepEqual(result.rows, []);
+  });
+});
+
+describe('parseQualifiedFunction (db-root-spec, db-pre-config)', () => {
+  it('is null when unset', () => {
+    assert.equal(parseQualifiedFunction(undefined, 'db-root-spec'), null);
+    assert.equal(parseQualifiedFunction('', 'db-root-spec'), null);
+  });
+
+  it('parses a bare and a schema-qualified name', () => {
+    assert.deepEqual(parseQualifiedFunction('root', 'db-root-spec'),
+      { schema: null, name: 'root' });
+    assert.deepEqual(parseQualifiedFunction('test.root', 'db-root-spec'),
+      { schema: 'test', name: 'root' });
+  });
+
+  it('names the option it rejected for', () => {
+    assert.throws(() => parseQualifiedFunction('a.b.c', 'db-pre-config'),
+      /db-pre-config must be a function name/);
+  });
+
+  it('rejects anything that could reach SQL as more than a name', () => {
+    for (const bad of ['f()', 'f;drop table x', 'select 1', '1f', 'a b']) {
+      assert.throws(
+        () => parseQualifiedFunction(bad, 'db-root-spec'), /db-root-spec/, bad);
+    }
+  });
+});
+
+describe('parseOpenApiMode (openapi-mode)', () => {
+  it('defaults to follow-privileges', () => {
+    assert.equal(parseOpenApiMode(undefined), 'follow-privileges');
+    assert.equal(parseOpenApiMode(''), 'follow-privileges');
+    assert.equal(parseOpenApiMode(null), 'follow-privileges');
+  });
+
+  it('accepts the three upstream modes in any case', () => {
+    assert.equal(parseOpenApiMode('follow-privileges'), 'follow-privileges');
+    assert.equal(parseOpenApiMode('Ignore-Privileges'), 'ignore-privileges');
+    assert.equal(parseOpenApiMode(' disabled '), 'disabled');
+  });
+
+  it('rejects an unknown mode at boot', () => {
+    assert.throws(() => parseOpenApiMode('off'),
+      /openapi-mode must be one of follow-privileges, ignore-privileges, disabled/);
+  });
+});
+
+describe('parseClientErrorVerbosity (client-error-verbosity)', () => {
+  it('defaults to verbose', () => {
+    assert.equal(parseClientErrorVerbosity(undefined), 'verbose');
+    assert.equal(parseClientErrorVerbosity(''), 'verbose');
+  });
+
+  it('accepts minimal', () => {
+    assert.equal(parseClientErrorVerbosity('MINIMAL'), 'minimal');
+  });
+
+  it('rejects anything else at boot', () => {
+    assert.throws(() => parseClientErrorVerbosity('quiet'),
+      /client-error-verbosity must be one of verbose, minimal/);
+  });
+});
+
+describe('parseTraceHeader (server-trace-header)', () => {
+  it('is null when unset', () => {
+    assert.equal(parseTraceHeader(undefined), null);
+    assert.equal(parseTraceHeader(''), null);
+  });
+
+  it('keeps the name as written', () => {
+    assert.equal(parseTraceHeader(' X-Request-Id '), 'X-Request-Id');
+  });
+
+  it('rejects a name that is not an HTTP token', () => {
+    for (const bad of ['X Request Id', 'X-Request-Id: 1', 'a\r\nb', 'a:b']) {
+      assert.throws(() => parseTraceHeader(bad), /server-trace-header/, bad);
+    }
+  });
+});
+
+describe('parseCount (jwt-cache-max-entries)', () => {
+  it('falls back when unset', () => {
+    assert.equal(parseCount(undefined, 1000, 'jwt-cache-max-entries'), 1000);
+    assert.equal(parseCount('', 1000, 'jwt-cache-max-entries'), 1000);
+  });
+
+  it('keeps zero, which is how the cache is turned off', () => {
+    assert.equal(parseCount(0, 1000, 'jwt-cache-max-entries'), 0);
+    assert.equal(parseCount('0', 1000, 'jwt-cache-max-entries'), 0);
+  });
+
+  it('parses a number from a string', () => {
+    assert.equal(parseCount('86400', 1000, 'jwt-cache-max-entries'), 86400);
+  });
+
+  it('rejects a negative or non-integer value at boot', () => {
+    for (const bad of ['-1', '1.5', 'many']) {
+      assert.throws(() => parseCount(bad, 1000, 'jwt-cache-max-entries'),
+        /jwt-cache-max-entries must be a non-negative integer/, bad);
+    }
+  });
+});
+
+describe('withTraceHeader (server-trace-header middleware)', () => {
+  const ok = () => ({ statusCode: 200, headers: { Vary: 'Accept' }, body: '' });
+
+  it('returns the handler untouched when no header is configured', () => {
+    assert.equal(withTraceHeader(ok, null), ok);
+    assert.equal(withTraceHeader(ok, ''), ok);
+  });
+
+  it('echoes the request header value', async () => {
+    const wrapped = withTraceHeader(ok, 'X-Request-Id');
+    const res = await wrapped({ headers: { 'X-Request-Id': '7' } });
+    assert.equal(res.headers['X-Request-Id'], '7');
+    assert.equal(res.headers.Vary, 'Accept');
+  });
+
+  it('matches the request header case-insensitively', async () => {
+    const wrapped = withTraceHeader(ok, 'X-Request-Id');
+    const res = await wrapped({ headers: { 'x-request-id': '8' } });
+    assert.equal(res.headers['X-Request-Id'], '8');
+  });
+
+  it('sends the header empty when the request did not carry it', async () => {
+    const wrapped = withTraceHeader(ok, 'X-Request-Id');
+    const res = await wrapped({ headers: {} });
+    assert.equal(res.headers['X-Request-Id'], '');
+    const none = await wrapped({});
+    assert.equal(none.headers['X-Request-Id'], '');
+  });
+
+  it('echoes on an error response too', async () => {
+    const fails = async () => ({ statusCode: 404, headers: {}, body: '{}' });
+    const res = await withTraceHeader(fails, 'X-Request-Id')(
+      { headers: { 'X-Request-Id': '9' } });
+    assert.equal(res.statusCode, 404);
+    assert.equal(res.headers['X-Request-Id'], '9');
   });
 });

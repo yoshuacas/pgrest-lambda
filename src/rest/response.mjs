@@ -44,12 +44,14 @@ export function decodeMediaType(raw) {
   return { main, sub, params };
 }
 
-function classify({ main, sub, params }) {
+function classify({ main, sub, params }, openApi = true) {
   const stripNulls = params.nulls === 'stripped';
   if (main === '*' && sub === '*') return { kind: MEDIA_JSON, stripNulls: false };
   if (main === 'application') {
     if (sub === 'json') return { kind: MEDIA_JSON, stripNulls: false };
-    if (sub === 'openapi+json') return { kind: MEDIA_OPENAPI, stripNulls: false };
+    if (sub === 'openapi+json') {
+      return openApi ? { kind: MEDIA_OPENAPI, stripNulls: false } : null;
+    }
     if (sub === 'vnd.pgrst.object' || sub === 'vnd.pgrst.object+json') {
       return { kind: MEDIA_SINGULAR, stripNulls };
     }
@@ -118,9 +120,20 @@ export function mediaContentType(media) {
  * produce falls back to JSON but is reported as `MEDIA_OTHER` so the caller can
  * decide whether to refuse it.
  *
+ * `application/openapi+json` is only produced by the root path. Upstream's
+ * handler map for a relation or a routine has no entry for it
+ * (`SchemaCache.initialMediaHandlers` registers the wildcard, json, csv and
+ * geo+json; `inspectPlan` is the only place `MTOpenAPI` is produced), so a
+ * request for it anywhere else is PGRST107 — and an Accept listing it before a
+ * type the relation *can* produce still gets that type
+ * (`Plan/Negotiate.hs lookupHandler` skips a media type with no handler and
+ * tries the next one). `options.openApi: false` is that context.
+ *
  * @param {string} accept
+ * @param {{openApi?: boolean}} [options]
  */
-export function negotiateMedia(accept) {
+export function negotiateMedia(accept, options = {}) {
+  const openApi = options.openApi !== false;
   const fallback = { kind: MEDIA_JSON, stripNulls: false };
   const raw = (accept || '').trim();
   if (!raw) return fallback;
@@ -140,7 +153,7 @@ export function negotiateMedia(accept) {
     .sort((a, b) => (b.q - a.q) || (a.order - b.order));
 
   for (const entry of entries) {
-    const hit = classify(entry.decoded);
+    const hit = classify(entry.decoded, openApi);
     if (hit) return hit;
   }
 
@@ -162,6 +175,33 @@ export function acceptEntries(accept) {
     .split(',')
     .map((e) => e.trim())
     .filter(Boolean);
+}
+
+// The root path produces one thing — the OpenAPI spec — and serves it when the
+// client accepts the OpenAPI media type, plain JSON, or anything
+// (`producedMTs` in upstream's `Plan.inspectPlan`).
+const OPENAPI_PRODUCES = new Set([
+  'application/openapi+json',
+  'application/json',
+  '*/*',
+]);
+
+/**
+ * Will the root path answer this Accept header? Upstream intersects the
+ * accepted media types with `[MTOpenAPI, MTApplicationJSON, MTAny]` and raises
+ * `MediaTypeError` when the intersection is empty, so the order of the entries
+ * does not matter — one match anywhere in the list is enough. A request with no
+ * Accept header at all accepts everything.
+ *
+ * @param {string} accept
+ */
+export function acceptsOpenApi(accept) {
+  const entries = acceptEntries(accept);
+  if (entries.length === 0) return true;
+  return entries.some((entry) => {
+    const { main, sub } = decodeMediaType(entry);
+    return OPENAPI_PRODUCES.has(`${main}/${sub}`);
+  });
 }
 
 /**
@@ -358,7 +398,24 @@ export function success(statusCode, body, options = {}) {
   };
 }
 
-export function error(err, corsHeaders, extraHeaders) {
+/**
+ * Build an error response the way upstream's `errorResponseFor` does
+ * (Error.hs): the JSON content type, the payload's own byte length, and a
+ * `Proxy-Status` naming the PostgREST error code — which is the one header an
+ * intermediary can read to tell a PostgREST error from a gateway's own
+ * (RFC 9209 `next-hop; error=`).
+ *
+ * `client-error-verbosity` decides how much of the payload is written:
+ * `verbose` (the default) emits all four fields, `minimal` emits `code` and
+ * `message` only — the other two absent, not null (Error.hs
+ * `toJsonPgrstError Minimal`).
+ *
+ * @param {Error|PostgRESTError} err
+ * @param {Object} [corsHeaders]
+ * @param {Object} [extraHeaders]
+ * @param {{clientErrorVerbosity?: string}} [options]
+ */
+export function error(err, corsHeaders, extraHeaders, options) {
   const cors = corsHeaders || CORS_HEADERS;
   const base = {
     ...cors,
@@ -366,22 +423,26 @@ export function error(err, corsHeaders, extraHeaders) {
     'Content-Type': `application/json${CHARSET}`,
   };
 
-  if (err instanceof PostgRESTError) {
-    return {
-      statusCode: err.statusCode,
-      headers: base,
-      body: JSON.stringify(err.toJSON()),
-    };
-  }
+  const isPgrst = err instanceof PostgRESTError;
+  const payload = isPgrst ? err.toJSON() : {
+    code: 'PGRST000',
+    message: err.message || 'Internal server error',
+    details: null,
+    hint: null,
+  };
+  const body = JSON.stringify(
+    options?.clientErrorVerbosity === 'minimal'
+      ? { code: payload.code, message: payload.message }
+      : payload);
+  const code = isPgrst ? err.code : 'PGRST000';
 
   return {
-    statusCode: 500,
-    headers: base,
-    body: JSON.stringify({
-      code: 'PGRST000',
-      message: err.message || 'Internal server error',
-      details: null,
-      hint: null,
-    }),
+    statusCode: isPgrst ? err.statusCode : 500,
+    headers: {
+      ...base,
+      'Content-Length': String(Buffer.byteLength(body)),
+      'Proxy-Status': `PostgREST; error=${code}`,
+    },
+    body,
   };
 }

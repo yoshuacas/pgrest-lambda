@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import {
   decodeMediaType, mediaContentType, negotiateMedia, stripNulls, toCsv,
   success, mediaProducible, mediaUnavailable, mediaTypeDomain, rawMediaFor,
+  acceptsOpenApi,
   MEDIA_JSON, MEDIA_SINGULAR, MEDIA_CSV, MEDIA_OPENAPI, MEDIA_OTHER,
 } from '../response.mjs';
 
@@ -55,6 +56,19 @@ describe('negotiateMedia', () => {
   it('picks the first producible type in order', () => {
     assert.equal(negotiateMedia('application/geo+json, text/csv').kind,
       MEDIA_CSV);
+  });
+
+  // OpenApiSpec.hs:30 — only the root path produces the OpenAPI media type;
+  // a relation or a routine has no handler for it, so `{ openApi: false }` has
+  // to fall through to the next entry and, failing that, to MEDIA_OTHER, which
+  // is what the caller turns into PGRST107.
+  it('does not produce the OpenAPI media type when it is not offered', () => {
+    assert.equal(negotiateMedia('application/openapi+json',
+      { openApi: false }).kind, MEDIA_OTHER);
+    assert.equal(negotiateMedia('application/openapi+json, text/csv',
+      { openApi: false }).kind, MEDIA_CSV);
+    assert.equal(negotiateMedia('application/openapi+json',
+      { openApi: true }).kind, MEDIA_OPENAPI);
   });
 
   it('honours q-values', () => {
@@ -180,6 +194,34 @@ describe('success Content-Type', () => {
 // `Plan/Negotiate.hs` intersects the Accept header with the media handlers in
 // the schema cache; nothing in the intersection is `MediaTypeError` — 406
 // PGRST107 (Error.hs:181).
+// The root path produces the OpenAPI spec alone. Upstream `Plan.inspectPlan`
+// intersects the Accept header with `[MTOpenAPI, MTApplicationJSON, MTAny]`
+// and raises MediaTypeError when nothing matches (OpenApiSpec.hs:35).
+describe('acceptsOpenApi', () => {
+  it('accepts the openapi media type, json and the wildcard', () => {
+    for (const accept of ['application/openapi+json', 'application/json',
+      '*/*', 'application/openapi+json; charset=utf-8']) {
+      assert.equal(acceptsOpenApi(accept), true, accept);
+    }
+  });
+
+  it('accepts a match anywhere in the list, whatever its position', () => {
+    assert.equal(acceptsOpenApi('text/csv, application/json'), true);
+  });
+
+  it('accepts a request with no Accept header', () => {
+    assert.equal(acceptsOpenApi(''), true);
+    assert.equal(acceptsOpenApi(undefined), true);
+  });
+
+  it('refuses anything else', () => {
+    for (const accept of ['text/csv', 'text/plain', 'application/geo+json',
+      'application/vnd.pgrst.object+json']) {
+      assert.equal(acceptsOpenApi(accept), false, accept);
+    }
+  });
+});
+
 describe('mediaProducible / mediaUnavailable', () => {
   it('accepts json, csv, the vendored types and the wildcard', () => {
     for (const accept of ['', '*/*', 'application/json', 'text/csv',

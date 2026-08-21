@@ -276,18 +276,30 @@ describe('handler integration', () => {
         'error code should be PGRST205');
     });
 
-    it('GET /rest/v1/todos?badcol=eq.x returns 400 with PGRST204', async () => {
-      const event = makeEvent({
+    // A read field is not validated against the schema cache: upstream renders
+    // every filter through `pgFmtField`, which qualifies it with the relation,
+    // and lets PostgreSQL raise 42703 -> 400 (`column todos.badcol does not
+    // exist`, QuerySpec.hs:1557 asserts that message verbatim). PGRST204 is
+    // upstream's error for `?columns=`, `?on_conflict=` and mutation payload
+    // keys only, so this test asserted an error the engine was wrong to raise;
+    // the qualified spelling is also what makes a filter on a computed column
+    // work (UpdateSpec.hs:144, :156). The mock pool cannot raise 42703, so what
+    // is checked here is the SQL that reaches it.
+    it('GET /rest/v1/todos?badcol=eq.x qualifies the unknown field so '
+      + 'PostgreSQL raises 42703', async () => {
+      const pool = createMockPool();
+      const localHandler = createRestHandler(createTestContext(pool)).handler;
+      const res = await localHandler(makeEvent({
         method: 'GET',
         path: '/rest/v1/todos',
         query: { badcol: 'eq.x' },
-      });
-      const res = await handler(event);
-      assert.equal(res.statusCode, 400,
-        'unknown column in filter should return 400');
-      const body = JSON.parse(res.body);
-      assert.equal(body.code, 'PGRST204',
-        'error code should be PGRST204');
+      }));
+      assert.equal(res.statusCode, 200,
+        'the mock pool answers the statement it is given');
+      const read = pool.capturedQueries.find(qy =>
+        qy.text.startsWith('SELECT') && qy.text.includes('FROM "todos"'));
+      assert.ok(read, 'a read statement should have been sent');
+      assert.match(read.text, /"todos"\."badcol" = \$\d+/);
     });
 
     it('PATCH /rest/v1/todos without filters returns 400 with PGRST106', async () => {
@@ -317,7 +329,13 @@ describe('handler integration', () => {
         'error code should be PGRST106');
     });
 
-    it('POST /rest/v1/todos with missing body returns 400 with PGRST100', async () => {
+    // Upstream answers a missing or unparseable mutation body with
+    // 400 PGRST102 "Empty or invalid json" (ApiRequest/Payload.hs: `maybe
+    // (Left "Empty or invalid json") Right $ JSON.decode reqBody`, and
+    // `InvalidBody` is PGRST102/400 in Error.hs). PGRST100 is the
+    // query-string parse error and never appears here — InsertSpec.hs:285/295
+    // and UpdateSpec.hs:39/49 assert the PGRST102 body verbatim.
+    it('POST /rest/v1/todos with missing body returns 400 with PGRST102', async () => {
       const event = makeEvent({
         method: 'POST',
         path: '/rest/v1/todos',
@@ -329,8 +347,9 @@ describe('handler integration', () => {
       assert.equal(res.statusCode, 400,
         'POST without body should return 400');
       const body = JSON.parse(res.body);
-      assert.equal(body.code, 'PGRST100',
-        'error code should be PGRST100');
+      assert.equal(body.code, 'PGRST102',
+        'error code should be PGRST102');
+      assert.equal(body.message, 'Empty or invalid json');
     });
 
     it('catch-all 500 returns a generic message and errorId (sec L-20)', async () => {
@@ -516,7 +535,9 @@ describe('handler integration', () => {
   });
 
   describe('body validation', () => {
-    it('PATCH without body returns 400 with PGRST100', async () => {
+    // See the note above POST-with-missing-body: PGRST102 "Empty or invalid
+    // json" is upstream's error for both of these.
+    it('PATCH without body returns 400 with PGRST102', async () => {
       const event = makeEvent({
         method: 'PATCH',
         path: '/rest/v1/todos',
@@ -528,11 +549,12 @@ describe('handler integration', () => {
       assert.equal(res.statusCode, 400,
         'PATCH without body should return 400');
       const body = JSON.parse(res.body);
-      assert.equal(body.code, 'PGRST100',
-        'error code should be PGRST100');
+      assert.equal(body.code, 'PGRST102',
+        'error code should be PGRST102');
+      assert.equal(body.message, 'Empty or invalid json');
     });
 
-    it('malformed JSON body returns 400 with PGRST100', async () => {
+    it('malformed JSON body returns 400 with PGRST102', async () => {
       const event = makeEvent({
         method: 'POST',
         path: '/rest/v1/todos',
@@ -542,8 +564,9 @@ describe('handler integration', () => {
       assert.equal(res.statusCode, 400,
         'malformed JSON should return 400');
       const body = JSON.parse(res.body);
-      assert.equal(body.code, 'PGRST100',
-        'error code should be PGRST100');
+      assert.equal(body.code, 'PGRST102',
+        'error code should be PGRST102');
+      assert.equal(body.message, 'Empty or invalid json');
     });
   });
 
@@ -703,7 +726,8 @@ describe('handler integration', () => {
       assert.equal(res.statusCode, 400,
         'PATCH with malformed JSON should return 400');
       const body = JSON.parse(res.body);
-      assert.equal(body.code, 'PGRST100');
+      // PGRST102, not PGRST100: see ApiRequest/Payload.hs.
+      assert.equal(body.code, 'PGRST102');
     });
 
     it('PATCH with null body returns 400', async () => {
@@ -1255,5 +1279,218 @@ describe('handler integration', () => {
       assert.equal(res.statusCode, 400);
       assert.equal(JSON.parse(res.body).code, 'PGRST114');
     });
+  });
+});
+
+// Headers that are a property of the protocol rather than of the rows: they are
+// on (or deliberately off) every response, so they are asserted in one place.
+describe('protocol headers', () => {
+  let handler;
+
+  beforeEach(() => {
+    handler = createRestHandler(createTestContext()).handler;
+  });
+
+  it('says what the response varies on', async () => {
+    const res = await handler(makeEvent({ method: 'GET' }));
+    assert.equal(res.headers['Vary'], 'Accept, Prefer, Range',
+      'Accept picks the media type, Prefer the shape, Range the window — a '
+      + 'cache that ignores them serves the wrong body');
+  });
+
+  it('leaves a Vary that was already set alone', async () => {
+    const ctx = createTestContext();
+    ctx.cors = { allowedOrigins: ['https://app.com'], allowCredentials: false };
+    const corsHandler = createRestHandler(ctx).handler;
+    const res = await corsHandler(makeEvent({
+      method: 'GET', headers: { Origin: 'https://app.com' },
+    }));
+    assert.equal(res.headers['Vary'], 'Origin',
+      'the origin-reflecting Vary is not overwritten (upstream only appends '
+      + 'its own when none is present)');
+  });
+
+  it('points Content-Location at the canonical query', async () => {
+    const res = await handler(makeEvent({
+      method: 'GET', query: { b: 'eq.1', a: 'eq.1' },
+    }));
+    assert.equal(res.headers['Content-Location'], '/todos?a=eq.1&b=eq.1',
+      'parameters are sorted by name, so the same read always has the same '
+      + 'Content-Location whatever order the client sent them in');
+  });
+
+  it('gives a mutation no Content-Location', async () => {
+    const res = await handler(makeEvent({
+      method: 'POST', body: { id: 'x', user_id: 'user-1', title: 'x' },
+      role: 'service_role',
+    }));
+    assert.equal(res.headers['Content-Location'], undefined,
+      'only a relation read is addressable by its query string');
+  });
+
+  it('refuses a nested path with PGRST125', async () => {
+    const res = await handler(makeEvent({
+      method: 'GET', path: '/rest/v1/todos/1/comments',
+    }));
+    assert.equal(res.statusCode, 404);
+    const body = JSON.parse(res.body);
+    assert.equal(body.code, 'PGRST125');
+    assert.equal(body.message, 'Invalid path specified in request URL');
+  });
+
+  it('answers a CORS preflight without routing it', async () => {
+    const res = await handler(makeEvent({
+      method: 'OPTIONS', path: '/rest/v1/no_such_table',
+      headers: {
+        'Access-Control-Request-Method': 'POST',
+        'Access-Control-Request-Headers': 'apikey,Content-Type',
+      },
+    }));
+    assert.equal(res.statusCode, 200,
+      'a preflight asks whether a later request would be allowed; it must not '
+      + 'be routed, so an unknown relation is not a 404 here');
+    assert.equal(
+      res.headers['Access-Control-Allow-Headers'],
+      'Authorization, apikey, Content-Type, Accept, Accept-Language, '
+      + 'Content-Language');
+    assert.equal(res.headers['Access-Control-Max-Age'], '86400');
+    assert.equal(res.headers['Content-Length'], '0');
+  });
+
+  it('reports what can be done with a relation', async () => {
+    const res = await handler(makeEvent({
+      method: 'OPTIONS', path: '/rest/v1/todos',
+    }));
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.headers['Content-Length'], '0');
+    assert.ok(res.headers['Allow'].startsWith('OPTIONS,GET,HEAD'),
+      `Allow should start with the read methods, got ${res.headers['Allow']}`);
+    assert.equal(res.body, '', 'OPTIONS reports capabilities, not rows');
+  });
+
+  it('404s OPTIONS on a relation that does not exist', async () => {
+    const res = await handler(makeEvent({
+      method: 'OPTIONS', path: '/rest/v1/no_such_table',
+    }));
+    assert.equal(res.statusCode, 404,
+      'an OPTIONS that is not a preflight is a question about a resource, and '
+      + 'the answer for one that does not exist is 404');
+  });
+
+  it('has no Server-Timing unless it is turned on', async () => {
+    const res = await handler(makeEvent({ method: 'GET' }));
+    assert.equal(res.headers['Server-Timing'], undefined,
+      'timing is opt-in, like upstream server-timing-enabled');
+  });
+
+  it('names all five phases when server-timing is on', async () => {
+    const ctx = createTestContext();
+    ctx.serverTiming = true;
+    const timed = createRestHandler(ctx).handler;
+    const res = await timed(makeEvent({ method: 'GET' }));
+    const timing = res.headers['Server-Timing'];
+    assert.ok(timing, 'Server-Timing should be present');
+    for (const phase of ['jwt', 'parse', 'plan', 'transaction', 'response']) {
+      assert.match(timing, new RegExp(`${phase};dur=[0-9]+\\.[0-9]`),
+        `${phase} should be named with a duration in ${timing}`);
+    }
+    assert.equal(
+      timing.replace(/[0-9]+\.[0-9]/g, 'N'),
+      'jwt;dur=N, parse;dur=N, plan;dur=N, transaction;dur=N, response;dur=N',
+      'the phases are named in upstream\'s order, comma-space separated');
+  });
+
+  it('reports timings on a path that never reaches the database', async () => {
+    const ctx = createTestContext();
+    ctx.serverTiming = true;
+    const timed = createRestHandler(ctx).handler;
+    const res = await timed(makeEvent({
+      method: 'GET', path: '/rest/v1/todos/1/comments',
+    }));
+    assert.equal(res.statusCode, 404);
+    assert.match(res.headers['Server-Timing'], /transaction;dur=0\.0/,
+      'a request that opened no transaction spent no time in one, and still '
+      + 'says so');
+  });
+});
+
+// `Prefer: timezone=` is a request-scoped PostgreSQL setting, and the only way
+// to make one request-scoped is to put it in a transaction that ends with the
+// request.
+describe('Prefer: timezone', () => {
+  it('sets it inside a transaction, with the value bound', async () => {
+    const pool = createMockPool();
+    const handler = createRestHandler(createTestContext(pool)).handler;
+    const res = await handler(makeEvent({
+      method: 'GET', headers: { Prefer: 'timezone=America/Los_Angeles' },
+    }));
+    assert.equal(res.statusCode, 200);
+
+    const texts = pool.capturedQueries.map(q => q.text.trim().toUpperCase());
+    assert.ok(texts.includes('BEGIN'),
+      'without a transaction a local setting has no effect, and a session one '
+      + 'would leak onto the next request that got this connection');
+    const setCfg = pool.capturedQueries.find(q => /set_config/.test(q.text));
+    assert.ok(setCfg, 'the timezone should be set');
+    assert.deepEqual(setCfg.values, ['timezone', 'America/Los_Angeles'],
+      'the value is a bind parameter, never interpolated into SQL');
+    assert.match(setCfg.text, /,\s*true\)/,
+      'is_local = true, so PostgreSQL drops it when the transaction ends');
+    assert.ok(texts.lastIndexOf('COMMIT') > texts.indexOf('BEGIN'),
+      'the transaction is closed before the connection can be reused');
+  });
+
+  it('opens no transaction when no timezone was asked for', async () => {
+    const pool = createMockPool();
+    const handler = createRestHandler(createTestContext(pool)).handler;
+    await handler(makeEvent({ method: 'GET' }));
+    assert.ok(
+      !pool.capturedQueries.some(q => /^begin$/i.test(q.text.trim())),
+      'the default path is unchanged: no checkout, no transaction');
+  });
+});
+
+// `app-settings` are configured once and applied to every request, so a
+// function can read one back with `current_setting('app.settings.<name>')`
+// (upstream Query/PreQuery.hs `txVarQuery`). Like the timezone, they only stay
+// request-scoped inside a transaction.
+describe('app-settings', () => {
+  it('sets each one transaction-locally, with names and values bound',
+    async () => {
+      const pool = createMockPool();
+      const ctx = createTestContext(pool);
+      ctx.appSettings = {
+        'app.settings.app_host': 'localhost',
+        'app.settings.external_api_secret': '0123456789abcdef',
+      };
+      const res = await createRestHandler(ctx).handler(
+        makeEvent({ method: 'GET' }));
+      assert.equal(res.statusCode, 200);
+
+      const texts = pool.capturedQueries.map(q => q.text.trim().toUpperCase());
+      assert.ok(texts.includes('BEGIN'),
+        'a session-level setting would leak onto the next request that got '
+        + 'this connection');
+      const setCfg = pool.capturedQueries.find(
+        q => /set_config/.test(q.text));
+      assert.ok(setCfg, 'the settings should be applied');
+      assert.equal(setCfg.text,
+        'select set_config($1, $2, true), set_config($3, $4, true)');
+      assert.deepEqual(setCfg.values, [
+        'app.settings.app_host', 'localhost',
+        'app.settings.external_api_secret', '0123456789abcdef',
+      ], 'every name and value is a bind parameter, never interpolated');
+      assert.ok(texts.lastIndexOf('COMMIT') > texts.indexOf('BEGIN'),
+        'the transaction is closed before the connection can be reused');
+    });
+
+  it('opens no transaction when none are configured', async () => {
+    const pool = createMockPool();
+    const ctx = createTestContext(pool);
+    ctx.appSettings = {};
+    await createRestHandler(ctx).handler(makeEvent({ method: 'GET' }));
+    assert.ok(
+      !pool.capturedQueries.some(q => /^begin$/i.test(q.text.trim())),
+      'an empty configuration costs the default path nothing');
   });
 });

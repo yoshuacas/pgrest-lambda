@@ -9,11 +9,31 @@ export const ALLOW_HEADERS =
   + 'Content-Type, Prefer, Range, apikey, X-Client-Info, '
   + 'X-Metadata, X-Region, X-Retry-Count, X-Supabase-Api-Version, X-Upsert';
 
-// Response headers the SDK reads via response.headers.get(...). Must
-// be enumerated in Access-Control-Expose-Headers or cross-origin
-// readers see null.
+// Response headers a cross-origin reader is allowed to see. This is
+// PostgREST's own list, verbatim (`corsExposedHeaders` in
+// src/library/PostgREST/Cors.hs), because the browser side of
+// @supabase/supabase-js is written against it: `Content-Range` for counts,
+// `Content-Location`/`Location` for created rows, `Range-Unit` for the range
+// vocabulary. Headers this engine never emits are not listed — enumerating
+// them exposed nothing.
 export const EXPOSE_HEADERS =
-  'Content-Range, X-Relay-Error, X-Total-Count';
+  'Content-Encoding, Content-Location, Content-Range, Content-Type, '
+  + 'Date, Location, Server, Transfer-Encoding, Range-Unit';
+
+// The methods a relation or a function can be reached with. PostgREST's
+// policy lists GET, POST, PATCH, PUT, DELETE and OPTIONS; the wai-cors
+// middleware it hands them to adds the "simple" methods, which is where HEAD
+// comes from and why the order is this and not alphabetical.
+export const ALLOW_METHODS =
+  'GET, POST, PATCH, PUT, DELETE, OPTIONS, HEAD';
+
+// wai-cors always appends the "simple" request headers to the allow-list it
+// answers a preflight with (Content-Type is not among them: it is only simple
+// for a subset of values, so it has to be asked for).
+const SIMPLE_REQUEST_HEADERS = ['Accept', 'Accept-Language', 'Content-Language'];
+
+// One day, as `corsMaxAge = Just $ 60*60*24`.
+export const PREFLIGHT_MAX_AGE = '86400';
 
 // The JSON media type the auth layer serves. It lives here only so the auth
 // response builders share one spelling; it is deliberately NOT part of the
@@ -28,16 +48,14 @@ export const JSON_CONTENT_TYPE = 'application/json';
 export const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': ALLOW_HEADERS,
-  'Access-Control-Allow-Methods':
-    'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+  'Access-Control-Allow-Methods': ALLOW_METHODS,
   'Access-Control-Expose-Headers': EXPOSE_HEADERS,
   'Cache-Control': 'no-store',
 };
 
 const STATIC_HEADERS = {
   'Access-Control-Allow-Headers': ALLOW_HEADERS,
-  'Access-Control-Allow-Methods':
-    'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+  'Access-Control-Allow-Methods': ALLOW_METHODS,
   'Access-Control-Expose-Headers': EXPOSE_HEADERS,
   'Cache-Control': 'no-store',
 };
@@ -72,6 +90,39 @@ export function buildCorsHeaders(corsConfig, origin) {
   }
 
   return headers;
+}
+
+/**
+ * The extra headers a CORS preflight answer carries, on top of the origin and
+ * method blocks every response gets.
+ *
+ * A preflight is an OPTIONS request that names the method it is asking about
+ * in `Access-Control-Request-Method`. PostgREST answers it out of the wai-cors
+ * middleware, before the request ever reaches a table: the allow-list is
+ * `Authorization` plus the headers the caller asked for, plus the simple
+ * request headers, and the answer is cacheable for a day.
+ *
+ * Without an `Access-Control-Request-Headers` to echo there is nothing to
+ * reflect, so the static allow-list stands — it is a superset of what a
+ * browser could be asking about.
+ *
+ * @param {string} [requestedHeaders] the raw Access-Control-Request-Headers
+ * @returns {Object} headers to merge into the preflight response
+ */
+export function preflightHeaders(requestedHeaders) {
+  const asked = String(requestedHeaders || '')
+    .split(',')
+    .map(h => h.trim())
+    .filter(Boolean);
+
+  const allow = asked.length > 0
+    ? ['Authorization', ...asked, ...SIMPLE_REQUEST_HEADERS].join(', ')
+    : ALLOW_HEADERS;
+
+  return {
+    'Access-Control-Allow-Headers': allow,
+    'Access-Control-Max-Age': PREFLIGHT_MAX_AGE,
+  };
 }
 
 export function assertCorsConfig(corsConfig, production) {

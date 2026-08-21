@@ -25,6 +25,15 @@ RETURNS TABLE(id uuid, name text) LANGUAGE sql AS $$
    WHERE user_id = p_user_id;
 $$;
 
+-- STABLE on purpose: an exact count of a set-returning function calls it a
+-- second time, which the engine only does for an IMMUTABLE or STABLE routine
+-- (countRpcRows).
+CREATE FUNCTION list_items(p_user_id uuid)
+RETURNS TABLE(id uuid, name text) LANGUAGE sql STABLE AS $$
+  SELECT id, name FROM items
+   WHERE user_id = p_user_id;
+$$;
+
 CREATE FUNCTION do_nothing()
 RETURNS void LANGUAGE sql AS $$
 $$;
@@ -177,6 +186,33 @@ describe('RPC integration tests', () => {
       assert.ok('name' in row, 'should have name column');
       assert.ok(!('id' in row), 'should not have id column');
     }
+  });
+
+  // RangeSpec.hs:37/52: an offset past the last row of a set-returning
+  // function is 416 with PGRST103 and `Content-Range: */<total>`. This path
+  // builds its error response directly instead of throwing, so it is the one
+  // RPC error that does not go through the handler's catch block — it regressed
+  // to a 500 once because the response options were not in scope here.
+  it('set-returning function with an offset past the end is 416', async () => {
+    const res = await handler(event({
+      method: 'POST',
+      path: '/rest/v1/rpc/list_items',
+      headers: {
+        apikey: service,
+        'Content-Type': 'application/json',
+        Prefer: 'count=exact',
+      },
+      body: { p_user_id: testUserId },
+      query: { offset: '100' },
+      authorizer: { role: 'service_role' },
+    }));
+    assert.equal(res.statusCode, 416);
+    const body = JSON.parse(res.body);
+    assert.equal(body.code, 'PGRST103');
+    assert.equal(body.message, 'Requested range not satisfiable');
+    assert.match(body.details, /^An offset of 100 was requested, but there are only \d+ rows\.$/);
+    const cr = res.headers['Content-Range'] || res.headers['content-range'];
+    assert.match(cr, /^\*\/\d+$/);
   });
 
   it('RETURNS TABLE with invalid column filter returns PGRST204', async () => {

@@ -9,6 +9,7 @@ import { createHmac } from 'node:crypto';
 import {
   resolveProfile, quoteIdent, searchPathValue, hasAggregate, wantsPlan,
   clampMaxRows, verifyRestJwt, applyBulkGuard,
+  normalizeAppSettings, appSettingsSql,
 } from '../handler.mjs';
 
 describe('resolveProfile (db-schemas)', () => {
@@ -75,6 +76,49 @@ describe('searchPathValue (db-extra-search-path)', () => {
 
   it('doubles embedded quotes in quoteIdent', () => {
     assert.equal(quoteIdent('a"b'), '"a""b"');
+  });
+});
+
+// `app-settings` — upstream carries them as an ordered list of pairs
+// (`configAppSettings`) and applies each one with
+// `set_config(name, value, true)` in Query/PreQuery.hs `txVarQuery`, so a
+// function can read one back with `current_setting('app.settings.<name>')`
+// (RpcSpec.hs "app settings").
+describe('normalizeAppSettings / appSettingsSql (app-settings)', () => {
+  it('reads an object as pairs of strings', () => {
+    assert.deepEqual(
+      normalizeAppSettings({ 'app.settings.app_host': 'localhost' }),
+      [['app.settings.app_host', 'localhost']]);
+  });
+
+  it('keeps the order of a list of pairs', () => {
+    assert.deepEqual(
+      normalizeAppSettings([['b', '2'], ['a', '1']]),
+      [['b', '2'], ['a', '1']]);
+  });
+
+  it('stringifies non-string values', () => {
+    assert.deepEqual(normalizeAppSettings({ n: 5, f: false }),
+      [['n', '5'], ['f', 'false']]);
+  });
+
+  it('is empty for nothing configured', () => {
+    for (const v of [undefined, null, {}, []]) {
+      assert.deepEqual(normalizeAppSettings(v), []);
+    }
+  });
+
+  it('drops entries with no name or no value', () => {
+    assert.deepEqual(
+      normalizeAppSettings([['', 'x'], [null, 'y'], ['ok', null], ['a', '1']]),
+      [['a', '1']]);
+  });
+
+  it('binds every name and value, and sets them transaction-locally', () => {
+    assert.equal(appSettingsSql([['a', '1']]),
+      'select set_config($1, $2, true)');
+    assert.equal(appSettingsSql([['a', '1'], ['b', '2']]),
+      'select set_config($1, $2, true), set_config($3, $4, true)');
   });
 });
 

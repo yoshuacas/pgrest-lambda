@@ -22,8 +22,12 @@ const TOKEN_LIFETIME_MS = 10 * 60 * 1000; // 10 minutes
 // supportsArrayContainment: true
 //   Array types supported; @>, <@, && expected to work.
 //
-// supportsPlannedCount: false
-//   pg_class.reltuples accuracy undocumented on DSQL.
+// supportsPlannedCount: true
+//   `count=planned`/`count=estimated` do not read pg_class.reltuples: upstream
+//   EXPLAINs the filtered read and takes `[0].Plan."Plan Rows"`
+//   (Query/MainTx.hs `decodeExplain`), which is what handler.mjs does.
+//   EXPLAIN (FORMAT JSON) works on DSQL; verified against the conformance
+//   fixtures (RangeSpec:311/320/329/359/390, QueryLimitedSpec:50/71 pass).
 //
 // supportsRegex: true
 //   LIKE/ILIKE confirmed; POSIX ~ assumed (text type supported).
@@ -41,7 +45,7 @@ const DSQL_CAPABILITIES = Object.freeze({
   supportsFullTextSearch: false,
   supportsRangeTypes: false,
   supportsArrayContainment: true,
-  supportsPlannedCount: false,
+  supportsPlannedCount: true,
   supportsRegex: true,
   supportsRowLevelSecurity: false,
   supportsRpc: true,

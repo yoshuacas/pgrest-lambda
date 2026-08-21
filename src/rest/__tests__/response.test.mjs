@@ -124,6 +124,30 @@ describe('response', () => {
       assert.ok('details' in body, 'error body should have details');
       assert.ok('hint' in body, 'error body should have hint');
     });
+
+    it('names the error code in Proxy-Status', () => {
+      const err = new PostgRESTError(400, 'PGRST100', 'bad parse', null, null);
+      const res = error(err);
+      assert.equal(res.headers['Proxy-Status'], 'PostgREST; error=PGRST100',
+        'RFC 9209: an intermediary reads Proxy-Status to tell whose error this '
+        + 'is — the API\'s or the gateway\'s in front of it');
+    });
+
+    it('states the payload length', () => {
+      const err = new PostgRESTError(404, 'PGRST205', 'nope', null, null);
+      const res = error(err);
+      assert.equal(
+        res.headers['Content-Length'],
+        String(Buffer.byteLength(res.body)),
+        'the length is the body\'s own byte count');
+    });
+
+    it('reports a non-PostgREST error as PGRST000 and 500', () => {
+      const res = error(new Error('boom'));
+      assert.equal(res.statusCode, 500);
+      assert.equal(res.headers['Proxy-Status'], 'PostgREST; error=PGRST000');
+      assert.equal(JSON.parse(res.body).code, 'PGRST000');
+    });
   });
 
   describe('CORS headers', () => {

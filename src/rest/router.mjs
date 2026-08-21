@@ -21,10 +21,27 @@ function decodeSegment(raw) {
   }
 }
 
-export function route(path, schema, schemaName = 'public') {
+/**
+ * Turn a request path into a route.
+ *
+ * @param {string} path the request path
+ * @param {Object} schema the schema cache for this request's profile
+ * @param {string} schemaName the exposed schema this request selected
+ * @param {{openApiMode?: string}} [options] engine configuration the routing
+ *   decision depends on. `openApiMode` is upstream `openapi-mode`: `disabled`
+ *   makes the root endpoint report no metadata at all.
+ */
+export function route(path, schema, schemaName = 'public', options = {}) {
   const remaining = path.replace(/^\/rest\/v1/, '');
 
   if (remaining === '' || remaining === '/') {
+    // `openapi-mode = disabled` (upstream OADisabled): the root endpoint is a
+    // 404 rather than a spec. It applies to the root only — the table and RPC
+    // routes below are unaffected.
+    if (options.openApiMode === 'disabled') {
+      throw new PostgRESTError(404, 'PGRST126',
+        'Root endpoint metadata is disabled');
+    }
     return { type: 'openapi' };
   }
 

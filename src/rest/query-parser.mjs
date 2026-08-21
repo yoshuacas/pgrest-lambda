@@ -30,18 +30,6 @@ const VALID_IS_VALUES = new Set([
 
 const LOGICAL_OPS = new Set(['or', 'and']);
 
-const ALLOWED_CAST_TYPES = new Set([
-  'text', 'integer', 'int', 'int4', 'int2',
-  'bigint', 'int8', 'smallint',
-  'numeric', 'real', 'float4', 'float8',
-  'double precision',
-  'boolean', 'bool',
-  'date', 'timestamp', 'timestamptz',
-  'time', 'timetz',
-  'uuid', 'json', 'jsonb',
-  'varchar', 'char',
-]);
-
 const ALIAS_IDENT = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 
 // Legacy alias/cast diagnostics. Upstream reports every malformed select
@@ -115,6 +103,17 @@ function looksLikeEmbedPrefix(prefix) {
   return sc.pos === prefix.length;
 }
 
+// The index just past the closing '"' of the quoted run that starts at `at`,
+// or `at` itself when the quote is never closed. Upstream `pQuotedValue`
+// treats a backslash as escaping whatever follows it.
+function skipQuotedRun(input, at) {
+  for (let j = at + 1; j < input.length; j += 1) {
+    if (input[j] === '\\') { j += 1; continue; }
+    if (input[j] === '"') return j + 1;
+  }
+  return at;
+}
+
 export function parseSelectList(
     input, maxEmbedDepth = DEFAULT_MAX_EMBED_DEPTH, depth = 0,
     source = input, offset = 0) {
@@ -145,13 +144,25 @@ export function parseSelectList(
 
     while (i < len) {
       const ch = input[i];
+      if (ch === '"') {
+        // A quoted field name is one token to upstream's `pQuotedValue`, so
+        // the ',', '(' and ')' inside it are ordinary characters — that is
+        // how `select="(inside,parens)"` names a column with parentheses in
+        // it (QuerySpec:1291). An unterminated quote is not a quoted value,
+        // and the character is scanned like any other.
+        const closed = skipQuotedRun(input, i);
+        if (closed > i) { i = closed; continue; }
+      }
       if (parenDepth === 0 && ch === ',') break;
       if (ch === '(') {
         if (parenDepth === 0) {
           if (!looksLikeEmbedPrefix(input.slice(tokenStart, i))) {
             // A field, not an embed: the '(' belongs to the field token
             // and the grammar decides what to make of it.
-            while (i < len && input[i] !== ',') i++;
+            while (i < len && input[i] !== ',') {
+              const closed = input[i] === '"' ? skipQuotedRun(input, i) : i;
+              i = closed > i ? closed : i + 1;
+            }
             break;
           }
           parenStart = i;
@@ -554,9 +565,12 @@ export function parseQuery(
 
   const onConflict = params.on_conflict || null;
 
-  const columns = params.columns
-    ? params.columns.split(',').map(c => c.trim().replace(/^"|"$/g, ''))
-    : null;
+  // `?columns=` absent and `?columns=` present-but-empty are different
+  // requests: upstream parses the parameter with `pRequestColumns` and an
+  // empty value is a parse error, not "no columns".
+  const columns = params.columns == null
+    ? null
+    : parseColumnsParam(params.columns);
 
   rewriteEmbedNulls(select, filters);
 
@@ -618,6 +632,7 @@ class Scanner {
     this.failPos = -1;
     this.failExpecting = [];
     this.failToken = undefined;
+    this.failTokenStyle = 'string';
   }
 
   get done() { return this.pos >= this.src.length; }
@@ -626,11 +641,17 @@ class Scanner {
   // with the input token that was there instead. Only the furthest
   // position is kept, the way Parsec's `mergeError` discards the error of
   // an alternative that did not get as far.
-  expect(pos, label, token) {
+  //
+  // `style` is how Parsec renders that token: `string`/`tokens` shows a
+  // Haskell String (`"t"`), while `char` and `eof` show a Char (`'t'`).
+  // Only the parser that records the furthest failure decides, so this is
+  // set on the same branch that takes over the position.
+  expect(pos, label, token, style = 'string') {
     if (pos > this.failPos) {
       this.failPos = pos;
       this.failExpecting = [];
       this.failToken = token === undefined ? this.src[pos] : token;
+      this.failTokenStyle = style;
     }
     if (pos !== this.failPos) return;
     if (label !== null && !this.failExpecting.includes(label)) {
@@ -643,6 +664,7 @@ class Scanner {
       failPos: this.failPos,
       failExpecting: this.failExpecting.slice(),
       failToken: this.failToken,
+      failTokenStyle: this.failTokenStyle,
     };
   }
 
@@ -654,10 +676,12 @@ class Scanner {
   relabel(snap, label) {
     const attemptPos = this.failPos;
     const attemptToken = this.failToken;
+    const attemptStyle = this.failTokenStyle;
     this.failPos = snap.failPos;
     this.failExpecting = snap.failExpecting;
     this.failToken = snap.failToken;
-    this.expect(attemptPos, label, attemptToken);
+    this.failTokenStyle = snap.failTokenStyle;
+    this.expect(attemptPos, label, attemptToken, attemptStyle);
   }
 
   labelled(label, fn) {
@@ -683,22 +707,24 @@ class Scanner {
     this.failPos = -1;
     this.failExpecting = [];
     this.failToken = undefined;
+    this.failTokenStyle = 'string';
     const result = fn();
     const inner = this.snapshot();
     this.failPos = outer.failPos;
     this.failExpecting = outer.failExpecting;
     this.failToken = outer.failToken;
+    this.failTokenStyle = outer.failTokenStyle;
     if (inner.failPos < 0) {
       // nothing to merge
     } else if (result === FAIL && this.pos === startPos) {
       // Empty failure: the label replaces the collected expectations.
-      this.expect(inner.failPos, label, inner.failToken);
+      this.expect(inner.failPos, label, inner.failToken, inner.failTokenStyle);
     } else {
       for (const l of inner.failExpecting) {
-        this.expect(inner.failPos, l, inner.failToken);
+        this.expect(inner.failPos, l, inner.failToken, inner.failTokenStyle);
       }
       if (inner.failExpecting.length === 0) {
-        this.expect(inner.failPos, null, inner.failToken);
+        this.expect(inner.failPos, null, inner.failToken, inner.failTokenStyle);
       }
     }
     return result;
@@ -758,6 +784,8 @@ function commasOr(labels) {
 // "end of input" instead.
 function unexpectedAt(sc) {
   if (sc.failToken === undefined) return 'end of input';
+  // `show` on a Char is single-quoted; on a String it is double-quoted.
+  if (sc.failTokenStyle === 'char') return `'${sc.failToken}'`;
   return JSON.stringify(sc.failToken);
 }
 
@@ -858,6 +886,29 @@ function pFieldName(sc) {
       return parts.join('-');
     }
   });
+}
+
+// Upstream `pRequestColumns`: `P.parse pColumns "failed to parse columns
+// parameter (<raw>)" raw`, where `pColumns = pFieldName `sepBy1` lexeme
+// (char ',')`. There is no `eof`, so trailing garbage after the last field
+// upstream could parse is ignored — but an *empty* value has no first field at
+// all, which is why `?columns=` is a PGRST100 parse error and not "no columns".
+//
+// @param {string} raw the raw `?columns=` value (present, possibly empty)
+// @returns {string[]} the field names, quotes stripped
+export function parseColumnsParam(raw) {
+  const src = String(raw);
+  const sc = new Scanner(src);
+  const cols = [];
+  for (;;) {
+    const name = pFieldName(sc);
+    // `sepBy1` has consumed the separator by the time it asks for this field,
+    // so a failure here fails the whole parse — `a,` and `a,,b` are errors.
+    if (name === FAIL) throw qpError('columns parameter', src, sc);
+    cols.push(name);
+    if (!sc.lexemeChar(',')) break;
+  }
+  return cols;
 }
 
 // --- JSON path -------------------------------------------------------------
@@ -1084,9 +1135,25 @@ function pOptAggregate(sc) {
   return fn;
 }
 
+// A cast type is any identifier: upstream parses it with `pIdentifier` and
+// renders it into `CAST( x AS <type> )` unquoted, so PostgreSQL is what
+// decides whether the type exists (42704 `type "..." does not exist`). An
+// allowlist here would reject every domain, enum and composite type a user
+// defines, so there is none.
+//
+// The cast is the one piece of a query that cannot be a bind parameter — a
+// type name is not a value. What makes interpolating it safe is the charset:
+// `pIdentifier` accepts only letters, digits, `_`, ` ` and `$`, so a cast can
+// contain no quote, semicolon, parenthesis or comment marker and cannot
+// escape the CAST expression. This re-checks that charset at the boundary
+// where the string becomes SQL, so the guarantee does not depend on a caller.
+const CAST_TYPE_CHARS = /^[\p{L}0-9_ $]+$/u;
+
 function checkCast(cast) {
   const type = cast.toLowerCase();
-  if (!ALLOWED_CAST_TYPES.has(type)) {
+  // Unquoted type names are case-folded by PostgreSQL, so lowercasing here
+  // is not a behaviour change; it only keeps one spelling in the plan.
+  if (!CAST_TYPE_CHARS.test(type)) {
     throw new PostgRESTError(400, 'PGRST100',
       `Unsupported cast type '${cast}'`);
   }
@@ -1356,6 +1423,21 @@ function pParenthesized(sc, p) {
 // filters on a json path. The dot-splitting for embedded filters has already
 // happened by the time this runs; what is left is one field name.
 function splitFilterKey(key) {
+  if (key.startsWith('"')) {
+    // The name upstream filters on is what `pFieldName` returns, so a quoted
+    // parameter name is the column *inside* the quotes — that is how
+    // `?"*id*"=eq.1` filters on a column whose name contains characters
+    // PostgREST reserves (QuerySpec:1291).
+    const sc = new Scanner(key);
+    const name = pQuotedValue(sc);
+    if (name !== FAIL) {
+      if (sc.done) return { column: name, jsonPath: null };
+      const jsonPath = pJsonPath(sc);
+      if (jsonPath !== FAIL && jsonPath.length > 0 && sc.done) {
+        return { column: name, jsonPath };
+      }
+    }
+  }
   if (!key.includes('->')) return { column: key, jsonPath: null };
   const sc = new Scanner(key);
   const name = pFieldName(sc);
@@ -1449,112 +1531,108 @@ function parseLogicalGroup(op, negate, raw, depth = 0) {
   return tree;
 }
 
-const VALID_ORDER_DIRECTIONS = new Set(['asc', 'desc']);
-const VALID_ORDER_NULLS = new Set(['nullsfirst', 'nullslast']);
+// Upstream `pOrder`:
+//
+//   pOrder = lexeme (try pOrderRelationTerm <|> pOrderTerm) `sepBy1` char ','
+//   pOrderTerm         = pField      *> optionMaybe pOrdDir *> nulls *> pEnd
+//   pOrderRelationTerm = pFieldName  *> "(" pField ")"
+//                                    *> optionMaybe pOrdDir *> nulls *> pEnd
+//   pOrdDir = try (pDelimiter *> "asc")        <|> try (pDelimiter *> "desc")
+//   pNulls  = try (pDelimiter *> "nullsfirst") <|> try (pDelimiter *> "nullslast")
+//   pEnd    = lookAhead (char ',') <|> eof
+//
+// Running it through the Scanner rather than splitting the value on '.' is
+// what makes a malformed order report the position and the expectation set
+// Parsec reports (QuerySpec:1174), and what lets a quoted column name
+// contain a '.' or a ','.
 
-// Commas separate order terms, but a related order term carries its own
-// parentheses (`order=clients(name).asc`), so the split has to respect them.
-function splitOrderTerms(raw) {
-  const out = [];
-  let depth = 0;
-  let start = 0;
-  for (let i = 0; i < raw.length; i += 1) {
-    const ch = raw[i];
-    if (ch === '(') depth += 1;
-    else if (ch === ')') depth -= 1;
-    else if (ch === ',' && depth === 0) {
-      out.push(raw.slice(start, i));
-      start = i + 1;
-    }
-  }
-  out.push(raw.slice(start));
-  return out;
+// `pEnd`. Both halves fail through Parsec's `char`/`eof`, which render the
+// offending token as a Char — `unexpected 't'`, not `unexpected "t"`.
+function pOrderEnd(sc) {
+  if (sc.done || sc.src[sc.pos] === ',') return true;
+  sc.expect(sc.pos, '","', undefined, 'char');
+  sc.expect(sc.pos, 'end of input', undefined, 'char');
+  return false;
 }
 
-// `order=<relation>(<field>)[.dir][.nulls]` — upstream `pOrderRelationTerm`.
-// It orders the parent rows by a column of an embedded to-one resource; a
-// to-many one is rejected at planning time, not here.
-const RELATED_ORDER_TERM = /^([A-Za-z_][A-Za-z0-9_]*)\(([^()]+)\)(.*)$/;
-
-function parseOrderMods(mods) {
-  let direction = mods[0] || 'asc';
-  let nulls = mods[1] || null;
-  // `order=col.nullsfirst` — a nulls option with no direction is legal
-  // upstream (`optionMaybe pOrdDir` before `optionMaybe pNulls`).
-  if (mods.length === 1 && VALID_ORDER_NULLS.has(mods[0])) {
-    direction = 'asc';
-    nulls = mods[0];
+// `try (pDelimiter *> string w)` for each word, in order: an attempt that
+// fails leaves the position where it started, so the next word sees the
+// delimiter again and every word ends up in the expectation set.
+function pDottedWord(sc, words) {
+  const start = sc.pos;
+  for (const word of words) {
+    if (pDelimiter(sc) && sc.literal(word)) return word;
+    sc.pos = start;
   }
-  if (!VALID_ORDER_DIRECTIONS.has(direction)) {
-    throw new PostgRESTError(
-      400, 'PGRST100',
-      `Invalid order direction '${direction}'. Must be 'asc' or 'desc'`);
-  }
-  if (nulls && !VALID_ORDER_NULLS.has(nulls)) {
-    throw new PostgRESTError(
-      400, 'PGRST100',
-      `Invalid nulls option '${nulls}'. Must be 'nullsfirst' or 'nullslast'`);
-  }
-  return { direction, nulls };
+  return null;
 }
 
-// A field in order position: a name and an optional json path.
-function parseOrderField(text) {
-  if (text.includes('->')) {
-    const sc = new Scanner(text);
-    const name = pFieldName(sc);
-    const jp = name === FAIL ? FAIL : pJsonPath(sc);
-    if (name !== FAIL && jp !== FAIL && jp.length > 0 && sc.pos === text.length) {
-      return { column: name, jsonPath: jp };
-    }
-  }
-  return { column: text, jsonPath: null };
+// `optionMaybe pOrdDir` then `optionMaybe pNulls <* pEnd <|> pEnd $> Nothing`.
+// The two alternatives differ only in whether the nulls option was consumed,
+// and a consumed one cannot be backtracked over, so requiring the end after
+// an optional nulls option is the same parser.
+function pOrderMods(sc) {
+  const direction = pDottedWord(sc, ORDER_DIRECTIONS);
+  const nulls = pDottedWord(sc, ORDER_NULLS);
+  if (!pOrderEnd(sc)) return FAIL;
+  // Upstream keeps the direction as a Maybe and omits ASC from the SQL when
+  // it is absent; ASC is PostgreSQL's default, so naming it here is the same
+  // ordering.
+  return { direction: direction || 'asc', nulls };
+}
+
+const ORDER_DIRECTIONS = ['asc', 'desc'];
+const ORDER_NULLS = ['nullsfirst', 'nullslast'];
+
+function orderTerm(fld, mods, relation) {
+  const term = relation === undefined
+    ? { column: fld.name, direction: mods.direction, nulls: mods.nulls }
+    : {
+      relation, column: fld.name,
+      direction: mods.direction, nulls: mods.nulls,
+    };
+  if (fld.jsonPath.length > 0) term.jsonPath = fld.jsonPath;
+  return term;
+}
+
+// `order=<relation>(<field>)[.dir][.nulls]`. It orders the parent rows by a
+// column of an embedded resource; a to-many one is rejected at planning
+// time, not here.
+function pOrderRelationTerm(sc) {
+  const relation = pFieldName(sc);
+  if (relation === FAIL) return FAIL;
+  if (!sc.char('(')) return FAIL;
+  const fld = pField(sc);
+  if (fld === FAIL) return FAIL;
+  if (!sc.char(')')) return FAIL;
+  const mods = pOrderMods(sc);
+  if (mods === FAIL) return FAIL;
+  return orderTerm(fld, mods, relation);
+}
+
+// A plain term. `pField` takes the json path before the modifiers, so
+// `order=data->>k.desc` sorts on the json path and not on a column called
+// `data->>k`.
+function pOrderTerm(sc) {
+  const fld = pField(sc);
+  if (fld === FAIL) return FAIL;
+  const mods = pOrderMods(sc);
+  if (mods === FAIL) return FAIL;
+  return orderTerm(fld, mods);
 }
 
 function parseOrder(raw) {
-  return splitOrderTerms(raw).map((entry) => {
-    const related = RELATED_ORDER_TERM.exec(entry.trim());
-    if (related) {
-      const field = parseOrderField(related[2]);
-      const mods = related[3].startsWith('.')
-        ? related[3].slice(1).split('.')
-        : (related[3] ? related[3].split('.') : []);
-      const { direction, nulls } = parseOrderMods(mods);
-      const term = {
-        relation: related[1], column: field.column, direction, nulls,
-      };
-      if (field.jsonPath) term.jsonPath = field.jsonPath;
-      return term;
+  const sc = new Scanner(raw);
+  const terms = [];
+  for (;;) {
+    const start = sc.pos;
+    let term = pOrderRelationTerm(sc);
+    if (term === FAIL) {
+      sc.pos = start;
+      term = pOrderTerm(sc);
     }
-    // Upstream `pOrderTerm` parses a full field — name plus an optional json
-    // path — before the direction/nulls modifiers, so `order=data->>k.desc`
-    // sorts on the json path and not on a column called `data->>k`.
-    let column = entry;
-    let jsonPath = null;
-    let mods;
-    let rest = null;
-    if (entry.includes('->')) {
-      const sc = new Scanner(entry);
-      const name = pFieldName(sc);
-      const jp = name === FAIL ? FAIL : pJsonPath(sc);
-      if (name !== FAIL && jp !== FAIL && jp.length > 0) {
-        column = name;
-        jsonPath = jp;
-        rest = entry.slice(sc.pos);
-      }
-    }
-    if (jsonPath) {
-      mods = rest.startsWith('.') ? rest.slice(1).split('.')
-        : (rest ? rest.split('.') : []);
-    } else {
-      const parts = entry.split('.');
-      column = parts[0];
-      mods = parts.slice(1);
-    }
-
-    const { direction, nulls } = parseOrderMods(mods);
-    const term = { column, direction, nulls };
-    if (jsonPath) term.jsonPath = jsonPath;
-    return term;
-  });
+    if (term === FAIL) throw qpError('order', raw, sc);
+    terms.push(term);
+    if (!sc.char(',')) return terms;
+  }
 }

@@ -75,7 +75,12 @@ const USAGE = `conformance runner
                             write to the live fixtures and DSQL has no
                             SAVEPOINT, so a run that includes insert/update/
                             delete/upsert cases is only reproducible from
-                            restored data.
+                            restored data. Any reset flag also empties the
+                            tables the fixtures create and 07-data.sql never
+                            fills: re-applying the data file cannot clear those,
+                            so a row a case inserted into one of them would
+                            otherwise outlive the run (the count and the rows
+                            cleared are printed at the end of the run).
   --reset-mutations         restore 07-data.sql after every mutating case, so
                             each case starts from the fixture state upstream
                             gives it (SpecHelper sets db-tx-end=rollback-all:
@@ -579,7 +584,7 @@ function short(v, max = 160) {
 }
 
 // The response body the handler produced, parsed if it is JSON.
-function parseActualBody(bodyText) {
+export function parseActualBody(bodyText) {
   if (bodyText == null || bodyText === '') {
     return { json: null, empty: true, parsed: true };
   }
@@ -1271,7 +1276,7 @@ function safeStringify(v) {
 
 // ---------------------------------------------------------------- database
 
-function resolveTargetConfig(target) {
+export function resolveTargetConfig(target) {
   if (target === 'dsql') {
     return {
       provider: 'dsql',
@@ -1360,9 +1365,16 @@ async function readCatalog(pool) {
   };
   const viewsInPublic = new Set();
   const tablesInPublic = new Set();
+  // Every real table, `schema.table`, in every schema: the fixture-reset sweep
+  // needs to know a key exists before it deletes from it, and the tables it
+  // clears are not all in public (private.junction, تست.موارد).
+  const tables = new Set();
   const rels = await pool.query(REL_SQL);
   for (const row of rels.rows) {
     add(relations, row);
+    if (row.relkind === 'r' || row.relkind === 'p') {
+      tables.add(`${row.schema}.${row.name}`);
+    }
     if (row.schema !== 'public') continue;
     if (row.relkind === 'v' || row.relkind === 'm') viewsInPublic.add(row.name);
     else tablesInPublic.add(row.name);
@@ -1410,6 +1422,7 @@ async function readCatalog(pool) {
     relations,
     functions,
     functionWrites,
+    tables,
     tablesInPublic,
     relationsInPublic: inPublic(relations),
     functionsInPublic: inPublic(functions),
@@ -1641,6 +1654,85 @@ export const ENGINE_CONFIGS = [
     provides: JWT_KEYS,
     config: { restJwt: { secret: SPEC_JWT_SECRET, anonRole: '' } },
   },
+  // test/spec/SpecHelper.hs:185 — upstream runs its whole suite with
+  // server-timing-enabled and only this spec asserts the header, so the engine
+  // keeps upstream's *documented* default (off) and the spec gets its own engine.
+  {
+    spec: 'ServerTimingSpec',
+    label: 'server-timing-enabled=true',
+    provides: ['configServerTimingEnabled'],
+    config: { serverTiming: true },
+  },
+  // test/spec/Feature/ObservabilitySpec.hs:15
+  {
+    spec: 'ObservabilitySpec',
+    label: 'server-trace-header=X-Request-Id',
+    provides: ['configServerTraceHeader'],
+    config: { serverTraceHeader: 'X-Request-Id' },
+  },
+  // test/spec/Feature/Auth/JwtCacheSpec.hs:54
+  {
+    spec: 'JwtCacheSpec',
+    from: 54,
+    label: 'server-timing-enabled=false,jwt-cache-max-entries=86400',
+    provides: ['configServerTimingEnabled', 'configJwtCacheMaxEntries'],
+    config: { serverTiming: false, jwtCacheMaxEntries: 86400 },
+  },
+  // test/spec/Feature/OpenApi/DisabledOpenApiSpec.hs:15
+  {
+    spec: 'DisabledOpenApiSpec',
+    label: 'openapi-mode=disabled',
+    provides: ['configOpenApiMode'],
+    config: { openApiMode: 'disabled' },
+  },
+  // test/spec/Feature/OpenApi/IgnorePrivOpenApiSpec.hs:21
+  {
+    spec: 'IgnorePrivOpenApiSpec',
+    label: 'openapi-mode=ignore-privileges,db-schemas=public,v1',
+    provides: ['configOpenApiMode', 'configDbSchemas'],
+    config: { openApiMode: 'ignore-privileges', dbSchemas: ['public', 'v1'] },
+  },
+  // test/spec/Feature/Query/ErrorSpec.hs:230 — the `minimal` block is the last
+  // one in the file, and the jwt-aud entry above it covers lines 176-188.
+  {
+    spec: 'ErrorSpec',
+    from: 230,
+    label: 'client-error-verbosity=minimal',
+    provides: ['configClientErrorVerbosity'],
+    config: { clientErrorVerbosity: 'minimal' },
+  },
+  // test/spec/Feature/Query/PreparedStatementsSpec.hs:15 (true) and :23 (false)
+  {
+    spec: 'PreparedStatementsSpec',
+    to: 22,
+    label: 'db-prepared-statements=true',
+    provides: ['configDbPreparedStatements'],
+    config: { dbPreparedStatements: true },
+  },
+  {
+    spec: 'PreparedStatementsSpec',
+    from: 23,
+    label: 'db-prepared-statements=false',
+    provides: ['configDbPreparedStatements'],
+    config: { dbPreparedStatements: false },
+  },
+  // test/spec/Feature/Query/QuerySpec.hs:1696 (`specLegacyTargetNames`), the
+  // last block in the file: no case after that line needs a different engine.
+  {
+    spec: 'QuerySpec',
+    from: 1696,
+    label: 'url-use-legacy-target-names=false',
+    provides: ['configUrlUseLegacyTargetNames'],
+    config: { urlUseLegacyTargetNames: false },
+  },
+  // test/spec/Feature/Query/RpcSpec.hs:1496, the last block in the file.
+  {
+    spec: 'RpcSpec',
+    from: 1496,
+    label: 'db-pre-config=true',
+    provides: ['configDbPreConfig'],
+    config: { dbPreConfig: 'true' },
+  },
 ];
 
 /**
@@ -1761,6 +1853,135 @@ function fixtureGroups() {
 
 function quoteIdent(name) {
   return `"${String(name).replace(/"/g, '""')}"`;
+}
+
+// ------------------------------------------- tables the fixtures never fill
+//
+// 07-data.sql is DELETE-then-INSERT per table, so re-applying it only restores
+// the tables it names. 03-schema.sql creates 215 tables and 07-data.sql fills
+// 149 of them; the other 66 are empty the moment the fixtures finish loading and
+// nothing ever clears them again. A row a mutating case inserts into one of
+// those survives the reload, the run, and every run after it — measured:
+// InsertSpec:596 inserts k='棋圍' into simple_pk2 and asserts 201, so it passes
+// on the run that first inserts the row and fails 23505 on every run after.
+// Upstream never sees this: db-tx-end=rollback-all rolls back each request, so
+// every example starts with those tables empty. Emptying them is therefore what
+// "restore the fixture state" means for them.
+//
+// The set is derived from the fixture SQL on every run — CREATE TABLE across all
+// of conformance/fixtures/dsql/*.sql minus the tables 07-data.sql writes — so
+// adding a table to a fixture file cannot leave a stale hand-written list
+// behind. No fixture file other than 07-data.sql inserts, and none creates a
+// table AS SELECT, so "created and not written by 07-data.sql" is exactly
+// "empty after a load".
+
+const CREATE_TABLE_NOISE =
+  new Set(['unlogged', 'temporary', 'temp', 'global', 'local']);
+
+/**
+ * The `schema.table` keys a fixture file's CREATE TABLE statements define, in
+ * file order, resolving unqualified names against the file's `SET search_path`
+ * the way the loader does.
+ *
+ * @returns {string[]}
+ */
+export function parseCreatedTables(sql) {
+  const keys = [];
+  let schema = 'public';
+  for (const st of splitStatements(sql)) {
+    if (st.kind !== 'sql' || !norm(st.text)) continue;
+    const toks = tokenize(st.text).filter(t => t.kind !== 'comment');
+    if (!toks.length) continue;
+    const words = toks.map(t => t.v.toLowerCase());
+    if (words[0] === 'set' && words[1] === 'search_path') {
+      const eq = toks.findIndex(t => t.v === '=');
+      const q = eq === -1 ? null : parseQualifiedName(toks, eq + 1);
+      if (q && q.name) schema = q.name;
+      continue;
+    }
+    if (words[0] !== 'create') continue;
+    let i = 1;
+    while (i < words.length && CREATE_TABLE_NOISE.has(words[i])) i += 1;
+    if (words[i] !== 'table') continue;
+    i += 1;
+    if (words[i] === 'if' && words[i + 1] === 'not' && words[i + 2] === 'exists') {
+      i += 3;
+    }
+    const q = parseQualifiedName(toks, i);
+    if (!q.name) continue;
+    const key = `${q.schema || schema}.${q.name}`;
+    if (!keys.includes(key)) keys.push(key);
+  }
+  return keys;
+}
+
+/**
+ * The `schema.table` keys the fixtures create and 07-data.sql never writes to,
+ * i.e. the tables that are empty after a fixture load.
+ *
+ * @param {string[]} fixtureSql every fixture file's SQL, in load order.
+ * @param {string} dataSql 07-data.sql.
+ * @returns {string[]} keys in creation order.
+ */
+export function unpopulatedTables(fixtureSql, dataSql) {
+  const populated = new Set(parseFixtureGroups(dataSql).groups.keys());
+  const keys = [];
+  for (const sql of fixtureSql) {
+    for (const key of parseCreatedTables(sql)) {
+      if (!populated.has(key) && !keys.includes(key)) keys.push(key);
+    }
+  }
+  return keys;
+}
+
+let unpopulatedCache = null;
+function fixtureEmptyTables() {
+  if (!unpopulatedCache) {
+    const dir = join(REPO, 'conformance', 'fixtures', 'dsql');
+    const files = readdirSync(dir).filter(f => f.endsWith('.sql')).sort();
+    unpopulatedCache = unpopulatedTables(
+      files.map(f => readFileSync(join(dir, f), 'utf8')),
+      readFileSync(DATA_PATH, 'utf8'));
+  }
+  return unpopulatedCache;
+}
+
+/**
+ * Empty the tables the fixtures never populate, so a reload leaves them in the
+ * state a fixture load does.
+ *
+ * A key the live catalog has no table for is skipped: the fixture SQL creates
+ * tables DSQL rejects, and a DELETE from one of those would abort the reset.
+ * One `count(*)` probe covers the whole set in a single round trip, and only the
+ * tables that actually hold rows are deleted from — normally none, so the sweep
+ * costs one query per reload.
+ *
+ * @returns {Promise<{checked: number, cleared: string[], rows: number}>}
+ */
+export async function clearUnpopulatedTables(pool, catalog, keys) {
+  const wanted = (keys || fixtureEmptyTables())
+    .filter(k => catalog?.tables?.has(k));
+  const out = { checked: wanted.length, cleared: [], rows: 0 };
+  if (!wanted.length) return out;
+  // Identifiers cannot be bound. These come from the fixture SQL and are
+  // checked against pg_catalog above, never from a request, and are quoted.
+  const qualified = wanted.map((key) => {
+    const dot = key.indexOf('.');
+    return `${quoteIdent(key.slice(0, dot))}.${quoteIdent(key.slice(dot + 1))}`;
+  });
+  const probe = qualified
+    .map((t, i) => `(select count(*) from ${t}) as c${i}`).join(', ');
+  const counts = await queryRetrying(pool, `select ${probe}`);
+  const row = counts.rows[0] || {};
+  for (let i = 0; i < wanted.length; i += 1) {
+    const n = Number(row[`c${i}`] || 0);
+    if (!n) continue;
+    // eslint-disable-next-line no-await-in-loop
+    await queryRetrying(pool, `DELETE FROM ${qualified[i]}`);
+    out.cleared.push(wanted[i]);
+    out.rows += n;
+  }
+  return out;
 }
 
 /**
@@ -1940,7 +2161,7 @@ function isOccConflict(response) {
 // would report every one as "<absent>" — a harness artefact, not a gap. The
 // deployed value is the body's byte length, so that is what is filled in. An
 // explicit Content-Length from the handler always wins.
-function withContentLength(response) {
+export function withContentLength(response) {
   const headers = { ...(response.headers || {}) };
   if (Object.keys(headers).some((h) => h.toLowerCase() === 'content-length')) {
     return headers;
@@ -2057,8 +2278,12 @@ async function mapWithConcurrency(items, limit, fn) {
 // a second run sees the first run's writes. 07-data.sql is DELETE-then-INSERT
 // per table, so re-applying it restores the rows upstream's fixtures define.
 //
-// Two things it does NOT restore:
-//   - rows in tables 07-data.sql never populates (nothing clears those);
+// Two things it does NOT restore on its own:
+//   - rows in tables 07-data.sql never populates. `reloadData` cannot clear
+//     those; the caller pairs it with `clearUnpopulatedTables`, which empties
+//     them (see "tables the fixtures never fill" above). A reload that is not
+//     followed by that sweep leaves a row a mutating case inserted in place
+//     forever.
 //   - identity/sequence counters. Upstream gets a fresh sequence because
 //     schema.sql recreates the schema; a data-only reload cannot, so a case
 //     asserting a generated id drifts by the number of prior inserts.
@@ -2247,6 +2472,19 @@ async function main() {
     process.env.PGREST_DEFAULT_TS_CONFIG = 'simple';
   }
 
+  // Data representations come from pg_cast — an implicit, function-backed cast
+  // between a domain and json/text (SchemaCache.hs `dataRepresentations`). DSQL
+  // rejects CREATE CAST, so the 15 casts upstream's schema.sql defines are
+  // dropped at load time (load-report.json, kind `cast`) and pg_cast reports
+  // none, while every cast function loads fine. representations.json declares
+  // them the way relationships.json declares the foreign keys DSQL cannot store;
+  // without it every representation path in the engine is a no-op. Same rule as
+  // the manifest: an explicit env var still wins.
+  if (opts.target === 'dsql' && !process.env.PGREST_REPRESENTATIONS_PATH) {
+    process.env.PGREST_REPRESENTATIONS_PATH =
+      join(REPO, 'conformance', 'fixtures', 'representations.json');
+  }
+
   // The engine needs a JWT secret to boot; unless a case's configuration turns
   // REST-level verification on, conformance never verifies a token (the
   // authorizer context is built by the runner), so a fixed dummy is fine.
@@ -2268,6 +2506,23 @@ async function main() {
     // db-pre-request function. This engine's guard is on by default; measuring
     // upstream's behaviour means running with the guard in upstream's state.
     bulkMutationGuard: 'off',
+    // Upstream's `baseCfg` (test/spec/fixtures/*.conf) sets two `app-settings`
+    // for every spec — `app.settings.app_host` and
+    // `app.settings.external_api_secret` — and RpcSpec:915 reads the first back
+    // with `current_setting`. They are deliberately NOT configured here: Aurora
+    // DSQL rejects a custom GUC outright, in or out of a transaction
+    //
+    //   BEGIN; SET LOCAL app.settings.app_host = 'localhost';
+    //   ERROR 0A000: setting configuration parameter
+    //                "app.settings.app_host" not supported
+    //
+    // (probed on the conformance cluster, PostgreSQL 16 / DSQL). `set_config(…,
+    // true)` fails the same way, and because it aborts the request's
+    // transaction it turns *every* case into a 400 0A000 — measured: 3 of 115
+    // passing on a 124-case probe with the settings configured. The engine's
+    // `app-settings` surface (src/index.mjs `parseAppSettings`, handler.mjs
+    // `appSettingsSql`) is implemented and unit-tested; on DSQL there is nothing
+    // it can be pointed at, so RpcSpec:915 stays failing.
   };
 
   // One engine per configuration, built on first use. Each one holds its own
@@ -2296,6 +2551,38 @@ async function main() {
     process.stderr.write(
       `[runner] catalog: ${catalog.relations.size} relation name(s), `
       + `${catalog.functions.size} function name(s)\n`);
+
+    // Every reset path has to leave the tables 07-data.sql never populates
+    // empty: that is the state a fixture load leaves them in, and the state
+    // upstream's per-request rollback leaves them in. Re-applying 07-data.sql
+    // cannot do it, so the sweep runs with it — once before the first case, and
+    // after every reload the run performs.
+    const resetting = opts.reloadData || opts.reloadPerSpec
+      || opts.resetMutations || opts.resetTouched;
+    let sweeps = 0;
+    let sweptRows = 0;
+    const sweepUnpopulated = async (label) => {
+      // Ask the provider for the pool every time: the DSQL provider replaces it
+      // when the IAM token it was built with nears expiry.
+      const swept = await clearUnpopulatedTables(
+        await pgrest._db.getPool(), catalog);
+      sweeps += 1;
+      sweptRows += swept.rows;
+      if (swept.cleared.length) {
+        process.stderr.write(
+          `[runner] cleared ${swept.rows} leftover row(s) from `
+          + `${swept.cleared.join(', ')}`
+          + `${label ? ` before ${label}` : ''}\n`);
+      }
+      return swept;
+    };
+    const reloadFixtures = async (label) => {
+      reloadData(opts.target, label);
+      if (opts.target === 'dsql') await sweepUnpopulated(label);
+    };
+    if (resetting && opts.target === 'dsql') {
+      await sweepUnpopulated('the first case');
+    }
 
     let done = 0;
     // --reset-mutations bookkeeping. `dirty` means the previous case wrote to
@@ -2335,13 +2622,13 @@ async function main() {
         if (opts.reloadPerSpec && !testCase.skip
             && testCase.source !== loadedFor) {
           loadedFor = testCase.source;
-          reloadData(opts.target, testCase.source);
+          await reloadFixtures(testCase.source);
           dirty = false;
         }
         const carryOver = () => prev && prev.txCommit && prev.example
           && prev.example === testCase.example;
         if (opts.resetMutations && !testCase.skip && dirty && !carryOver()) {
-          reloadData(opts.target, `${testCase.id} (reset ${resets + 1})`);
+          await reloadFixtures(`${testCase.id} (reset ${resets + 1})`);
           resets += 1;
           dirty = false;
         }
@@ -2350,7 +2637,7 @@ async function main() {
             // The previous case's writes cannot be attributed to tables (a
             // write through a view, or an RPC whose body is not on record).
             // Restore everything rather than guess.
-            reloadData(opts.target, `${testCase.id} (full reset ${resets + 1})`);
+            await reloadFixtures(`${testCase.id} (full reset ${resets + 1})`);
             resets += 1;
             fallbacks += 1;
           } else {
@@ -2405,6 +2692,12 @@ async function main() {
       process.stderr.write(
         `[runner] targeted resets: ${resets} (${restored} statement(s) `
         + `re-applied, ${fallbacks} full reload fallback(s))\n`);
+    }
+    if (sweeps) {
+      process.stderr.write(
+        `[runner] unpopulated-table sweeps: ${sweeps} over `
+        + `${fixtureEmptyTables().length} table(s) the fixtures never `
+        + `populate, ${sweptRows} leftover row(s) cleared\n`);
     }
     results = buildResults({ target: opts.target, cases, outcomes, occ: ctx });
   } finally {

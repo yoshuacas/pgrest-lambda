@@ -31,26 +31,22 @@ Writes `compatreport/index.html` and prints the headline numbers, so a
 regeneration is verifiable from the terminal:
 
 ```
-history conformance/results/history.json: 8 run(s), baseline baseline 135/1153
-wrote /home/ec2-user/pgrest-lambda/compatreport/index.html (181,591 bytes)
-pass rate 945/1285 = 73.5%  [extracted 1539, needs-config 16, skipped 35, blocked 188, out-of-scope 15]
-59 gap slugs, 27 DSQL drop families
-11 order-dependent failures kept as failures
-vs baseline baseline: +810 passed, −678 failed, denominator +132
-id-matched vs baseline: +816 pass, -6 regress (1539 shared ids)
-id-matched vs verified, per-spec reload (same flags): +400 pass, -5 regress
-noise vs eeb1ac9 verification re-run (same tree, same flags): 11 cases differ
+history conformance/results/history.json: 9 run(s), baseline baseline 135/1153
+wrote /home/ec2-user/pgrest-lambda/compatreport/index.html (163,532 bytes)
+pass rate 1066/1358 = 78.5%  [extracted 1539, needs-config 2, skipped 35, blocked 129, out-of-scope 15]
+47 gap slugs, 27 DSQL drop families
+21 order-dependent failures kept as failures
+vs baseline baseline: +931 passed, −726 failed, denominator +205
+id-matched vs baseline: +938 pass, -7 regress (1539 shared ids)
 ```
 
-That 945 of 1,285 is the current published measurement, from commit `eeb1ac9`.
-Three full runs of that tree exist: the pass that wrote the code measured 943 of
-1,285, the pass that checked it measured 948, and a third run measured 945. The
-published number is the third, and the rule it follows is worth stating: when
-several runs of one tree disagree, publish one that was not measured by the pass
-that wrote the code, and prefer the middle of the range to the top of it. All
-three are in the trend file. They disagree on about 11 of 1,539 cases, which is
-the run-to-run noise, and the report says so instead of reading the spread as
-progress.
+That 1,066 of 1,358 is the current published measurement, from the integration
+commit whose parent is `acd3b91`; the previous published measurement was 945 of
+1,285 on commit `eeb1ac9`, and three runs of *that* tree disagreed by about 11 of
+1,539 cases. The rule those numbers follow is worth stating: when several runs of
+one tree disagree, publish one that was not measured by the pass that wrote the
+code, and prefer the middle of the range to the top of it. Every run stays in the
+trend file, so the spread is visible instead of being read as progress.
 
 The `vs baseline` line is a totals difference across different runner flags, so
 it is not the claim the report leads with. The `id-matched` lines are: they match
@@ -172,6 +168,16 @@ manifest the fixture transform reconstructs. Measured on the same commit and the
 same first 60 embedding cases: 3 of 58 passed without the variable, 22 of 58
 with it. A run that leaves it unset is measuring an unconfigured engine.
 
+`PGREST_REPRESENTATIONS_PATH` is the same kind of substitute for a second
+thing DSQL cannot store. PostgREST reads data representations from `pg_cast` —
+an implicit, function-backed cast between a domain and `json`/`text` — and DSQL
+rejects `CREATE CAST`, so all 15 casts upstream's `schema.sql` defines are
+dropped at load time while every cast function loads. `conformance/fixtures/`
+`representations.json` declares those 15 pairs, and the runner points the
+variable at it by default for `--target dsql` (an explicit value still wins).
+Without it every representation path in the engine is a no-op and the
+`datarep_*` cases are scored against the untransformed column value.
+
 `--reload-per-spec` reloads the fixtures once per spec file, and it is what the
 committed numbers are measured with. Without it, the cases that mutate data leave
 rows behind for every spec that runs after them, and the reading specs are scored
@@ -204,6 +210,92 @@ unknown, of that order.
 
 The DSQL connection needs a fresh IAM token (valid 1 h) — see
 `conformance/CONTRACTS.md` for the exact environment.
+
+## Tables the fixtures never populate
+
+Every reset the runner has is a re-application of `07-data.sql`, and that file is
+`DELETE`-then-`INSERT` per table. It restores the tables it writes to and no
+others. `conformance/fixtures/dsql/*.sql` creates 215 tables and `07-data.sql`
+writes to 149 of them; the other 66 are empty the moment the fixture load
+finishes, and nothing ever cleared them again — not `--reload-per-spec`, not
+`--reset-mutations`, not a `--reset-touched` full-reload fallback. A row a
+mutating case inserted into one of those tables survived the reload, the run, and
+every run after it, on the same cluster, indefinitely.
+
+The worked example is `InsertSpec:596`: `POST /simple_pk2` with `k='棋圍'`,
+asserting 201. `simple_pk2` is created by `03-schema.sql` and never populated by
+`07-data.sql`, so the case passes on the run that first inserts the row and fails
+`23505 duplicate key value violates unique constraint "simple_pk2_pkey"` on every
+run after. Deleting the row by hand made it pass again. That is a measurement that
+can only be right once per cluster lifetime, and it drifts one way: down.
+
+The fix is a sweep that empties those tables wherever a reload happens, and once
+before the first case. The set is derived on every run from the fixture SQL —
+`CREATE TABLE` across `conformance/fixtures/dsql/*.sql` minus the tables
+`07-data.sql` writes to — so it cannot go stale when a fixture file gains a
+table. No fixture file but `07-data.sql` inserts and none creates a table `AS
+SELECT`, which is what makes "created and never written by `07-data.sql`" the
+same set as "empty after a load". One `count(*)` probe covers all 66 in a single
+round trip and only the tables actually holding rows are deleted from, so the
+sweep costs one query per reload in the normal case. A run prints what it found:
+
+```
+[runner] cleared 17 leftover row(s) from public.items3, public.insertonly,
+  public.simple_pk2, public.tbl_w_json, public.channels, public.evil_friends,
+  public.evil_friends_with_column_default before the first case
+[runner] unpopulated-table sweeps: 5 over 66 table(s) the fixtures never
+  populate, 26 leftover row(s) cleared
+```
+
+Measured, on one cluster, with the engine tree frozen (a copy of the working
+tree, so the only difference between the two runners is the sweep), flags
+`--target dsql --concurrency 1 --reload-per-spec` over `InsertSpec`,
+`UpsertSpec`, `UpdateSpec`, `DeleteSpec` — 228 cases, 202 in the denominator:
+
+| run | runner | passed |
+| --- | --- | --- |
+| 1 | without the sweep, leftovers cleared beforehand | 144 / 202 |
+| 2 | without the sweep, leftovers from run 1 present | 143 / 202 |
+| 3 | with the sweep, same leftovers present | 144 / 202 |
+| 4 | with the sweep, repeated | 144 / 202 |
+
+Id-matched, never netted: run 1 → 2 moved one case pass→fail (`InsertSpec:596`)
+and none the other way; run 2 → 3 moved that one case fail→pass and none the
+other way; run 3 → 4 moved nothing in either direction. Without the sweep the
+number decays on the second run and stays decayed; with it, two consecutive runs
+agree.
+
+The blast radius outside those four specs was measured rather than assumed. 12
+extracted cases send a mutating request straight at a table the fixtures never
+populate (10 in `InsertSpec`, 1 in `UpdateSpec`, 1 in `ErrorSpec`), plus any RPC
+whose body writes to one; 19 send a read at one, in `ComputedRelsSpec` (4),
+`EmbedDisambiguationSpec` (10), `QuerySpec` (3) and `RelatedQueriesSpec` (2).
+Running `InsertSpec` first to leave 9 rows in 7 of those tables, then those four
+reading specs: 300/385 with the leftovers present, 298/385 after the sweep. The
+two that moved are `QuerySpec:571` and `QuerySpec:1305`, both row-order
+assertions, and both flip on their own — three runs of each case under the
+*unmodified* runner produced both a pass and a fail for each. So the honest count
+for those specs is nothing attributable in either direction, not "−2".
+
+Residual error left after the fix:
+
+- Sequence and identity counters are still not restored. Upstream gets fresh
+  ones because `schema.sql` recreates the schema; a data-only reload cannot, so a
+  case asserting a generated id still drifts with the number of prior inserts.
+  Only `node conformance/fixtures/load.mjs` resets those.
+- The sweep runs at the start of a run and after every reload. A `--reset-touched`
+  run performing only targeted restores therefore guarantees emptiness for the
+  tables that run dirtied (the targeted restore already empties a touched table
+  the fixtures never populate), not for a table some earlier run dirtied and this
+  one never touches — the start-of-run sweep is what covers that.
+- The published 945/1285 was measured before this fix, on a cluster with an
+  unknown amount of accumulated leftover data, so it carries a downward bias of
+  unknown size bounded by the cases named above. The evidence here comes from a
+  different cluster (one per agent), so it does not say how many of the published
+  945 were affected — only that the same hole was open in that run.
+- Per-spec (rather than per-request) isolation is unchanged and is still the
+  larger residual error. This fix removes drift *between* runs; it does not make
+  a mutating case invisible to a later case in the same spec file.
 
 ## What the report shows
 
@@ -275,6 +367,12 @@ rather than being hidden, so nothing disappears silently.
 - Measure with `--reload-per-spec`. A number from a run without it is scored
   against fixture data that earlier mutating specs have changed, and it moves
   when unrelated specs start passing.
+- A reset has to leave every table in the state a fixture load leaves it in,
+  including the 66 the fixtures create and never populate. Re-applying
+  `07-data.sql` alone does not: it never touches those tables, so a row a
+  mutating case wrote into one outlives the run and the case fails on every
+  later run against that cluster. See "Tables the fixtures never populate" —
+  a rate that falls because the cluster remembers is not a measurement.
 - Record the flags and the engine environment in the trend entry. Comparing a
   run measured one way against a run measured another way is how a report starts
   lying without anybody editing a number.
@@ -295,10 +393,13 @@ rather than being hidden, so nothing disappears silently.
   run out of every flag-matched comparison the generator can make.
 - When several runs measure the same tree, do not publish the one measured by the
   pass that wrote the code, and prefer the middle of the range to the top of it.
-  Keep them all in the trend so the spread is visible. This run does that: 943
-  from the pass that wrote the code, 948 from the pass that verified it, 945 from a
-  third run, and 945 published.
+  Keep them all in the trend so the spread is visible. The `eeb1ac9` run did
+  that: 943 from the pass that wrote the code, 948 from the pass that verified it,
+  945 from a third run, and 945 published.
 - Report what left the denominator. A case moved from `fail` to `blocked` or
   `out-of-scope` between two runs raises the rate without any engine work, so the
   report counts those moves and recomputes the rate with them added back as
-  failures (945/1285 = 73.5% published, 945/1294 = 73.0% with all nine).
+  failures (945/1285 = 73.5% published, 945/1294 = 73.0% with all nine). The
+  1,066/1,358 run moves in the other direction: 74 cases *entered* its denominator
+  (60 from `blocked`, 14 from `needs-config`), which is why the rate rose 5 points
+  while the pass count rose 121.

@@ -106,6 +106,33 @@ const FK_SQL = `
    GROUP BY con.conname, n.nspname, c.relname, fn.nspname, fc.relname
    ORDER BY con.conname`;
 
+/**
+ * Data representations (PostgREST "custom types / data representations"),
+ * from upstream SchemaCache.hs `dataRepresentations`.
+ *
+ * A cast is usable as a representation when it is implicit, implemented by a
+ * function, executable by the current role, and has a domain on one side with
+ * `json` or `text` on the other. The three directions each have a job:
+ *
+ *   domain -> json   render the column in a response
+ *   text   -> domain parse a filter value out of the query string
+ *   json   -> domain parse a value out of a request body
+ */
+const DATA_REPRESENTATIONS_SQL = `
+  SELECT c.castsource::regtype::text AS source_type,
+         c.casttarget::regtype::text AS target_type,
+         c.castfunc::regproc::text AS cast_function
+    FROM pg_catalog.pg_cast c
+    JOIN pg_catalog.pg_type src ON src.oid = c.castsource
+    JOIN pg_catalog.pg_type dst ON dst.oid = c.casttarget
+   WHERE c.castcontext = 'i'
+     AND c.castmethod = 'f'
+     AND pg_catalog.has_function_privilege(c.castfunc, 'execute')
+     AND ((src.typtype = 'd'
+           AND c.casttarget IN ('json'::regtype::oid, 'text'::regtype::oid))
+       OR (dst.typtype = 'd'
+           AND c.castsource IN ('json'::regtype::oid, 'text'::regtype::oid)))`;
+
 // Relations a view's columns come from may live outside `public`. Only
 // the oids the view definitions actually name are looked up.
 const SOURCE_COLUMNS_SQL = `
@@ -461,6 +488,121 @@ function loadRelationshipManifest(source) {
   }
 }
 
+// --- Declared data representations (external manifest) ---
+//
+// Aurora DSQL rejects CREATE CAST, so pg_cast never carries a
+// domain <-> json/text cast and `DATA_REPRESENTATIONS_SQL` comes back empty
+// even when every transform function exists. A manifest names the same
+// (source type, target type, function) triples out of band, exactly as the
+// relationship manifest names foreign keys. On a database that does have the
+// casts the catalog is read first and the manifest only adds what the catalog
+// did not report.
+
+// A transform is emitted as a function call, so its name is the one piece of
+// manifest text that reaches the statement as SQL rather than as a bind
+// parameter. Only a bare or schema-qualified identifier is accepted — each
+// part either a plain identifier or a double-quoted one (`"json"`), which is
+// what `regproc::text` prints for the function names these casts use.
+const IDENT_PART = String.raw`(?:[A-Za-z_][A-Za-z0-9_$]*|"(?:[^"]|"")+")`;
+const FUNCTION_NAME = new RegExp(
+  `^${IDENT_PART}(?:\\.${IDENT_PART})?$`);
+
+function representationKey(sourceType, targetType) {
+  return `${sourceType}|${targetType}`;
+}
+
+/**
+ * Normalise the representation manifest format into
+ * `{ key: 'source|target', sourceType, targetType, function }` entries.
+ *
+ * A type name has to be spelled the way `format_type()`/`regtype` print it,
+ * because that is what the column types in the schema cache are compared
+ * against: unqualified when the type is reachable through the search path
+ * (`color`), schema-qualified when it is not (`other.color`).
+ *
+ * @param {object|Array} manifest `{representations: [...]}` or a bare array
+ * @returns {Array<{key: string, sourceType: string, targetType: string,
+ *   function: string}>}
+ */
+export function normalizeDeclaredRepresentations(manifest) {
+  const list = Array.isArray(manifest)
+    ? manifest
+    : (manifest?.representations || []);
+  const out = [];
+  for (const entry of list) {
+    if (!entry || typeof entry !== 'object') continue;
+    const sourceType = entry.sourceType || entry.source || null;
+    const targetType = entry.targetType || entry.target || null;
+    const fn = entry.function || entry.castFunction || null;
+    if (!sourceType || !targetType || !fn) continue;
+    if (typeof sourceType !== 'string' || typeof targetType !== 'string'
+        || typeof fn !== 'string') {
+      continue;
+    }
+    if (!FUNCTION_NAME.test(fn)) {
+      throw new Error(
+        'pgrest-lambda: data representation function '
+        + `'${fn}' is not an identifier`);
+    }
+    out.push({
+      key: representationKey(sourceType, targetType),
+      sourceType,
+      targetType,
+      function: fn,
+      source: 'declared',
+    });
+  }
+  return out;
+}
+
+function loadRepresentationManifest(source) {
+  if (!source) return null;
+  if (typeof source !== 'string') return source;
+  let text;
+  try {
+    text = readFileSync(source, 'utf8');
+  } catch (err) {
+    throw new Error(
+      `pgrest-lambda: cannot read data representation manifest '${source}': `
+      + err.message);
+  }
+  try {
+    return JSON.parse(text);
+  } catch (err) {
+    throw new Error(
+      `pgrest-lambda: data representation manifest '${source}' is not valid `
+      + `JSON: ${err.message}`);
+  }
+}
+
+/**
+ * The catalog's representations, keyed `source|target`, with the manifest
+ * filling in only the pairs the catalog did not report.
+ *
+ * @param {Array} castRows rows of DATA_REPRESENTATIONS_SQL
+ * @param {object|Array|null} manifest
+ * @returns {Object<string, {sourceType: string, targetType: string,
+ *   function: string}>}
+ */
+export function buildRepresentations(castRows, manifest) {
+  const out = {};
+  for (const row of castRows || []) {
+    if (!row.source_type || !row.target_type || !row.cast_function) continue;
+    if (!FUNCTION_NAME.test(row.cast_function)) continue;
+    out[representationKey(row.source_type, row.target_type)] = {
+      sourceType: row.source_type,
+      targetType: row.target_type,
+      function: row.cast_function,
+      source: 'catalog',
+    };
+  }
+  for (const entry of normalizeDeclaredRepresentations(manifest)) {
+    if (out[entry.key]) continue;
+    out[entry.key] = entry;
+  }
+  return out;
+}
+
 /**
  * Propagate primary keys and foreign-key relationships from base
  * relations onto the views that expose their columns, the way PostgREST
@@ -737,11 +879,16 @@ function dedupeRelationships(lists) {
 }
 
 async function pgIntrospect(pool, capabilities, options = {}) {
-  const [colResult, pkResult, uniqueResult] = await Promise.all([
+  const [colResult, pkResult, uniqueResult, castResult] = await Promise.all([
     pool.query(COLUMNS_SQL),
     pool.query(PK_SQL),
     pool.query(UNIQUE_KEYS_SQL),
+    pool.query(DATA_REPRESENTATIONS_SQL),
   ]);
+
+  const representations = buildRepresentations(
+    castResult?.rows || [],
+    loadRepresentationManifest(options.representations));
 
   const tables = {};
   // oid → relation name and (oid, attnum) → column name, needed to turn
@@ -972,7 +1119,7 @@ async function pgIntrospect(pool, capabilities, options = {}) {
     routines = buildRoutineMap(routineResult.rows);
   }
 
-  return { tables, relationships, functions, routines };
+  return { tables, relationships, representations, functions, routines };
 }
 
 export function createSchemaCache(config) {
@@ -983,8 +1130,18 @@ export function createSchemaCache(config) {
   const relationships = config.relationships
     ?? process.env.PGREST_RELATIONSHIPS_PATH
     ?? null;
+  // A declared data-representation manifest, read the same two ways. Empty
+  // unless configured, and an empty map turns every transform below off.
+  const representations = config.representations
+    ?? process.env.PGREST_REPRESENTATIONS_PATH
+    ?? null;
+  // Which exposed schema this cache holds (`db-schemas`, project rule 9). The
+  // schema-scoped introspection SQL takes it as a bind parameter; it is never
+  // interpolated into the query text.
+  const schema = config.schema || 'public';
   const introspect = config.introspect
-    || ((pool) => pgIntrospect(pool, capabilities, { relationships }));
+    || ((pool) => pgIntrospect(
+      pool, capabilities, { relationships, representations, schema }));
   let cache = null;
   let lastRefreshAt = 0;
 

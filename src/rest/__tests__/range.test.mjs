@@ -129,6 +129,31 @@ describe('effectiveRange', () => {
       });
   });
 
+  // RangeSpec.hs:253 "succeeds if offset is negative as a no-op". Upstream
+  // intersects the query-string window with `allRange` (0 to infinity) in
+  // `getRanges`, so the lower bound cannot go below 0.
+  it('treats a negative offset as a no-op', () => {
+    assert.deepEqual(effectiveRange({ limit: null, offset: -4 }, null),
+      { limit: null, offset: 0, lower: 0 });
+  });
+
+  it('keeps the upper bound a negative offset implied', () => {
+    // offset=-4,limit=10 -> -4..5 ; intersected with 0..inf -> 0..5
+    assert.deepEqual(effectiveRange({ limit: 10, offset: -4 }, null),
+      { limit: 6, offset: 0, lower: 0 });
+  });
+
+  it('throws PGRST103 when a negative offset leaves an empty window', () => {
+    // offset=-4,limit=3 -> -4..-2 ; intersected with 0..inf -> empty
+    assert.throws(
+      () => effectiveRange({ limit: 3, offset: -4 }, null),
+      (err) => {
+        assert.equal(err.statusCode, 416);
+        assert.equal(err.code, 'PGRST103');
+        return true;
+      });
+  });
+
   it('throws PGRST103 for a negative limit', () => {
     assert.throws(
       () => effectiveRange({ limit: -1, offset: 0 }, null),

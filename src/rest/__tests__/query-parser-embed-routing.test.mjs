@@ -194,7 +194,11 @@ describe('parseQuery embed param routing', () => {
   it('treats a quoted dotted key as a single field', () => {
     const result = parseQuery({ select: '*', '"foo.bar"': 'eq.1' }, 'GET');
     assert.equal(result.filters.length, 1);
-    assert.equal(result.filters[0].column, '"foo.bar"');
+    // The quotes are PostgREST syntax, not part of the name: upstream reads
+    // the key with `pFieldName`, whose `pQuotedValue` branch returns the text
+    // inside the quotes. Keeping them here made the builder emit
+    // `"""foo.bar"""`, an identifier with literal quote characters in it.
+    assert.equal(result.filters[0].column, 'foo.bar');
   });
 
   it('splits on the dot before a json path, not inside it', () => {

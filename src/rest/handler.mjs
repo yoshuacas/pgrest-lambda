@@ -4,7 +4,7 @@ import { PostgRESTError, mapPgError } from './errors.mjs';
 import { parseQuery } from './query-parser.mjs';
 import {
   buildSelect, buildInsert, buildUpdate, buildDelete, buildCount,
-  buildRpcCall, RPC_SCALAR,
+  buildConflictCount, buildMutationRead, buildRpcCall, RPC_SCALAR,
 } from './sql-builder.mjs';
 import { getFunction } from './schema-cache.mjs';
 import {
@@ -13,13 +13,13 @@ import {
 } from './routines.mjs';
 import {
   success, error, negotiateMedia, mediaProducible, mediaUnavailable,
-  rawMediaFor,
+  acceptsOpenApi, rawMediaFor,
   MEDIA_OPENAPI, MEDIA_SINGULAR,
 } from './response.mjs';
 import { installPgTypeParsers } from './pg-types.mjs';
 import { route } from './router.mjs';
 import { generateSpec } from './openapi.mjs';
-import { buildCorsHeaders } from '../shared/cors.mjs';
+import { buildCorsHeaders, preflightHeaders } from '../shared/cors.mjs';
 import { assertBodySize } from '../shared/body-size.mjs';
 import {
   randomBytes, createHmac, createVerify, createPublicKey, timingSafeEqual,
@@ -87,19 +87,76 @@ export function assertValidPrefer(prefer) {
 /**
  * Does this request want a total in Content-Range?
  *
- * Upstream has three strategies: `exact` runs a COUNT, `planned` reads the
- * planner's estimate, `estimated` takes the planner's estimate and falls back
- * to the exact count when it is below the configured threshold. This engine
- * has no usable estimate source — `pg_class.reltuples` accuracy is
- * undocumented on Aurora DSQL (see `supportsPlannedCount: false` in
- * src/rest/db/dsql.mjs) — so all three run the exact count. The header value
- * is then correct for every strategy; only `planned`'s "cheap" promise is not
- * kept.
+ * Upstream has three strategies (`PreferCount`): `exact` runs a COUNT over the
+ * filtered read, `planned` reads the query planner's row estimate and runs no
+ * count at all, `estimated` runs both and takes the larger of the two once the
+ * exact count has passed `db-max-rows`. All three put a total in Content-Range;
+ * which query produces it is what `shouldExactCount`/`shouldExplainCount`
+ * decide below.
  */
 export function shouldCount(prefer) {
   return prefer.count === 'exact'
     || prefer.count === 'planned'
     || prefer.count === 'estimated';
+}
+
+/** Upstream `shouldCount`: which strategies run the real COUNT. */
+export function shouldExactCount(prefer) {
+  return prefer.count === 'exact' || prefer.count === 'estimated';
+}
+
+/** Upstream `shouldExplainCount`: which strategies ask the planner. */
+export function shouldExplainCount(prefer) {
+  return prefer.count === 'planned' || prefer.count === 'estimated';
+}
+
+/**
+ * The row-producing form of a count query, which is what can be EXPLAINed for
+ * an estimate.
+ *
+ * Upstream EXPLAINs `readPlanToCountQuery`, a `SELECT 1 FROM <filtered read>`,
+ * and reads the estimate off the *top* node of the plan
+ * (`[0].Plan."Plan Rows"`, MainTx.hs `decodeExplain`). An aggregate has to be
+ * kept out of it: EXPLAIN of `SELECT COUNT(*) ...` reports one row at the top,
+ * because that is how many rows the aggregate returns.
+ *
+ * The input is this engine's own generated count SQL, never anything a client
+ * sent — filter values travel as `$n` parameters and stay untouched here.
+ *
+ * @param {string} countSql text from buildCount()
+ * @returns {string|null} the EXPLAIN target, or null when the SQL is not in the
+ *          shape this rewrite understands (the caller then falls back to the
+ *          exact count rather than reporting a wrong total)
+ */
+export function explainCountSql(countSql) {
+  const text = String(countSql || '');
+  const prefix = /^SELECT COUNT\(\*\)(?: AS count)? FROM /i;
+  return prefix.test(text) ? text.replace(prefix, 'SELECT 1 FROM ') : null;
+}
+
+/**
+ * The planner's row estimate out of an `EXPLAIN (FORMAT JSON)` result.
+ *
+ * The driver hands the plan back either as parsed JSON or as the text
+ * PostgreSQL printed, depending on how the type is registered, so both are
+ * accepted. Only the top node's estimate is read — for a `SELECT 1` plan that
+ * is the whole result set's estimate, including under a Gather.
+ *
+ * @param {*} value the single `QUERY PLAN` column
+ * @returns {number|null}
+ */
+export function planRowsFromExplain(value) {
+  let plan = value;
+  if (typeof plan === 'string') {
+    try {
+      plan = JSON.parse(plan);
+    } catch {
+      return null;
+    }
+  }
+  const top = Array.isArray(plan) ? plan[0]?.Plan : plan?.Plan;
+  const rows = top?.['Plan Rows'];
+  return Number.isFinite(Number(rows)) ? Number(rows) : null;
 }
 
 const MUTATION_PLANS = new Set(['create', 'update', 'delete', 'upsert']);
@@ -143,6 +200,73 @@ export function preferenceApplied(prefer, plan, opts = {}) {
   }
 
   return vals.length > 0 ? vals.join(', ') : null;
+}
+
+/**
+ * Refuse a path that names no resource this API has.
+ *
+ * Upstream's `getResource` (ApiRequest.hs) recognises exactly three shapes —
+ * nothing (the root spec), one segment (a relation), and `rpc/<name>` — and
+ * answers anything else with 404 PGRST125. There is no nesting: `/items/1` is
+ * not "row 1 of items", it is a path that does not exist, and saying so is what
+ * keeps a mistyped URL from being served as a different relation's rows.
+ *
+ * Engine-specific single-segment paths (`_refresh`, `_docs`) are relation-shaped
+ * and pass here; the router decides what they mean.
+ *
+ * @param {string} path the request path, with or without the /rest/v1 prefix
+ * @throws {PostgRESTError} 404 PGRST125
+ */
+export function assertValidPath(path) {
+  const remaining = String(path ?? '').replace(/^\/rest\/v1/, '');
+  // A trailing slash names the same resource as the path without it, and the
+  // router already reads it that way. Upstream's WAI `pathInfo` keeps the empty
+  // segment and so refuses `/items/`; that difference is a proxy-normalisation
+  // detail with no test behind it either way, and this engine's leniency here
+  // predates this check.
+  const trimmed = remaining.replace(/^\//, '').replace(/\/+$/, '');
+  if (trimmed === '') return;
+  const segments = trimmed.split('/');
+  if (segments.length === 1) return;
+  if (segments.length === 2 && segments[0] === 'rpc') return;
+  throw new PostgRESTError(404, 'PGRST125',
+    'Invalid path specified in request URL');
+}
+
+// What every response varies on (upstream App.hs `varyHeader`). Accept picks
+// the media type, Prefer the shape and the counting, Range the window — three
+// request headers that change the bytes without changing the URL, so a cache
+// that ignores them serves the wrong body.
+const VARY_VALUE = 'Accept, Prefer, Range';
+
+// The phases `Server-Timing` reports, in upstream's order
+// (Response/Performance.hs). A phase that did not happen — there is no plan or
+// transaction behind an OPTIONS — is left out.
+const TIMING_PHASES = ['jwt', 'parse', 'plan', 'transaction', 'response'];
+
+/**
+ * Render `Server-Timing` from the phase durations one request collected.
+ *
+ * Durations are milliseconds with one decimal, which is the unit the header is
+ * defined in. `response` is not measured by the phases: it is whatever is left
+ * of the request once the last measured phase ended, i.e. the time spent
+ * turning rows into bytes.
+ *
+ * @param {Object} timings  phase → milliseconds
+ * @param {bigint} startedAt process.hrtime.bigint() at the top of the request
+ * @returns {string|null}
+ */
+function serverTimingHeader(timings, startedAt) {
+  const total = Number(process.hrtime.bigint() - startedAt) / 1e6;
+  const measured = TIMING_PHASES
+    .filter(p => p !== 'response')
+    .reduce((sum, p) => sum + (timings[p] || 0), 0);
+  const all = { ...timings, response: Math.max(0, total - measured) };
+
+  const parts = TIMING_PHASES
+    .filter(p => all[p] != null)
+    .map(p => `${p};dur=${all[p].toFixed(1)}`);
+  return parts.length > 0 ? parts.join(', ') : null;
 }
 
 function lowercaseHeaders(raw) {
@@ -215,6 +339,14 @@ export function effectiveRange(parsed, headerRange) {
 
   let lower = parsed.offset || 0;
   let upper = parsed.limit != null ? lower + parsed.limit - 1 : null;
+
+  // The window the query string asks for is intersected with `allRange` — 0 to
+  // infinity — before anything else (upstream `getRanges` intersects with a
+  // `headerRange` that defaults to `allRange`, and `allRange = rangeGeq 0`).
+  // So a negative `offset` is a no-op on the lower bound while the upper bound
+  // it implied stays where it was: `offset=-4` alone reads from row 0, and
+  // `offset=-4&limit=3` keeps its upper bound of -2, which is an empty range.
+  lower = Math.max(lower, 0);
 
   if (headerRange) {
     lower = Math.max(lower, headerRange.lower);
@@ -299,6 +431,122 @@ export function pickPutRow(filters, pk, body) {
       'Payload values do not match URL in primary key column(s)');
   }
   return matching[0];
+}
+
+// --- Location ---------------------------------------------------------------
+
+/** RFC 3986 percent-encoding of one query-string key or value. */
+function urlEncodePart(text) {
+  return encodeURIComponent(text)
+    .replace(/[!'()*]/g, ch => '%' + ch.charCodeAt(0).toString(16).toUpperCase());
+}
+
+/**
+ * The canonical spelling of a request's query string: every parameter, sorted
+ * by name, percent-encoded (upstream `qsCanonical`, built by
+ * `urlEncodeVars . sortOn fst` over the parsed query).
+ *
+ * Two details of `Network.HTTP.Base.urlEncodeVars` are load-bearing and are
+ * reproduced here: a parameter that appears more than once is written once with
+ * its values joined by commas, in the order they were sent, and a parameter
+ * with no value keeps its `=`. Nothing is dropped or rewritten — this is the
+ * request as it would have to be re-sent to get the same rows, which is exactly
+ * what makes it usable as a `Content-Location`.
+ *
+ * @param {Object} params            queryStringParameters
+ * @param {Object} [multiValueParams] multiValueQueryStringParameters
+ * @returns {string} `a=1&b=2`, or '' when there were no parameters
+ */
+export function canonicalQuery(params, multiValueParams) {
+  const single = params || {};
+  const multi = multiValueParams || null;
+  const keys = [...new Set([
+    ...Object.keys(single),
+    ...(multi ? Object.keys(multi) : []),
+  ])].sort();
+
+  return keys.map((key) => {
+    const values = multi && Array.isArray(multi[key])
+      ? multi[key]
+      : [single[key]];
+    const joined = values
+      .map(v => (v == null ? '' : urlEncodePart(v)))
+      .join(',');
+    return `${urlEncodePart(key)}=${joined}`;
+  }).join('&');
+}
+
+/** A row value as `row_to_json` + `json_each_text` would spell it. */
+function pkText(value) {
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === 'object') return JSON.stringify(value);
+  return String(value);
+}
+
+/**
+ * The `Location` of a created row: `/<table>?<pk>=eq.<value>`, with `is.null`
+ * for a null key (upstream `locationF` + `locationH`).
+ *
+ * Upstream builds it from `row_to_json` of the *first* row the INSERT
+ * returned, keeping the keys that are primary-key columns — so the header is
+ * there even when `?select=` left the primary key out — and emits it only when
+ * the insert produced exactly one row and `Prefer: return=headers-only` asked
+ * for it. A relation with no primary key gets no header at all.
+ */
+export function locationHeader(table, pkCols, rows) {
+  if (!Array.isArray(rows) || rows.length !== 1) return null;
+  if (!pkCols || pkCols.length === 0) return null;
+  const row = rows[0];
+  if (!row || typeof row !== 'object') return null;
+  const wanted = new Set(pkCols);
+  const parts = [];
+  // Column order comes from the row, the way json_each_text walks the object.
+  for (const [key, value] of Object.entries(row)) {
+    if (!wanted.has(key)) continue;
+    parts.push(`${urlEncodePart(key)}=${value === null || value === undefined
+      ? 'is.null'
+      : urlEncodePart(`eq.${pkText(value)}`)}`);
+  }
+  if (parts.length !== pkCols.length) return null;
+  return `/${table}?${parts.join('&')}`;
+}
+
+/**
+ * The `Allow` value for an OPTIONS request, following upstream's `allowH`
+ * (Response.hs): a relation always allows OPTIONS, GET and HEAD, and each
+ * writing method only when the relation accepts it — `pg_relation_is_updatable`
+ * is what makes a view answer PATCH and a plain table answer everything. PUT
+ * additionally needs a primary key, because a single-row upsert has nothing to
+ * address the row by without one.
+ *
+ * A function allows OPTIONS and POST; a stable or immutable one also allows the
+ * read methods, which is the same rule that decides whether it can be called
+ * with GET at all.
+ *
+ * @param {{type: string, table?: string, functionName?: string}} routeInfo
+ * @param {Object} schema the schema cache for this request's profile
+ */
+export function allowHeaderFor(routeInfo, schema) {
+  if (routeInfo.type === 'rpc') {
+    const candidates = schema?.routines?.[routeInfo.functionName] || [];
+    const volatile = candidates.length === 0
+      || candidates.some(c => c.volatility === 'v');
+    return volatile ? 'OPTIONS,POST' : 'OPTIONS,GET,HEAD,POST';
+  }
+
+  if (routeInfo.type !== 'table') {
+    // The root spec, the docs page and the cache refresh are not relations.
+    return routeInfo.type === 'refresh' ? 'OPTIONS,POST' : 'OPTIONS,GET,HEAD';
+  }
+
+  const rel = schema?.tables?.[routeInfo.table] || {};
+  const hasPk = (rel.primaryKey || []).length > 0;
+  const methods = ['OPTIONS,GET,HEAD'];
+  if (rel.insertable) methods.push('POST');
+  if (rel.insertable && rel.updatable && hasPk) methods.push('PUT');
+  if (rel.updatable) methods.push('PATCH');
+  if (rel.deletable) methods.push('DELETE');
+  return methods.join(',');
 }
 
 function docsHtml(specUrl) {
@@ -497,6 +745,126 @@ function restrictColumns(keys, columns) {
   return keys.filter(k => wanted.has(k));
 }
 
+// --- Mutation request bodies ------------------------------------------------
+//
+// A relation mutation writes a list of rows, and which parse turns the request
+// body into that list is the Content-Type's business (upstream
+// `ApiRequest/Payload.hs` `getPayload` for `ActRelationMut`). Every failure in
+// here is the same wire error: 400 PGRST102.
+
+function invalidBody(message) {
+  return new PostgRESTError(400, 'PGRST102', message);
+}
+
+/**
+ * CSV records per RFC 4180, which is what upstream's cassava reader accepts:
+ * a quoted field may hold commas, newlines and `""` escapes.
+ */
+export function parseCsvRecords(text) {
+  const src = text == null ? '' : String(text);
+  const records = [];
+  let record = [];
+  let field = '';
+  let quoted = false;
+  let i = 0;
+  const endRecord = () => {
+    record.push(field);
+    field = '';
+    records.push(record);
+    record = [];
+  };
+  while (i < src.length) {
+    const ch = src[i];
+    if (quoted) {
+      if (ch === '"') {
+        if (src[i + 1] === '"') { field += '"'; i += 2; continue; }
+        quoted = false; i += 1; continue;
+      }
+      field += ch; i += 1; continue;
+    }
+    if (ch === '"' && field === '') { quoted = true; i += 1; continue; }
+    if (ch === ',') { record.push(field); field = ''; i += 1; continue; }
+    if (ch === '\n' || ch === '\r') {
+      endRecord();
+      i += (ch === '\r' && src[i + 1] === '\n') ? 2 : 1;
+      continue;
+    }
+    field += ch; i += 1;
+  }
+  // A trailing line terminator ends the last record rather than starting an
+  // empty one.
+  if (field !== '' || record.length > 0) endRecord();
+  return records;
+}
+
+/**
+ * A `text/csv` body → the rows it describes (upstream `csvToJson`): the first
+ * line names the columns, a field spelled exactly `NULL` is JSON null, and
+ * every other field stays a string for PostgreSQL to coerce.
+ *
+ * Upstream zips the header with each line, so a short line simply carries
+ * fewer keys — and the key-uniformity check then rejects the whole payload
+ * with "All lines must have same number of fields".
+ */
+function csvBodyToRows(raw) {
+  const records = parseCsvRecords(raw);
+  if (records.length === 0) return [];
+  const header = records[0];
+  const canonical = header.join('\u0000');
+  return records.slice(1).map((rec) => {
+    const row = {};
+    const n = Math.min(header.length, rec.length);
+    for (let k = 0; k < n; k += 1) {
+      row[header[k]] = rec[k] === 'NULL' ? null : rec[k];
+    }
+    if (Object.keys(row).join('\u0000') !== canonical) {
+      throw invalidBody('All lines must have same number of fields');
+    }
+    return row;
+  });
+}
+
+/**
+ * The rows a relation mutation writes.
+ *
+ * @param {object} args
+ * @param {string} args.contentType  from parseContentMediaType()
+ * @param {*} args.rawBody           the body before any parsing
+ * @param {boolean} args.hasColumns  `?columns=` was given — that parameter *is*
+ *        the column list, so upstream hands the JSON body through untouched
+ *        (`RawJSON`) and never checks its keys.
+ */
+export function parseMutationBody({ contentType, rawBody, hasColumns }) {
+  const text = rawBody == null ? '' : String(rawBody);
+
+  if (contentType === MT_CSV) return csvBodyToRows(text);
+
+  if (contentType === MT_URLENCODED) {
+    // Every form field is a string value of one row.
+    const row = {};
+    for (const [k, v] of formPairs(text)) row[k] = v;
+    return row;
+  }
+
+  if (contentType !== MT_JSON) {
+    throw invalidBody(`Content-Type not acceptable: ${contentType}`);
+  }
+
+  let value;
+  try {
+    value = JSON.parse(text);
+  } catch {
+    // Upstream drops the parser's own message on purpose (issue #2344).
+    throw invalidBody('Empty or invalid json');
+  }
+  if (hasColumns) return value;
+  if (Array.isArray(value)) return value;
+  if (value !== null && typeof value === 'object') return value;
+  // Anything else is truncated to an empty array (`payloadAttributes`'
+  // catch-all), so the mutation touches no row.
+  return [];
+}
+
 /**
  * Arguments of a POST: the JSON body's keys, the form fields, the CSV header,
  * or — for a raw body — no names at all.
@@ -589,6 +957,59 @@ async function queryReadOnly(pool, q) {
   }
 }
 
+/**
+ * Run one statement and keep its effects only if it touched no more rows than
+ * `max` allows.
+ *
+ * This is `Prefer: max-affected` on a function call. A function is a black box —
+ * the rows it writes cannot be counted before it runs, the way a DELETE's can —
+ * so upstream runs it, counts the rows it returned and aborts the request's
+ * transaction when there are too many (`failMaxAffected`, checked inside
+ * `MainTx.hs`'s transaction). The refusal therefore leaves the table exactly as
+ * it was, which is the whole point of asking.
+ *
+ * @param {Object} pool
+ * @param {{text: string, values: any[]}} q
+ * @param {number} max
+ * @throws {PostgRESTError} 400 PGRST124 when the count is over `max`
+ */
+async function queryMaxAffected(pool, q, max) {
+  const checkout = typeof pool.connect === 'function'
+    && typeof pool.release !== 'function';
+  const client = checkout ? await pool.connect() : pool;
+  if (typeof client.query !== 'function') {
+    throw new Error('pool has no query()');
+  }
+  const rollback = async () => {
+    try {
+      await client.query('ROLLBACK');
+    } catch {
+      // Already gone; whatever is being thrown is what matters.
+    }
+  };
+  try {
+    await client.query('BEGIN');
+    let result;
+    try {
+      result = await client.query(q.text, q.values);
+    } catch (err) {
+      await rollback();
+      throw err;
+    }
+    const affected = Array.isArray(result.rows) ? result.rows.length : 0;
+    if (affected > max) {
+      await rollback();
+      throw new PostgRESTError(400, 'PGRST124',
+        'Query result exceeds max-affected preference constraint',
+        `The query affects ${affected} rows`);
+    }
+    await client.query('COMMIT');
+    return result;
+  } finally {
+    if (checkout) client.release();
+  }
+}
+
 /** A raw octet-stream body → a value `$1::bytea` accepts. */
 function byteaLiteral(raw) {
   if (raw == null) return '\\x';
@@ -666,6 +1087,40 @@ export function quoteIdent(name) {
 export function searchPathValue(schema, extra = []) {
   return [schema, ...extra.filter(s => s !== schema)]
     .map(quoteIdent).join(', ');
+}
+
+/**
+ * `app-settings`: the run-time settings every request runs with, so a function
+ * can read them back with `current_setting('app.settings.<name>')`. Upstream
+ * carries them as an ordered list of pairs (`configAppSettings`) and applies
+ * them in `Query/PreQuery.hs txVarQuery`; accept either shape here — an object
+ * or a list of `[name, value]` pairs — and drop entries with no name.
+ *
+ * @param {Object|Array|null|undefined} settings
+ * @returns {Array<[string, string]>}
+ */
+export function normalizeAppSettings(settings) {
+  if (!settings) return [];
+  const pairs = Array.isArray(settings) ? settings : Object.entries(settings);
+  return pairs
+    .filter(pair => Array.isArray(pair) && pair[0] != null && pair[0] !== ''
+      && pair[1] != null)
+    .map(([name, value]) => [String(name), String(value)]);
+}
+
+/**
+ * One statement setting every app setting, with both the name and the value
+ * bound. Upstream uses `set_config(name, value, true)` for the same reason: the
+ * setting is transaction-local, so PostgreSQL drops it when the request's
+ * transaction ends and the pooled connection cannot leak it into the next
+ * request (`setConfigWithDynamicName`).
+ *
+ * @param {Array<[string, string]>} settings
+ */
+export function appSettingsSql(settings) {
+  const calls = settings.map(
+    (_, i) => `set_config($${i * 2 + 1}, $${i * 2 + 2}, true)`);
+  return `select ${calls.join(', ')}`;
 }
 
 function preRequestSql(preRequest) {
@@ -910,21 +1365,68 @@ export function createRestHandler(ctx, contributions = []) {
     || exposedSchemas.some(s => s !== 'public')
     || !(extraSearchPath.length === 1 && extraSearchPath[0] === 'public');
 
-  async function openSession(basePool, schemaName) {
-    if (!sessionScoped) return { pool: basePool, release: null };
+  /**
+   * Check out the connection this request will use and put the settings it
+   * asked for on it.
+   *
+   * `Prefer: timezone=` is one of those settings, and it is why a request with
+   * no session-scoped *configuration* can still need a pinned connection: the
+   * setting has to be visible to the statements that follow and invisible to
+   * every other request. It is set with `is_local = true` inside an explicit
+   * transaction, so PostgreSQL itself drops it at the end — nothing has to be
+   * reset, and a connection can never be handed back carrying it.
+   *
+   * @param {Object} basePool
+   * @param {string} schemaName
+   * @param {string} [timezone] the raw `Prefer: timezone=` value; an invalid
+   *        one raises PostgreSQL's own 22023, which is the error upstream
+   *        reports for it
+   */
+  async function openSession(basePool, schemaName, timezone) {
+    const appSettings = normalizeAppSettings(ctx.appSettings);
+    const wantsTx = timezone != null || appSettings.length > 0;
+    if (!sessionScoped && !wantsTx) return { pool: basePool, release: null };
     // Test doubles inject a bare `{query}`; there is nothing to check out, so
     // the session settings land on whatever that object talks to.
     const client = typeof basePool.connect === 'function'
       ? await basePool.connect()
       : null;
     const target = client || basePool;
-    const release = client ? () => client.release() : null;
+    let inTx = false;
+    const release = async () => {
+      if (inTx) {
+        try {
+          // A failed statement has already aborted the transaction, and there
+          // COMMIT is PostgreSQL's own spelling of ROLLBACK — no write from a
+          // request that errored can reach the table this way.
+          await target.query('COMMIT');
+        } catch {
+          try { await target.query('ROLLBACK'); } catch { /* gone already */ }
+        }
+      }
+      if (client) client.release();
+    };
     try {
-      await target.query('select set_config($1, $2, false)',
-        ['search_path', searchPathValue(schemaName, extraSearchPath)]);
-      if (ctx.dbPreRequest) await target.query(preRequestSql(ctx.dbPreRequest));
+      if (sessionScoped) {
+        await target.query('select set_config($1, $2, false)',
+          ['search_path', searchPathValue(schemaName, extraSearchPath)]);
+        if (ctx.dbPreRequest) {
+          await target.query(preRequestSql(ctx.dbPreRequest));
+        }
+      }
+      if (wantsTx) {
+        await target.query('BEGIN');
+        inTx = true;
+        if (timezone != null) {
+          await target.query('select set_config($1, $2, true)',
+            ['timezone', timezone]);
+        }
+        if (appSettings.length) {
+          await target.query(appSettingsSql(appSettings), appSettings.flat());
+        }
+      }
     } catch (err) {
-      if (release) release();
+      await release();
       throw err;
     }
     return { pool: target, release };
@@ -935,21 +1437,41 @@ export function createRestHandler(ctx, contributions = []) {
   installPgTypeParsers();
 
   async function handler(event) {
-    const negotiated = {};
+    const negotiated = { timings: null };
+    const startedAt = process.hrtime.bigint();
+    // Every phase starts at zero rather than absent: upstream wraps all five
+    // stages in `withTiming` on every path, so the header names all five even
+    // for a request that never opened a transaction (App.hs `NoDbTx`). A phase
+    // this request never entered reports 0.0, which is what it spent there.
+    if (ctx.serverTiming) {
+      negotiated.timings = { jwt: 0, parse: 0, plan: 0, transaction: 0 };
+    }
     const response = await handleRequest(event, negotiated);
+
+    const headers = { ...response.headers };
+
     // `Content-Profile` rides on successful responses only, like upstream's
     // contentTypeHeaders (Response.hs `profileHeader`).
     if (negotiated.contentProfile
         && response.statusCode >= 200 && response.statusCode < 300) {
-      return {
-        ...response,
-        headers: {
-          ...response.headers,
-          'Content-Profile': negotiated.contentProfile,
-        },
-      };
+      headers['Content-Profile'] = negotiated.contentProfile;
     }
-    return response;
+
+    // Every response says what it varies on, unless something upstream of here
+    // already said (upstream App.hs: `[varyHeader | not $ varyHeaderPresent
+    // hdrs]`). The three headers named are the ones that change the bytes:
+    // Accept picks the media type, Prefer the shape and the counting, Range the
+    // window.
+    if (!Object.keys(headers).some(h => h.toLowerCase() === 'vary')) {
+      headers['Vary'] = VARY_VALUE;
+    }
+
+    if (negotiated.timings) {
+      const timing = serverTimingHeader(negotiated.timings, startedAt);
+      if (timing) headers['Server-Timing'] = timing;
+    }
+
+    return { ...response, headers };
   }
 
   async function handleRequest(event, negotiated) {
@@ -961,10 +1483,41 @@ export function createRestHandler(ctx, contributions = []) {
     // in scope there.
     let role = event.requestContext?.authorizer?.role || 'anon';
     let releaseSession = null;
+    // `client-error-verbosity`: passed to every error() so `minimal` drops
+    // `details` and `hint` from the payload (upstream Error.hs).
+    const errorOpts = { clientErrorVerbosity: ctx.clientErrorVerbosity };
+
+    const timings = negotiated.timings;
+    const clock = () => process.hrtime.bigint();
+    /** Charge the time since `from` to one Server-Timing phase. */
+    const record = (phase, from) => {
+      if (timings) {
+        timings[phase] = (timings[phase] || 0)
+          + Number(clock() - from) / 1e6;
+      }
+    };
 
     try {
-      if (event.httpMethod === 'OPTIONS') {
-        return { statusCode: 200, headers: corsHeaders };
+      // A CORS preflight is answered before the request reaches a relation:
+      // it asks whether a *later* request would be allowed, so it must not be
+      // routed, authorized or counted. Upstream answers it in the wai-cors
+      // middleware, which recognises it by the method it names in
+      // `Access-Control-Request-Method`.
+      //
+      // An OPTIONS *without* that header is not a preflight — it is a request
+      // for the relation's own capabilities, and it goes down the normal path
+      // so an unknown relation still answers 404.
+      if (event.httpMethod === 'OPTIONS'
+          && headers['access-control-request-method']) {
+        return {
+          statusCode: 200,
+          headers: {
+            ...corsHeaders,
+            ...preflightHeaders(headers['access-control-request-headers']),
+            'Content-Length': '0',
+          },
+          body: '',
+        };
       }
 
       // HEAD is GET with the body dropped at the very end (upstream keeps one
@@ -980,6 +1533,7 @@ export function createRestHandler(ctx, contributions = []) {
 
       // `jwt-secret` configured: the engine verifies the bearer token itself
       // and the claims — not the API Gateway authorizer — decide the identity.
+      const jwtStart = clock();
       if (ctx.restJwt) {
         const identity = verifyRestJwt(
           ctx.restJwt, headers['authorization'], defaultVerifier);
@@ -987,7 +1541,9 @@ export function createRestHandler(ctx, contributions = []) {
         userId = identity.userId;
         email = identity.email;
       }
+      record('jwt', jwtStart);
 
+      const parseStart = clock();
       let body = null;
       // The body before JSON parsing. RPC needs it: a `text/plain`, `text/xml`
       // or `application/octet-stream` body is itself the argument of a function
@@ -1011,7 +1567,10 @@ export function createRestHandler(ctx, contributions = []) {
       const prefer = parsePrefer(headers['prefer']);
       assertValidPrefer(prefer);
       const accept = headers['accept'] || '';
-      const media = negotiateMedia(accept);
+      // Negotiated for a relation or a routine: `application/openapi+json` is
+      // produced by the root path alone, and the root path below negotiates on
+      // its own.
+      const media = negotiateMedia(accept, { openApi: false });
       // RFC 9110: the Range header is only meaningful on GET. Upstream tests
       // the *raw* method (`headerRange = if method == "GET" ...` in
       // ApiRequest.getRanges), so a HEAD carrying a Range is served as if the
@@ -1032,17 +1591,47 @@ export function createRestHandler(ctx, contributions = []) {
       const profile = resolveProfile(exposedSchemas, headers, rawMethod);
       if (profile.negotiated) negotiated.contentProfile = profile.schema;
 
+      assertValidPath(path);
+      record('parse', parseStart);
+
+      const planStart = clock();
       const basePool = await db.getPool();
-      const session = await openSession(basePool, profile.schema);
+      const session = await openSession(
+        basePool, profile.schema, prefer.timezone);
       releaseSession = session.release;
       const pool = session.pool;
       const schema = await getSchemaFor(profile.schema, pool);
 
       // The schema name is passed so PGRST205 can name the relation the way
       // upstream does: "the table 'v1.another_table'", not just the table.
-      const routeInfo = route(path, schema, profile.schema);
+      // `openapi-mode=disabled` makes the root report no metadata at all
+      // (upstream `Config.OpenAPIMode`), which router.mjs turns into
+      // 404 PGRST126.
+      const routeInfo = route(path, schema, profile.schema,
+        { openApiMode: ctx.openApiMode });
+      record('plan', planStart);
+
+      // OPTIONS on a resource that exists reports what can be done with it and
+      // nothing else: no rows are read, no function is called (upstream's
+      // ActRelationInfo / ActRoutineInfo, answered by `respondInfo`). Routing
+      // has already turned an unknown relation into a 404.
+      if (rawMethod === 'OPTIONS') {
+        return {
+          statusCode: 200,
+          headers: {
+            ...corsHeaders,
+            'Content-Length': '0',
+            Allow: allowHeaderFor(routeInfo, schema),
+          },
+          body: '',
+        };
+      }
 
       if (routeInfo.type === 'openapi') {
+        // The root path produces the OpenAPI spec and nothing else, so an
+        // Accept naming none of `application/openapi+json`, `application/json`
+        // or `*/*` is PGRST107 (upstream `Plan.inspectPlan`).
+        if (!acceptsOpenApi(accept)) throw mediaUnavailable(accept);
         const apiUrl = resolveApiUrl(ctx, headers);
         const resolved = resolveContributions(contributions, apiUrl);
         // Upstream's InspectPlan always answers with the OpenAPI media type,
@@ -1088,6 +1677,10 @@ export function createRestHandler(ctx, contributions = []) {
           schema, pool, cedar, ctx, corsHeaders,
           role, userId, email,
           media, headersOnly, headerRange,
+          // `client-error-verbosity` reaches the RPC 416 the same way it
+          // reaches every other error(): passed in, since handleRpc is not
+          // nested inside handleRequest's scope.
+          errorOpts,
         });
       }
 
@@ -1099,6 +1692,10 @@ export function createRestHandler(ctx, contributions = []) {
       // relation produces json, csv and the vendored pgrst media types; asking
       // for anything else is PGRST107.
       if (!mediaProducible(media)) throw mediaUnavailable(accept);
+
+      // The request body's own media type decides how a mutation payload is
+      // read (JSON, CSV or a form).
+      const contentType = parseContentMediaType(headers['content-type']);
 
       const parsedRaw = parseQuery(
         params, method, multiValueParams, ctx.maxEmbedDepth);
@@ -1183,6 +1780,69 @@ export function createRestHandler(ctx, contributions = []) {
         return parseInt(cr.rows[0].count, 10);
       }
 
+      /**
+       * The query planner's row estimate for the filtered read — upstream's
+       * `count=planned`, which never touches the rows themselves.
+       *
+       * @returns {Promise<number|null>} null when no estimate could be read,
+       *          so the caller can fall back to counting for real rather than
+       *          report a total it made up.
+       */
+      async function plannedCount(p) {
+        const cq = buildCount(table, p, schema, parentAuthz);
+        const target = explainCountSql(cq.text);
+        if (!target) return null;
+        const cr = await pool.query(
+          `EXPLAIN (FORMAT JSON) ${target}`, cq.values);
+        return planRowsFromExplain(cr.rows[0]?.['QUERY PLAN']);
+      }
+
+      /**
+       * The exact count, stopped as soon as it has seen one row more than
+       * `db-max-rows` — enough to know the window was surpassed without
+       * walking a large table (upstream `limitedQuery countQuery (maxRows+1)`).
+       */
+      async function limitedExactCount(p, limit) {
+        const cq = buildCount(table, p, schema, parentAuthz);
+        const target = explainCountSql(cq.text);
+        if (limit == null || !target) return countRows(p);
+        const values = [...cq.values, limit + 1];
+        const cr = await pool.query(
+          `SELECT COUNT(*) FROM (${target} LIMIT $${values.length})`
+          + ' _pgrst_count',
+          values);
+        return parseInt(cr.rows[0].count, 10);
+      }
+
+      /**
+       * The total Content-Range reports, by the strategy the request asked for
+       * (upstream MainTx.hs `actionResult`, WrappedReadPlan branch).
+       *
+       * `estimated` runs both queries: the exact count is authoritative until
+       * it passes `db-max-rows`, at which point it was cut short and the
+       * planner's estimate is the better answer if it is larger. With no
+       * `db-max-rows` configured upstream's comparison is vacuously true, so
+       * the larger of the two always wins.
+       */
+      async function countTotal(p) {
+        const maxRows = Number.isSafeInteger(ctx.dbMaxRows)
+          ? ctx.dbMaxRows : null;
+
+        if (prefer.count === 'planned') {
+          const estimate = await plannedCount(p);
+          return estimate == null ? countRows(p) : estimate;
+        }
+
+        if (prefer.count === 'estimated') {
+          const exact = await limitedExactCount(p, maxRows);
+          if (maxRows != null && exact <= maxRows) return exact;
+          const estimate = await plannedCount(p);
+          return estimate == null ? exact : Math.max(exact, estimate);
+        }
+
+        return countRows(p);
+      }
+
       // `max-affected` is only enforced with handling=strict. Upstream runs
       // the mutation and rolls back; without a transaction the equivalent is
       // to count the rows the filters select before touching them.
@@ -1235,25 +1895,53 @@ export function createRestHandler(ctx, contributions = []) {
         }
       }
 
+      /**
+       * Run a mutation and return the rows its representation is built from.
+       *
+       * With an embed in `?select=` the statement carries the whole read plan
+       * with it, over its own source CTE (sql-builder `buildMutationRead`),
+       * because the rows a DELETE returns cannot be read again afterwards and
+       * because `?order=` applies to the representation.
+       */
+      async function runMutation(q) {
+        if (!(prefer.return === 'representation' && hasEmbeds)) {
+          return (await pool.query(q.text, q.values)).rows;
+        }
+        const embTables = collectTables(parsed.select, table);
+        const perTableAuthz = buildPerTableAuthz(
+          embTables, cedar, principal, schema);
+        const authzFilters = {
+          parent: perTableAuthz[table] || null,
+          embeds: Object.fromEntries(
+            [...embTables]
+              .filter(t => t !== table)
+              .map(t => [t, perTableAuthz[t]])
+          ),
+        };
+        const read = buildMutationRead(
+          q, table, parsed, schema, authzFilters);
+        return (await pool.query(read.text, read.values)).rows;
+      }
+
+      const txStart = clock();
+
       switch (method) {
         case 'GET': {
           rows = await runSelect(parsed);
 
           if (shouldCount(prefer)) {
-            count = await countRows(parsed);
+            count = await countTotal(parsed);
           }
           break;
         }
 
         case 'POST': {
-          if (!body) {
-            throw new PostgRESTError(
-              400, 'PGRST100',
-              'Missing or invalid request body',
-            );
-          }
+          const payload = parseMutationBody({
+            contentType, rawBody,
+            hasColumns: (parsed.columns || []).length > 0,
+          });
 
-          const insertRows = Array.isArray(body) ? body : [body];
+          const insertRows = Array.isArray(payload) ? payload : [payload];
           cedar.authorizeInsert({
             principal, resource: table, schema,
             rows: insertRows,
@@ -1265,7 +1953,7 @@ export function createRestHandler(ctx, contributions = []) {
           // path: `resolution=ignore-duplicates` can still insert none, and
           // that count only exists after the statement runs.
           if (media.kind === MEDIA_SINGULAR) {
-            const n = Array.isArray(body) ? body.length : 1;
+            const n = insertRows.length;
             if (n !== 1) {
               throw new PostgRESTError(406, 'PGRST116',
                 'Cannot coerce the result to a single JSON object',
@@ -1278,39 +1966,60 @@ export function createRestHandler(ctx, contributions = []) {
           // or the primary key — as the target (Plan.hs `mutatePlan`). Passing
           // the preference down means `resolution=ignore-duplicates` and a
           // bare `resolution=merge-duplicates` (no `?on_conflict=`) work too.
-          const q = buildInsert(table, body, schema, parsed, {
+          // With no representation to return, upstream reads the source CTE
+          // back as `SELECT *` — "prevent using any of the column names in
+          // ?select= when no response is returned from the CTE"
+          // (Statements.hs `selectF`) — and the whole row is also where the
+          // Location header's primary-key values come from.
+          const insertParsed = prefer.return === 'representation'
+            ? parsed
+            : { ...parsed, select: [] };
+
+          // `resolution=merge-duplicates` answers 200 when the statement
+          // inserted nothing, so the rows that already exist are counted
+          // first (see buildConflictCount).
+          if (prefer.resolution === 'merge-duplicates') {
+            const target = parsed.onConflict
+              ? parsed.onConflict.split(',').map(c => c.trim())
+              : (schema.tables[table]?.primaryKey || []);
+            const cq = buildConflictCount(
+              table, insertRows, target, schema, parsed.columns);
+            const conflicting = cq
+              ? parseInt((await pool.query(cq.text, cq.values)).rows[0].count,
+                10)
+              : 0;
+            upsertInserted = insertRows.length - conflicting > 0;
+          }
+
+          const q = buildInsert(table, payload, schema, insertParsed, {
             resolution: prefer.resolution || null,
             applyDefaults: prefer.missing === 'default',
           });
 
-          const result = await pool.query(q.text, q.values);
-          rows = result.rows;
+          rows = await runMutation(q);
           break;
         }
 
         case 'PATCH': {
-          if (!body || typeof body !== 'object') {
-            throw new PostgRESTError(
-              400, 'PGRST100',
-              'Missing or invalid request body',
-            );
-          }
+          const payload = parseMutationBody({
+            contentType, rawBody,
+            hasColumns: (parsed.columns || []).length > 0,
+          });
           await assertMaxAffected();
           await assertSingularMutation('update');
           const updateOpts = {
             applyDefaults: prefer.missing === 'default',
           };
           const preview = buildUpdate(
-            table, body, mutationParsed, schema, null, updateOpts);
+            table, payload, mutationParsed, schema, null, updateOpts);
           const authz = cedar.buildAuthzFilter({
             principal, action: 'update', context: { table }, schema,
             startParam: preview.values.length + 1,
           });
           const q = buildUpdate(
-            table, body, mutationParsed, schema, authz, updateOpts,
+            table, payload, mutationParsed, schema, authz, updateOpts,
           );
-          const result = await pool.query(q.text, q.values);
-          rows = result.rows;
+          rows = await runMutation(q);
           break;
         }
 
@@ -1361,8 +2070,7 @@ export function createRestHandler(ctx, contributions = []) {
           const q = buildDelete(
             table, mutationParsed, schema, authz,
           );
-          const result = await pool.query(q.text, q.values);
-          rows = result.rows;
+          rows = await runMutation(q);
           break;
         }
 
@@ -1372,6 +2080,8 @@ export function createRestHandler(ctx, contributions = []) {
           );
       }
 
+      record('transaction', txStart);
+
       const returnRep = prefer.return === 'representation';
 
       // PUT: RETURNING is empty when ON CONFLICT DO NOTHING fires (a table
@@ -1379,43 +2089,6 @@ export function createRestHandler(ctx, contributions = []) {
       // columns are not in it either, so re-read the row the URL pins.
       if (method === 'PUT' && returnRep) {
         rows = await runSelect({ ...parsed, limit: null, offset: 0 });
-      }
-
-      // Re-SELECT mutations with embeds for return=representation
-      if (method !== 'GET' && method !== 'PUT' && returnRep && hasEmbeds
-          && rows && rows.length > 0) {
-        const pk = schema.tables[table]?.primaryKey;
-        if (pk && pk.length > 0) {
-          const filters = pk.map(col => ({
-            column: col,
-            operator: 'in',
-            value: rows.map(r => String(r[col])),
-            negate: false,
-          }));
-          const reSelectParsed = {
-            ...parsed,
-            filters,
-            order: [],
-            limit: null,
-            offset: 0,
-          };
-          const embTables = collectTables(parsed.select, table);
-          const perTableAuthz = buildPerTableAuthz(
-            embTables, cedar, principal, schema);
-          const authzFilters = {
-            parent: perTableAuthz[table] || null,
-            embeds: Object.fromEntries(
-              [...embTables]
-                .filter(t => t !== table)
-                .map(t => [t, perTableAuthz[t]])
-            ),
-          };
-          const reQ = buildSelect(
-            table, reSelectParsed, schema, authzFilters);
-          const reResult = await pool.query(
-            reQ.text, reQ.values);
-          rows = reResult.rows;
-        }
       }
 
       const total = shouldCount(prefer) ? (count ?? rows.length) : null;
@@ -1427,6 +2100,12 @@ export function createRestHandler(ctx, contributions = []) {
         const cRange = contentRangeH(lower, upper, total);
         const status = rangeStatus(lower, upper, total);
         const applied = preferenceApplied(prefer, 'read');
+        // The request that would fetch these rows again, canonically spelled.
+        // Only a relation read gets one: it is the identity of a resource, and
+        // a function call or a mutation is not addressable this way.
+        const canonical = canonicalQuery(params, multiValueParams);
+        const contentLocation =
+          `/${table}${canonical ? `?${canonical}` : ''}`;
 
         if (status === 416) {
           return error(
@@ -1437,8 +2116,10 @@ export function createRestHandler(ctx, contributions = []) {
             corsHeaders,
             {
               'Content-Range': cRange,
+              'Content-Location': contentLocation,
               ...(applied ? { 'Preference-Applied': applied } : null),
             },
+            errorOpts,
           );
         }
 
@@ -1446,11 +2127,28 @@ export function createRestHandler(ctx, contributions = []) {
           ...base,
           contentRange: cRange,
           preferenceApplied: applied,
+          extraHeaders: { 'Content-Location': contentLocation },
         });
       }
 
       if (method === 'POST') {
         const pkCols = schema.tables[table]?.primaryKey || [];
+        const extra = {
+          // Upstream's MutationCreate branch always appends
+          // `contentLengthHeader`, so a 201 with `return=minimal` still
+          // states a length of zero. The 204 branches do not.
+          ...(returnRep || headersOnly
+            ? null
+            : { 'Content-Length': '0' }),
+          // `Prefer: return=headers-only` is what asks for the Location of the
+          // created row (Statements.hs `locF`).
+          ...(prefer.return === 'headers-only'
+            ? (() => {
+              const loc = locationHeader(table, pkCols, rows);
+              return loc ? { Location: loc } : null;
+            })()
+            : null),
+        };
         const opts = {
           ...base,
           contentRange: contentRangeH(1, 0, total),
@@ -1458,14 +2156,13 @@ export function createRestHandler(ctx, contributions = []) {
             resolutionApplies:
               pkCols.length > 0 || parsed.onConflict != null,
           }),
-          // Upstream's MutationCreate branch always appends
-          // `contentLengthHeader`, so a 201 with `return=minimal` still
-          // states a length of zero. The 204 branches do not.
-          ...(returnRep || headersOnly
-            ? null
-            : { extraHeaders: { 'Content-Length': '0' } }),
+          ...(Object.keys(extra).length > 0 ? { extraHeaders: extra } : null),
         };
-        return success(201, returnRep ? rows : null, opts);
+        // A merge-duplicates upsert that inserted no new row is a 200, not a
+        // 201 (Response.hs `isInsertIfGTZero`); every other insert is a 201.
+        const status = prefer.resolution === 'merge-duplicates'
+          && !upsertInserted ? 200 : 201;
+        return success(status, returnRep ? rows : null, opts);
       }
 
       if (method === 'PUT') {
@@ -1499,7 +2196,7 @@ export function createRestHandler(ctx, contributions = []) {
 
     } catch (err) {
       if (err instanceof PostgRESTError) {
-        return error(err, corsHeaders, err.responseHeaders);
+        return error(err, corsHeaders, err.responseHeaders, errorOpts);
       }
       if (err.code && typeof err.code === 'string'
           && /^[0-9A-Z]{5}$/.test(err.code)) {
@@ -1524,6 +2221,8 @@ export function createRestHandler(ctx, contributions = []) {
             authed: role !== 'anon',
           }),
           corsHeaders,
+          null,
+          errorOpts,
         );
       }
       // Catch-all: never echo err.message. It can contain SQL
@@ -1543,11 +2242,16 @@ export function createRestHandler(ctx, contributions = []) {
           `Internal server error (errorId: ${errorId})`,
         ),
         corsHeaders,
+        null,
+        errorOpts,
       );
     } finally {
       // Hand the pinned connection back. Only set when a session was opened,
-      // i.e. when some session-scoped option is configured.
-      if (releaseSession) releaseSession();
+      // i.e. when some session-scoped option is configured or the request
+      // asked for a timezone. Awaited: the transaction that carries a
+      // request-local setting has to be closed before the connection can be
+      // reused.
+      if (releaseSession) await releaseSession();
     }
   }
 
@@ -1556,7 +2260,7 @@ export function createRestHandler(ctx, contributions = []) {
       params, multiValueParams,
       accept, prefer, headers, schema, pool, cedar,
       ctx, corsHeaders, role, userId, email,
-      media, headersOnly, headerRange,
+      media, headersOnly, headerRange, errorOpts,
   }) {
     if (method !== 'GET' && method !== 'POST' && method !== 'OPTIONS') {
       throw new PostgRESTError(405, 'PGRST101',
@@ -1649,9 +2353,20 @@ export function createRestHandler(ctx, contributions = []) {
     // (upstream plans GET as a read-only transaction; PostgreSQL then answers
     // 25006, which maps to 405). Only a VOLATILE function can write, and only
     // that case pays for the transaction.
-    const result = routine.volatility === 'v' && method === 'GET'
-      ? await queryReadOnly(pool, q)
-      : await pool.query(q.text, q.values);
+    // `max-affected` on a set-returning function is settled after the call, by
+    // rolling it back when it returned too many rows (queryMaxAffected).
+    const enforceMaxAffected = prefer.handling === 'strict'
+      && prefer.maxAffected !== undefined
+      && routine.returnsSet;
+
+    let result;
+    if (routine.volatility === 'v' && method === 'GET') {
+      result = await queryReadOnly(pool, q);
+    } else if (enforceMaxAffected) {
+      result = await queryMaxAffected(pool, q, prefer.maxAffected);
+    } else {
+      result = await pool.query(q.text, q.values);
+    }
 
     const base = {
       media, headersOnly, corsHeaders,
@@ -1715,6 +2430,7 @@ export function createRestHandler(ctx, contributions = []) {
             ? { 'Preference-Applied': base.preferenceApplied }
             : null),
         },
+        errorOpts,
       );
     }
 

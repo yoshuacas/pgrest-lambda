@@ -123,11 +123,62 @@ function validateCol(schema, table, column) {
 // the FTS operators need: a `tsvector` column must not be wrapped in
 // `to_tsvector()` a second time (upstream Plan.hs `resolveTypeOrUnknown`
 // leaves `cfToTsVector` empty when the base type is already tsvector).
-function makeColumnValidator(schema, table) {
+//
+// `resolve` is how a filter renders the field: the plain column name when the
+// schema cache has it, the qualified form when it does not, so a filter on a
+// computed column works (see computedFieldExpr). `ref` is the relation's name
+// in the enclosing FROM and defaults to the table.
+function makeColumnValidator(schema, table, ref = table) {
   const validator = (col) => validateCol(schema, table, col);
   validator.typeOf = (col) =>
     schema.tables[table]?.columns?.[col]?.type || null;
+  validator.resolve = (col) =>
+    computedFieldExpr(schema, table, col, ref) || q(col);
+  // A filter value arrives as query-string text, so the `text -> <type>` data
+  // representation is what parses it (Plan.hs `withTextParse`). The parser is
+  // applied to the *value*, never to the column.
+  validator.textParserOf = (col) =>
+    representationFn(schema, 'text', validator.typeOf(col));
   return validator;
+}
+
+/**
+ * A payload value as PostgreSQL has to receive it for one column.
+ *
+ * Upstream never faces this: its INSERT reads the request body with
+ * `json_to_recordset`, so a nested array or object arrives at a `json` column
+ * as JSON text. Here the value is a bind parameter, and the driver renders a
+ * JS array as an array literal (`{1,2,3}`), which `json` rejects with 22P02
+ * (`invalid input syntax for type json`). Sending its JSON text instead is
+ * what upstream's statement does — for every JSON value, so a bare string or
+ * number lands as the JSON scalar it was in the body rather than as raw text.
+ */
+function paramValue(value, type) {
+  if (value === null || value === undefined) return value;
+  if (type !== 'json' && type !== 'jsonb') return value;
+  return JSON.stringify(value);
+}
+
+/**
+ * One payload value as a bind placeholder, with the `json -> <type>` data
+ * representation applied when the column has one (Plan.hs `withJsonParse`).
+ *
+ * Upstream reads the body with `json_to_recordset`, so the parser receives the
+ * value as JSON; here the value is a bind parameter, which is why it is sent as
+ * JSON text and cast back to `json` for the call. A JSON `null` is left alone:
+ * upstream's recordset yields SQL NULL for it, which never reaches a parser.
+ */
+function payloadOperand(schema, table, col, value, values) {
+  const type = schema?.tables?.[table]?.columns?.[col]?.type;
+  const parser = value === null || value === undefined
+    ? null
+    : representationFn(schema, 'json', type);
+  if (parser) {
+    values.push(JSON.stringify(value));
+    return `${parser}($${values.length}::json)`;
+  }
+  values.push(paramValue(value, type));
+  return `$${values.length}`;
 }
 
 // Upstream `pgBuildArrayLiteral`: every element is quoted, NUL characters
@@ -176,6 +227,44 @@ function castExpr(colExpr, cast) {
   return cast ? `CAST(${colExpr} AS ${cast})` : colExpr;
 }
 
+// --- Data representations ---
+//
+// A representation is a cast function registered between a domain and
+// json/text (schema-cache.mjs `DATA_REPRESENTATIONS_SQL`). Upstream applies it
+// by calling that function, never by writing a CAST: `pgFmtCallUnary
+// formatterProc (pgFmtField table fld)`. Which direction is used depends on
+// where the value is going (Plan.hs `withOutputFormat`, `withTextParse`,
+// `withJsonParse`):
+//
+//   response column  <type> -> json
+//   filter value     text   -> <type>
+//   payload value    json   -> <type>
+//
+// The map is empty unless the database has such casts or a manifest declares
+// them, and an empty map makes every helper here return the expression
+// unchanged.
+
+// The output format of a read. Upstream keys this on the response media type;
+// json is the only one the engine renders a select list for.
+const OUTPUT_TYPE = 'json';
+
+function representationFn(schema, sourceType, targetType) {
+  if (!sourceType || !targetType) return null;
+  const reps = schema?.representations;
+  if (!reps) return null;
+  return reps[`${sourceType}|${targetType}`]?.function || null;
+}
+
+function applyTransform(expr, fn) {
+  return fn ? `${fn}(${expr})` : expr;
+}
+
+// The transform that renders a column of this table in a response, or null.
+function outputTransformOf(schema, table, column) {
+  const type = schema?.tables?.[table]?.columns?.[column]?.type;
+  return representationFn(schema, type, OUTPUT_TYPE);
+}
+
 const JSON_TYPES = new Set(['json', 'jsonb']);
 
 // Upstream `pgFmtJsonPath`: every key and index is a parameter, never
@@ -208,14 +297,15 @@ const AGG_SQL = {
   sum: 'SUM', avg: 'AVG', count: 'COUNT', max: 'MAX', min: 'MIN',
 };
 
-// Upstream `pgFmtSelectItem`: the json path is applied to the field, then
-// the cast, then the aggregate, then the aggregate's own cast. `count()`
-// carries no field, which upstream renders as a whole-row reference; a
-// plain `COUNT(*)` counts the same rows.
-function selectItemExpr(node, baseExpr, values, typeOf) {
+// Upstream `pgFmtSelectItem`: the json path is applied to the field, then the
+// data representation, then the cast, then the aggregate, then the aggregate's
+// own cast. `count()` carries no field, which upstream renders as a whole-row
+// reference; a plain `COUNT(*)` counts the same rows.
+function selectItemExpr(node, baseExpr, values, typeOf, transform = null) {
   let expr = jsonPathExpr(
     baseExpr, node.jsonPath, values,
     node.jsonPath ? (typeOf ? typeOf(node.name) : null) : null);
+  expr = applyTransform(expr, transform);
   expr = castExpr(expr, node.cast);
   if (node.agg) {
     const fn = AGG_SQL[node.agg];
@@ -228,17 +318,32 @@ function selectItemExpr(node, baseExpr, values, typeOf) {
   return expr;
 }
 
-// Upstream does not validate a select field against its schema cache — an
-// unknown name is PostgreSQL's error to raise. That is what keeps
-// `?select=count` working (AggregateFunctionsSpec "backwards compat"):
-// `"entities"."count"` is functional notation for `count("entities")`, so
-// PostgreSQL resolves it to the aggregate. The engine validates columns, so
-// this one spelling is let through explicitly — qualified, because the
-// unqualified `"count"` would not resolve.
-function functionalCountExpr(node, schema, table, ref) {
-  if (node.name !== 'count' || node.agg || node.jsonPath) return null;
-  if (hasColumn(schema, table, 'count')) return null;
-  return `${q(ref)}.${q('count')}`;
+/**
+ * A read field the schema cache does not know as a column, qualified.
+ *
+ * Upstream never validates a select/filter/order field against its schema
+ * cache: every one of them is rendered through `pgFmtField`, which qualifies
+ * it with the relation (`pgFmtColumn` -> `"items"."always_true"`), and an
+ * unresolvable name is PostgreSQL's error to raise, not PGRST204 —
+ * QuerySpec.hs:1557 expects `column datarep_todos.banana does not exist`, a
+ * message only the qualified form produces.
+ *
+ * That one spelling is what makes a *computed column* work: `always_true` is a
+ * function of the row (`CREATE FUNCTION always_true(items)`), and
+ * `"items"."always_true"` is PostgreSQL's functional notation for
+ * `always_true("items")`. The same rule covers `?select=count` over a table
+ * with no `count` column (AggregateFunctionsSpec "backwards compat"), where
+ * the qualified name resolves to the aggregate.
+ *
+ * Known columns keep their unqualified spelling so the projection a mutation
+ * shares with a plain read is unchanged.
+ *
+ * PGRST204 stays what upstream uses it for: `?columns=`, `?on_conflict=` and
+ * mutation payload keys, which upstream *does* check against the cache.
+ */
+function computedFieldExpr(schema, table, name, ref) {
+  if (name === '*' || hasColumn(schema, table, name)) return null;
+  return `${q(ref)}.${q(name)}`;
 }
 
 function isAggregated(selectNodes) {
@@ -644,7 +749,8 @@ function embedChild(rel, parentRef, scope) {
 function addNodeFilters(
     conds, node, child, schema, values, env, authzFilters) {
   if (node.filters?.length > 0) {
-    const childValidator = makeColumnValidator(schema, child.childTable);
+    const childValidator = makeColumnValidator(
+      schema, child.childTable, child.childRef);
     conds.push(...buildFilterConditions(
       node.filters, values, childValidator,
       filterCtx(schema, child.childTable, child.childRef,
@@ -703,9 +809,19 @@ function buildEmbedExists(
  * Upstream orders by the joined LATERAL's column. The correlated equivalent is
  * the embed's own subquery selecting that one column — with the embed's
  * filters applied, so the ordering agrees with what the embed returns.
+ *
+ * A spread embed is the exception: it *is* a joined LATERAL here too, so the
+ * order term is its output column, exactly as upstream renders it
+ * (`pgFmtField (relAggAlias …)`). That is not a shortcut — the correlated form
+ * cannot be used at a level that groups, because a subquery correlated on an
+ * ungrouped column of the parent is an error (42803), and it is the aggregate
+ * cases that order by a spread member. It also means the term names the
+ * member's *alias*, which is the only spelling upstream accepts for
+ * `?select=...processes(factory:factory_id)&order=processes(factory)`.
  */
 function relatedOrderExpr(
-    o, schema, table, ref, selectNodes, values, env, authzFilters, scope) {
+    o, schema, table, ref, selectNodes, values, env, authzFilters, scope,
+    spreadFields) {
   const node = (selectNodes || []).find(n =>
     n.type === 'embed' && (n.alias || n.name) === o.relation);
   if (!node) {
@@ -715,6 +831,11 @@ function relatedOrderExpr(
       `Verify that '${o.relation}' is included in the 'select' `
       + `query parameter.`);
   }
+  if (!o.jsonPath?.length) {
+    const member = (spreadFields?.get(o.relation) || []).find(
+      f => f.key === o.column && !f.hoist);
+    if (member) return member.expr;
+  }
   const rel = resolveRelationship(schema, table, node.name, node.hint);
   if (!embedIsToOne(rel)) {
     throw new PostgRESTError(400, 'PGRST118',
@@ -723,8 +844,8 @@ function relatedOrderExpr(
       + `one-to-one relationship`);
   }
   const child = embedChild(rel, ref, scope);
-  const validator = makeColumnValidator(schema, child.childTable);
-  validator(o.column);
+  const validator = makeColumnValidator(
+    schema, child.childTable, child.childRef);
   const col = `${q(child.childRef)}.${q(o.column)}`;
   const expr = o.jsonPath?.length > 0
     ? jsonPathExpr(col, o.jsonPath, values, validator.typeOf(o.column))
@@ -743,16 +864,19 @@ function relatedOrderExpr(
  * the spread json array instead of by `factories.name`.
  */
 function relationOrder(
-    order, schema, table, ref, selectNodes, values, env, authzFilters, scope) {
+    order, schema, table, ref, selectNodes, values, env, authzFilters, scope,
+    spreadFields) {
   if (!order || order.length === 0) return { terms: [], sql: '' };
   const validator = makeColumnValidator(schema, table);
   const terms = order.map((o) => {
     let expr;
     if (o.relation) {
       expr = relatedOrderExpr(
-        o, schema, table, ref, selectNodes, values, env, authzFilters, scope);
+        o, schema, table, ref, selectNodes, values, env, authzFilters, scope,
+        spreadFields);
     } else {
-      validator(o.column);
+      // Qualified, so an `order=` on a computed column resolves the same way
+      // a select on one does (see computedFieldExpr).
       const col = `${q(ref)}.${q(o.column)}`;
       expr = o.jsonPath?.length > 0
         ? jsonPathExpr(col, o.jsonPath, values, validator.typeOf(o.column))
@@ -777,6 +901,47 @@ function jsonPairs(fields, values) {
     .join(', ');
 }
 
+// The aggregate function of a hoisted aggregate, as SQL.
+function aggSqlFn(name) {
+  const fn = AGG_SQL[name];
+  if (!fn) {
+    throw new PostgRESTError(400, 'PGRST100',
+      `Unknown aggregate function '${name}'`);
+  }
+  return fn;
+}
+
+/**
+ * One aggregate lifted out of a to-one spread embed.
+ *
+ * The spread selects the aggregate's *input* and the level that receives it
+ * applies the function, so `?select=client_id,...project_invoices(
+ * invoice_total.sum())` sums across the rows of one `client_id` instead of
+ * summing each single joined row (upstream `hoistSpreadAggFunctions`, whose
+ * comment calls the un-hoisted form "essentially a no-op").
+ *
+ * `count()` carries no field of its own: upstream hoists
+ * `COUNT("<join alias>".*)`, and a bare relation reference is that whole row —
+ * NULL for a parent row the spread matched nothing for, which is what makes
+ * `COUNT` skip it.
+ */
+function hoistedSpreadEntry(node, ref, base, values, typeOf, transform = null) {
+  const plain = { ...node, agg: null, aggCast: null };
+  return {
+    key: node.alias || node.name,
+    expr: node.name === '*'
+      ? q(ref)
+      : selectItemExpr(plain, base, values, typeOf, transform),
+    explicitAlias: true,
+    group: false,
+    hoist: {
+      agg: node.agg,
+      cast: node.aggCast,
+      key: node.alias || node.agg,
+    },
+  };
+}
+
 /**
  * The SELECT-list contribution of one relation.
  *
@@ -784,14 +949,21 @@ function jsonPairs(fields, values) {
  * fields in order, the GROUP BY terms an aggregate select needs, the LATERAL
  * joins spread embeds want appended to the FROM, and the EXISTS conditions
  * `!inner` embeds add to the WHERE.
+ *
+ * `opts.spreadToOne` says this relation is itself a to-one spread embed, and
+ * so is not where an aggregate belongs: its aggregates are handed to the
+ * caller through `fields[].hoist` and applied one level up. Upstream repeats
+ * that until it reaches the root or a relation that is embedded as json, which
+ * is where the GROUP BY has to live for the result to mean anything.
  */
 function buildRelationSelect(
-    selectNodes, table, ref, schema, values, env, authzFilters, scope) {
+    selectNodes, table, ref, schema, values, env, authzFilters, scope,
+    opts = {}) {
+  const hoistOut = opts.spreadToOne === true;
   const fields = [];
-  const groupTerms = [];
   const laterals = [];
   const innerConds = [];
-  const aggregated = isAggregated(selectNodes);
+  const spreadFields = new Map();
   const typeOf = (col) =>
     schema.tables[table]?.columns?.[col]?.type || null;
 
@@ -799,27 +971,42 @@ function buildRelationSelect(
     if (node.type === 'column') {
       if (node.name === '*' && !node.agg) {
         for (const c of Object.keys(schema.tables[table].columns)) {
-          const expr = `${q(ref)}.${q(c)}`;
-          fields.push({ key: c, expr, explicitAlias: false });
-          if (aggregated) groupTerms.push(expr);
+          // A data representation is a function call, whose output label is
+          // the function's name, so a transformed column has to be aliased
+          // back (upstream `pgFmtCoerceNamed`).
+          const fn = outputTransformOf(schema, table, c);
+          fields.push({
+            key: c,
+            expr: applyTransform(`${q(ref)}.${q(c)}`, fn),
+            explicitAlias: Boolean(fn),
+            group: true,
+          });
         }
         continue;
       }
-      const fnCount = functionalCountExpr(node, schema, table, ref);
+      // Already qualified with the relation, which is all a computed column
+      // needs (see computedFieldExpr): nothing to validate here.
       const base = node.name === '*'
         ? '*'
-        : (fnCount || `${q(ref)}.${q(node.name)}`);
-      if (node.name !== '*' && !fnCount) {
-        validateCol(schema, table, node.name);
+        : `${q(ref)}.${q(node.name)}`;
+      const transform = node.name === '*'
+        ? null
+        : outputTransformOf(schema, table, node.name);
+      if (node.agg && hoistOut) {
+        fields.push(hoistedSpreadEntry(
+          node, ref, base, values, typeOf, transform));
+        continue;
       }
-      const expr = selectItemExpr(node, base, values, typeOf);
+      const expr = selectItemExpr(node, base, values, typeOf, transform);
       fields.push({
         key: node.alias || node.name,
         expr,
         explicitAlias: Boolean(node.alias)
-          || Boolean(node.cast && node.name !== '*'),
+          || Boolean(node.cast && node.name !== '*')
+          || Boolean(transform),
+        agg: Boolean(node.agg),
+        group: !node.agg,
       });
-      if (aggregated && !node.agg) groupTerms.push(expr);
       continue;
     }
 
@@ -835,9 +1022,23 @@ function buildRelationSelect(
       const spread = buildSpreadLateral(
         node, rel, ref, schema, values, env, authzFilters, scope);
       laterals.push(spread.lateral);
+      spreadFields.set(node.alias || node.name, spread.fields);
       for (const f of spread.fields) {
-        fields.push({ key: f.key, expr: f.expr, explicitAlias: true });
-        if (aggregated) groupTerms.push(f.expr);
+        if (f.hoist && !hoistOut) {
+          fields.push({
+            key: f.hoist.key,
+            expr: castExpr(
+              `${aggSqlFn(f.hoist.agg)}(${f.expr})`, f.hoist.cast),
+            explicitAlias: true,
+            agg: true,
+            group: false,
+          });
+          continue;
+        }
+        fields.push({
+          key: f.key, expr: f.expr, explicitAlias: true,
+          hoist: f.hoist, group: !f.hoist, json: f.json,
+        });
       }
       continue;
     }
@@ -847,10 +1048,30 @@ function buildRelationSelect(
       expr: buildEmbedSubquery(
         node, rel, ref, schema, values, env, authzFilters, scope),
       explicitAlias: true,
+      group: false,
+      json: true,
     });
   }
 
-  return { fields, groupTerms, laterals, innerConds };
+  // Upstream `groupF`/`pgFmtGroup`: a select with at least one aggregate —
+  // its own or one hoisted into it — groups by every non-aggregated field.
+  const aggregated = fields.some(f => f.agg);
+  if (aggregated) {
+    // A json value cannot be a GROUP BY term: `json` has no equality operator
+    // (42883). jsonb does, which is why upstream renders every embed as
+    // `row_to_json(...)::jsonb` and groups by that — a spread embed carrying a
+    // nested embed of its own (`...processes(factories(name),...)`) is grouped
+    // by the nested object. The select expression and the group term have to be
+    // the same string, so both carry the cast.
+    for (const f of fields) {
+      if (f.group && f.json) f.expr = `CAST(${f.expr} AS jsonb)`;
+    }
+  }
+  const groupTerms = aggregated
+    ? fields.filter(f => f.group).map(f => f.expr)
+    : [];
+
+  return { fields, groupTerms, laterals, innerConds, aggregated, spreadFields };
 }
 
 /**
@@ -873,7 +1094,7 @@ function buildEmbedSubquery(
   const from = `${child.from}${inner.laterals.join('')}`;
   const order = relationOrder(
     node.order, schema, child.childTable, child.childRef, node.select,
-    values, env, authzFilters, child.childScope);
+    values, env, authzFilters, child.childScope, inner.spreadFields);
   const group = groupClause(inner.groupTerms);
   const range = limitOffsetClause(node.limit, node.offset, values);
 
@@ -892,7 +1113,7 @@ function buildEmbedSubquery(
   // aggregated into the array from a derived table. An ordered or limited
   // embed needs the same shape, because `json_agg` has to be told the order
   // explicitly rather than inherit it from a subquery.
-  if (isAggregated(node.select) || group || order.terms.length > 0 || range) {
+  if (inner.aggregated || group || order.terms.length > 0 || range) {
     const ordCols = order.terms.map((t, i) =>
       `${t.expr} AS ${q(`pgrst_o${i + 1}`)}`);
     const aggOrder = order.terms.length > 0
@@ -925,9 +1146,21 @@ function buildEmbedSubquery(
 function buildSpreadLateral(
     node, rel, parentRef, schema, values, env, authzFilters, scope) {
   const child = embedChild(rel, parentRef, scope);
+  const toOne = embedIsToOne(rel);
   const inner = buildRelationSelect(
     node.select, child.childTable, child.childRef, schema, values, env,
-    authzFilters, child.childScope);
+    authzFilters, child.childScope, { spreadToOne: toOne });
+
+  // A to-many spread turns each member into a json array, and there is no
+  // reading of an aggregate over one that upstream commits to: it refuses the
+  // request instead (upstream `addToManyOrderSelects`). Nothing was hoisted
+  // out of this level, so an aggregate here is one applied here — its own, or
+  // one hoisted up from a to-one spread underneath it.
+  if (!toOne && inner.aggregated) {
+    throw new PostgRESTError(400, 'PGRST127', 'Feature not implemented',
+      'Aggregates are not implemented for one-to-many or many-to-many '
+      + 'spreads.');
+  }
 
   const conds = [...child.conds, ...inner.innerConds];
   addNodeFilters(conds, node, child, schema, values, env, authzFilters);
@@ -936,11 +1169,12 @@ function buildSpreadLateral(
   scope.push(latRef);
 
   const cols = inner.fields.map((f, i) => ({
-    key: f.key, expr: f.expr, col: `pgrst_s${i + 1}`,
+    key: f.key, expr: f.expr, col: `pgrst_s${i + 1}`, hoist: f.hoist,
+    json: f.json,
   }));
   const order = relationOrder(
     node.order, schema, child.childTable, child.childRef, node.select,
-    values, env, authzFilters, child.childScope);
+    values, env, authzFilters, child.childScope, inner.spreadFields);
   const ordCols = order.terms.map((t, i) =>
     `${t.expr} AS ${q(`pgrst_o${i + 1}`)}`);
 
@@ -952,10 +1186,11 @@ function buildSpreadLateral(
     + limitOffsetClause(node.limit, node.offset, values);
 
   const fields = cols.map(c => ({
-    key: c.key, expr: `${q(latRef)}.${q(c.col)}`,
+    key: c.key, expr: `${q(latRef)}.${q(c.col)}`, hoist: c.hoist,
+    json: c.json,
   }));
 
-  if (embedIsToOne(rel)) {
+  if (toOne) {
     return {
       lateral: ` LEFT JOIN LATERAL (${childQuery})`
         + ` AS ${q(latRef)} ON TRUE`,
@@ -1014,15 +1249,29 @@ function ftsFieldExpr(f, values, columnValidator, lang, base) {
 // named `data->foo->>bar` (upstream `pTreePath` parses the path out of the
 // parameter name).
 function filterFieldExpr(f, values, columnValidator) {
-  if (!f.jsonPath || f.jsonPath.length === 0) return q(f.column);
+  // A validator without `resolve` (the RPC one, whose field list is the
+  // function's own output columns) keeps validating: there is no row type for
+  // a computed field to be declared on.
+  let base;
+  if (columnValidator.resolve) {
+    base = columnValidator.resolve(f.column);
+  } else {
+    columnValidator(f.column);
+    base = q(f.column);
+  }
+  if (!f.jsonPath || f.jsonPath.length === 0) return base;
   const colType = columnValidator.typeOf?.(f.column) || null;
-  return jsonPathExpr(q(f.column), f.jsonPath, values, colType);
+  return jsonPathExpr(base, f.jsonPath, values, colType);
 }
 
 function buildSingleCondition(f, values, columnValidator) {
-  columnValidator(f.column);
   const not = f.negate ? 'NOT ' : '';
   const field = filterFieldExpr(f, values, columnValidator);
+  // Upstream `pgFmtUnknownLiteralForField`. `IS`, `IS DISTINCT FROM`, the FTS
+  // operators and LIKE/ILIKE are the operators it leaves un-parsed (an
+  // `IsDistinctFrom` literal and an FTS query are not values of the column's
+  // type, and a LIKE pattern is not either).
+  const parser = columnValidator.textParserOf?.(f.column) || null;
 
   // Upstream emits negation as a prefix — `NOT <field> <op> <value>` —
   // rather than flipping the operator, so it works for every operator
@@ -1052,7 +1301,13 @@ function buildSingleCondition(f, values, columnValidator) {
       return `${not}${field} = ANY('{}')`;
     }
     values.push(pgArrayLiteral(f.value));
-    return `${not}${field} = ANY($${values.length})`;
+    // With a parser the list is unpacked and parsed element by element rather
+    // than repeating the call per value (upstream
+    // `pgFmtArrayLiteralForField`).
+    const list = parser
+      ? `(SELECT ${parser}(unnest($${values.length}::text[])))`
+      : `$${values.length}`;
+    return `${not}${field} = ANY(${list})`;
   }
 
   if (FTS_FN[f.operator]) {
@@ -1072,7 +1327,8 @@ function buildSingleCondition(f, values, columnValidator) {
   const simple = SIMPLE_OP_SQL[f.operator];
   if (simple) {
     values.push(f.value);
-    return `${not}${field} ${simple} $${values.length}`;
+    return `${not}${field} ${simple} `
+      + `${applyTransform(`$${values.length}`, parser)}`;
   }
 
   const quant = QUANT_OP_SQL[f.operator];
@@ -1083,7 +1339,9 @@ function buildSingleCondition(f, values, columnValidator) {
     );
   }
   values.push(f.value);
-  let operand = `$${values.length}`;
+  const patternOp = f.operator === 'like' || f.operator === 'ilike';
+  let operand = applyTransform(
+    `$${values.length}`, patternOp ? null : parser);
   if (f.quantifier === 'any') operand = `ANY(${operand})`;
   else if (f.quantifier === 'all') operand = `ALL(${operand})`;
   return `${not}${field} ${quant} ${operand}`;
@@ -1208,14 +1466,14 @@ export function buildSelect(table, parsed, schema, authzConditions) {
  * friends, rendered against one relation.
  *
  * Factored out of `buildSelectFrom` because a mutation needs the same
- * projection. Upstream applies it to the mutation's `pgrst_source` CTE
- * (QueryBuilder.hs wraps every mutation in `WITH pgrst_source AS (... RETURNING
- * ...) SELECT <the select list> FROM pgrst_source`), which is why
+ * projection — there it becomes the RETURNING list, which is why
  * `POST /projects?select=pId:id::text` answers `[{"pId":"7"}]` and not the
  * whole row.
  *
- * Column references are unqualified, so the same string works over a table and
- * over that CTE.
+ * A known column is referenced unqualified, so the same string works over a
+ * table, over a RETURNING list and over a function call. `opts.ref` names the
+ * relation for the one case that has to be qualified: a field that is not a
+ * column (see computedFieldExpr). It defaults to the table.
  */
 function flatSelectList(selectNodes, schema, table, values, opts = {}) {
   const columnValidator = opts.columnValidator
@@ -1227,9 +1485,14 @@ function flatSelectList(selectNodes, schema, table, values, opts = {}) {
   const cols = selectNodes.filter(
     n => typeof n === 'string' || n.type === 'column');
   const names = cols.map(n => typeof n === 'string' ? n : n.name);
+  // A data representation is rendered as a function call, so the column has to
+  // be aliased back to its own name (upstream `pgFmtCoerceNamed`) and the bare
+  // `*` shortcut cannot be taken.
+  const transformOf = (col) =>
+    representationFn(schema, columnValidator.typeOf?.(col), OUTPUT_TYPE);
   const plainStar = names.length === 1 && names[0] === '*'
     && !(typeof cols[0] === 'object' && cols[0].agg);
-  if (plainStar) {
+  if (plainStar && !allColumns.some(transformOf)) {
     return allColumns.map(c => q(c)).join(', ');
   }
 
@@ -1238,20 +1501,30 @@ function flatSelectList(selectNodes, schema, table, values, opts = {}) {
     const node = typeof n === 'string' ? { name: n } : n;
     if (node.name === '*' && !node.agg) {
       for (const c of allColumns) {
-        expressions.push(q(c));
-        if (aggregated) groupTerms.push(q(c));
+        const fn = transformOf(c);
+        const expr = fn ? `${fn}(${q(c)}) AS ${q(c)}` : q(c);
+        expressions.push(expr);
+        if (aggregated) groupTerms.push(fn ? `${fn}(${q(c)})` : q(c));
       }
       continue;
     }
-    const fnCount = functionalCountExpr(node, schema, table, table);
-    if (node.name !== '*' && !fnCount) columnValidator(node.name);
+    const computed = node.name === '*'
+      ? null
+      : computedFieldExpr(schema, table, node.name, opts.ref || table);
     const base = node.name === '*'
       ? '*'
-      : (fnCount || q(node.name));
+      : (computed || q(node.name));
+    const transform = node.name === '*' || computed
+      ? null
+      : transformOf(node.name);
     const ref = selectItemExpr(
-      node, base, values, columnValidator.typeOf);
+      node, base, values, columnValidator.typeOf, transform);
     if (node.alias) {
       expressions.push(`${ref} AS ${qAlias(node.alias)}`);
+    } else if (transform && !node.agg) {
+      // A function call takes the function's name as its output label, so the
+      // column has to be named back.
+      expressions.push(`${ref} AS ${q(node.name)}`);
     } else {
       expressions.push(ref);
     }
@@ -1285,23 +1558,64 @@ function mutationProjects(selectNodes) {
 }
 
 /**
- * Wrap a mutation so the response carries the requested columns, aliases and
- * casts instead of the whole row.
+ * The RETURNING list a mutation needs so the response carries the requested
+ * columns, aliases and casts instead of the whole row — `RETURNING *` when the
+ * select list is not one a mutation can project.
  *
- * `WITH pgrst_source AS (<mutation> RETURNING *) SELECT <select list> FROM
- * pgrst_source` — upstream's shape (QueryBuilder.hs `mutateRequestToQuery` +
- * `sourceCTE`), minus the typed RETURNING list, which is unnecessary here
- * because the outer SELECT does the narrowing.
+ * Upstream narrows in an outer SELECT over the mutation's source CTE
+ * (QueryBuilder.hs `mutateRequestToQuery` + `sourceCTE`: `WITH pgrst_source AS
+ * (<mutation> RETURNING ...) SELECT <select list> FROM pgrst_source AS
+ * "<table>"`). Narrowing in RETURNING gives the same rows and the same columns
+ * with one less query level, and it keeps the projection over the table
+ * itself — which matters for a computed column, whose function is declared on
+ * the table's composite type. Over the CTE the row is a RECORD, so an
+ * overloaded computed column cannot resolve there (`function
+ * computed_overload(record) is not unique`); in RETURNING it does.
  */
-function wrapMutationProjection(sql, table, parsed, schema, values) {
-  if (!mutationProjects(parsed.select)) return sql;
+function mutationReturning(table, parsed, schema, values) {
+  if (!mutationProjects(parsed.select)) return ' RETURNING *';
   const projection = flatSelectList(
-    parsed.select, schema, table, values);
-  return `WITH ${MUTATION_SOURCE_CTE} AS (${sql})`
-    + ` SELECT ${projection} FROM ${MUTATION_SOURCE_CTE}`;
+    parsed.select, schema, table, values, { ref: table });
+  return ` RETURNING ${projection}`;
 }
 
 const MUTATION_SOURCE_CTE = 'pgrst_source';
+
+/**
+ * A mutation whose representation is a full read plan — embeds included —
+ * computed over the rows the statement itself touched.
+ *
+ * This is upstream's shape: `WITH pgrst_source AS (<mutation> RETURNING *)`
+ * followed by the read plan, whose FROM is that CTE *aliased to the table*
+ * (Plan.hs `addRels`, root case: "the CTE for mutations/rpc is used as WITH
+ * sourceCTEName .. SELECT .. FROM sourceCTEName as alias, we use the table name
+ * as an alias so findRel can find the right relationship"). The alias is what
+ * lets the embed's join conditions and the select list read exactly as they do
+ * for a plain read of the table.
+ *
+ * A DELETE is why this cannot be done by re-reading the rows afterwards: they
+ * are gone (DeleteSpec.hs:72, :79, :91, :160). Ordering is the other reason —
+ * `?order=` belongs to the representation, and a re-read by primary key loses
+ * it (UpsertSpec.hs:570).
+ *
+ * `limit`/`offset` are dropped: they never restrict a mutation's rows upstream
+ * (`treeRestrictRange` skips ActRelationMut), and `?limit=` on a mutation is
+ * the engine's `max-affected` check, not a slice of the representation.
+ *
+ * @param {{text: string, values: any[]}} mutation ending in `RETURNING *`
+ */
+export function buildMutationRead(
+    mutation, table, parsed, schema, authzConditions) {
+  const built = buildSelectFrom(
+    table, { ...parsed, limit: null, offset: 0 }, schema, authzConditions, {
+      fromSql: `${MUTATION_SOURCE_CTE} AS ${q(table)}`,
+      values: [...mutation.values],
+    });
+  return {
+    text: `WITH ${MUTATION_SOURCE_CTE} AS (${mutation.text}) ${built.text}`,
+    values: built.values,
+  };
+}
 
 /**
  * `buildSelect` with the FROM clause supplied by the caller.
@@ -1330,6 +1644,7 @@ function buildSelectFrom(table, parsed, schema, authzConditions, opts = {}) {
   const aggregated = isAggregated(parsed.select);
   const groupTerms = [];
   const env = newBuildEnv();
+  let rootSpreadFields = null;
 
   if (hasEmbeds) {
     const rs = buildRelationSelect(
@@ -1349,6 +1664,7 @@ function buildSelectFrom(table, parsed, schema, authzConditions, opts = {}) {
     lateralJoins = rs.laterals.join('');
     innerJoinConds.push(...rs.innerConds);
     groupTerms.push(...rs.groupTerms);
+    rootSpreadFields = rs.spreadFields;
   } else {
     colList = flatSelectList(parsed.select, schema, table, values, {
       columnValidator, aggregated, groupTerms,
@@ -1380,7 +1696,7 @@ function buildSelectFrom(table, parsed, schema, authzConditions, opts = {}) {
   sql += groupClause(groupTerms);
   sql += relationOrder(
     parsed.order, schema, table, table, parsed.select, values, env,
-    authzConditions?.embeds, [table]).sql;
+    authzConditions?.embeds, [table], rootSpreadFields).sql;
   sql += limitOffsetClause(parsed.limit, parsed.offset, values);
 
   return { text: sql, values };
@@ -1464,7 +1780,8 @@ export function buildInsert(table, body, schema, parsed, opts = {}) {
     };
   }
 
-  const allColumns = Object.keys(schema.tables[table].columns);
+  const columnTypes = schema.tables[table].columns;
+  const allColumns = Object.keys(columnTypes);
   // A payload with no keys at all (`{}`, `[{}, {}]`) asks for a row of
   // defaults. `DEFAULT VALUES` says that for one row; for several, every
   // column takes the DEFAULT keyword, which is what upstream's
@@ -1480,8 +1797,7 @@ export function buildInsert(table, body, schema, parsed, opts = {}) {
       const placeholders = insertCols.map((col) => {
         if (allDefaults) return 'DEFAULT';
         if (row[col] === undefined) return applyDefaults ? 'DEFAULT' : 'NULL';
-        values.push(row[col]);
-        return `$${values.length}`;
+        return payloadOperand(schema, table, col, row[col], values);
       });
       return `(${placeholders.join(', ')})`;
     });
@@ -1513,9 +1829,62 @@ export function buildInsert(table, body, schema, parsed, opts = {}) {
     }
   }
 
-  sql += ' RETURNING *';
+  sql += mutationReturning(table, parsed, schema, values);
   return {
-    text: wrapMutationProjection(sql, table, parsed, schema, values),
+    text: sql,
+    values,
+  };
+}
+
+/**
+ * How many rows of an upsert's payload already exist, matched on the conflict
+ * target.
+ *
+ * `Prefer: resolution=merge-duplicates` answers 200 instead of 201 when the
+ * statement inserted no new row (Response.hs `isInsertIfGTZero`). Upstream
+ * knows the count because its INSERT bumps a transaction-local GUC
+ * (`set_config('pgrst.inserted', ...)`) that the DO UPDATE branch decrements
+ * again; neither that GUC nor the `xmax` trick survives here — Aurora DSQL
+ * refuses a system column in a RETURNING list — so the conflicting rows are
+ * counted before the write, the same substitute the single-row PUT upsert
+ * already uses.
+ *
+ * A row that leaves any target column out cannot conflict: the column takes
+ * its default or NULL, and a unique index treats NULLs as distinct. Returns
+ * null when no row could conflict at all, in which case no query is needed.
+ *
+ * @returns {{text: string, values: any[]}|null}
+ */
+export function buildConflictCount(table, rows, targetCols, schema, columns) {
+  if (!targetCols || targetCols.length === 0) return null;
+  for (const col of targetCols) validateCol(schema, table, col);
+  const restricted = columns && columns.length > 0 ? new Set(columns) : null;
+  if (restricted && !targetCols.every(c => restricted.has(c))) return null;
+
+  const colTypes = schema.tables[table].columns;
+  const values = [];
+  const tuples = [];
+  for (const row of rows) {
+    if (!row || typeof row !== 'object') continue;
+    if (!targetCols.every(c => row[c] !== undefined && row[c] !== null)) {
+      continue;
+    }
+    const placeholders = targetCols.map((c) => {
+      values.push(paramValue(row[c], colTypes[c]?.type));
+      return `$${values.length}`;
+    });
+    tuples.push(targetCols.length === 1
+      ? placeholders[0]
+      : `(${placeholders.join(', ')})`);
+  }
+  if (tuples.length === 0) return null;
+
+  const left = targetCols.length === 1
+    ? q(targetCols[0])
+    : `(${targetCols.map(c => q(c)).join(', ')})`;
+  return {
+    text: `SELECT COUNT(*) AS count FROM ${q(table)}`
+      + ` WHERE ${left} IN (${tuples.join(', ')})`,
     values,
   };
 }
@@ -1546,8 +1915,8 @@ export function buildUpdate(
     if (payload[col] === undefined) {
       return `${q(col)} = ${opts.applyDefaults === true ? 'DEFAULT' : 'NULL'}`;
     }
-    values.push(payload[col]);
-    return `${q(col)} = $${values.length}`;
+    return `${q(col)} = `
+      + `${payloadOperand(schema, table, col, payload[col], values)}`;
   });
 
   // An empty payload updates nothing. `UPDATE t SET` is a syntax error, so
@@ -1598,10 +1967,10 @@ export function buildUpdate(
 
   let sql = `UPDATE ${q(table)} SET ${setClauses.join(', ')}`;
   sql += whereClause(conds);
-  sql += ' RETURNING *';
+  sql += mutationReturning(table, parsed, schema, values);
 
   return {
-    text: wrapMutationProjection(sql, table, parsed, schema, values),
+    text: sql,
     values,
   };
 }
@@ -1632,10 +2001,10 @@ export function buildDelete(table, parsed, schema, authzConditions) {
 
   let sql = `DELETE FROM ${q(table)}`;
   sql += whereClause(conds);
-  sql += ' RETURNING *';
+  sql += mutationReturning(table, parsed, schema, values);
 
   return {
-    text: wrapMutationProjection(sql, table, parsed, schema, values),
+    text: sql,
     values,
   };
 }

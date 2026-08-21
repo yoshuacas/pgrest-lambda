@@ -1,6 +1,29 @@
 -- 07-data.sql — generated from data.sql by conformance/fixtures/transform.mjs
 -- Do not edit: re-run the transformer.
 
+-- Sequence state a data-only reload has to restore: CREATE SEQUENCE /
+-- GENERATED AS IDENTITY leaves "last value 1, not yet called", and this
+-- file is re-applied without 03-schema.sql. The four setvals data.sql
+-- carries itself are further down and are not repeated here.
+SELECT pg_catalog.setval(pg_get_serial_sequence('items3', 'id'), 1, false);
+SELECT pg_catalog.setval(pg_get_serial_sequence('public_consumers', 'id'), 1, false);
+SELECT pg_catalog.setval(pg_get_serial_sequence('public_orders', 'id'), 1, false);
+SELECT pg_catalog.setval(pg_get_serial_sequence('"public".leak', 'id'), 1, false);
+SELECT pg_catalog.setval(pg_get_serial_sequence('big_projects', 'big_project_id'), 1, false);
+SELECT pg_catalog.setval(pg_get_serial_sequence('sites', 'site_id'), 1, false);
+SELECT pg_catalog.setval(pg_get_serial_sequence('whatev_projects', 'id'), 1, false);
+SELECT pg_catalog.setval(pg_get_serial_sequence('whatev_sites', 'id'), 1, false);
+SELECT pg_catalog.setval(pg_get_serial_sequence('private.screens', 'id'), 1, false);
+SELECT pg_catalog.setval(pg_get_serial_sequence('private.labels', 'id'), 1, false);
+SELECT pg_catalog.setval(pg_get_serial_sequence('clientinfo', 'id'), 1, false);
+SELECT pg_catalog.setval(pg_get_serial_sequence('"public".channels', 'id'), 1, false);
+SELECT pg_catalog.setval(pg_get_serial_sequence('surr_serial_upsert', 'id'), 1, false);
+SELECT pg_catalog.setval(pg_get_serial_sequence('surr_gen_default_upsert', 'id'), 1, false);
+SELECT pg_catalog.setval(pg_get_serial_sequence('"Surr_Gen_Default_Upsert"', 'id'), 1, false);
+SELECT pg_catalog.setval(pg_get_serial_sequence('places', 'id'), 1, false);
+SELECT pg_catalog.setval(pg_get_serial_sequence('visits', 'id'), 1, false);
+SELECT pg_catalog.setval('callcounter_count', 1, false);
+
 SET search_path = postgrest, pg_catalog;
 
 DELETE FROM auth;
@@ -613,18 +636,18 @@ INSERT INTO isn_sample ("name") VALUES ('Mathematics: From the Birth of Numbers'
 DELETE FROM "Server Today";
 
 INSERT INTO "Server Today" ("cHostname", "Just A Server Model") VALUES
-  ('argnim1', 'IBM,9113-550 (P5-550)'),
-  ('argnim2', 'IBM,9113-550 (P5-550)'),
-  ('daaa2nim71', 'IBM,9131-52A (P5-52A)'),
-  ('daah3nim71', 'IBM,8406-71Y (P7-PS701)'),
-  ('hbnim1', 'IBM,9133-55A (P5-55A)');
+  ('argnim1    ', ' IBM,9113-550 (P5-550)'),
+  ('argnim2    ', ' IBM,9113-550 (P5-550)'),
+  ('daaa2nim71 ', ' IBM,9131-52A (P5-52A)'),
+  ('daah3nim71 ', ' IBM,8406-71Y (P7-PS701)'),
+  ('hbnim1     ', ' IBM,9133-55A (P5-55A)');
 
 DELETE FROM pgrst_reserved_chars;
 
 INSERT INTO pgrst_reserved_chars ("*id*", ":arr->ow::cast", "(inside,parens)", "a.dotted.column", "  col  w  space  ") VALUES
-  ('1', 'arrow-1', 'parens-1', 'dotted-1', 'space-1'),
-  ('2', 'arrow-2', 'parens-2', 'dotted-2', 'space-2'),
-  ('3', 'arrow-3', 'parens-3', 'dotted-3', 'space-3');
+  ('1 ', ' arrow-1 ', ' parens-1 ', ' dotted-1 ', ' space-1'),
+  ('2 ', ' arrow-2 ', ' parens-2 ', ' dotted-2 ', ' space-2'),
+  ('3 ', ' arrow-3 ', ' parens-3 ', ' dotted-3 ', ' space-3');
 
 DELETE FROM web_content;
 

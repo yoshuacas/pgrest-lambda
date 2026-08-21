@@ -59,24 +59,160 @@ function parseBool(value, fallback) {
   return fallback;
 }
 
-// `db-pre-request` is a function name, optionally schema-qualified. It is
-// interpolated into `SELECT <name>()` (a function name cannot be a bind
-// parameter), so it is validated here and quoted at the call site. Anything
-// that is not one or two plain identifiers is rejected at boot rather than
-// reaching the database.
+// `db-pre-request`, `db-root-spec` and `db-pre-config` are all function names,
+// optionally schema-qualified. A function name cannot be a bind parameter, so
+// it reaches SQL as text and is validated here: anything that is not one or two
+// plain identifiers is rejected at boot rather than reaching the database.
 const PRE_REQUEST_RE = /^[\p{L}_][\p{L}\p{N}_$]*$/u;
 
-export function parsePreRequest(value) {
+/**
+ * Parse a `<schema>.<function>` or `<function>` configuration value.
+ *
+ * @param {*} value the raw setting
+ * @param {string} option the upstream option name, for the error message
+ * @returns {{schema: string|null, name: string}|null} null when unset
+ */
+export function parseQualifiedFunction(value, option) {
   if (!value) return null;
   const parts = String(value).trim().split('.');
   if (parts.length > 2 || !parts.every(p => PRE_REQUEST_RE.test(p))) {
     throw new Error(
-      'pgrest-lambda: db-pre-request must be a function name, optionally '
+      `pgrest-lambda: ${option} must be a function name, optionally `
       + `schema-qualified (got ${JSON.stringify(String(value))})`);
   }
   return parts.length === 2
     ? { schema: parts[0], name: parts[1] }
     : { schema: null, name: parts[0] };
+}
+
+export function parsePreRequest(value) {
+  return parseQualifiedFunction(value, 'db-pre-request');
+}
+
+/**
+ * `app-settings`: either an object (`{ 'app.settings.app_host': 'localhost' }`)
+ * or, from the environment, a comma-separated `name=value` list. Order is
+ * preserved because upstream applies the pairs in order.
+ *
+ * @param {*} value the raw setting
+ * @returns {Array<[string, string]>} name/value pairs, empty when unset
+ */
+export function parseAppSettings(value) {
+  if (value === undefined || value === null || value === '') return [];
+  if (typeof value === 'object') {
+    return Array.isArray(value) ? value : Object.entries(value);
+  }
+  return String(value)
+    .split(',')
+    .map(pair => pair.trim())
+    .filter(Boolean)
+    .map(pair => {
+      const eq = pair.indexOf('=');
+      if (eq === -1) {
+        throw new Error(
+          'pgrest-lambda: app-settings entries are name=value '
+          + `(got ${JSON.stringify(pair)})`);
+      }
+      return [pair.slice(0, eq).trim(), pair.slice(eq + 1).trim()];
+    });
+}
+
+// `openapi-mode` (upstream `parseOpenAPIMode`). `follow-privileges` is the
+// default and what this engine has always done; `ignore-privileges` names the
+// same behaviour here, because the engine introspects with its own connection
+// role and never filters the spec by the caller's privileges — there is no
+// `SET ROLE`; `disabled` makes the root endpoint report no metadata at all.
+const OPENAPI_MODES = ['follow-privileges', 'ignore-privileges', 'disabled'];
+
+export function parseOpenApiMode(value) {
+  if (value === undefined || value === null || value === '') {
+    return 'follow-privileges';
+  }
+  const v = String(value).trim().toLowerCase();
+  if (OPENAPI_MODES.includes(v)) return v;
+  throw new Error(
+    `pgrest-lambda: openapi-mode must be one of ${OPENAPI_MODES.join(', ')} `
+    + `(got ${JSON.stringify(String(value))})`);
+}
+
+// `client-error-verbosity` (upstream `parseErrorVerbosity`): `verbose` returns
+// all four error fields, `minimal` returns `code` and `message` only.
+const ERROR_VERBOSITIES = ['verbose', 'minimal'];
+
+export function parseClientErrorVerbosity(value) {
+  if (value === undefined || value === null || value === '') return 'verbose';
+  const v = String(value).trim().toLowerCase();
+  if (ERROR_VERBOSITIES.includes(v)) return v;
+  throw new Error(
+    'pgrest-lambda: client-error-verbosity must be one of '
+    + `${ERROR_VERBOSITIES.join(', ')} (got ${JSON.stringify(String(value))})`);
+}
+
+// `server-trace-header`: the name of a request header echoed back on every
+// response. It is written into a response header name, so it has to be a valid
+// HTTP field name (RFC 9110 token) or a deployment could inject a header break.
+const HEADER_NAME_RE = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
+
+/**
+ * A non-negative integer setting, where 0 is a meaningful value.
+ *
+ * `parseIntOrDefault` cannot be used for these: it treats 0 as unset, and 0 is
+ * how upstream turns the JWT cache off.
+ */
+export function parseCount(value, fallback, option) {
+  if (value === undefined || value === null || value === '') return fallback;
+  const n = typeof value === 'number' ? value : Number(String(value).trim());
+  if (!Number.isInteger(n) || n < 0) {
+    throw new Error(
+      `pgrest-lambda: ${option} must be a non-negative integer `
+      + `(got ${JSON.stringify(String(value))})`);
+  }
+  return n;
+}
+
+export function parseTraceHeader(value) {
+  if (value === undefined || value === null || value === '') return null;
+  const name = String(value).trim();
+  if (!HEADER_NAME_RE.test(name)) {
+    throw new Error(
+      'pgrest-lambda: server-trace-header must be a valid HTTP header name '
+      + `(got ${JSON.stringify(String(value))})`);
+  }
+  return name;
+}
+
+/**
+ * Echo the configured trace header back on every response.
+ *
+ * Upstream implements `server-trace-header` as WAI middleware around the whole
+ * application (App.hs `traceHeaderMiddleware`), which is why this wraps the
+ * handler rather than living inside it: the header rides on error responses and
+ * on responses no route produced, not just on successful reads. A request that
+ * does not carry the header still gets it back empty, as upstream does
+ * (`fromMaybe mempty`).
+ *
+ * @param {Function} handlerFn the handler to wrap
+ * @param {string|null} headerName the configured header name, or null to
+ *   return the handler untouched
+ */
+export function withTraceHeader(handlerFn, headerName) {
+  if (!headerName || typeof handlerFn !== 'function') return handlerFn;
+  const wanted = headerName.toLowerCase();
+  return async function traceHeaderHandler(event, ...rest) {
+    const response = await handlerFn(event, ...rest);
+    let value = '';
+    for (const [name, raw] of Object.entries(event?.headers || {})) {
+      if (name.toLowerCase() === wanted) {
+        value = raw === undefined || raw === null ? '' : String(raw);
+        break;
+      }
+    }
+    if (!response || typeof response !== 'object') return response;
+    return {
+      ...response,
+      headers: { ...(response.headers || {}), [headerName]: value },
+    };
+  };
 }
 
 /**
@@ -156,6 +292,12 @@ function resolveRestConfig(config) {
     dbMaxRows: Number.isFinite(maxRows) && maxRows >= 0 ? maxRows : null,
     dbPreRequest: parsePreRequest(
       config.dbPreRequest ?? process.env.PGREST_DB_PRE_REQUEST),
+    // `app-settings`: run-time settings every request runs with, readable from
+    // SQL with `current_setting('app.settings.<name>')`. Upstream keeps them as
+    // an ordered list of pairs (`configAppSettings`) and applies them
+    // transaction-locally per request (Query/PreQuery.hs `txVarQuery`).
+    appSettings: parseAppSettings(
+      config.appSettings ?? process.env.PGREST_APP_SETTINGS),
     // Upstream defaults `db-aggregates-enabled` to false; this engine has
     // always served aggregates, so the default stays true here and the switch
     // exists to turn them off (PGRST123), which is the behaviour upstream
@@ -175,6 +317,47 @@ function resolveRestConfig(config) {
     // `safeupdate` keeps the guard but answers with pg-safeupdate's wire error.
     bulkMutationGuard: parseBulkMutationGuard(
       config.bulkMutationGuard ?? process.env.PGREST_DB_BULK_MUTATION_GUARD),
+    // `server-timing-enabled`, default false like upstream: the timing header
+    // is a per-request measurement, so it is opt-in.
+    serverTiming: parseBool(
+      config.serverTiming ?? process.env.PGREST_SERVER_TIMING_ENABLED, false),
+    // `server-trace-header`, unset by default: no header is echoed.
+    serverTraceHeader: parseTraceHeader(
+      config.serverTraceHeader ?? process.env.PGREST_SERVER_TRACE_HEADER),
+    // `openapi-mode`, `follow-privileges` by default like upstream.
+    openApiMode: parseOpenApiMode(
+      config.openApiMode ?? process.env.PGREST_OPENAPI_MODE),
+    // `client-error-verbosity`, `verbose` by default like upstream: all four
+    // error fields. `minimal` drops `details` and `hint`.
+    clientErrorVerbosity: parseClientErrorVerbosity(
+      config.clientErrorVerbosity
+      ?? process.env.PGREST_CLIENT_ERROR_VERBOSITY),
+    // `db-root-spec`: a function whose result is served at `/` instead of the
+    // generated OpenAPI document.
+    dbRootSpec: parseQualifiedFunction(
+      config.dbRootSpec ?? process.env.PGREST_DB_ROOT_SPEC, 'db-root-spec'),
+    // `db-pre-config`: a function run once per connection before the
+    // configuration is read, used upstream to set options from the database.
+    dbPreConfig: parseQualifiedFunction(
+      config.dbPreConfig ?? process.env.PGREST_DB_PRE_CONFIG, 'db-pre-config'),
+    // `db-prepared-statements`, true by default like upstream.
+    dbPreparedStatements: parseBool(
+      config.dbPreparedStatements
+      ?? process.env.PGREST_DB_PREPARED_STATEMENTS, true),
+    // `url-use-legacy-target-names`. Upstream defaults this true: a filter on an
+    // aliased embed may name the target relation instead of the alias, and gets
+    // a deprecation `Warning` header. This engine has always required the alias
+    // and answers PGRST108 otherwise — upstream's `false` — so `false` is the
+    // default here, following the rule that a new option's default is the
+    // behaviour the engine already had.
+    urlUseLegacyTargetNames: parseBool(
+      config.urlUseLegacyTargetNames
+      ?? process.env.PGREST_URL_USE_LEGACY_TARGET_NAMES, false),
+    // `jwt-cache-max-entries`, 1000 by default like upstream. 0 disables the
+    // cache.
+    jwtCacheMaxEntries: parseCount(
+      config.jwtCacheMaxEntries ?? process.env.PGREST_JWT_CACHE_MAX_ENTRIES,
+      1000, 'jwt-cache-max-entries'),
   };
 }
 
@@ -370,6 +553,9 @@ export function createPgrest(config = {}) {
         schemaCacheTtl: resolved.schemaCacheTtl,
         introspect: db.introspect || null,
         capabilities: dbCapabilities,
+        // The schema-scoped introspection SQL binds this; the pool wrapper
+        // below rewrites the literal-`public` predicates for the same schema.
+        schema: schemaName,
         relationships:
           relationshipsForSchema(resolved.relationships, schemaName),
       });
@@ -410,9 +596,19 @@ export function createPgrest(config = {}) {
   ctx.dbExtraSearchPath = resolved.rest.dbExtraSearchPath;
   ctx.dbMaxRows = resolved.rest.dbMaxRows;
   ctx.dbPreRequest = resolved.rest.dbPreRequest;
+  ctx.appSettings = resolved.rest.appSettings;
   ctx.dbAggregatesEnabled = resolved.rest.dbAggregatesEnabled;
   ctx.dbPlanEnabled = resolved.rest.dbPlanEnabled;
   ctx.bulkMutationGuard = resolved.rest.bulkMutationGuard;
+  ctx.serverTiming = resolved.rest.serverTiming;
+  ctx.serverTraceHeader = resolved.rest.serverTraceHeader;
+  ctx.openApiMode = resolved.rest.openApiMode;
+  ctx.clientErrorVerbosity = resolved.rest.clientErrorVerbosity;
+  ctx.dbRootSpec = resolved.rest.dbRootSpec;
+  ctx.dbPreConfig = resolved.rest.dbPreConfig;
+  ctx.dbPreparedStatements = resolved.rest.dbPreparedStatements;
+  ctx.urlUseLegacyTargetNames = resolved.rest.urlUseLegacyTargetNames;
+  ctx.jwtCacheMaxEntries = resolved.rest.jwtCacheMaxEntries;
   ctx.restJwt = resolved.restJwt;
   ctx.getSchemaFor = (schemaName, pool) =>
     cacheFor(schemaName).getSchema(poolFor(pool, schemaName));
@@ -445,18 +641,27 @@ export function createPgrest(config = {}) {
   // Create rest handler with contributions
   const rest = createRestHandler(ctx, contributions);
 
+  // `server-trace-header` wraps both handlers, the way upstream wraps the whole
+  // application (App.hs `traceHeaderMiddleware`), so the echo also rides on
+  // error responses. Unset — the default — returns the handlers untouched.
+  const traceHeader = resolved.rest.serverTraceHeader;
+  const restHandler = withTraceHeader(rest.handler, traceHeader);
+  const authHandler = auth?.handler
+    ? withTraceHeader(auth.handler, traceHeader)
+    : null;
+
   // Combined handler (routes /auth/v1/* to auth, else to rest)
   function handler(event) {
     const path = event.path || '';
-    if (path.startsWith('/auth/v1/') && auth) {
-      return auth.handler(event);
+    if (path.startsWith('/auth/v1/') && authHandler) {
+      return authHandler(event);
     }
-    return rest.handler(event);
+    return restHandler(event);
   }
 
   return {
-    rest: rest.handler,
-    auth: auth?.handler || null,
+    rest: restHandler,
+    auth: authHandler,
     handler,
     // Expose subsystems for advanced use and testing
     _db: db,

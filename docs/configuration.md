@@ -45,7 +45,7 @@ your `.gitignore` too.
 | `POLICIES_PATH` | Cedar policy source. Accepts a filesystem path (`./policies`), `file:///absolute/path`, or `s3://<bucket>/<prefix>/`. See below. |
 | `PGREST_RELATIONSHIPS_PATH` | Path to a declared-relationship manifest. Adds foreign keys the catalog cannot report, so resource embedding works on databases that reject `FOREIGN KEY`. See below. |
 | `PGREST_DEFAULT_TS_CONFIG` | Text search configuration for `fts`/`plfts`/`phfts` filters that name none. See below. |
-| `PGREST_DB_SCHEMAS`, `PGREST_DB_EXTRA_SEARCH_PATH`, `PGREST_DB_MAX_ROWS`, `PGREST_DB_PRE_REQUEST`, `PGREST_DB_AGGREGATES_ENABLED`, `PGREST_DB_PLAN_ENABLED`, `PGREST_DB_BULK_MUTATION_GUARD`, `PGREST_SERVER_CORS_ALLOWED_ORIGINS`, `PGREST_JWT_*` | PostgREST engine options. See below. |
+| `PGREST_DB_SCHEMAS`, `PGREST_DB_EXTRA_SEARCH_PATH`, `PGREST_DB_MAX_ROWS`, `PGREST_DB_PRE_REQUEST`, `PGREST_DB_AGGREGATES_ENABLED`, `PGREST_DB_PLAN_ENABLED`, `PGREST_DB_BULK_MUTATION_GUARD`, `PGREST_SERVER_CORS_ALLOWED_ORIGINS`, `PGREST_SERVER_TIMING_ENABLED`, `PGREST_SERVER_TRACE_HEADER`, `PGREST_OPENAPI_MODE`, `PGREST_CLIENT_ERROR_VERBOSITY`, `PGREST_DB_ROOT_SPEC`, `PGREST_DB_PRE_CONFIG`, `PGREST_DB_PREPARED_STATEMENTS`, `PGREST_URL_USE_LEGACY_TARGET_NAMES`, `PGREST_APP_SETTINGS`, `PGREST_JWT_*` | PostgREST engine options. See below. |
 
 ## PostgREST engine options
 
@@ -61,10 +61,34 @@ before the option existed, which is upstream's default except where noted.
 | `PGREST_DB_EXTRA_SEARCH_PATH` | `db-extra-search-path` | `public` | Extra schemas appended to each request's `search_path`, for extensions and helper functions that live outside the exposed schema. |
 | `PGREST_DB_MAX_ROWS` | `db-max-rows` | unset | Cap on rows returned per resource, top level and embeds alike. A smaller client `limit` still wins. |
 | `PGREST_DB_PRE_REQUEST` | `db-pre-request` | unset | Function run as `SELECT <fn>()` at the start of every request, in the request's transaction. A bare or schema-qualified name; anything else is rejected at boot. |
+| `PGREST_APP_SETTINGS` | `app-settings` | unset | Run-time settings every request runs with, applied as `set_config(name, value, true)` inside the request's transaction and readable from SQL with `current_setting('app.settings.<name>')`. A comma-separated `name=value` list from the environment, or an object/pair list in `createPgrest({ appSettings })`. Aurora DSQL rejects custom settings (`0A000 setting configuration parameter "…" not supported`), so this option is only usable on standard PostgreSQL. |
 | `PGREST_DB_AGGREGATES_ENABLED` | `db-aggregates-enabled` | `true` | Set to `false` to refuse `select=col.sum()` and friends with `PGRST123`. Upstream defaults this off; this engine has always served aggregates, so the default stays `true` here. |
 | `PGREST_DB_PLAN_ENABLED` | `db-plan-enabled` | `false` | Allow `Accept: application/vnd.pgrst.plan`. Off by default, like upstream: the plan exposes the generated SQL. |
 | `PGREST_DB_BULK_MUTATION_GUARD` | — (upstream uses the `pg_safeupdate` extension) | `on` | What a `PATCH`/`DELETE` with no filter does. `on` refuses it; `off` runs it, which is upstream's behaviour with no extension loaded; `safeupdate` refuses it with `pg_safeupdate`'s wire error (400, SQLSTATE `21000`, `UPDATE requires a WHERE clause`). |
 | `PGREST_SERVER_CORS_ALLOWED_ORIGINS` | `server-cors-allowed-origins` | unset (`*`, no credentials) | Comma-separated origin allow-list. When set, a request whose `Origin` is on the list gets that origin echoed back plus `Access-Control-Allow-Credentials: true`; one that is not gets no CORS headers. |
+| `PGREST_SERVER_TIMING_ENABLED` | `server-timing-enabled` | `false` | Emit `Server-Timing` with the five phases upstream names (`jwt`, `parse`, `plan`, `transaction`, `response`), one decimal each. Off by default, like upstream: it is a per-request measurement, not part of any payload. |
+| `PGREST_SERVER_TRACE_HEADER` | `server-trace-header` | unset | Name of a request header echoed back on every response, so a caller's correlation id survives the round trip. A request that does not carry it gets it back empty — upstream's behaviour. Must be a valid HTTP header name; anything else is rejected at boot. |
+| `PGREST_OPENAPI_MODE` | `openapi-mode` | `follow-privileges` | `follow-privileges` and `ignore-privileges` both serve the generated spec — they are the same behaviour here, because the engine introspects with its own connection role and never filters the spec by the caller's privileges (there is no `SET ROLE`). `disabled` makes the root endpoint a `404` with code `PGRST126`. |
+| `PGREST_CLIENT_ERROR_VERBOSITY` | `client-error-verbosity` | `verbose` | `verbose` returns `code`, `message`, `details` and `hint`; `minimal` returns `code` and `message` only. |
+| `PGREST_DB_ROOT_SPEC` | `db-root-spec` | unset | Function whose result is served at `/` instead of the generated spec. A bare or schema-qualified name; anything else is rejected at boot. |
+| `PGREST_DB_PRE_CONFIG` | `db-pre-config` | unset | Function upstream runs before reading its configuration, to take settings from the database. Same name validation as `db-root-spec`. |
+| `PGREST_DB_PREPARED_STATEMENTS` | `db-prepared-statements` | `true` | Whether the engine may use server-side prepared statements. |
+| `PGREST_URL_USE_LEGACY_TARGET_NAMES` | `url-use-legacy-target-names` | `false` | Whether a filter, order or limit on an aliased embed may name the target relation instead of the alias. Upstream defaults this `true` (accepted, with a deprecation `Warning` header); this engine has always required the alias and answers `PGRST108` otherwise, so `false` is the default here. |
+| `PGREST_JWT_CACHE_MAX_ENTRIES` | `jwt-cache-max-entries` | `1000` | Size of the verified-token cache. `0` turns it off. |
+
+### Settings the engine accepts but does not act on yet
+
+Every option above is parsed, validated at boot and readable by the request
+handler. Some of them do not yet change a response, and saying which is more
+useful than pretending otherwise:
+
+| Option | State |
+|---|---|
+| `db-root-spec` | Validated, but `/` always serves the generated spec. |
+| `db-pre-config` | Validated, and deliberately never invoked: the engine reads no configuration from the database, so there is nothing for the function to set. It exists so a `postgrest.conf` translates without an unknown-key error. |
+| `db-prepared-statements` | Recorded, but the driver issues unnamed (single-use) statements either way, so neither value changes what reaches PostgreSQL. |
+| `url-use-legacy-target-names` | Only the `false` behaviour exists. Setting it `true` does not make the engine accept a target name on an aliased embed. |
+| `jwt-cache-max-entries` | Recorded; in-engine JWT verification has no cache, so every request verifies its token. |
 
 ### Schema selection
 
@@ -74,9 +98,11 @@ profile header naming any other schema is a `406` with code `PGRST106`
 engine echoes `Content-Profile` on every response — upstream's behaviour —
 because the client can no longer assume which schema answered.
 
-Each exposed schema gets its own schema cache, introspected independently. A
-declared-relationship manifest (`PGREST_RELATIONSHIPS_PATH`) is filtered per
-schema: an entry is visible to a schema only when both of its ends live there.
+Each exposed schema gets its own schema cache, introspected independently —
+relations, keys, relationships and the callable functions `/rpc/<name>` resolves
+against. A declared-relationship manifest (`PGREST_RELATIONSHIPS_PATH`) is
+filtered per schema: an entry is visible to a schema only when both of its ends
+live there.
 
 ### In-engine JWT verification
 

@@ -41,7 +41,11 @@ describe('database capabilities', () => {
         supportsFullTextSearch: false,
         supportsRangeTypes: false,
         supportsArrayContainment: true,
-        supportsPlannedCount: false,
+        // count=planned/estimated read the planner's estimate out of
+        // EXPLAIN (FORMAT JSON) (upstream Query/MainTx.hs decodeExplain), not
+        // pg_class.reltuples, and DSQL answers EXPLAIN — RangeSpec:311/320/329/
+        // 359/390 and QueryLimitedSpec:50/71 pass with it.
+        supportsPlannedCount: true,
         supportsRegex: true,
         supportsRowLevelSecurity: false,
         supportsRpc: true,

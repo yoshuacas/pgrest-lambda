@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-19T15:31:30.429Z",
+  "generatedAt": "2026-08-21T08:58:40.849Z",
   "upstream": "/home/ec2-user/postgrest-upstream/test/spec/fixtures",
   "stages": [
     {
@@ -41,7 +41,7 @@
     {
       "file": "07-data.sql",
       "source": "data.sql",
-      "kept": 554,
+      "kept": 572,
       "removed": 50
     }
   ],
