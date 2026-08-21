@@ -1145,8 +1145,10 @@ function pOptAggregate(sc) {
 // type name is not a value. What makes interpolating it safe is the charset:
 // `pIdentifier` accepts only letters, digits, `_`, ` ` and `$`, so a cast can
 // contain no quote, semicolon, parenthesis or comment marker and cannot
-// escape the CAST expression. This re-checks that charset at the boundary
-// where the string becomes SQL, so the guarantee does not depend on a caller.
+// escape the CAST expression. This is the check that turns a malformed cast
+// into PGRST100 for the client; the same charset is re-checked in
+// sql-builder.mjs `castExpr`, at the point the string becomes SQL, so the
+// guarantee does not rest on this parser staying the only writer of `.cast`.
 const CAST_TYPE_CHARS = /^[\p{L}0-9_ $]+$/u;
 
 function checkCast(cast) {

@@ -270,20 +270,31 @@ describe('Cedar integration — authenticated GET', () => {
       'WHERE clause should NOT include user_id for service_role');
   });
 
-  it('anon GET denied by default policies returns 403 PGRST403', async () => {
-    const event = makeEvent({
-      method: 'GET',
-      path: '/rest/v1/todos',
-      role: 'anon',
-      userId: '',
+  // This asserted 403 until Cedar denials were routed through denyError(). A
+  // policy denial is the same event as a PostgreSQL 42501, so it now takes the
+  // same status split errors.mjs already applied there: 401 for a caller that
+  // could still authenticate, 403 for one that has. supabase-js reads 401 as
+  // "refresh the token and retry", which is why the distinction is checked at
+  // the HTTP boundary and not only in cedar.mjs's unit tests.
+  it('anon GET denied by default policies returns 401 PGRST403 with a challenge',
+    async () => {
+      const event = makeEvent({
+        method: 'GET',
+        path: '/rest/v1/todos',
+        role: 'anon',
+        userId: '',
+      });
+      const res = await handler(event);
+      assert.equal(res.statusCode, 401,
+        'anon GET should return 401 — authenticating might grant it');
+      const body = JSON.parse(res.body);
+      assert.equal(body.code, 'PGRST403',
+        'error code should be PGRST403');
+      const challenge = Object.entries(res.headers ?? {})
+        .find(([k]) => k.toLowerCase() === 'www-authenticate');
+      assert.ok(challenge, 'a 401 must carry WWW-Authenticate');
+      assert.equal(challenge[1], 'Bearer');
     });
-    const res = await handler(event);
-    assert.equal(res.statusCode, 403,
-      'anon GET should return 403');
-    const body = JSON.parse(res.body);
-    assert.equal(body.code, 'PGRST403',
-      'error code should be PGRST403');
-  });
 });
 
 // ================================================================
@@ -471,7 +482,7 @@ describe('Cedar integration — policy refresh', () => {
       userId: '',
     });
     const res1 = await handler(event1);
-    assert.equal(res1.statusCode, 403,
+    assert.equal(res1.statusCode, 401,
       'anon should be denied before policy refresh');
 
     // Trigger refresh (reloads schema + policies from disk).

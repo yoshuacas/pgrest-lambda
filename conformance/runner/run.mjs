@@ -934,6 +934,14 @@ const OUT_OF_SCOPE_GAPS = new Set([
   'no-row-level-security', 'no-custom-gucs',
 ]);
 
+// Two branches book a case under `row-order-unspecified`: the early guard that
+// stops an incidental log line from outranking an order-only difference, and the
+// body-comparison branch that reaches the same conclusion the long way round.
+// One string for both — a reader comparing two runs should not have to work out
+// whether two different wordings mean the same gap.
+const ORDER_ONLY_REASON = 'the same rows came back in a different order; DSQL '
+  + 'does not guarantee the physical order this assertion depends on';
+
 export function triage(args) {
   const t = triageInner(args);
   if ((t.status === 'fail' || t.status === 'blocked')
@@ -1104,6 +1112,22 @@ function triageInner({ testCase, actual, comparison, thrown, logs, ctx }) {
     return { status: 'fail', gap: 'no-foreign-keys', reason: reason(message) };
   }
 
+  // An order-only difference means the engine returned the right rows with the
+  // right status, so nothing the database complained about in the log explains
+  // this failure — the log line is incidental. Decide the gap on the observed
+  // outcome before consulting LOG_GAPS, or a case that merely logged
+  // "text search configuration" is booked under missing-operator-fts while its
+  // real and only defect is ordering (measured: RpcSpec:985, RpcSpec:997, which
+  // inflated the fts gap and understated order sensitivity at the same time).
+  // The status stays `fail` either way; only the attribution changes.
+  if (comparison.statusOk && comparison.orderOnly) {
+    return {
+      status: 'fail',
+      gap: 'row-order-unspecified',
+      reason: reason(ORDER_ONLY_REASON),
+    };
+  }
+
   // 5. Whatever the database actually complained about.
   for (const [re, gap, scope] of LOG_GAPS) {
     if (re.test(logText) || (scope !== 'log-only' && re.test(message))) {
@@ -1224,8 +1248,7 @@ function triageInner({ testCase, actual, comparison, thrown, logs, ctx }) {
     return {
       status: 'fail',
       gap: 'row-order-unspecified',
-      reason: reason('the same rows came back in a different order; DSQL does '
-        + 'not guarantee the physical order this assertion depends on'),
+      reason: reason(ORDER_ONLY_REASON),
     };
   }
   return {

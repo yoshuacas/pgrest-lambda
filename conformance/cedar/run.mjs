@@ -151,6 +151,20 @@ export function verdictFor(comparison) {
 export function divergenceKind(derived, actualStatus, comparison) {
   const expected = derived.expected?.status ?? null;
   if (!comparison.statusOk) {
+    // A 401-vs-403 used to mean one thing: every Cedar denial answered 403
+    // while upstream answered 401 for an anonymous caller. src/rest/cedar.mjs
+    // now takes upstream's split (`authed ? 403 : 401`), so a residual
+    // 401-vs-403 has a different cause and must not keep the old label — that
+    // label would read as "the denial shape is still wrong" when the shape is
+    // right and the disagreement is about who the caller is. For AuthSpec:130
+    // and :135 upstream falls back to db-anon-role on a token with no `role`
+    // claim while the engine reads it as "authenticated"; for ErrorSpec:123
+    // Cedar's open principal set cannot tell a nonexistent role from an
+    // ungranted one. Those are identity-mapping differences, flagged in
+    // equivalence-map.mjs, not denial-shape ones. Closing them would mean
+    // changing what identity a role-less token gets, which is an auth-contract
+    // decision and not something to do for a score.
+    if (derived.identityDiffers) return 'identity-mapping';
     return expected === 401 && actualStatus === 403
       ? 'deny-status-401-vs-403'
       : 'status';

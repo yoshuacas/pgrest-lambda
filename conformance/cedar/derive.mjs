@@ -106,6 +106,10 @@ export function deriveCases(upstream, group, map = EQUIVALENCE_MAP) {
       policySet: POLICY_DIR,
       policyFile: verdict.policyFile || null,
       doNotRead: verdict.doNotRead,
+      // Set where the two mechanisms resolve the caller to different
+      // identities, so a status difference is attributed to that rather than to
+      // the shape of the denial. See run.mjs `divergenceKind`.
+      identityDiffers: verdict.identityDiffers === true,
       defaultRole: establishesIdentity(src.request) ? null : 'anon',
       write: isWrite(src.request),
       skip: false,

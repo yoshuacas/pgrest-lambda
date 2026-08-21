@@ -221,20 +221,37 @@ describe('equivalence policy set: role claim', () => {
 });
 
 describe('equivalence policy set: denial shape', () => {
-  it('denies with 403 / PGRST403, which is the measured divergence', () => {
-    // Recorded as a test, not just as prose: upstream answers 401 with
-    // SQLSTATE 42501 and WWW-Authenticate: Bearer for an anonymous caller.
-    // If src/rest/cedar.mjs is later changed to route denials through the
-    // 42501 -> (authed ? 403 : 401) mapping in src/rest/errors.mjs, this test
-    // is the one that has to be updated, and the five diverging equivalences
-    // in docs/reference/cedar-equivalence.md should then be re-measured.
+  // This test used to assert 403 for an anonymous caller and pin the
+  // divergence the equivalence suite measured. The divergence is now fixed:
+  // src/rest/cedar.mjs routes every denial through denyError(), which picks the
+  // status the way errors.mjs already picks it for a real PostgreSQL 42501
+  // (`authed ? 403 : 401`). The assertion moves from "records the gap" to
+  // "holds the fix", which is why the expectation flipped rather than loosened.
+  it('answers an anonymous denial 401 with WWW-Authenticate, as upstream does', () => {
     const cedar = makeCedar();
     assert.throws(() => cedar.buildAuthzFilter({
       principal: ANON, action: 'select', context: { table: 'authors_only' },
       schema, startParam: 1,
     }), (err) => {
+      assert.equal(err.statusCode, 401,
+        'an anonymous caller might succeed if it authenticated');
+      assert.equal(err.code, 'PGRST403');
+      assert.deepEqual(err.responseHeaders, { 'WWW-Authenticate': 'Bearer' });
+      return true;
+    });
+  });
+
+  it('answers an authenticated denial 403 with no WWW-Authenticate', () => {
+    // Authenticating again cannot help, so there is nothing to challenge for.
+    const cedar = makeCedar();
+    const known = { role: 'postgrest_test_author', userId: 'u1', email: '' };
+    assert.throws(() => cedar.buildAuthzFilter({
+      principal: known, action: 'select', context: { table: 'app_users' },
+      schema, startParam: 1,
+    }), (err) => {
       assert.equal(err.statusCode, 403);
       assert.equal(err.code, 'PGRST403');
+      assert.equal(err.responseHeaders, undefined);
       return true;
     });
   });

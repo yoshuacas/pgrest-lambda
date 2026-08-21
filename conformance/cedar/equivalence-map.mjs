@@ -92,10 +92,15 @@ const GRANT_CAVEAT =
 /** Whole-measurement caveat, written into cases.json as `doNotReadOverall`. */
 export const DO_NOT_READ_OVERALL =
   'Do not read a passing grant equivalence as evidence that the *denial* '
-  + 'shape matches upstream: the deny equivalences are measured separately '
-  + 'and they fail. And do not read any of this as a PostgREST pass — the '
-  + 'upstream cases stay failures in the PostgREST rate, which is the only '
-  + 'number computed from upstream assertions run unmodified.';
+  + 'shape matches upstream: the denials are measured case by case, and of the '
+  + 'five, one holds outright (AuthSpec:41), one now matches on status and '
+  + 'WWW-Authenticate but not on body (AuthSpec:16, which reports PGRST403 '
+  + 'where upstream reports SQLSTATE 42501), and three differ because the two '
+  + 'mechanisms resolve the caller to different identities rather than because '
+  + 'the denial shape differs (AuthSpec:130, AuthSpec:135, ErrorSpec:123 — '
+  + 'divergence kind identity-mapping). And do not read any of this as a '
+  + 'PostgREST pass — the upstream cases stay failures in the PostgREST rate, '
+  + 'which is the only number computed from upstream assertions run unmodified.';
 
 /**
  * Verbatim-request grant equivalences: upstream expects 200 because a role
@@ -156,8 +161,13 @@ export const EQUIVALENCE_MAP = Object.fromEntries([
     policyFile: 'conformance/cedar/policies/00-anon.cedar',
     doNotRead:
       'this case measures the shape of a denial, not whether access was '
-      + 'denied; both mechanisms deny, and the case still fails because the '
-      + 'status, body and WWW-Authenticate header differ.',
+      + 'denied; both mechanisms deny. The status and the WWW-Authenticate '
+      + 'header now match — src/rest/cedar.mjs takes upstream\'s '
+      + '`authed ? 403 : 401` split — so what is left is the body: upstream '
+      + 'reports the PostgreSQL error verbatim (42501, "permission denied for '
+      + 'table authors_only") and the engine reports PGRST403 naming the '
+      + 'policy set. Do not close that by copying upstream\'s SQLSTATE into a '
+      + 'denial no PostgreSQL raised.',
   }],
   ['AuthSpec:41', {
     equivalence: 'derived',
@@ -178,10 +188,15 @@ export const EQUIVALENCE_MAP = Object.fromEntries([
       + '"authenticated", and the equivalence policy set grants authors_only '
       + 'to postgrest_test_author alone, so no permit matches',
     policyFile: 'conformance/cedar/policies/10-roles.cedar',
+    identityDiffers: true,
     doNotRead:
       'the two mechanisms do not even agree on the identity — upstream falls '
       + 'back to the anonymous role, the engine to "authenticated" — so a '
-      + 'matching outcome here would not mean the identities matched.',
+      + 'matching outcome here would not mean the identities matched. That '
+      + 'disagreement is also the whole of the remaining status difference: '
+      + 'upstream denies an anonymous caller (401), the engine an '
+      + 'authenticated one (403), and both are the correct status for the '
+      + 'identity each one saw.',
   }],
   ['AuthSpec:135', {
     equivalence: 'derived',
@@ -193,20 +208,29 @@ export const EQUIVALENCE_MAP = Object.fromEntries([
       + '"authenticated", and the equivalence policy set grants authors_only '
       + 'to postgrest_test_author alone, so no permit matches',
     policyFile: 'conformance/cedar/policies/10-roles.cedar',
+    identityDiffers: true,
     doNotRead:
       'the two mechanisms do not even agree on the identity — upstream falls '
       + 'back to the anonymous role, the engine to "authenticated" — so a '
-      + 'matching outcome here would not mean the identities matched.',
+      + 'matching outcome here would not mean the identities matched. That '
+      + 'disagreement is also the whole of the remaining status difference: '
+      + 'upstream denies an anonymous caller (401), the engine an '
+      + 'authenticated one (403), and both are the correct status for the '
+      + 'identity each one saw.',
   }],
   ['ErrorSpec:123', {
     equivalence: 'derived',
     upstreamMechanism: MECHANISMS.setRoleNonexistent,
     cedarMechanism: CEDAR_MECHANISMS.noPermitForUnknownRole,
     policyFile: 'conformance/cedar/policies/10-roles.cedar',
+    identityDiffers: true,
     doNotRead:
       'Cedar\'s principal set is open, so "unknown role" and "known role '
       + 'without a grant" are the same outcome here; a pass would not mean '
-      + 'the engine validated the role name.',
+      + 'the engine validated the role name. Both remaining differences follow '
+      + 'from that one cause: upstream fails at SET ROLE and reports 22023 with '
+      + 'status 401, the engine authorizes a caller whose role simply holds no '
+      + 'permit and reports PGRST403 with 403.',
   }],
 
   // --------------------------------------------------- no fair equivalent

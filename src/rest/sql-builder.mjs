@@ -223,8 +223,25 @@ function jsonKeyExpr(label, values) {
   return `$${values.length}::text`;
 }
 
+// A cast type is the one piece of a query that cannot be a bind parameter — a
+// type name is not a value — so it is interpolated. What makes that safe is the
+// charset: only letters, digits, `_`, ` ` and `$` get through, which leaves a
+// cast with no quote, semicolon, parenthesis or comment marker to escape the
+// CAST expression with. The parser enforces it on the way in (query-parser.mjs
+// `checkCast`); this re-checks it here, where the string actually becomes SQL,
+// so the guarantee survives a future second writer of `.cast` / `.aggCast`.
+// Keep the two charsets identical.
+const CAST_TYPE_CHARS = /^[\p{L}0-9_ $]+$/u;
+
 function castExpr(colExpr, cast) {
-  return cast ? `CAST(${colExpr} AS ${cast})` : colExpr;
+  if (!cast) return colExpr;
+  if (!CAST_TYPE_CHARS.test(cast)) {
+    // Unreachable through the parser. Reaching it means a caller built a cast
+    // without validating it, which is a bug here rather than bad input, so it
+    // is not a 4xx.
+    throw new Error(`cast type '${cast}' is not in the allowed charset`);
+  }
+  return `CAST(${colExpr} AS ${cast})`;
 }
 
 // --- Data representations ---

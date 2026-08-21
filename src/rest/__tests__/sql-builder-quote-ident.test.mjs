@@ -125,4 +125,32 @@ describe('sql-builder quoteIdent defense-in-depth', () => {
     const q = buildSelect('todos', parsed, schema, null);
     assert.match(q.text, /FROM "todos"/, 'well-formed tables still quoted normally');
   });
+
+  // A cast type cannot be a bind parameter, so it is the one fragment that is
+  // interpolated into the statement. The parser checks its charset, but the
+  // parser being the only writer of `.cast` is a fact about today's callers,
+  // not a property of the SQL. castExpr re-checks at the boundary, which is
+  // what makes the safety argument independent of who calls it.
+  it('refuses a cast type that never passed the parser charset', () => {
+    const parsed = {
+      select: [{ type: 'column', name: 'id', cast: 'int) FROM "users" --' }],
+      filters: [], order: [], limit: null, offset: 0,
+    };
+    assert.throws(
+      () => buildSelect('todos', parsed, schema, null),
+      /charset/,
+      'an unvalidated cast must not reach the statement',
+    );
+  });
+
+  it('still emits a cast whose type is in the charset', () => {
+    // Upstream renders the type unquoted and lets PostgreSQL decide whether it
+    // exists, so spaces and `$` are legal here: `double precision`, `do$llar$`.
+    const parsed = {
+      select: [{ type: 'column', name: 'id', cast: 'double precision' }],
+      filters: [], order: [], limit: null, offset: 0,
+    };
+    const sql = buildSelect('todos', parsed, schema, null).text;
+    assert.match(sql, /CAST\("id" AS double precision\)/);
+  });
 });

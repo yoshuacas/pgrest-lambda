@@ -546,6 +546,28 @@ export function createCedar(config) {
     );
   }
 
+  // Every denial goes through here so the wire shape is decided in one place.
+  //
+  // PostgREST answers a privilege denial 401 with `WWW-Authenticate: Bearer`
+  // when the caller is anonymous and 403 when it is authenticated: an
+  // anonymous caller might succeed if it authenticated, an authenticated one
+  // will not. The engine already makes that distinction for a real PostgreSQL
+  // 42501 (errors.mjs `statusFromPgCode`, `authed ? 403 : 401`); a policy
+  // denial is the same event reached by a different mechanism, so it gets the
+  // same shape. Measured before this: the Cedar equivalence suite reported
+  // Cedar:AuthSpec:41, :130 and :135 diverging from upstream on status alone
+  // (docs/reference/cedar-equivalence.md). supabase-js reads 401 as "refresh
+  // and retry", which makes this a wire-compatibility question, not cosmetics.
+  function denyError(principal, action, table, details = null) {
+    const anon = (principal?.role ?? 'anon') === 'anon';
+    const err = new PostgRESTError(
+      anon ? 401 : 403, 'PGRST403',
+      denyMessage(principal, action, table), details,
+    );
+    if (anon) err.responseHeaders = { 'WWW-Authenticate': 'Bearer' };
+    return err;
+  }
+
   function loadPolicyText() {
     if (source.scheme === 's3') {
       return loadFromS3(source.bucket, source.prefix, config.region);
@@ -592,10 +614,7 @@ export function createCedar(config) {
     principal, action, resource, resourceType, schema,
   }) {
     if (!cachedPolicies) {
-      throw new PostgRESTError(
-        403, 'PGRST403',
-        denyMessage(principal, action, resource),
-      );
+      throw denyError(principal, action, resource);
     }
 
     const principalUid = buildPrincipalUid(principal.role, principal.userId);
@@ -636,20 +655,14 @@ export function createCedar(config) {
       }
     }
 
-    throw new PostgRESTError(
-      403, 'PGRST403',
-      denyMessage(principal, action, resource),
-    );
+    throw denyError(principal, action, resource);
   }
 
   function authorizeInsert({
     principal, resource, schema, rows,
   }) {
     if (!cachedPolicies) {
-      throw new PostgRESTError(
-        403, 'PGRST403',
-        denyMessage(principal, 'insert', resource),
-      );
+      throw denyError(principal, 'insert', resource);
     }
 
     const principalUid = buildPrincipalUid(
@@ -691,10 +704,7 @@ export function createCedar(config) {
 
     if (partial.type !== 'residuals') {
       if (tablePermitGranted) return true;
-      throw new PostgRESTError(
-        403, 'PGRST403',
-        denyMessage(principal, 'insert', resource),
-      );
+      throw denyError(principal, 'insert', resource);
     }
 
     const resp = partial.response;
@@ -704,18 +714,12 @@ export function createCedar(config) {
           || resp.decision === 'allow') {
         return true;
       }
-      throw new PostgRESTError(
-        403, 'PGRST403',
-        denyMessage(principal, 'insert', resource),
-      );
+      throw denyError(principal, 'insert', resource);
     }
 
     if (resp.decision === 'deny'
         && !tablePermitGranted) {
-      throw new PostgRESTError(
-        403, 'PGRST403',
-        denyMessage(principal, 'insert', resource),
-      );
+      throw denyError(principal, 'insert', resource);
     }
 
     for (let i = 0; i < rows.length; i++) {
@@ -727,11 +731,7 @@ export function createCedar(config) {
           ? `Row ${i} of the batch violates the`
             + ` insert policy`
           : null;
-        throw new PostgRESTError(
-          403, 'PGRST403',
-          denyMessage(principal, 'insert', resource),
-          detail,
-        );
+        throw denyError(principal, 'insert', resource, detail);
       }
     }
 
@@ -742,10 +742,7 @@ export function createCedar(config) {
     principal, action, context, schema, startParam,
   }) {
     if (!cachedPolicies) {
-      throw new PostgRESTError(
-        403, 'PGRST403',
-        denyMessage(principal, action, context.table),
-      );
+      throw denyError(principal, action, context.table);
     }
 
     const principalUid = buildPrincipalUid(principal.role, principal.userId);
@@ -762,10 +759,7 @@ export function createCedar(config) {
     });
 
     if (result.type === 'failure') {
-      throw new PostgRESTError(
-        403, 'PGRST403',
-        denyMessage(principal, action, context.table),
-      );
+      throw denyError(principal, action, context.table);
     }
 
     const response = result.response;
@@ -776,10 +770,7 @@ export function createCedar(config) {
     }
 
     if (response.decision === 'deny') {
-      throw new PostgRESTError(
-        403, 'PGRST403',
-        denyMessage(principal, action, context.table),
-      );
+      throw denyError(principal, action, context.table);
     }
 
     const tempValues = new Array(startParam - 1);
@@ -812,10 +803,7 @@ export function createCedar(config) {
             return { conditions: [], values: [] };
           }
           if (effect === 'forbid') {
-            throw new PostgRESTError(
-              403, 'PGRST403',
-              denyMessage(principal, action, context.table),
-            );
+            throw denyError(principal, action, context.table);
           }
         } else if (sql !== 'FALSE') {
           if (effect === 'permit') {
@@ -829,10 +817,7 @@ export function createCedar(config) {
     }
 
     if (!anyPermitGrantsAccess && forbidConditions.length === 0) {
-      throw new PostgRESTError(
-        403, 'PGRST403',
-        denyMessage(principal, action, context.table),
-      );
+      throw denyError(principal, action, context.table);
     }
 
     const allConditions = [];
