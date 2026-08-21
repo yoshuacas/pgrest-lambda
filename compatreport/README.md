@@ -475,7 +475,7 @@ rather than being hidden, so nothing disappears silently.
   paragraph that explains the denominator, labelled as not the published number.
   Never quote it anywhere a reader could mistake it for the measurement.
 - A second measurement stays a second measurement. The Cedar equivalence score
-  (23 of 28 equivalences hold, 26 of 54 upstream cases with no fair equivalent) is
+  (24 of 28 equivalences hold, 26 of 54 upstream cases with no fair equivalent) is
   equivalent behaviour through a different mechanism. It is never averaged into
   the PostgREST rate, the upstream cases behind it stay failures in that rate, and
   the section reporting it has to say what a reader should not read into it —

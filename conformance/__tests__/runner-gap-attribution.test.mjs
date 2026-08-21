@@ -99,3 +99,67 @@ describe('triage: an order-only difference outranks an incidental log line', () 
     assert.equal(t.status, 'fail');
   });
 });
+
+// The same discipline applied to a second misattribution, found by watching the
+// gap histogram move after an unrelated change. Seven cases assert that an
+// invalid JWT is rejected as a JWT (PGRST301). The harness stands in for the API
+// Gateway authorizer and builds its context from the unverified payload, so the
+// token gets through and Cedar denies it (PGRST403) instead. They were booked
+// under `no-set-role` — the DSQL privilege gap — and when Cedar denials began
+// answering 401 they scattered into three response-shape gaps, none of which
+// names the cause. One slug now does.
+describe('triage: an unverified-identity denial is not a privilege gap', () => {
+  const jwtCase = (over = {}) => ({
+    id: 'AuthSpec:96',
+    category: 'auth',
+    bodyMatch: 'exact',
+    request: { method: 'GET', path: '/authors_only', query: '', headers: {} },
+    expected: {
+      status: 401,
+      body: {
+        message: 'Empty JWT is sent in Authorization header',
+        code: 'PGRST301', hint: null, details: null,
+      },
+      bodyFormat: 'json',
+      headers: {},
+    },
+    ...over,
+  });
+
+  const denial = { code: 'PGRST403', message: 'Not authorized', details: null, hint: null };
+
+  function triageJwt(logs = [], body = denial, statusCode = 401) {
+    const tc = jwtCase();
+    const actual = respond(body, statusCode);
+    return triage({
+      testCase: tc, actual, comparison: compare(tc, actual), thrown: null, logs, ctx: ctx(),
+    });
+  }
+
+  it('books a PGRST301 expectation answered PGRST403 under its own slug', () => {
+    const t = triageJwt();
+    assert.equal(t.status, 'fail');
+    assert.equal(t.gap, 'harness-supplies-unverified-identity');
+  });
+
+  it('does so even when the log still carries a role-shaped complaint', () => {
+    // This is what used to make it `no-set-role`.
+    const t = triageJwt(['unrecognized configuration parameter "role"']);
+    assert.equal(t.gap, 'harness-supplies-unverified-identity');
+  });
+
+  it('leaves a genuine PGRST301 mismatch alone', () => {
+    // Right code, wrong message: that is a real response-shape difference and
+    // must keep whatever gap the body comparison gives it.
+    const t = triageJwt([], {
+      code: 'PGRST301', message: 'something else', details: null, hint: null,
+    });
+    assert.notEqual(t.gap, 'harness-supplies-unverified-identity');
+  });
+
+  it('stays a failure and is not excluded from the rate', () => {
+    const t = triageJwt();
+    assert.equal(t.status, 'fail',
+      'a harness gap is still a gap; it must not leave the denominator');
+  });
+});

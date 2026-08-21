@@ -108,6 +108,11 @@ function parseArgs(argv) {
 // needs-engine-config gap gets its own label because it is a missing engine
 // switch, not a defect. Gaps with no `fail` cases are excluded from the pass
 // rate and are labelled out-of-scope.
+//
+// `harness-supplies-unverified-identity` is deliberately in neither set below:
+// it is a fidelity gap between the harness and the deployed authorizer, and
+// putting it in either one would lift the rate for a gap this project owns.
+// It takes the default label and stays a counted failure.
 
 const DSQL_SUBSTITUTE_NEEDED = new Set([
   // `no-foreign-keys` used to be here. The substitute now exists and is
@@ -119,8 +124,9 @@ const DSQL_SUBSTITUTE_NEEDED = new Set([
   // Every failure here is DSQL's, not the engine's: 19 name a text search
   // configuration DSQL's pg_ts_config does not contain and 5 use a tsvector
   // column or argument DSQL rejects. The operators themselves pass with the
-  // one configuration DSQL has. 2 more are mislabelled ordering failures; the
-  // note says which.
+  // one configuration DSQL has. 2 more used to land here as mislabelled
+  // ordering failures; the runner now attributes those to
+  // row-order-unspecified, and the note says which they were.
   'missing-operator-fts',
   // Moved out of engine-fixable in the published run, because the gap changed
   // category rather than because the label was wrong before. Until this wave
@@ -244,13 +250,15 @@ const GAP_NOTES = {
   'unimplemented-feature-aggregates':
     'Aggregates in a top-level select list parse and emit GROUP BY. What is left is aggregates inside a spread embed (<code>...processes(cost.sum())</code>): the engine computes them per parent row instead of grouping at the parent level, which is also what the larger <code>body-mismatch-aggregates</code> gap is.',
   'missing-operator-fts':
-    'The <code>fts</code>, <code>plfts</code>, <code>phfts</code> and <code>wfts</code> operators are implemented and upstream cases pass with them. In the published run 24 of these failures are DSQL\'s: 19 name a text search configuration (<code>english</code>, <code>french</code>, <code>german</code>) that DSQL\'s <code>pg_ts_config</code> does not contain, and 5 use a <code>tsvector</code> column or function DSQL dropped at fixture load. There is no substitute — DSQL ships one configuration, <code>simple</code>, which is what <code>PGREST_DEFAULT_TS_CONFIG</code> is set to for these runs. <strong>The other 2 are mislabelled:</strong> <code>RpcSpec:985</code> and <code>RpcSpec:997</code> failed here with the runner\'s own reason text reading "same rows, different order", so they belong with the order-dependent failures below. They inflate this gap and, on the runs where they happen to come back in upstream\'s order, they are order luck rather than a working text search configuration. The runner\'s gap assignment is not corrected in this run because correcting it would mean publishing a number measured by code the artifact does not contain.',
+    'The <code>fts</code>, <code>plfts</code>, <code>phfts</code> and <code>wfts</code> operators are implemented and upstream cases pass with them. In the published run 24 of these failures are DSQL\'s: 19 name a text search configuration (<code>english</code>, <code>french</code>, <code>german</code>) that DSQL\'s <code>pg_ts_config</code> does not contain, and 5 use a <code>tsvector</code> column or function DSQL dropped at fixture load. There is no substitute — DSQL ships one configuration, <code>simple</code>, which is what <code>PGREST_DEFAULT_TS_CONFIG</code> is set to for these runs. Earlier runs reported 26 here, 2 of them mislabelled: <code>RpcSpec:985</code> and <code>RpcSpec:997</code> failed with the runner\'s own reason text reading "same rows, different order", which is an order-dependent failure and not a missing text search configuration. <code>conformance/runner/run.mjs</code> now attributes an order-only difference to <code>row-order-unspecified</code> whatever the log says, so those 2 are counted below instead and this gap no longer absorbs them. That correction did not move a case from failing to passing.',
   'unimplemented-feature-filters':
     'Moved out of <code>engine-fixable</code> in this run. All 39 failures are a filter on a column Aurora DSQL refused to create — <code>entities.arr</code> (20), <code>ranges.range</code> (15), <code>entities.text_search_vector</code> (2), <code>complex_items.arr_data</code> (2) — and every reason string in the published run reads <code>column … does not exist</code>, PostgreSQL\'s own 42703, which is what upstream answers for an unknown column (QuerySpec.hs:1556). The operators are implemented and unit-tested; upstream only exercises them through array, range and tsvector columns, and DSQL stores none of those. These cases were <code>blocked</code> until this wave, when the engine stopped answering <code>PGRST204</code> and the harness\'s drop-attribution stopped recognising them, so this is the gap changing category rather than a relabelled backlog: the count of cases DSQL makes impossible did not change, only which bucket they are reported in.',
   'unimplemented-feature-json-operators':
     'Moved out of <code>engine-fixable</code> in this run, for the same reason as <code>unimplemented-feature-filters</code> and with the same evidence. All 15 failures apply a JSON operator to an array column DSQL refused to create — <code>arrays.numbers</code> (6), <code>fav_numbers.num</code> (5), <code>arrays.numbers_mult</code> (4) — and answer 42703. The <code>json-operators</code> category passes 46 of the 62 cases that reach a column DSQL can store.',
   'no-set-role':
-    'Upstream asserts authorization performed with SET ROLE + GRANT + RLS. DSQL rejects SET ROLE and has no RLS, so the engine needs its own authorization model to answer the same 401/403 bodies.',
+    'Upstream asserts authorization performed with SET ROLE + GRANT + RLS. DSQL rejects SET ROLE and has no RLS, so the engine needs its own authorization model to answer the same 401/403 bodies. Smaller in this run than in earlier ones by 7 cases, which have not started passing: they assert a rejected token and are now reported under <code>harness-supplies-unverified-identity</code>, still failing, because the reason they fail is the harness\'s identity handling rather than a missing privilege model. The Cedar layer that stands in for SET ROLE is measured separately and is never added to this rate — see docs/reference/cedar-equivalence.md.',
+  'harness-supplies-unverified-identity':
+    'Upstream expects <code>PGRST301</code> — the token is rejected before any privilege is consulted. The engine answers <code>PGRST403</code> instead, because the conformance harness builds the API Gateway authorizer context by decoding the JWT payload <em>without verifying it</em>, so the request reaches the authorization layer and is denied by policy rather than turned away at the door. 7 cases: <code>AuthSpec:96</code>, <code>:119</code>, <code>ErrorSpec:53</code>, <code>:110</code>, <code>:193</code>, <code>:205</code>, <code>:217</code>. <strong>They stay failures in the rate.</strong> The deployed <code>src/authorizer/index.mjs</code> does verify signature, <code>exp</code> and <code>alg</code>, so this is a fidelity gap between the harness and the deployment, not a claim that the engine accepts bad tokens — and it is not evidence that it rejects them either, since nothing here measured that path. The label is <code>engine-fixable</code> because nothing in DSQL prevents closing it, but the work is in the harness\'s identity handling, not in a query feature. Before this run these 7 were scattered across <code>no-set-role</code> and three body/header mismatch gaps, which read as four unrelated defects instead of one.',
   'extraction-skipped':
     'Haskell the extractor cannot evaluate without guessing: higher-order helpers whose request headers arrive as a parameter, bodies read from a fixture file, paths taken from a previous response, expectations behind a PostgreSQL version check. Never guessed: skipped and counted outside the pass rate.',
   'needs-engine-config':

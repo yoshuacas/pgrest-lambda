@@ -1112,6 +1112,36 @@ function triageInner({ testCase, actual, comparison, thrown, logs, ctx }) {
     return { status: 'fail', gap: 'no-foreign-keys', reason: reason(message) };
   }
 
+  // The assertion is that an invalid token is rejected as a token, and what came
+  // back is an authorization denial. That means the request got past identity: the
+  // conformance harness stands in for the API Gateway authorizer and builds the
+  // authorizer context by decoding the JWT payload without verifying it, so an
+  // empty, truncated or badly signed token still arrives carrying a role and is
+  // then denied by policy instead of rejected outright. Nothing about the
+  // engine's own privilege model is being measured.
+  //
+  // These seven cases used to be booked under `no-set-role`, which read as "the
+  // engine's authorization layer lacks a privilege upstream expresses as a
+  // GRANT" — wrong, and it inflated the headline DSQL gap. Once Cedar denials
+  // started answering an anonymous caller 401 (matching upstream's status), five
+  // of them stopped matching the role-shaped log pattern and scattered into
+  // `header-mismatch-www-authenticate`, `body-mismatch-errors` and
+  // `header-mismatch-proxy-status`, which read as ordinary response-shape
+  // defects and were wronger still. One slug, naming the actual cause.
+  //
+  // Measured: AuthSpec:96, :119, ErrorSpec:53, :110, :193, :205, :217. The status
+  // stays `fail` — this is a real gap between the harness and the deployed
+  // authorizer, not an excuse — and it is not in OUT_OF_SCOPE_GAPS.
+  if (testCase.expected?.body?.code === 'PGRST301' && code === 'PGRST403') {
+    return {
+      status: 'fail',
+      gap: 'harness-supplies-unverified-identity',
+      reason: reason('the assertion rejects the token, but the harness decodes '
+        + 'the JWT payload without verifying it, so the request reached the '
+        + 'authorization layer and was denied by policy instead'),
+    };
+  }
+
   // An order-only difference means the engine returned the right rows with the
   // right status, so nothing the database complained about in the log explains
   // this failure — the log line is incidental. Decide the gap on the observed
