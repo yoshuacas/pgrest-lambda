@@ -289,30 +289,56 @@ export function translateExpr(expr, values, tableName, schema) {
   }
 
   if ('&&' in expr) {
+    const snap0 = values.length;
     const left = translateExpr(expr['&&'].left, values, tableName, schema);
+    const snap1 = values.length;
     const right = translateExpr(expr['&&'].right, values, tableName, schema);
     if (left === null && right === null) return null;
     if (left === null) return right;
-    if (right === null) return left;
-    if (left === 'FALSE' || right === 'FALSE') return 'FALSE';
+    if (right === null) {
+      values.length = snap1;
+      return left;
+    }
+    if (left === 'FALSE' || right === 'FALSE') {
+      values.length = snap0;
+      return 'FALSE';
+    }
     return `(${left} AND ${right})`;
   }
 
   if ('||' in expr) {
+    const snap0 = values.length;
     const left = translateExpr(expr['||'].left, values, tableName, schema);
-    if (left === null) return null;
+    if (left === null) {
+      values.length = snap0;
+      return null;
+    }
+    const snap1 = values.length;
     const right = translateExpr(expr['||'].right, values, tableName, schema);
-    if (right === null) return null;
-    if (left === 'FALSE' && right === 'FALSE') return 'FALSE';
+    if (right === null) {
+      values.length = snap0;
+      return null;
+    }
+    if (left === 'FALSE' && right === 'FALSE') {
+      values.length = snap0;
+      return 'FALSE';
+    }
     if (left === 'FALSE') return right;
-    if (right === 'FALSE') return left;
+    if (right === 'FALSE') {
+      values.length = snap1;
+      return left;
+    }
     return `(${left} OR ${right})`;
   }
 
   if ('!' in expr) {
+    const snap = values.length;
     const inner = translateExpr(expr['!'].arg, values, tableName, schema);
     if (inner === null) return 'FALSE';
-    if (inner === 'FALSE') return null;
+    if (inner === 'FALSE') {
+      values.length = snap;
+      return null;
+    }
     return `NOT (${inner})`;
   }
 
@@ -344,11 +370,18 @@ export function translateExpr(expr, values, tableName, schema) {
 
   if ('if-then-else' in expr) {
     const ite = expr['if-then-else'];
+    const snap0 = values.length;
     const ifSql = translateExpr(ite.if, values, tableName, schema);
+    if (ifSql === null) {
+      values.length = snap0;
+      return translateExpr(ite.then, values, tableName, schema);
+    }
+    if (ifSql === 'FALSE') {
+      values.length = snap0;
+      return translateExpr(ite.else, values, tableName, schema);
+    }
     const thenSql = translateExpr(ite.then, values, tableName, schema);
     const elseSql = translateExpr(ite.else, values, tableName, schema);
-    if (ifSql === null) return thenSql;
-    if (ifSql === 'FALSE') return elseSql;
     const thenStr = thenSql === null ? 'TRUE' : thenSql;
     const elseStr = elseSql === null ? 'TRUE' : elseSql;
     return `CASE WHEN ${ifSql} THEN ${thenStr} ELSE ${elseStr} END`;
@@ -371,6 +404,119 @@ export function translateExpr(expr, values, tableName, schema) {
     expr,
     "expression shape is not recognized by the policy-to-SQL translator"
   );
+}
+
+// --- In-process residual evaluation for INSERT authz ---
+
+export function evaluateExprAgainstRow(expr, row, principal) {
+  if (expr == null) return true;
+
+  if ('Value' in expr) {
+    return expr.Value === true;
+  }
+
+  if ('is' in expr) {
+    return expr.is.entity_type === 'PgrestLambda::Row';
+  }
+
+  if ('has' in expr) {
+    const attr = expr.has.attr;
+    return row[attr] !== undefined && row[attr] !== null;
+  }
+
+  if ('&&' in expr) {
+    return evaluateExprAgainstRow(expr['&&'].left, row, principal)
+        && evaluateExprAgainstRow(expr['&&'].right, row, principal);
+  }
+
+  if ('||' in expr) {
+    return evaluateExprAgainstRow(expr['||'].left, row, principal)
+        || evaluateExprAgainstRow(expr['||'].right, row, principal);
+  }
+
+  if ('!' in expr) {
+    return !evaluateExprAgainstRow(expr['!'].arg, row, principal);
+  }
+
+  const COMP_OPS = {
+    '==': (a, b) => a === b,
+    '!=': (a, b) => a !== b,
+    '>':  (a, b) => a > b,
+    '>=': (a, b) => a >= b,
+    '<':  (a, b) => a < b,
+    '<=': (a, b) => a <= b,
+  };
+  for (const [cedarOp, comparator] of Object.entries(COMP_OPS)) {
+    if (cedarOp in expr) {
+      const { left, right } = expr[cedarOp];
+      const col = resolveColumn(left);
+      const val = resolveValue(right);
+      if (col !== null && val !== undefined) {
+        const rowVal = row[col];
+        if (rowVal === undefined || rowVal === null) return false;
+        return comparator(rowVal, val);
+      }
+      const col2 = resolveColumn(right);
+      const val2 = resolveValue(left);
+      if (col2 !== null && val2 !== undefined) {
+        const rowVal = row[col2];
+        if (rowVal === undefined || rowVal === null) return false;
+        return comparator(val2, rowVal);
+      }
+      return false;
+    }
+  }
+
+  if ('if-then-else' in expr) {
+    const ite = expr['if-then-else'];
+    const cond = evaluateExprAgainstRow(ite.if, row, principal);
+    return cond
+      ? evaluateExprAgainstRow(ite.then, row, principal)
+      : evaluateExprAgainstRow(ite.else, row, principal);
+  }
+
+  if (process.env.NODE_ENV !== 'production') {
+    const shape = Object.keys(expr)[0] || 'unknown';
+    console.warn(
+      `Cedar INSERT authz: untranslatable expression '${shape}'`,
+    );
+  }
+  return false;
+}
+
+function evaluateResiduals(
+  response, row, principalUid, tablePermitGranted,
+) {
+  let anyPermitGranted = tablePermitGranted;
+
+  if (response.decision === 'allow') {
+    anyPermitGranted = true;
+  }
+
+  for (const policyId of response.nontrivialResiduals) {
+    const residual = response.residuals[policyId];
+    const effect = residual.effect;
+
+    let allCondsMet = true;
+    for (const cond of residual.conditions || []) {
+      if (cond.kind !== 'when') continue;
+      if (!evaluateExprAgainstRow(
+        cond.body, row, principalUid,
+      )) {
+        allCondsMet = false;
+        break;
+      }
+    }
+
+    if (allCondsMet && effect === 'forbid') {
+      return false;
+    }
+    if (allCondsMet && effect === 'permit') {
+      anyPermitGranted = true;
+    }
+  }
+
+  return anyPermitGranted;
 }
 
 // --- Factory ---
@@ -484,8 +630,8 @@ export function createCedar(config) {
 
     if (partial.type === 'residuals') {
       const resp = partial.response;
-      if (resp.decision === 'allow') return true;
-      if (resp.decision !== 'deny' && resp.nontrivialResiduals.length > 0) {
+      if (resp.decision === 'allow'
+          && resp.nontrivialResiduals.length === 0) {
         return true;
       }
     }
@@ -494,6 +640,102 @@ export function createCedar(config) {
       403, 'PGRST403',
       denyMessage(principal, action, resource),
     );
+  }
+
+  function authorizeInsert({
+    principal, resource, schema, rows,
+  }) {
+    if (!cachedPolicies) {
+      throw new PostgRESTError(
+        403, 'PGRST403',
+        denyMessage(principal, 'insert', resource),
+      );
+    }
+
+    const principalUid = buildPrincipalUid(
+      principal.role, principal.userId);
+    const entities = buildEntities(
+      principalUid, principal, schema);
+    const actionUid = {
+      type: 'PgrestLambda::Action', id: 'insert',
+    };
+    const resourceUid = {
+      type: 'PgrestLambda::Table', id: resource,
+    };
+
+    const tableResult = isAuthorized({
+      principal: principalUid,
+      action: actionUid,
+      resource: resourceUid,
+      context: {
+        table: resource, resource_type: 'Table',
+      },
+      policies: cachedPolicies,
+      entities,
+    });
+
+    const tablePermitGranted =
+      tableResult.type === 'success'
+      && tableResult.response.decision === 'allow';
+
+    const partial = isAuthorizedPartial({
+      principal: principalUid,
+      action: actionUid,
+      resource: null,
+      context: {
+        table: resource, resource_type: 'Table',
+      },
+      policies: cachedPolicies,
+      entities,
+    });
+
+    if (partial.type !== 'residuals') {
+      if (tablePermitGranted) return true;
+      throw new PostgRESTError(
+        403, 'PGRST403',
+        denyMessage(principal, 'insert', resource),
+      );
+    }
+
+    const resp = partial.response;
+
+    if (resp.nontrivialResiduals.length === 0) {
+      if (tablePermitGranted
+          || resp.decision === 'allow') {
+        return true;
+      }
+      throw new PostgRESTError(
+        403, 'PGRST403',
+        denyMessage(principal, 'insert', resource),
+      );
+    }
+
+    if (resp.decision === 'deny'
+        && !tablePermitGranted) {
+      throw new PostgRESTError(
+        403, 'PGRST403',
+        denyMessage(principal, 'insert', resource),
+      );
+    }
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      if (!evaluateResiduals(
+        resp, row, principalUid, tablePermitGranted,
+      )) {
+        const detail = rows.length > 1
+          ? `Row ${i} of the batch violates the`
+            + ` insert policy`
+          : null;
+        throw new PostgRESTError(
+          403, 'PGRST403',
+          denyMessage(principal, 'insert', resource),
+          detail,
+        );
+      }
+    }
+
+    return true;
   }
 
   function buildAuthzFilter({
@@ -612,6 +854,7 @@ export function createCedar(config) {
     refreshPolicies,
     _setPolicies,
     authorize,
+    authorizeInsert,
     buildAuthzFilter,
     generateCedarSchema,
   };

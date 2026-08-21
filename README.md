@@ -144,6 +144,7 @@ defaults. The full reference lives in
 |---|---|---|
 | `database.connectionString` | `DATABASE_URL` | Standard Postgres URI. |
 | `database.dsqlEndpoint` | `DSQL_ENDPOINT` | Switches to Aurora DSQL IAM auth. |
+| `database.passwordSsmParam` | `PG_PASSWORD_SSM_PARAM` | SSM SecureString parameter name; the password is read at connect time instead of `PG_PASSWORD`. |
 | `jwtSecret` | `JWT_SECRET` | HS256 secret for apikeys, &ge; 32 chars. |
 | `auth.provider` | `AUTH_PROVIDER` | `better-auth` (default) or `cognito`. |
 | `policies` | `POLICIES_PATH` | Path or `s3://bucket/prefix/` for `.cedar` files. Defaults to `./policies`. |

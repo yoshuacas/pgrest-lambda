@@ -40,6 +40,7 @@
   "dependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.0.0",
     "@aws-sdk/client-sesv2": "^3.0.0",
+    "@aws-sdk/client-ssm": "^3.0.0",
     "@aws-sdk/dsql-signer": "^3.0.0",
     "@cedar-policy/cedar-wasm": "^4.9.1",
     "better-auth": "^1.0.0",

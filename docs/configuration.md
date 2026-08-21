@@ -41,6 +41,7 @@ your `.gitignore` too.
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google OAuth. Enables `/auth/v1/authorize?provider=google`. |
 | `REGION_NAME` | AWS region for SES, DSQL signing, etc. Never use `AWS_REGION` — Lambda reserves it. |
 | `DSQL_ENDPOINT` | Enables Aurora DSQL mode with IAM auth. |
+| `PG_PASSWORD_SSM_PARAM` | Name of an SSM SecureString parameter holding the Postgres password. Resolved with decryption at connect time instead of reading `PG_PASSWORD`. Lets a managed (e.g. RDS) password stay encrypted at rest without a plaintext env var. |
 | `POLICIES_PATH` | Cedar policy source. Accepts a filesystem path (`./policies`), `file:///absolute/path`, or `s3://<bucket>/<prefix>/`. See below. |
 | `PGREST_RELATIONSHIPS_PATH` | Path to a declared-relationship manifest. Adds foreign keys the catalog cannot report, so resource embedding works on databases that reject `FOREIGN KEY`. See below. |
 | `PGREST_DEFAULT_TS_CONFIG` | Text search configuration for `fts`/`plfts`/`phfts` filters that name none. See below. |
@@ -248,9 +249,15 @@ aws ssm put-parameter \
 ```
 
 > **SecureString limitation:** CloudFormation does not resolve
-> `ssm-secure` references inside Lambda environment variables. Use
-> plain `String` parameters, or switch to Secrets Manager if you need
-> KMS-at-rest for the deploy artifact.
+> `ssm-secure` references inside Lambda environment variables. You have
+> three options: use plain `String` parameters; switch to Secrets
+> Manager (the `secretsmanager` dynamic reference works in any
+> property); or — for the database password specifically — keep the
+> value in a SecureString and set `PG_PASSWORD_SSM_PARAM` to its name
+> instead of `PG_PASSWORD`. The Postgres provider then reads and
+> decrypts it at connect time, so the secret never lives in an
+> environment variable. This requires `ssm:GetParameter` (plus KMS
+> decrypt on the key) on the function role.
 
 ### Pattern B — Secrets Manager
 

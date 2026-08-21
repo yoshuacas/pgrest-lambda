@@ -11,6 +11,30 @@ function resolveSsl(ssl) {
   return { rejectUnauthorized: true, ...ssl };
 }
 
+// Read a password from an SSM SecureString parameter at runtime.
+//
+// CloudFormation forbids the `ssm-secure` dynamic reference inside Lambda
+// environment variables, so a managed PostgreSQL password (e.g. an RDS master
+// password) cannot be injected into PG_PASSWORD at deploy time. Instead the
+// deployer stores the password as an SSM SecureString and passes only the
+// parameter NAME via PG_PASSWORD_SSM_PARAM. We resolve it here, lazily, the
+// same way the DSQL provider mints its IAM token inside getPool() — so no
+// static secret ever lives in the function environment.
+async function resolveSsmPassword(parameterName, region) {
+  const { SSMClient, GetParameterCommand } = await import('@aws-sdk/client-ssm');
+  const client = new SSMClient(region ? { region } : {});
+  const out = await client.send(
+    new GetParameterCommand({ Name: parameterName, WithDecryption: true })
+  );
+  const value = out?.Parameter?.Value;
+  if (!value) {
+    throw new Error(
+      `SSM parameter '${parameterName}' resolved to an empty value`
+    );
+  }
+  return value;
+}
+
 const POSTGRES_CAPABILITIES = Object.freeze({
   supportsForeignKeys: true,
   supportsFullTextSearch: true,
@@ -43,11 +67,21 @@ export function createPostgresProvider(config) {
         types: restPoolTypes,
       });
     } else {
+      // Prefer an explicit password; otherwise resolve it from SSM at
+      // connect time when a parameter name is supplied.
+      let password = config.password;
+      if (!password && config.passwordSsmParam) {
+        password = await resolveSsmPassword(
+          config.passwordSsmParam,
+          config.region
+        );
+      }
+
       pool = new Pool({
         host: config.host || 'localhost',
         port: config.port || 5432,
         user: config.user || 'postgres',
-        password: config.password || '',
+        password: password || '',
         database: config.database || 'postgres',
         ssl: resolveSsl(config.ssl),
         max: 5,

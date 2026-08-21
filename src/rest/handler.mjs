@@ -1253,8 +1253,10 @@ export function createRestHandler(ctx, contributions = []) {
             );
           }
 
-          cedar.authorize({
-            principal, action: 'insert', resource: table, schema,
+          const insertRows = Array.isArray(body) ? body : [body];
+          cedar.authorizeInsert({
+            principal, resource: table, schema,
+            rows: insertRows,
           });
 
           // An INSERT's result row count is its payload's length, so the

@@ -37,12 +37,12 @@ Rule: when a finding's fix relies on a capability not present on all supported b
 | [V-03](findings/V-03-cors-wildcard.md) | High | CORS wildcard with header-based auth | Fixed | Configurable CORS origin with production guardrail |
 | [V-04](findings/V-04-ssl-cert-validation.md) | High | SSL cert validation disabled | Fixed | DSQL hard-enforces verify; Postgres adapter defaults `rejectUnauthorized: true` with consumer override |
 | [V-05](findings/V-05-on-conflict-injection.md) | High | Identifier injection via `on_conflict` | Fixed | `on_conflict` columns validated via `validateCol` allowlist |
-| [V-06](findings/V-06-no-rls.md) | High | Cedar is the only authz layer (no RLS) | Open | Backend-specific; DSQL cannot satisfy. Flag: possible fail-open at `cedar.mjs:386-388` |
+| [V-06](findings/V-06-no-rls.md) | High | Cedar is the only authz layer (no RLS) | Open | Backend-specific; DSQL cannot satisfy. V-06a (policy linter) closed. V-06c (INSERT fail-open) closed — `authorizeInsert()` evaluates row-conditioned policies in-process. V-06b (optional RLS templates for RLS-capable backends) remains open/future. |
 | [V-07](findings/V-07-provider-refresh-in-jwt.md) | High | Provider refresh token in JWT `prt` claim | Fixed | Session-ID indirection; prt claim removed from JWT |
 | [V-08](findings/V-08-presignup-autoconfirm.md) | Medium | Cognito presignup auto-confirm | Fixed | PreSignUp trigger removed from SAM template; default changed to better-auth |
 | [V-09](findings/V-09-error-leaks.md) | Medium | PG error details forwarded to client | Fixed | Sanitized mode default; verbose opt-in via config |
 | [V-10](findings/V-10-openapi-exposes-schema.md) | Medium | OpenAPI exposes full schema to anon | Open | Confirmed; no role check |
-| [V-11](findings/V-11-refresh-no-authz.md) | Medium | `/_refresh` has no authz check | Open | Confirmed at HEAD |
+| [V-11](findings/V-11-refresh-no-authz.md) | Medium | `/_refresh` has no authz check | Fixed | Gated on `service_role` (commit 620442a); 401 PGRST301 for anon/authenticated |
 | [V-12](findings/V-12-auth-no-rate-limit.md) | Medium | No rate limiting on auth endpoints | Open | Infra-layer fix |
 | [V-13](findings/V-13-embed-depth.md) | Medium | Unbounded resource embedding depth | Fixed | Depth limit added to parseSelectList |
 | [V-14](findings/V-14-order-direction.md) | Medium | Order direction not validated | Fixed | Allowlist validation in `parseOrder()`; SQL injection path closed |

@@ -235,6 +235,7 @@ function resolveDatabase(config) {
       port: d.port,
       user: d.user,
       password: d.password,
+      passwordSsmParam: d.passwordSsmParam || null,
       database: d.database,
       ssl: d.ssl,
     };
@@ -253,6 +254,8 @@ function resolveDatabase(config) {
     port: process.env.PG_PORT ? parseInt(process.env.PG_PORT, 10) : undefined,
     user: process.env.PG_USER,
     password: process.env.PG_PASSWORD,
+    passwordSsmParam: process.env.PG_PASSWORD_SSM_PARAM || null,
+    region: process.env.REGION_NAME,
     database: process.env.PG_DATABASE,
     ssl: process.env.PG_SSL === 'true',
   };
