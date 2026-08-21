@@ -46,6 +46,14 @@ const USAGE = `usage: build-report.mjs [options]
   --flags "..."        runner flags the results were measured with, recorded
                        verbatim in the trend so incomparable runs are visible
   --note "..."         one-line note stored with the trend entry
+  --tree SHA           the tree these results measure, when it is not the
+                       results file's own commit field (a run measured on an
+                       uncommitted working tree records the parent commit).
+                       Runs sharing a tree are repeat measurements of one
+                       engine, never progress, and the report says so.
+  --cedar FILE         Cedar equivalence results, reported in its own section
+                       and never added to the pass rate (default
+                       conformance/cedar/results/latest.json when present)
   --no-history         report without reading or writing the trend file
   --history-only       update the trend file, write no HTML
 `;
@@ -59,6 +67,8 @@ function parseArgs(argv) {
     label: null,
     flags: null,
     note: null,
+    tree: null,
+    cedar: resolve(REPO, 'conformance/cedar/results/latest.json'),
     useHistory: true,
     historyOnly: false
   };
@@ -77,6 +87,8 @@ function parseArgs(argv) {
     else if (arg === '--label') out.label = next();
     else if (arg === '--flags') out.flags = next();
     else if (arg === '--note') out.note = next();
+    else if (arg === '--tree') out.tree = next();
+    else if (arg === '--cedar') out.cedar = resolve(REPO, next());
     else if (arg === '--no-history') out.useHistory = false;
     else if (arg === '--history-only') out.historyOnly = true;
     else if (arg === '--help' || arg === '-h') {
@@ -104,11 +116,26 @@ const DSQL_SUBSTITUTE_NEEDED = new Set([
   // relationships and disambiguation — so the gap is labelled engine-fixable
   // and the note says which of its cases DSQL still blocks.
   'no-set-role', // SET ROLE + RLS unavailable; needs engine-side authorization
-  // Every failure here is DSQL's, not the engine's: 17 name a text search
-  // configuration DSQL's pg_ts_config does not contain and 7 use a tsvector
+  // Every failure here is DSQL's, not the engine's: 19 name a text search
+  // configuration DSQL's pg_ts_config does not contain and 5 use a tsvector
   // column or argument DSQL rejects. The operators themselves pass with the
-  // one configuration DSQL has.
-  'missing-operator-fts'
+  // one configuration DSQL has. 2 more are mislabelled ordering failures; the
+  // note says which.
+  'missing-operator-fts',
+  // Moved out of engine-fixable in the published run, because the gap changed
+  // category rather than because the label was wrong before. Until this wave
+  // these cases were scored `blocked`: the harness attributed them to the
+  // fixture drop by matching the engine's own PGRST204 wording. The engine now
+  // answers with PostgreSQL's 42703 for an unknown column, which is upstream's
+  // behaviour, so they entered the denominator as failures for the first time.
+  // Every one of the 54 is a filter or JSON operator naming a column DSQL
+  // refused to create; verified case by case in the published run, where every
+  // reason string reads `column <relation>.<column> does not exist`. No engine
+  // change can make them pass and there is no substitute for the column type,
+  // so labelling them engine work would put 54 cases on a backlog that cannot
+  // be worked.
+  'unimplemented-feature-filters',
+  'unimplemented-feature-json-operators'
 ]);
 
 // Failures that assert something this architecture deliberately does not
@@ -217,7 +244,11 @@ const GAP_NOTES = {
   'unimplemented-feature-aggregates':
     'Aggregates in a top-level select list parse and emit GROUP BY. What is left is aggregates inside a spread embed (<code>...processes(cost.sum())</code>): the engine computes them per parent row instead of grouping at the parent level, which is also what the larger <code>body-mismatch-aggregates</code> gap is.',
   'missing-operator-fts':
-    'The <code>fts</code>, <code>plfts</code>, <code>phfts</code> and <code>wfts</code> operators are implemented and upstream cases pass with them. Every failure here is DSQL: 19 name a text search configuration (<code>english</code>, <code>french</code>, <code>german</code>) that DSQL\'s <code>pg_ts_config</code> does not contain, and 3 use a <code>tsvector</code> column or function DSQL dropped at fixture load. There is no substitute — DSQL ships one configuration, <code>simple</code>, which is what <code>PGREST_DEFAULT_TS_CONFIG</code> is set to for these runs.',
+    'The <code>fts</code>, <code>plfts</code>, <code>phfts</code> and <code>wfts</code> operators are implemented and upstream cases pass with them. In the published run 24 of these failures are DSQL\'s: 19 name a text search configuration (<code>english</code>, <code>french</code>, <code>german</code>) that DSQL\'s <code>pg_ts_config</code> does not contain, and 5 use a <code>tsvector</code> column or function DSQL dropped at fixture load. There is no substitute — DSQL ships one configuration, <code>simple</code>, which is what <code>PGREST_DEFAULT_TS_CONFIG</code> is set to for these runs. <strong>The other 2 are mislabelled:</strong> <code>RpcSpec:985</code> and <code>RpcSpec:997</code> failed here with the runner\'s own reason text reading "same rows, different order", so they belong with the order-dependent failures below. They inflate this gap and, on the runs where they happen to come back in upstream\'s order, they are order luck rather than a working text search configuration. The runner\'s gap assignment is not corrected in this run because correcting it would mean publishing a number measured by code the artifact does not contain.',
+  'unimplemented-feature-filters':
+    'Moved out of <code>engine-fixable</code> in this run. All 39 failures are a filter on a column Aurora DSQL refused to create — <code>entities.arr</code> (20), <code>ranges.range</code> (15), <code>entities.text_search_vector</code> (2), <code>complex_items.arr_data</code> (2) — and every reason string in the published run reads <code>column … does not exist</code>, PostgreSQL\'s own 42703, which is what upstream answers for an unknown column (QuerySpec.hs:1556). The operators are implemented and unit-tested; upstream only exercises them through array, range and tsvector columns, and DSQL stores none of those. These cases were <code>blocked</code> until this wave, when the engine stopped answering <code>PGRST204</code> and the harness\'s drop-attribution stopped recognising them, so this is the gap changing category rather than a relabelled backlog: the count of cases DSQL makes impossible did not change, only which bucket they are reported in.',
+  'unimplemented-feature-json-operators':
+    'Moved out of <code>engine-fixable</code> in this run, for the same reason as <code>unimplemented-feature-filters</code> and with the same evidence. All 15 failures apply a JSON operator to an array column DSQL refused to create — <code>arrays.numbers</code> (6), <code>fav_numbers.num</code> (5), <code>arrays.numbers_mult</code> (4) — and answer 42703. The <code>json-operators</code> category passes 46 of the 62 cases that reach a column DSQL can store.',
   'no-set-role':
     'Upstream asserts authorization performed with SET ROLE + GRANT + RLS. DSQL rejects SET ROLE and has no RLS, so the engine needs its own authorization model to answer the same 401/403 bodies.',
   'extraction-skipped':
@@ -234,6 +265,73 @@ const GAP_NOTES = {
   'no-custom-gucs':
     'Namespaced run-time parameters (<code>response.headers</code>, <code>request.*</code> claims). DSQL rejects set_config on them and rejects the CREATE FUNCTION whose body contains the SET.'
 };
+
+// Disclosures an adversarial audit of the published run produced that no input
+// file can compute: they are about how a pass was reached, not about whether it
+// was reached. Editorial, like GAP_NOTES, and marked as such where rendered.
+// Each one cites what was run so a reader can repeat it. Add an entry when an
+// audit finds a pass whose cause is not what the case name suggests; never
+// delete one to tidy the page up.
+const AUDITED_DISCLOSURES = [
+  {
+    title: '3 of the passes cannot tell their setting apart',
+    body: 'The harness now boots <code>PreparedStatementsSpec</code> twice, once with '
+      + '<code>db-prepared-statements=true</code> and once with <code>false</code>, and all three '
+      + 'of its cases pass both ways. They pass because nothing in <code>src/rest/</code> reads '
+      + 'that setting: it is parsed in <code>src/index.mjs</code> and put on the request context, '
+      + 'and no query path consults it (<code>grep -rn dbPreparedStatements src/</code> returns '
+      + 'two hits, neither in the engine). <code>PreparedStatementsSpec:25</code> asserts a bare '
+      + '<code>200</code>, so it cannot distinguish the two values even in principle. Read those '
+      + 'three as "the switch is accepted", not "prepared statements behave as upstream". '
+      + '<code>docs/reference/configuration.md</code> documents the setting as inert.'
+  },
+  {
+    title: '23 of the gains ride on the data-representations manifest, not on catalog reading',
+    body: 'DSQL rejects <code>CREATE CAST</code>, so all 15 casts upstream\'s <code>schema.sql</code> '
+      + 'defines are dropped at fixture load and <code>pg_cast</code> reports nothing for the engine '
+      + 'to read. <code>conformance/fixtures/representations.json</code> declares those 15 pairs and '
+      + 'the runner points <code>PGREST_REPRESENTATIONS_PATH</code> at it by default for '
+      + '<code>--target dsql</code>. 23 cases that were failures in the last comparable run pass '
+      + 'because of it — <code>ComputedRelsSpec:110/123/129</code>, '
+      + '<code>QuerySpec:1549</code>…<code>1650</code> (16 cases), <code>InsertSpec:802</code> and '
+      + '<code>UpdateSpec:649/660/682</code>. The manifest is a substitute for a catalog DSQL cannot '
+      + 'populate, exactly like the relationship manifest, and it is not tuned to pass everything: '
+      + '11 data-representation cases still fail with it in place. But a reader is entitled to know '
+      + 'that 23 of this wave\'s gains are configuration-enabled, and that on a database with '
+      + '<code>pg_cast</code> the engine reads them from the catalog instead.'
+  }
+];
+
+// Why this results file and not another run of the same tree. The rule is in
+// compatreport/README.md: do not publish the run measured by the pass that wrote
+// the code, and prefer the middle of the observed range to the top of it. The
+// spread beside this note is computed; the reasoning is not, so it is editorial.
+const PUBLISHED_RUN_CHOICE =
+  'This report is built from the run an independent audit pass measured, not from the run the '
+  + 'pass that wrote the engine changes measured, and not from the highest run of the tree. Of the '
+  + 'four full-suite runs of this tree in the trend, the implementation pass\'s own run is the '
+  + 'lowest and two later runs are the highest; the published one sits between them and is the run '
+  + 'whose measurement was reported by a pass with no code in the result. Every one of the four is '
+  + 'in the trend above with its own row, so the spread is visible rather than curated, and every '
+  + 'case that differs between them is either an order-unspecified assertion or an upsert that '
+  + 'depends on sequence state a data-only fixture reload does not restore.';
+
+// Cedar equivalence is a second measurement of a different question. These lines
+// state what it is not, and are rendered with it every time.
+const CEDAR_DO_NOT_READ = [
+  'It is not a PostgREST pass rate and is never added to one. The upstream cases it derives from '
+    + 'stay failures in this report\'s denominator — they are not excluded, not marked out of scope '
+    + 'and not skipped.',
+  'A holding equivalence means a Cedar <code>permit</code> standing in for a <code>GRANT</code> '
+    + 'produced the same status, body and asserted headers. It does not mean row-level security was '
+    + 'exercised: the table behind most of them is empty in the fixtures, and the harness supplies '
+    + 'the identity from the JWT payload rather than the engine verifying it.',
+  'The denominator is the derived cases, not the 54 upstream cases they cover. 26 of those 54 have '
+    + 'no fair equivalent and are counted in neither the numerator nor the denominator.',
+  'It has no external referee. This project chose which cases are about authorization, wrote the '
+    + 'policy set and wrote the runner. The PostgREST rate above has upstream\'s own assertions as '
+    + 'the referee; this number does not.'
+];
 
 // ---------------------------------------------------------------- grouping helpers
 
@@ -330,12 +428,25 @@ export function normalizeCounts(counts = {}) {
   return out;
 }
 
+/**
+ * The engine tree a run measured. A results file records the commit that was
+ * checked out, which is not the same thing: a run measured on an uncommitted
+ * working tree records the parent commit and would otherwise look like a
+ * measurement of a different engine. `tree` overrides it when the caller knows
+ * better, so two runs of one engine are recognised as repeats rather than as
+ * progress.
+ */
+export function treeOf(run) {
+  return run?.tree || run?.commit || null;
+}
+
 /** A history entry for one results file. Counts only — everything else derived. */
 export function entryFromResults(results, opts = {}) {
   return {
     label: opts.label || results.commit || 'unlabelled',
     generatedAt: results.generatedAt || null,
     commit: results.commit || null,
+    ...(opts.tree ? { tree: opts.tree } : {}),
     target: results.target || null,
     results: opts.resultsPath ? relative(REPO, opts.resultsPath) : null,
     flags: opts.flags ?? null,
@@ -370,6 +481,7 @@ function summarizeRun(run) {
     label: run.label,
     generatedAt: run.generatedAt,
     commit: run.commit || null,
+    tree: treeOf(run),
     flags: run.flags || null,
     note: run.note || null,
     passed: t.passed,
@@ -512,7 +624,48 @@ export function isolationEvidence(runs) {
 
 // ---------------------------------------------------------------- model
 
-function buildModel(results, loadReport, trend = null) {
+/**
+ * The Cedar equivalence measurement, as a section of its own. Two things are
+ * checked here rather than restated: that the upstream cases it derives from are
+ * still failures in *this* results file, and how many of them are. If a derived
+ * case's upstream original ever stopped being a failure, this measurement would
+ * be double-counting a pass, and the report would say so instead of hiding it.
+ */
+function buildCedar(cedar, results) {
+  if (!cedar?.summary) return null;
+  const s = cedar.summary;
+  const byId = new Map((results.cases || []).map((c) => [c.id, c]));
+  const upstreamIds = [
+    ...new Set([
+      ...(cedar.outcomes || []).map((o) => o.upstreamId),
+      ...(cedar.noFairEquivalent || []).map((o) => o.upstreamId)
+    ])
+  ].filter(Boolean);
+  const upstreamStatus = {};
+  for (const id of upstreamIds) {
+    const status = byId.get(id)?.status || 'not in this run';
+    upstreamStatus[status] = (upstreamStatus[status] || 0) + 1;
+  }
+  return {
+    generatedAt: cedar.generatedAt || null,
+    commit: cedar.commit || null,
+    target: cedar.target || null,
+    ran: s.equivalencesRan || 0,
+    hold: s.equivalencesHold || 0,
+    diverge: s.equivalencesDiverge || 0,
+    divergenceKinds: Object.entries(s.divergenceKinds || {}),
+    noFairEquivalent: s.noFairEquivalent || 0,
+    noFairEquivalentByClass: Object.entries(s.noFairEquivalentByClass || {})
+      .sort((a, b) => b[1] - a[1]),
+    upstreamCasesCovered: s.upstreamCasesCovered || upstreamIds.length,
+    upstreamStatus: Object.entries(upstreamStatus).sort((a, b) => b[1] - a[1]),
+    upstreamAllFailing: Object.keys(upstreamStatus).every((k) => k === 'fail'),
+    notThePostgrestRate: s.notThePostgrestRate || null,
+    doNotRead: CEDAR_DO_NOT_READ
+  };
+}
+
+function buildModel(results, loadReport, trend = null, cedar = null) {
   const t = results.totals;
   const ran = (t.passed || 0) + (t.failed || 0);
   const excluded = (t.skipped || 0) + (t.needsConfig || 0)
@@ -736,6 +889,7 @@ function buildModel(results, loadReport, trend = null) {
     },
     totals: t,
     trend,
+    cedar: buildCedar(cedar, results),
     measurement: { isolation, rowOrder, permanent, leftDenominator },
     categories,
     gaps,
@@ -848,14 +1002,24 @@ function verdictParagraphs(m) {
           + `(<code>${esc(tr.baseline.generatedAt)}</code>, ${num(tr.baseline.passed)} of `
           + `${num(tr.baseline.ran)}).${flagNote}`
       : '';
-  const repeat = tr?.idMatched?.repeat
-    ? ` The same tree was measured twice: `
-      + `<code>${esc(tr.idMatched.repeat.run.label)}</code> passed `
-      + `${num(tr.idMatched.repeat.run.passed)} of ${num(tr.idMatched.repeat.run.ran)} `
-      + `(${pct(tr.idMatched.repeat.run.rate)}) with the same flags, differing on `
-      + `${num(tr.idMatched.repeat.delta.gained + tr.idMatched.repeat.delta.lost)} cases. `
-      + `That is the run-to-run noise on this database, not progress.`
-    : '';
+  const sp = tr?.spread;
+  const repeat = sp
+    ? ` This tree was measured ${num(sp.runs.length)} times with these flags and the results `
+      + `spanned ${num(sp.lowest.passed)} to ${num(sp.highest.passed)} of ${num(sp.highest.ran)} `
+      + `(${pct(sp.lowest.rate)}–${pct(sp.highest.rate)}): `
+      + `${sp.runs.map((r) => `<code>${esc(r.label)}</code> ${num(r.passed)}`).join(', ')}. `
+      + `The published run is the one this report is built from, `
+      + `${num(sp.published?.passed ?? m.headline.passed)} — neither the lowest nor the highest. `
+      + `That range is run-to-run noise on a distributed database, not progress; `
+      + `<a href="#spread">every run of the tree</a> is in the trend.`
+    : tr?.idMatched?.repeat
+      ? ` The same tree was measured twice: `
+        + `<code>${esc(tr.idMatched.repeat.run.label)}</code> passed `
+        + `${num(tr.idMatched.repeat.run.passed)} of ${num(tr.idMatched.repeat.run.ran)} `
+        + `(${pct(tr.idMatched.repeat.run.rate)}) with the same flags, differing on `
+        + `${num(tr.idMatched.repeat.delta.gained + tr.idMatched.repeat.delta.lost)} cases. `
+        + `That is the run-to-run noise on this database, not progress.`
+      : '';
   const previous = tr?.idMatched?.previous
     ? ` The last run measured with these same flags `
       + `(<code>${esc(tr.idMatched.previous.run.label)}</code>, `
@@ -1045,16 +1209,52 @@ flags match, the rate comparison holds: ${pct(im.previous.run.rate)} → ${pct(t
 ${table(im.previous.delta)}`
     : '';
 
-  const repeat = im.repeat
-    ? `<h3>The same tree, measured twice</h3>
+  const sp = tr.spread;
+  const repeatRows = (im.repeats || [])
+    .map(
+      (r) => `<tr>
+  <th scope="row"><code>${esc(r.run.label)}</code></th>
+  <td class="fine mono">${esc(r.run.generatedAt)}</td>
+  <td class="n">${num(r.run.passed)} / ${num(r.run.ran)}</td>
+  <td class="n">${pct(r.run.rate)}</td>
+  <td class="n">${num(r.delta.gained + r.delta.lost)}</td>
+  <td class="n good">${num(r.delta.gained)}</td>
+  <td class="n bad">${num(r.delta.lost)}</td>
+</tr>`
+    )
+    .join('\n');
+  const repeat = sp
+    ? `<h3 id="spread">The same tree, measured ${num(sp.runs.length)} times</h3>
+<p>${num(sp.runs.length)} runs in the trend measure this engine
+(<code>${esc(sp.tree || 'unknown')}</code>) with the same flags, and they span
+${num(sp.lowest.passed)} to ${num(sp.highest.passed)} of ${num(sp.highest.ran)} —
+${pct(sp.lowest.rate)} to ${pct(sp.highest.rate)}. This report publishes
+${num(sp.published?.passed ?? 0)}. Each row below is matched case by case against the published run,
+so the disagreement is counted rather than inferred from the totals.</p>
+<table class="grid">
+<thead><tr><th scope="col">Other run of this tree</th><th scope="col">Measured</th>
+<th scope="col" class="n">Passed / ran</th><th scope="col" class="n">Rate</th>
+<th scope="col" class="n">Cases differing</th><th scope="col" class="n">Pass here only</th>
+<th scope="col" class="n">Pass there only</th></tr></thead>
+<tbody>
+${repeatRows}
+</tbody>
+</table>
+<p>${note(PUBLISHED_RUN_CHOICE)}</p>
+<p class="fine">The choice of which run to publish is editorial and the rule it follows is written
+down in <code>compatreport/README.md</code>: never publish the run measured by the pass that wrote
+the code, prefer the middle of the observed range to the top of it, and keep every run in the trend
+so the spread stays visible.</p>`
+    : im.repeat
+      ? `<h3 id="spread">The same tree, measured twice</h3>
 <p><code>${esc(im.repeat.run.label)}</code> (<code>${esc(im.repeat.run.generatedAt)}</code>) is the
-same commit and the same flags as this run and passed ${num(im.repeat.run.passed)} of
+same tree and the same flags as this run and passed ${num(im.repeat.run.passed)} of
 ${num(im.repeat.run.ran)} (${pct(im.repeat.run.rate)}). Matched by id, the two disagree on
 ${num(im.repeat.delta.gained + im.repeat.delta.lost)} cases — ${num(im.repeat.delta.gained)} pass
 here and not there, ${num(im.repeat.delta.lost)} the other way round. That is the measurement noise
 on this database, mostly order luck and fixture-reload conflicts. Both runs are kept in the trend so
 the noise is visible; a difference of that size is never progress.</p>`
-    : '';
+      : '';
 
   return `<h3>Case-level delta since the baseline</h3>
 <p>Totals can move because the denominator moved. Matching case ids between the two results files
@@ -1178,8 +1378,27 @@ dropped. The reason they only surfaced now is that the engine started forwarding
 error text, which made the cause visible to the classifier.</p>`
     : '';
 
+  const audited = AUDITED_DISCLOSURES.length
+    ? `<h3>${conservative ? '5' : '4'}. What an audit of this run found in the passes</h3>
+<p>An independent pass re-measured this tree and went looking for passes that are weaker than they
+look. It found no inflation in the rate — its own run scored higher than the one published here —
+but it did find two things about <em>how</em> some passes are reached that no input file can
+compute. Both are recorded here rather than in a commit message:</p>
+<ul>
+${AUDITED_DISCLOSURES.map(
+    (d) => `<li><strong>${esc(d.title)}.</strong> ${note(d.body)}</li>`
+  ).join('\n')}
+</ul>
+<p class="fine">Editorial, like the gap notes: an audit finding is a judgement about a cause, and
+causes are not in the results file. Each one names what was run so it can be checked. Neither
+changes a status, and neither is netted off the rate — they change what the rate means, not what it
+is.</p>`
+    : '';
+
   return `<p>Three things bound this measurement. The first biases it, the second is left failing on
-purpose, and the third is a ceiling no amount of engine work moves.</p>
+purpose, and the third is a ceiling no amount of engine work moves${conservative
+  ? ', a fourth records what left the denominator since the comparable run'
+  : ''}${audited ? ', and the last lists what an audit found behind some of the passes' : ''}.</p>
 
 <h3>1. Fixture isolation is per spec file, not per request</h3>
 <p>Upstream runs its suite with <code>configDbTxRollbackAll = True</code>
@@ -1241,7 +1460,8 @@ columns are editorial, like the gap notes, and are the only hand-written text in
 Families that are consequences of another drop — a view that referenced a table DSQL refused, a
 GRANT on a schema that was skipped — are in <a href="#dsql">Aurora DSQL limitations</a> below rather
 than here, so this table is not padded with knock-on effects.</p>
-${conservative}`;
+${conservative}
+${audited}`;
 }
 
 function renderCategories(m) {
@@ -1485,6 +1705,80 @@ ${oosRows}
 </table>`;
 }
 
+/**
+ * A second measurement, kept apart from the first on purpose. The PostgREST rate
+ * above answers "does upstream's own assertion pass". This answers "where the
+ * outcome depends on SET ROLE and RLS, which DSQL does not have, does the Cedar
+ * policy layer produce the same client-visible outcome". The two are never
+ * averaged, and the cases below are failures in the rate above.
+ */
+function renderCedar(m) {
+  const c = m.cedar;
+  if (!c) return '';
+  const kinds = c.divergenceKinds
+    .map(([k, n]) => `<code>${esc(k)}</code> ${num(n)}`)
+    .join(', ');
+  const classes = c.noFairEquivalentByClass
+    .map(
+      ([k, n]) => `<tr><th scope="row"><code>${esc(k)}</code></th><td class="n">${num(n)}</td></tr>`
+    )
+    .join('\n');
+  const upstream = c.upstreamAllFailing
+    ? `All ${num(c.upstreamCasesCovered)} upstream cases behind this measurement are
+<code>fail</code> in the run this report is built from — checked against that file, not asserted.
+Nothing here moves a case out of the pass rate's denominator or into its numerator.`
+    : `<strong>Check this:</strong> the upstream cases behind this measurement are not all failures
+in this run (${c.upstreamStatus.map(([k, n]) => `${esc(k)} ${num(n)}`).join(', ')}). If one of them
+now passes on its own mechanism, this section is describing a case the rate above already counts, and
+the two measurements have started to overlap.`;
+
+  return `<div class="cedar">
+<p><strong>This is not part of the ${pct(m.headline.rate)} above and is never averaged into it.</strong>
+Aurora DSQL has neither <code>SET ROLE</code> nor row-level security, and PostgREST's authorization
+is built on both. ${num(c.upstreamCasesCovered)} extracted upstream cases assert an outcome reached
+that way; on this architecture they cannot pass by that mechanism and they remain failures above
+(the <code>no-set-role</code> gap). This measurement asks a different question about those same
+cases: with a Cedar policy set standing in for the <code>GRANT</code>, is the client-visible outcome
+— status, body, asserted headers — the same?</p>
+
+<div class="strip">
+  <div class="tile pass"><div class="v">${num(c.hold)}</div><div class="k">equivalences hold</div></div>
+  <div class="tile fail"><div class="v">${num(c.diverge)}</div><div class="k">diverge</div></div>
+  <div class="tile"><div class="v">${num(c.ran)}</div><div class="k">derived cases run</div></div>
+  <div class="tile excluded"><div class="v">${num(c.noFairEquivalent)}</div><div class="k">no fair equivalent</div></div>
+</div>
+
+<p><strong>Cedar equivalence: ${num(c.hold)} of ${num(c.ran)} hold.</strong> The
+${num(c.diverge)} divergences are all one kind (${kinds || 'none recorded'}): both mechanisms deny
+the request and disagree on the shape of the denial — PostgREST answers <code>401</code> with
+<code>WWW-Authenticate</code> for an anonymous caller, the Cedar layer answers <code>403</code>.
+Measured ${esc(c.generatedAt || 'unknown')} on commit <code>${esc(c.commit || 'unknown')}</code>,
+target <code>${esc(c.target || 'unknown')}</code>, from
+<code>conformance/cedar/results/latest.json</code>.</p>
+
+<p>${upstream}</p>
+
+<h3>What a reader should not read into it</h3>
+<ul>
+${c.doNotRead.map((line) => `<li>${note(line)}</li>`).join('\n')}
+</ul>
+
+<h3>The ${num(c.noFairEquivalent)} with no fair equivalent</h3>
+<p class="fine">Counted in neither the numerator nor the denominator, itemised with a written reason
+in <code>conformance/cedar/equivalence-map.mjs</code> and on the
+<code>docs/reference/cedar-equivalence.md</code> page. Only one of these classes is a finding about
+the engine: <code>column-level-privilege</code>, where upstream grants a write on the table and
+<code>SELECT</code> on some columns only, and the Cedar model has no column resource to express
+that.</p>
+<table class="grid">
+<thead><tr><th scope="col">Class</th><th scope="col" class="n">Upstream cases</th></tr></thead>
+<tbody>
+${classes}
+</tbody>
+</table>
+</div>`;
+}
+
 function renderHtml(m, paths) {
   const h = m.headline;
   const t = m.totals;
@@ -1549,6 +1843,12 @@ code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monosp
 .tile.pass .v { color: var(--pass); } .tile.fail .v { color: var(--fail); }
 .tile.blocked .v { color: var(--blocked); } .tile.excluded .v { color: var(--excluded); }
 .tile.config .v { color: var(--config); }
+/* The Cedar section is boxed and inset so it cannot be skim-read as part of the
+   PostgREST rate above it. Different question, different number. */
+.cedar {
+  border: 2px dashed var(--line); border-radius: 10px; padding: 4px 20px 12px;
+  background: var(--panel); margin: 8px 0 16px;
+}
 table.grid { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 0.92rem; }
 table.grid th, table.grid td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
 table.grid thead th { border-bottom: 1px solid var(--line); color: var(--fg-dim); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.03em; }
@@ -1654,6 +1954,9 @@ ${renderDsql(m)}
 
 <h2 id="notcounted">Not counted: needs-config, skipped, blocked and out of scope</h2>
 ${renderExcluded(m)}
+${m.cedar
+    ? `\n<h2 id="cedar">A separate measurement: Cedar equivalence (not part of the pass rate)</h2>\n${renderCedar(m)}\n`
+    : ''}
 
 <footer>
 <p>Generated by <code>conformance/report/build-report.mjs</code> from
@@ -1719,11 +2022,15 @@ function attachCaseDeltas(trend, runs, results) {
   // The newest earlier run measured with exactly the flags this one used: the
   // only pair in the trend a rate comparison is honest about.
   const sameFlags = (r) => (r.flags || '') === (current.flags || '');
+  // Same engine, not same commit field: a run measured on an uncommitted working
+  // tree records the parent commit, so `tree` decides this when it is set.
+  const sameTree = (r) => treeOf(r) !== null && treeOf(r) === treeOf(current);
   const earlier = [...runs.slice(0, -1)].reverse();
-  const previousRun = earlier.find((r) => sameFlags(r) && r.commit !== current.commit);
-  // A second measurement of the same tree with the same flags is not progress;
+  const previousRun = earlier.find((r) => sameFlags(r) && !sameTree(r));
+  // Another measurement of the same tree with the same flags is not progress;
   // it is the run-to-run noise, and the report says so rather than hiding it.
-  const repeatRun = earlier.find((r) => sameFlags(r) && r.commit === current.commit);
+  // All of them are kept, not just the newest, because the spread is the claim.
+  const repeatRuns = earlier.filter((r) => sameFlags(r) && sameTree(r));
 
   const pair = (run) => {
     const cases = run ? casesOfRun(run) : null;
@@ -1736,11 +2043,37 @@ function attachCaseDeltas(trend, runs, results) {
     };
   };
 
+  const repeats = repeatRuns.map(pair).filter(Boolean);
   trend.idMatched = {
     baseline: baselineCases ? idMatchedDelta(baselineCases, currentCases) : null,
     previous: pair(previousRun),
-    repeat: pair(repeatRun)
+    // The newest repeat keeps the single-pair shape earlier reports used; the
+    // full list is what the spread below is computed from.
+    repeat: repeats[0] || null,
+    repeats
   };
+
+  // The observed range across every run of this tree measured with these flags,
+  // including this one. Published rate against the spread it sits in: one run of
+  // a distributed database is a sample, and the honest headline says so.
+  const treeRuns = [...repeatRuns, current]
+    .map((r) => trend.runs.find(
+      (x) => x.label === r.label && x.generatedAt === r.generatedAt
+    ))
+    .filter(Boolean)
+    .sort((a, b) => a.passed - b.passed);
+  trend.spread = treeRuns.length > 1
+    ? {
+      tree: treeOf(current),
+      flags: current.flags || null,
+      runs: treeRuns,
+      lowest: treeRuns[0],
+      highest: treeRuns[treeRuns.length - 1],
+      published: trend.runs.find(
+        (x) => x.label === current.label && x.generatedAt === current.generatedAt
+      ) || null
+    }
+    : null;
 
   trend.rowOrderByRun = runs
     .map((r) => {
@@ -1767,6 +2100,7 @@ function main() {
       label: opts.label,
       flags: opts.flags,
       note: opts.note,
+      tree: opts.tree,
       resultsPath: opts.results
     });
     const history = appendRun(readHistory(opts.history), entry);
@@ -1788,7 +2122,12 @@ function main() {
   if (opts.historyOnly) return;
 
   const loadReport = JSON.parse(readFileSync(opts.loadReport, 'utf8'));
-  const model = buildModel(results, loadReport, trend);
+  // Absent Cedar results drop the section rather than failing the build: the
+  // PostgREST measurement does not depend on the equivalence measurement.
+  const cedar = opts.cedar && existsSync(opts.cedar)
+    ? JSON.parse(readFileSync(opts.cedar, 'utf8'))
+    : null;
+  const model = buildModel(results, loadReport, trend, cedar);
   const html = renderHtml(model, opts);
   mkdirSync(dirname(opts.out), { recursive: true });
   writeFileSync(opts.out, html);
@@ -1804,6 +2143,18 @@ function main() {
       `out-of-scope ${model.totals.outOfScope}]\n` +
       `${model.gaps.length} gap slugs, ${model.dsql.families.length} DSQL drop families\n` +
       `${model.measurement.rowOrder.count} order-dependent failures kept as failures\n` +
+      (model.cedar
+        ? `cedar equivalence (separate measurement, never added): `
+          + `${model.cedar.hold}/${model.cedar.ran} hold, `
+          + `${model.cedar.noFairEquivalent} with no fair equivalent, `
+          + `${model.cedar.upstreamCasesCovered} upstream cases covered and still `
+          + `${model.cedar.upstreamAllFailing ? 'all failing above' : 'NOT all failing above'}\n`
+        : '') +
+      (trend?.spread
+        ? `same tree, ${trend.spread.runs.length} runs with these flags: `
+          + `${trend.spread.runs.map((r) => r.passed).join(', ')} of ${trend.spread.highest.ran} `
+          + `— published ${model.headline.passed}\n`
+        : '') +
       (trend && !trend.isSelfComparison
         ? `vs baseline ${trend.baseline.label}: ${signed(trend.deltaPassed)} passed, `
           + `${signed(trend.deltaFailed)} failed, denominator ${signed(trend.deltaRan)}\n`

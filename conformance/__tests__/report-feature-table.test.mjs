@@ -51,6 +51,59 @@ describe('feature predicates', () => {
     assert.equal(range(testCase('c', {})), false);
   });
 
+  it('reads a disambiguating embed hint without matching the two join modifiers', () => {
+    // `!inner` and `!left` say how to join; anything else after `!` names the
+    // foreign key or table to join through, which is a different feature.
+    const hint = probe('Disambiguating embed hint (`!fk`)');
+    assert.equal(hint(testCase('a', { query: 'select=*,projects!client_id(*)' })), true);
+    assert.equal(hint(testCase('b', { query: 'select=*,projects!inner(*)' })), false);
+    assert.equal(hint(testCase('c', { query: 'select=*,projects!left(*)' })), false);
+    assert.equal(hint(testCase('d', { query: 'select=*,projects(*)' })), false);
+  });
+
+  it('counts embed depth from nested parentheses', () => {
+    const two = probe('Embed nested two or more levels deep');
+    const three = probe('Embed nested three or more levels deep');
+    const flat = testCase('a', { query: 'select=*,projects(*)' });
+    const deep2 = testCase('b', { query: 'select=*,projects(*,tasks(*))' });
+    const deep3 = testCase('c', { query: 'select=*,clients(*,projects(*,tasks(*)))' });
+    assert.deepEqual([two(flat), three(flat)], [false, false]);
+    assert.deepEqual([two(deep2), three(deep2)], [true, false]);
+    assert.deepEqual([two(deep3), three(deep3)], [true, true]);
+    // Sibling embeds are one level each, however many of them there are.
+    assert.equal(two(testCase('d', { query: 'select=*,projects(*),tasks(*)' })), false);
+  });
+
+  it('tells a filter on an embed apart from an order on one', () => {
+    const filter = probe('Filter on an embedded resource');
+    const order = probe('`order` on an embedded resource');
+    const c = testCase('a', { query: 'select=*,projects(*)&projects.id=eq.1' });
+    assert.equal(filter(c), true);
+    assert.equal(order(c), false);
+    assert.equal(filter(testCase('b', { query: 'id=eq.1' })), false);
+  });
+
+  it('matches each Prefer token this wave added on its own token, not on the header', () => {
+    const handling = probe('`Prefer: handling=strict` / `handling=lenient`');
+    const missing = probe('`Prefer: missing=default`');
+    const maxAffected = probe('`Prefer: max-affected`');
+    const strict = testCase('a', { headers: { Prefer: 'handling=strict' } });
+    assert.deepEqual([handling(strict), missing(strict), maxAffected(strict)], [true, false, false]);
+    assert.equal(handling(testCase('b', { headers: { Prefer: 'handling=lenient' } })), true);
+    assert.equal(missing(testCase('c', { headers: { Prefer: 'missing=default' } })), true);
+    assert.equal(maxAffected(testCase('d', { headers: { Prefer: 'max-affected=1' } })), true);
+    assert.equal(handling(testCase('e', { headers: { Prefer: 'return=representation' } })), false);
+  });
+
+  it('reads an asserted response header off the expectation, not the request', () => {
+    const vary = probe('`Vary` asserted on the response');
+    const applied = probe('`Preference-Applied` asserted on the response');
+    assert.equal(vary(testCase('a', {}, { headers: { Vary: 'Accept-Profile' } })), true);
+    assert.equal(vary(testCase('b', { headers: { Vary: 'Accept' } })), false);
+    assert.equal(applied(testCase('c', {}, { headers: { 'preference-applied': 'tx=commit' } })), true);
+    assert.equal(applied(testCase('d', {}, {})), false);
+  });
+
   it('separates the two RPC methods', () => {
     const get = probe('RPC via `GET /rpc/...`');
     const post = probe('RPC via `POST /rpc/...`');
@@ -114,6 +167,32 @@ describe('against the real case files', () => {
     for (const [name, , basis] of FEATURES) {
       assert.equal(typeof basis, 'string', `${name} has no basis`);
       assert.ok(basis.length > 0, `${name} has an empty basis`);
+    }
+  });
+
+  it('finds no case asserting Server-Timing, which is why that row reads 0 / 0', () => {
+    // The engine sends the header; the upstream suite never checks it. The row
+    // stays in the table so "not measured" cannot be mistaken for "covered".
+    const timing = probe('`Server-Timing` asserted on the response');
+    const vary = probe('`Vary` asserted on the response');
+    const all = [...byId.values()];
+    assert.equal(all.filter(timing).length, 0);
+    assert.ok(all.filter(vary).length > 0);
+  });
+
+  it('measures the embed depth and disambiguation features this wave changed', () => {
+    // If one of these predicates stops matching, the row silently becomes
+    // 0 / 0 and the table reports nothing where it used to report a rate.
+    const all = [...byId.values()];
+    for (const name of ['Embed nested two or more levels deep',
+      'Embed nested three or more levels deep',
+      'Disambiguating embed hint (`!fk`)',
+      'Filter on an embedded resource',
+      '`Prefer: handling=strict` / `handling=lenient`',
+      '`Prefer: missing=default`',
+      '`Prefer: max-affected`',
+      '`OPTIONS`']) {
+      assert.ok(all.filter(probe(name)).length > 0, `${name} matches no extracted case`);
     }
   });
 

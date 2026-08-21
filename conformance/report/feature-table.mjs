@@ -62,6 +62,12 @@ export const FEATURES = [
     'Prefer contains ignore-duplicates'],
   ['`Prefer: tx=commit`', (c) => /tx=commit/.test(prefer(c)), 'Prefer contains tx=commit'],
   ['`Prefer: tx=rollback`', (c) => /tx=rollback/.test(prefer(c)), 'Prefer contains tx=rollback'],
+  ['`Prefer: handling=strict` / `handling=lenient`', (c) => /handling=(strict|lenient)/.test(prefer(c)),
+    'Prefer contains handling=strict or handling=lenient'],
+  ['`Prefer: missing=default`', (c) => /missing=default/.test(prefer(c)), 'Prefer contains missing=default'],
+  ['`Prefer: max-affected`', (c) => /max-affected/.test(prefer(c)), 'Prefer contains max-affected'],
+  ['`Preference-Applied` asserted on the response', (c) => expectsHeader(c, 'preference-applied'),
+    'the assertion checks Preference-Applied'],
   ['`is` operator', (c) => op('is').test(query(c)), '?col=is. or ?col=not.is.'],
   ['`in` operator', (c) => op('in').test(query(c)), '?col=in. or ?col=not.in.'],
   ['`like` / `ilike`', (c) => op('i?like').test(query(c)), '?col=like. / ilike., negated or not'],
@@ -86,6 +92,18 @@ export const FEATURES = [
   ['JSON path (`->`, `->>`) in the query string', (c) => /->/.test(query(c)), '-> or ->> in the query'],
   ['`!inner` embed', (c) => /!inner/.test(query(c)), '!inner hint on an embed'],
   ['`!left` embed', (c) => /!left/.test(query(c)), '!left hint on an embed'],
+  // A disambiguating hint names a foreign key or a table — `!fk_name`,
+  // `!clients` — so it is any `!` that is not one of the two join modifiers.
+  ['Disambiguating embed hint (`!fk`)', (c) => /!(?!inner|left)[A-Za-z_]/.test(decoded(c)),
+    'a ! hint in the select list that is not !inner or !left'],
+  // Depth is counted from the parentheses in the select list: one open paren
+  // inside another is an embed inside an embed.
+  ['Embed nested two or more levels deep', (c) => /\([^()]*\(/.test(decoded(c)),
+    'a ( inside a ( in the query'],
+  ['Embed nested three or more levels deep', (c) => /\([^()]*\([^()]*\(/.test(decoded(c)),
+    'three levels of nested ( in the query'],
+  ['Filter on an embedded resource', (c) => /(^|&)[A-Za-z_]\w*\.[A-Za-z_]\w*=/.test(decoded(c)),
+    'a dotted <embed>.<column>= parameter'],
   ['Spread embed (`...table(col)`)', (c) => /(select=|,|\()\.\.\./.test(decoded(c)),
     '... spread operator in a select list'],
   // PostgREST orders an embed with a dotted top-level parameter —
@@ -107,7 +125,14 @@ export const FEATURES = [
     'a bearer token is sent'],
   ['`Content-Range` asserted on the response', (c) => expectsHeader(c, 'content-range'),
     'the assertion checks Content-Range'],
+  ['`Vary` asserted on the response', (c) => expectsHeader(c, 'vary'), 'the assertion checks Vary'],
+  // Prints 0 / 0. The engine emits Server-Timing, but no extracted case
+  // asserts it, so this row records "not measured" rather than letting the
+  // header pass as covered.
+  ['`Server-Timing` asserted on the response', (c) => expectsHeader(c, 'server-timing'),
+    'the assertion checks Server-Timing'],
   ['`HEAD`', (c) => method(c) === 'HEAD', 'HEAD request'],
+  ['`OPTIONS`', (c) => method(c) === 'OPTIONS', 'OPTIONS request'],
   ['`PATCH`', (c) => method(c) === 'PATCH', 'PATCH request'],
   ['`PUT`', (c) => method(c) === 'PUT', 'PUT request'],
   ['`DELETE`', (c) => method(c) === 'DELETE', 'DELETE request'],
