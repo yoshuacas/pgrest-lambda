@@ -307,22 +307,52 @@ const AUDITED_DISCLOSURES = [
       + '11 data-representation cases still fail with it in place. But a reader is entitled to know '
       + 'that 23 of this wave\'s gains are configuration-enabled, and that on a database with '
       + '<code>pg_cast</code> the engine reads them from the catalog instead.'
+  },
+  {
+    title: 'The full-text-search feature row moved 6 cases on row order, not on text search',
+    body: 'The feature table reads 14 of 47 for <code>fts</code>/<code>plfts</code>/'
+      + '<code>phfts</code>/<code>wfts</code> in this run and read 8 of 47 in the previous '
+      + 'publication. None of that is a text search change. Six of those cases assert an unordered '
+      + 'result set and pass only on the runs where DSQL happens to return the rows in upstream\'s '
+      + 'sequence: <code>QuerySpec:75</code>, <code>:80</code>, <code>:338</code>, <code>:345</code>, '
+      + '<code>:382</code>, <code>:389</code>, plus <code>RpcSpec:985</code> and <code>:997</code>, '
+      + 'which the runner now files as order-dependent rather than as a missing configuration. Read '
+      + 'that row as "between 8 and 14 of 47". DSQL still ships one text search configuration, '
+      + '<code>simple</code>, and the 24 remaining failures in the gap are all its.'
+  },
+  {
+    title: 'The most important fix in this wave is invisible to this measurement',
+    body: '<code>buildAuthzFilter</code> in <code>src/rest/cedar.mjs</code> discarded every '
+      + '<code>forbid</code> in a policy set whenever any <code>permit</code> granted the table '
+      + 'unconditionally — in both policy orders, not intermittently — so a deployment whose '
+      + 'policies read "permit reads of this table, forbid the archived rows" served the archived '
+      + 'rows. It is fixed, with regression tests confirmed to fail against the old code. '
+      + '<strong>No case in this report exercises it</strong>, because no upstream PostgREST case '
+      + 'uses a Cedar <code>forbid</code>: upstream has no Cedar. It was found by reading the code '
+      + 'the Cedar equivalence measurement runs through, not by either measurement. Take it as a '
+      + 'limit on what a flat pass rate tells you about this wave, in both directions.'
   }
 ];
 
 // Why this results file and not another run of the same tree. The rule is in
 // compatreport/README.md: do not publish the run measured by the pass that wrote
-// the code, and prefer the middle of the observed range to the top of it. The
+// the code, and prefer the middle of the observed range to the top of it. Only
+// the second half is satisfiable for this tree — all four of its runs were
+// measured by the pass that wrote the code — so the note says so rather than
+// borrowing the credibility of an independent measurement it did not have. The
 // spread beside this note is computed; the reasoning is not, so it is editorial.
 const PUBLISHED_RUN_CHOICE =
-  'This report is built from the run an independent audit pass measured, not from the run the '
-  + 'pass that wrote the engine changes measured, and not from the highest run of the tree. Of the '
-  + 'four full-suite runs of this tree in the trend, the implementation pass\'s own run is the '
-  + 'lowest and two later runs are the highest; the published one sits between them and is the run '
-  + 'whose measurement was reported by a pass with no code in the result. Every one of the four is '
-  + 'in the trend above with its own row, so the spread is visible rather than curated, and every '
-  + 'case that differs between them is either an order-unspecified assertion or an upsert that '
-  + 'depends on sequence state a data-only fixture reload does not restore.';
+  'Four full-suite runs of this tree are in the trend above, one per Aurora DSQL cluster, scoring '
+  + '1068, 1068, 1074 and 1080. The published one is 1074, the midpoint of that range: the rule is '
+  + 'to prefer the middle of the observed spread to the top of it. Every one of the six pairwise '
+  + 'differences between the four is a row-order-unspecified case, checked case by case with no '
+  + 'exceptions, so the 12-case spread is storage order rather than engine behaviour. '
+  + 'One caveat this report will not paper over: unlike the previous publication, all four of '
+  + 'these runs were measured by the same pass that wrote the code in them, so the second '
+  + 'rule — publish a run measured by a pass with no code in the result — is not satisfied here. '
+  + 'The spread is published in full instead, and the id-matched comparison against the previous '
+  + 'publication is the check that does not depend on who ran it: the denominator is identical and '
+  + 'every case that changed verdict is order-only.';
 
 // Cedar equivalence is a second measurement of a different question. These lines
 // state what it is not, and are rendered with it every time.
