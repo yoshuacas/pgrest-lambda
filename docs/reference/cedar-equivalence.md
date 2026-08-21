@@ -11,7 +11,7 @@ pgrest-lambda authorizes with a Cedar policy layer instead (see [Authorization](
 
 > Where the outcome is decided by an access-control decision, does a Cedar policy set standing in for the `GRANT`/`REVOKE` statement produce the same client-visible outcome — same status, same body, same asserted headers?
 
-**Result: 23 of 28 equivalences hold. 26 of the 54 upstream cases have no fair equivalent at all.**
+**Result: 24 of 28 equivalences hold. 26 of the 54 upstream cases have no fair equivalent at all.**
 
 ## This is not a pass rate
 
@@ -27,7 +27,7 @@ The denominator is 28 — the derived cases, all of which ran. The 26 cases with
 
 ## What holds
 
-23 equivalences hold. All 23 are grant equivalences: upstream expects `200` because a role holds a privilege, and substituting a Cedar `permit` for the `GRANT` produces the same `200` and the same body.
+24 equivalences hold. 23 are grant equivalences: upstream expects `200` because a role holds a privilege, and substituting a Cedar `permit` for the `GRANT` produces the same `200` and the same body. The 24th is a denial — `Cedar:AuthSpec:41`, an anonymous call of a function `REVOKE`d from `PUBLIC`, which asserts the status alone and began holding once Cedar denials took upstream's `401`/`403` split (see below).
 
 | Derived cases | Upstream mechanism | Cedar mechanism |
 |---|---|---|
@@ -46,25 +46,24 @@ Three specifics worth stating plainly:
 - **The identity is not verified by the engine.** The conformance harness builds the API Gateway authorizer context by decoding the JWT payload, exactly as it does for the PostgREST measurement. So these cases measure the authorization decision downstream of identity, not the token check.
 - **Cedar's `Function` permits are per function name, not per overload.** Upstream's `GRANT` names `privileged_hello(text)`.
 
-## What diverges: the denial shape
+## What diverges: 4 denials, in two unrelated classes
 
-5 equivalences diverge, and all 5 have the same root cause.
+The first measurement of this page found 5 divergences with one root cause: the Cedar layer answered every denial `403`, where PostgREST answers `401` with `WWW-Authenticate: Bearer` for a caller that is anonymous. That was a wire-compatibility defect rather than a difference of opinion — `@supabase/supabase-js` reads `401` as "refresh the token and retry" — and the engine already made the same distinction for a real PostgreSQL `42501` in `src/rest/errors.mjs` (`authed ? 403 : 401`) while `src/rest/cedar.mjs` bypassed it.
 
-| Derived case | Upstream | pgrest-lambda + Cedar |
-|---|---|---|
-| `Cedar:AuthSpec:16` | `401`, body `{"code":"42501","message":"permission denied for table authors_only",…}`, header `WWW-Authenticate: Bearer` | `403`, body `{"code":"PGRST403","message":"Not authorized: role='anon' action='select' table='authors_only'…"}`, no `WWW-Authenticate` |
-| `Cedar:AuthSpec:41` | `401` | `403` |
-| `Cedar:AuthSpec:130` | `401` | `403` |
-| `Cedar:AuthSpec:135` | `401` | `403` |
-| `Cedar:ErrorSpec:123` | `401`, body `{"code":"22023","message":"role \"not existing\" does not exist"}` | `403`, body `{"code":"PGRST403",…}` |
+**That is now fixed.** Every Cedar denial goes through one `denyError()` helper that takes upstream's split. `Cedar:AuthSpec:41` holds as a result, and `Cedar:AuthSpec:16` gained the right status and the `WWW-Authenticate` header. 4 divergences remain, and they no longer share a cause:
 
-**Both mechanisms deny the request. They disagree on the shape of the denial.** For an anonymous caller PostgreSQL raises SQLSTATE `42501` and PostgREST answers `401` with `WWW-Authenticate: Bearer`, on the reasoning that an anonymous caller might succeed if it authenticated. Cedar answers `403` unconditionally.
+| Derived case | Kind | Upstream | pgrest-lambda + Cedar |
+|---|---|---|---|
+| `Cedar:AuthSpec:16` | `body` | `401` + `WWW-Authenticate: Bearer`, body `{"code":"42501","message":"permission denied for table authors_only",…}` | same `401` and same header; body `{"code":"PGRST403","message":"Not authorized: role='anon' action='select' table='authors_only'…"}` |
+| `Cedar:AuthSpec:130` | `identity-mapping` | `401` — the token carries no `role` claim, so PostgREST falls back to `db-anon-role` and denies an *anonymous* caller | `403` — the engine reads a role-less token as `authenticated` and denies an *authenticated* caller |
+| `Cedar:AuthSpec:135` | `identity-mapping` | `401`, same fallback (token carries `id` but no `role`) | `403`, same reading |
+| `Cedar:ErrorSpec:123` | `identity-mapping` | `401`, body `{"code":"22023","message":"role \"not existing\" does not exist"}` — `SET ROLE` fails before any privilege is consulted | `403`, body `{"code":"PGRST403",…}` — the role is simply one that holds no permit |
 
-The engine already has the correct mapping for a real PostgreSQL privilege error: `src/rest/errors.mjs` maps SQLSTATE `42501` to `authed ? 403 : 401`, and `src/rest/handler.mjs` passes `authed: role !== 'anon'`. `src/rest/cedar.mjs` does not use that path — every denial throws `403 PGRST403` directly — so the distinction the engine can already make is not made for a policy denial.
+The remaining single-case divergence is a body: **the engine names the policy set where PostgREST forwards the database's error.** Upstream reports SQLSTATE `42501` and `permission denied for table authors_only` because PostgreSQL raised it; a Cedar denial has no SQLSTATE, and reporting `42501` for a denial no database raised would be mimicry — it would tell an operator to look at `GRANT`s that do not decide anything here. This one is left diverging on purpose.
 
-Two of the five would still diverge on the body even if the status were fixed: `Cedar:AuthSpec:16` asserts the `42501` message text, and `Cedar:ErrorSpec:123` asserts `22023 role "not existing" does not exist`, which no policy engine produces — Cedar's principal set is open, so "role does not exist" and "role holds no grant" are the same outcome. `Cedar:AuthSpec:41`, `:130` and `:135` assert the status only and would hold.
+The three `identity-mapping` divergences are **not** denial-shape gaps, and the runner no longer labels them as such (`conformance/cedar/run.mjs` `divergenceKind`, keyed off `identityDiffers` in `conformance/cedar/equivalence-map.mjs`). Each side returns the correct status *for the identity it resolved*; the two sides resolve different identities. For `:130` and `:135` that is a real difference in the engine's auth contract — what role a token with no `role` claim gets — and changing it to close two equivalences would be tuning identity semantics for a score. For `ErrorSpec:123` no policy engine can close it: Cedar's principal set is open, so "role does not exist" and "role holds no grant" are indistinguishable (pinned by a unit test in `conformance/cedar/__tests__/policies.test.mjs`).
 
-This is the most useful finding on the page: **the Cedar layer reaches the same allow/deny decision as `SET ROLE` plus table privileges on this group, and reports a denial differently from PostgREST.**
+This remains the most useful finding on the page: **the Cedar layer reaches the same allow/deny decision as `SET ROLE` plus table privileges on this group.** It now also reports the denial with the same status and challenge header, and differs only in the error body and in who it thinks an unlabelled caller is.
 
 ## What has no fair equivalent
 
@@ -91,7 +90,7 @@ Two files, `conformance/cedar/policies/00-anon.cedar` and `10-roles.cedar`. They
 
 ### One hazard worth knowing
 
-Every table rule keys on `context.table`, never on `resource == PgrestLambda::Table::"…"`. A read, update or delete is authorized by partial evaluation with the resource left unknown, so an entity-literal `==` in the policy scope survives as a residual that the residual-to-SQL translator cannot express: the request fails with `500 PGRST000` instead of being allowed. Worse, `buildAuthzFilter` returns as soon as it sees a permit residual that is trivially true, so a policy set mixing the two styles can answer `200` or `500` for the same request depending on residual order. Both were observed while building this policy set. A unit test asserts no equivalence policy uses the entity-literal form.
+Every table rule keys on `context.table`, never on `resource == PgrestLambda::Table::"…"`. A read, update or delete is authorized by partial evaluation with the resource left unknown, so an entity-literal `==` in the policy scope survives as a residual that the residual-to-SQL translator cannot express: the request fails with `500 PGRST000` instead of being allowed. Building this policy set also turned up the reason that was worse than intermittent: `buildAuthzFilter` returned as soon as it saw a permit residual that was trivially true, which made the outcome depend on residual order and, in the same move, discarded every `forbid` in the policy set. That is fixed — forbids are now translated before any permit can end the scan — and the fix carries its own regression tests in `src/rest/__tests__/cedar.test.mjs` and `cedar.integration.test.mjs`. What remains true is the advice: key table rules on `context.table`. A unit test asserts no equivalence policy uses the entity-literal form.
 
 ## How to reproduce
 
@@ -115,8 +114,9 @@ node conformance/cedar/run.mjs --target dsql
 The runner writes `conformance/cedar/results/latest.json` plus a timestamped copy, and prints:
 
 ```
-23/28 equivalences hold, 26 upstream cases have no fair equivalent
-  diverges:   5  deny-status-401-vs-403
+24/28 equivalences hold, 26 upstream cases have no fair equivalent
+  diverges:   1  body
+  diverges:   3  identity-mapping
   no equivalent:   2  extraction-defect
   no equivalent:   5  session-identity-guc
   no equivalent:  16  jwt-verification
@@ -127,7 +127,7 @@ A single equivalence: `node conformance/cedar/run.mjs --target dsql --id Cedar:A
 
 Every derived case in this set is a read or an RPC call, so the run does not write to the fixtures; the runner refuses to start if a derived case ever would. That means it can share a cluster with the PostgREST measurement without disturbing it.
 
-The numbers on this page come from `conformance/cedar/results/latest.json` (run `2026-08-21T06:25:12Z`, commit `acd3b91`, target `dsql`). Three runs exist and all three produced the same 23 holds and the same 5 divergences — unlike the PostgREST measurement, this set has no row-order-dependent cases, so there is no run-to-run noise to allow for. The engine configuration is identical to `conformance/runner/run.mjs`'s except for `policies`, which points at the equivalence policy set instead of the shipped default; holding everything else constant is what makes the two measurements comparable case by case. The comparison itself is the PostgREST runner's own `compare()`, imported rather than reimplemented, so a private copy cannot drift into being laxer.
+The numbers on this page come from `conformance/cedar/results/latest.json` (run `2026-08-21T12:02:24Z`, commit `ebf0c88`, target `dsql`). Three earlier runs are kept beside it, and the difference between them and this one is code, not noise: the two runs at commit `acd3b91` measured the engine before Cedar denials took upstream's `401`/`403` split and both reported 23 holds with 5 `deny-status-401-vs-403` divergences. Unlike the PostgREST measurement, this set contains no row-order-dependent cases, so repeated runs of the same tree agree case for case and there is no run-to-run spread to allow for — which is why a changed number here is attributable to a changed engine. The engine configuration is identical to `conformance/runner/run.mjs`'s except for `policies`, which points at the equivalence policy set instead of the shipped default; holding everything else constant is what makes the two measurements comparable case by case. The comparison itself is the PostgREST runner's own `compare()`, imported rather than reimplemented, so a private copy cannot drift into being laxer.
 
 ## The caveat that matters most
 

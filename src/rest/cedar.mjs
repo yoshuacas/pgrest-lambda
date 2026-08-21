@@ -777,43 +777,84 @@ export function createCedar(config) {
     const permitConditions = [];
     const forbidConditions = [];
     let anyPermitGrantsAccess = false;
+    let permitIsUnconditional = false;
 
-    for (const policyId of response.nontrivialResiduals) {
-      const residual = response.residuals[policyId];
-      const effect = residual.effect;
-
-      for (const cond of residual.conditions || []) {
-        if (cond.kind !== 'when') continue;
-        let sql;
-        try {
-          sql = translateExpr(
-            cond.body, tempValues, context.table, schema,
-          );
-        } catch (err) {
-          if (err?.code === 'PGRST000' && !production) {
-            err.message =
-              `${err.message}\n` +
-              `  policy id: ${policyId}\n` +
-              `  policies loaded from: ${currentSourceKey()}`;
-          }
-          throw err;
+    // Translate one residual's `when` clauses, tagging a PGRST000 with the
+    // policy that produced it.
+    const sqlFor = (policyId, cond) => {
+      try {
+        return translateExpr(cond.body, tempValues, context.table, schema);
+      } catch (err) {
+        if (err?.code === 'PGRST000' && !production) {
+          err.message =
+            `${err.message}\n` +
+            `  policy id: ${policyId}\n` +
+            `  policies loaded from: ${currentSourceKey()}`;
         }
+        throw err;
+      }
+    };
+
+    const whenClauses = (policyId, effect) => {
+      const residual = response.residuals[policyId];
+      return residual.effect === effect
+        ? (residual.conditions || []).filter((c) => c.kind === 'when')
+        : [];
+    };
+
+    // Forbids first, and all of them, before any permit can conclude the scan.
+    //
+    // This used to be one loop over the residuals in whatever order Cedar
+    // returned them, and a permit whose residual translated to "unconditional"
+    // returned `{conditions: [], values: []}` on the spot. That discarded every
+    // forbid — the ones not yet visited, and the ones already collected. So a
+    // policy set as ordinary as `permit(... resource is PgrestLambda::Row) when
+    // { context.table == "public_posts" }` plus `forbid(...) when { resource has
+    // status && resource.status == "archived" }` returned archived rows, in
+    // either policy order. Cedar's own semantics are that a forbid always
+    // overrides a permit, so that was an authorization bypass, not a
+    // conservative approximation.
+    //
+    // A forbid whose residual is unconditional denies outright, and a forbid
+    // whose residual will not translate now raises PGRST000 where it previously
+    // could be skipped unnoticed. Both are the safe direction: the alternative
+    // is returning rows a forbid was written to hide.
+    for (const policyId of response.nontrivialResiduals) {
+      for (const cond of whenClauses(policyId, 'forbid')) {
+        const sql = sqlFor(policyId, cond);
+        if (sql === null) throw denyError(principal, action, context.table);
+        if (sql !== 'FALSE') forbidConditions.push(sql);
+      }
+    }
+
+    // Then permits. An unconditional permit ends this pass — nothing a later
+    // permit says can widen access that is already unrestricted, and not
+    // scanning further keeps a permit that would fail to translate from turning
+    // an allowed request into a 500. The forbids above are already collected.
+    const permitValuesFrom = tempValues.length;
+    for (const policyId of response.nontrivialResiduals) {
+      if (permitIsUnconditional) break;
+      for (const cond of whenClauses(policyId, 'permit')) {
+        const sql = sqlFor(policyId, cond);
         if (sql === null) {
-          if (effect === 'permit') {
-            return { conditions: [], values: [] };
-          }
-          if (effect === 'forbid') {
-            throw denyError(principal, action, context.table);
-          }
-        } else if (sql !== 'FALSE') {
-          if (effect === 'permit') {
-            permitConditions.push(sql);
-            anyPermitGrantsAccess = true;
-          } else if (effect === 'forbid') {
-            forbidConditions.push(sql);
-          }
+          permitIsUnconditional = true;
+          anyPermitGrantsAccess = true;
+          break;
+        }
+        if (sql !== 'FALSE') {
+          permitConditions.push(sql);
+          anyPermitGrantsAccess = true;
         }
       }
+    }
+
+    if (permitIsUnconditional) {
+      // Unrestricted OR anything is unrestricted, so the collected permit
+      // conditions go, and with them their bind values. Rolling back to
+      // `permitValuesFrom` is safe because permits were translated last, so
+      // nothing numbered after them.
+      permitConditions.length = 0;
+      tempValues.length = permitValuesFrom;
     }
 
     if (!anyPermitGrantsAccess && forbidConditions.length === 0) {

@@ -246,13 +246,16 @@ The `/_refresh` endpoint requires a JWT with `role=service_role`.
 
 ### PGRST403 — Cedar authorization denied
 
-| HTTP | Message |
-|------|---------|
-| 403 | `Permission denied` |
+| HTTP | When | Message |
+|------|------|---------|
+| 401 + `WWW-Authenticate: Bearer` | the caller is anonymous (`role=anon`) | `Permission denied` |
+| 403 | the caller is authenticated | `Permission denied` |
 
 Cedar evaluated the request and either found no matching `permit` policy or found a `forbid` that overrides. The `details` field carries the evaluated principal, action, and resource for debugging.
 
-**Client handling:** check your Cedar policies and the JWT's `role` / `sub` claims.
+The status depends on the caller, not on the policy: an anonymous caller might succeed if it authenticated, so it gets `401` and a challenge; an authenticated one will not, so it gets `403`. This is the same split a PostgreSQL privilege error (SQLSTATE `42501`) gets in `src/rest/errors.mjs`, and the same one PostgREST uses, which matters because `@supabase/supabase-js` treats `401` as "refresh the token and retry".
+
+**Client handling:** on `401`, sign in or refresh the token and retry once. On `403`, check your Cedar policies and the JWT's `role` / `sub` claims — retrying will not help.
 
 ---
 
@@ -425,6 +428,8 @@ async function pgrestFetch(path, options = {}) {
     case 'PGRST200':
       throw new BadRequestError(`Missing relationship: ${err.message}`);
     case 'PGRST403':
+      // 401 means the caller was anonymous: authenticating may grant it.
+      if (res.status === 401) throw new AuthError('Sign in and retry');
       throw new ForbiddenError('Permission denied by policy');
     case 'invalid_grant':
       throw new AuthError(err.error_description);
@@ -440,7 +445,8 @@ async function pgrestFetch(path, options = {}) {
 |------|-----------|-------|
 | PGRST000 (500) | ✓ | Transient server error — retry with backoff. |
 | PGRST100 (400) | ✗ | Fix the request before retrying. |
-| PGRST403 (403) | ✗ | Policy decision — retrying won't help. |
+| PGRST403 (401) | Conditional | Anonymous caller. Sign in or refresh the token, then retry once. |
+| PGRST403 (403) | ✗ | Policy decision on an authenticated caller — retrying won't help. |
 | 23505 (409) | Conditional | Retry with a different key, or upsert with `Prefer: resolution=merge-duplicates`. |
 | invalid_grant (401) | ✗ | Re-authenticate; refresh token is expired. |
 | 413 | ✗ | Reduce payload size. |

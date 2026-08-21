@@ -1050,6 +1050,64 @@ describe('buildAuthzFilter (row-level)', () => {
       'values should include "archived"');
   });
 
+  it('keeps the forbid when a permit grants the table unconditionally', () => {
+    // A permit scoped only by `context.table` leaves a residual that is
+    // unconditional once the context is known. buildAuthzFilter used to return
+    // no conditions at that point, discarding forbids collected and uncollected
+    // alike. Asserted in both policy orders because the old code leaked in
+    // both: the early return dropped the forbids it had already put aside.
+    const PUBLIC = `
+      permit(
+        principal, action == PgrestLambda::Action::"select",
+        resource is PgrestLambda::Row
+      ) when { context.table == "todos" };
+    `;
+    const FORBID = `
+      forbid(
+        principal, action == PgrestLambda::Action::"select",
+        resource is PgrestLambda::Row
+      ) when { resource has status && resource.status == "archived" };
+    `;
+    for (const [label, text] of [
+      ['permit first', PUBLIC + FORBID],
+      ['forbid first', FORBID + PUBLIC],
+    ]) {
+      cedar._setPolicies({ staticPolicies: text });
+      const result = cedar.buildAuthzFilter({
+        principal: { role: 'authenticated', userId: 'alice', email: '' },
+        action: 'select',
+        context: { table: 'todos' },
+        schema,
+        startParam: 1,
+      });
+      assert.match(result.conditions.join(' '), /NOT \(/,
+        `${label}: a forbid must survive an unconditional permit`);
+      assert.deepEqual(result.values, ['archived'], label);
+    }
+  });
+
+  it('does not restrict rows when only the unconditional permit applies', () => {
+    // The other half of the same change: dropping the early return must not
+    // start narrowing a read that no forbid touches.
+    cedar._setPolicies({
+      staticPolicies: `
+        permit(
+          principal, action == PgrestLambda::Action::"select",
+          resource is PgrestLambda::Row
+        ) when { context.table == "todos" };
+      `,
+    });
+    const result = cedar.buildAuthzFilter({
+      principal: { role: 'authenticated', userId: 'alice', email: '' },
+      action: 'select',
+      context: { table: 'todos' },
+      schema,
+      startParam: 1,
+    });
+    assert.deepEqual(result.conditions, []);
+    assert.deepEqual(result.values, []);
+  });
+
   it('multiple permit policies combine with OR', () => {
     cedar._setPolicies({ staticPolicies: TEAM_ACCESS_POLICY });
     const result = cedar.buildAuthzFilter({

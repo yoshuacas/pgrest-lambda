@@ -384,6 +384,91 @@ describe('Cedar integration — DELETE with forbid', () => {
 });
 
 // ================================================================
+// Cedar integration — forbid under an unconditional permit
+// ================================================================
+
+// The regression this pins. A permit that grants a whole table — the shape
+// anyone writes for "this table is public" — produces a residual that
+// translates to "unconditional", and buildAuthzFilter used to return
+// `{conditions: [], values: []}` the moment it saw one. That threw away every
+// forbid: the ones it had not reached yet and the ones it had already
+// collected. So this policy set returned archived rows in either policy order,
+// while Cedar's semantics are that a forbid always overrides a permit.
+//
+// Written against the HTTP boundary on purpose: the defect was invisible in the
+// decision (still 200) and visible only in the SQL, which is where the rows
+// come from.
+const PUBLIC_TODOS_WITH_FORBID = `
+permit(
+    principal,
+    action == PgrestLambda::Action::"select",
+    resource is PgrestLambda::Row
+) when {
+    context.table == "todos"
+};
+
+forbid(
+    principal,
+    action == PgrestLambda::Action::"select",
+    resource is PgrestLambda::Row
+) when {
+    resource has status && resource.status == "archived"
+};
+`;
+
+describe('Cedar integration — forbid under an unconditional permit', () => {
+  let handler;
+  let ctx;
+
+  beforeEach(() => {
+    ctx = createTestContext();
+    ctx.schemaCache._resetCache();
+    ctx.cedar._setPolicies({ staticPolicies: PUBLIC_TODOS_WITH_FORBID });
+    handler = createRestHandler(ctx).handler;
+  });
+
+  it('applies the forbid even though a permit grants the whole table',
+    async () => {
+      const mockPool = createMockPool();
+      ctx.db._setPool(mockPool);
+      ctx.schemaCache._resetCache();
+
+      const res = await handler(makeEvent({
+        method: 'GET', path: '/rest/v1/todos', role: 'anon', userId: '',
+      }));
+      assert.equal(res.statusCode, 200, 'the permit still grants the read');
+
+      const selectQuery = findDataQuery(mockPool.capturedQueries, 'SELECT');
+      assert.ok(selectQuery, 'should have captured a SELECT query');
+      assert.match(selectQuery.text, /NOT \(/,
+        'the forbid must reach the SQL, not be dropped by the permit');
+      assert.ok(selectQuery.values.includes('archived'),
+        'the forbid\'s bind value must be bound');
+    });
+
+  it('binds the forbid parameter at the number the SQL references', async () => {
+    // The fix rolls permit bind values back when a permit turns out
+    // unconditional. If that rollback took the forbid's values with it, or left
+    // a gap, PostgreSQL would reject the statement rather than return wrong
+    // rows — so the numbering is worth asserting directly.
+    const mockPool = createMockPool();
+    ctx.db._setPool(mockPool);
+    ctx.schemaCache._resetCache();
+
+    await handler(makeEvent({
+      method: 'GET', path: '/rest/v1/todos', role: 'anon', userId: '',
+    }));
+    const q = findDataQuery(mockPool.capturedQueries, 'SELECT');
+    const refs = [...q.text.matchAll(/\$(\d+)/g)].map((m) => Number(m[1]));
+    for (const n of refs) {
+      assert.ok(n >= 1 && n <= q.values.length,
+        `SQL references $${n} but only ${q.values.length} value(s) were bound`);
+    }
+    assert.equal(q.values[refs[refs.length - 1] - 1], 'archived');
+  });
+});
+
+// ================================================================
 // Cedar integration — custom public table
 // ================================================================
 

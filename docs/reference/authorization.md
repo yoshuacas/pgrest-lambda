@@ -153,7 +153,11 @@ The translator rejects these expressions with `PGRST000`. If a policy uses them 
 
 ### `PGRST403 — Not authorized`
 
-No `permit` granted the request, or a matching `forbid` denied it. The response body shape:
+No `permit` granted the request, or a matching `forbid` denied it.
+
+The HTTP status depends on the caller, not on which policy denied it: an anonymous caller (`role=anon`) gets **`401`** with `WWW-Authenticate: Bearer`, because authenticating might grant the request; an authenticated caller gets **`403`**, because it will not. This matches what PostgREST returns for a table privilege error and what `@supabase/supabase-js` expects — it reads `401` as "refresh the token and retry".
+
+The response body shape:
 
 ```json
 {

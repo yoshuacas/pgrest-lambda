@@ -257,10 +257,11 @@ describe('equivalence policy set: denial shape', () => {
   });
 
   it('does not depend on residual order for a granted read', () => {
-    // Same request twice through two instances: buildAuthzFilter returns
-    // early on the first trivially-true permit residual, so a policy set
-    // mixing Table-literal scopes with Row rules can answer 200 or 500 for
-    // the same request. This set must be stable.
+    // Same request through five instances. buildAuthzFilter no longer ends the
+    // scan on the first trivially-true permit residual, so the outcome is not
+    // residual-order dependent any more; this keeps checking that the set
+    // answers identically every time, which is what the equivalence numbers on
+    // this policy set rest on.
     for (let i = 0; i < 5; i++) {
       const cedar = makeCedar();
       const filter = cedar.buildAuthzFilter({
