@@ -36,49 +36,55 @@ Writes `compatreport/index.html` and prints the headline numbers, so a
 regeneration is verifiable from the terminal:
 
 ```
-history conformance/results/history.json: 12 run(s), baseline baseline 135/1153
-wrote /home/ec2-user/pgrest-lambda/compatreport/index.html (204,499 bytes)
-pass rate 1069/1358 = 78.7%  [extracted 1539, needs-config 2, skipped 35, blocked 129, out-of-scope 15]
-47 gap slugs, 27 DSQL drop families
-16 order-dependent failures kept as failures
-cedar equivalence (separate measurement, never added): 23/28 hold, 26 with no fair equivalent, 54 upstream cases covered and still all failing above
-same tree, 4 runs with these flags: 1066, 1069, 1073, 1073 of 1358 — published 1069
-vs baseline baseline: +934 passed, −729 failed, denominator +205
-id-matched vs baseline: +941 pass, -7 regress (1539 shared ids)
-id-matched vs eeb1ac9 independent re-measurement (same flags): +127 pass, -3 regress
-noise vs 5586e94 2026-08-21T10:54:57Z (same tree, same flags): 6 cases differ
+history conformance/results/history.json: 18 run(s), baseline baseline 135/1153
+wrote /home/ec2-user/pgrest-lambda/compatreport/index.html (208,010 bytes)
+pass rate 1074/1358 = 79.1%  [extracted 1539, needs-config 2, skipped 35, blocked 129, out-of-scope 15]
+48 gap slugs, 27 DSQL drop families
+13 order-dependent failures kept as failures
+cedar equivalence (separate measurement, never added): 24/28 hold, 26 with no fair equivalent, 54 upstream cases covered and still all failing above
+same tree, 4 runs with these flags: 1068, 1068, 1074, 1080 of 1358 — published 1074
+vs baseline baseline: +939 passed, −734 failed, denominator +205
+id-matched vs baseline: +946 pass, -7 regress (1539 shared ids)
+id-matched vs 68b09a4 2026-08-21T11:54:33Z (same flags): +8 pass, -1 regress
+noise vs 2488109 (same tree, same flags): 10 cases differ
 ```
 
-That 1,069 of 1,358 is the current published measurement, on commit `5586e94`;
-the previous published measurement was 945 of 1,285 on commit `eeb1ac9`. Four
-runs of the `5586e94` tree exist and they span 1,066 to 1,073 — the rule the
-published number follows is worth stating: when several runs of one tree
-disagree, publish one that was not measured by the pass that wrote the code, and
-prefer the middle of the range to the top of it. Here that rules out the 1,066
-(the implementation pass's own run) and the two 1,073s (tied highest), leaving
-1,069. Every run stays in the trend file with its own row, so the spread is
-visible instead of being read as progress, and the generator prints it: the
-`same tree` line above is computed from the trend, not written by hand.
+That 1,074 of 1,358 is the current published measurement, on tree `2488109`;
+the previous published measurement was 1,069 of the same 1,358 on commit
+`5586e94`. Four runs of the `2488109` tree exist and they span 1,068 to 1,080 —
+the rule the published number follows is worth stating: when several runs of one
+tree disagree, publish one that was not measured by the pass that wrote the code,
+and prefer the middle of the range to the top of it. Here that rules out the
+1,080 (highest) and leaves 1,074, the midpoint. Every run stays in the trend file
+with its own row, so the spread is visible instead of being read as progress, and
+the generator prints it: the `same tree` line above is computed from the trend,
+not written by hand.
+
+The 12-case spread is wider than the 1,069 → 1,074 difference between the two
+publications, which is the whole point of printing it. All 11 cases that changed
+verdict between them are `row-order-unspecified`, checked case by case, so the
+right reading of this wave is that the rate did not move.
 
 `--tree` is what makes that line possible. A results file records the commit the
 runner saw, which is not always the commit that ends up containing the code: a
 run measured on a working tree before the integration commit exists reports the
 previous commit. Passing `--tree` records which tree was measured, so the
 generator can tell a repeat measurement of the same code (noise) from a
-measurement of different code (progress). Without it, the 3-case difference
+measurement of different code (progress). Without it, a 12-case difference
 between two runs of one tree is presented as engine work.
 
 The `vs baseline` line is a totals difference across different runner flags, so
 it is not the claim the report leads with. The `id-matched` lines are: they match
 case ids between two result files and count movements in each direction
-separately, never netted. Against the baseline, 941 cases went from non-pass to
-pass and 7 went the other way. Against the comparable `eeb1ac9` run, 127 went to
-pass and 3 went the other way: `JsonOperatorSpec:248` and `QuerySpec:1265`,
-both order-only, plus `QuerySpec:521`, a false pass the engine stopped producing
+separately, never netted. Against the baseline, 946 cases went from non-pass to
+pass and 7 went the other way. Against the comparable `eeb1ac9` run, 134 went to
+pass and 5 went the other way: `JsonOperatorSpec:248`, `QuerySpec:571`,
+`QuerySpec:1265` and `EmbedDisambiguationSpec:278`, all order-only, plus
+`QuerySpec:521`, a false pass the engine stopped producing
 (it used to reject any unknown filter column, which happened to match upstream's
 400 for a case where returning rows is the correct answer on this database). None
-of the three is an engine regression, and that was checked rather than assumed:
-the two order-only cases move in both directions between runs of one tree, and
+of the five is an engine regression, and that was checked rather than assumed:
+the four order-only cases move in both directions between runs of one tree, and
 `QuerySpec:521` was read against upstream's own assertion. The same check on an
 earlier wave found `UpsertSpec:417`, which passes when `UpsertSpec` is re-run with
 `--reset-touched` — a mutation earlier in the same spec file changing the row a
@@ -391,7 +397,12 @@ top of `conformance/report/build-report.mjs`:
   only when the gap genuinely changed category, and when moving one *out* of
   `engine-fixable` say why in its `GAP_NOTES` entry: the label decides how much
   of the remaining work the report presents as workable, so a quiet relabel is a
-  way of shrinking the backlog without fixing anything.
+  way of shrinking the backlog without fixing anything. The same rule cuts the
+  other way for a gap this project owns: `harness-supplies-unverified-identity` is
+  a fidelity gap between the conformance harness and the deployed authorizer, and
+  it is deliberately in neither set, so it takes the default label and stays a
+  counted failure. Putting a gap of ours into `dsql-substitute-needed` would blame
+  DSQL for it; putting it into `OUT_OF_SCOPE_FAILURES` would lift the rate.
 - `GAP_NOTES` — one short explanation per large gap. Gaps without a note show
   only the measured symptom.
 - `AUDITED_DISCLOSURES` — what an adversarial audit of the published run found
@@ -438,9 +449,11 @@ rather than being hidden, so nothing disappears silently.
 - Add runs to the trend, never replace them. The rate has fallen between runs
   before and will again; a trend that only goes up is a trend somebody curated.
 - Two full runs of the same commit differ by a handful of cases. Measured: 547
-  and 550 on one tree, 943, 945 and 948 on another, and 1,066, 1,069, 1,073 and
-  1,073 on a third — a spread of 7 cases across four runs, disagreeing on about
-  10 to 13 of 1,539 in every tree measured so far. The cause is DSQL
+  and 550 on one tree, 943, 945 and 948 on another, 1,066, 1,069, 1,073 and 1,073
+  on a third, and 1,068, 1,068, 1,074 and 1,080 on a fourth — a spread of 7 cases
+  in the third tree and 12 in the fourth, disagreeing on 8 to 18 of 1,539 in every
+  tree measured so far. The spread is not shrinking as the engine improves; it
+  widens as more cases reach the point of returning rows at all. The cause is DSQL
   optimistic-concurrency conflicts during the fixture reload, the order the
   storage layer returns unordered rows in, and identity-sequence state a data-only
   reload cannot restore. Do not present a difference of that size as progress —
@@ -461,17 +474,22 @@ rather than being hidden, so nothing disappears silently.
   945 from a third run, and 945 published. The `5586e94` run did it again: 1,066
   from the pass that wrote the code, 1,073 and 1,073 from an audit pass, 1,069
   from that pass's last run, and 1,069 published — the two rules together leave
-  exactly one candidate, and it is not the flattering one.
+  exactly one candidate, and it is not the flattering one. The `2488109` run
+  measured 1,068, 1,068, 1,074 and 1,080 and published 1,074, the midpoint. When
+  the spread is wide enough to swallow the difference from the previous
+  publication, say so in the page rather than letting the reader infer progress:
+  every case that changed verdict between 1,069 and 1,074 is order-only.
 - Report what left the denominator. A case moved from `fail` to `blocked` or
   `out-of-scope` between two runs raises the rate without any engine work, so the
   report counts those moves and recomputes the rate with them added back as
   failures (945/1285 = 73.5% published, 945/1294 = 73.0% with all nine). The
-  published 1,069/1,358 run moves in the other direction: 74 cases *entered* its
-  denominator (60 from `blocked`, 14 from `needs-config`) and 1 left it
-  (`InsertSpec:171`, `fail` → `blocked`), so the strict denominator is 1,069/1,359
-  — still 78.7%. That is why the rate rose 5 points while the pass count rose 124.
+  published 1,074/1,358 run has the same denominator as the 1,069 before it — no
+  case entered or left it — so there is nothing to add back this time. The wave
+  before it moved 74 cases *into* the denominator (60 from `blocked`, 14 from
+  `needs-config`) and 1 out (`InsertSpec:171`, `fail` → `blocked`), which is why
+  that rate rose 5 points while the pass count rose 124.
 - A counterfactual rate is not a published rate. Reattributing the 60 cases that
-  entered the denominator would read 1,069/1,298 = 82.4%; it appears once, in the
+  entered the denominator would read 1,074/1,298 = 82.7%; it appears once, in the
   paragraph that explains the denominator, labelled as not the published number.
   Never quote it anywhere a reader could mistake it for the measurement.
 - A second measurement stays a second measurement. The Cedar equivalence score

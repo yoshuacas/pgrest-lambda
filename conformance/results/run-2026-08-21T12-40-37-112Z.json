@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-08-21T13:03:49Z",
+  "generatedAt": "2026-08-21T12:40:37Z",
   "target": "dsql",
-  "commit": "2488109",
+  "commit": "d11f6d6",
   "totals": {
     "total": 1539,
-    "passed": 1074,
-    "failed": 284,
+    "passed": 1080,
+    "failed": 278,
     "skipped": 35,
     "needsConfig": 2,
     "blocked": 129,
@@ -27,8 +27,8 @@
     },
     "filters": {
       "total": 240,
-      "passed": 133,
-      "failed": 81,
+      "passed": 135,
+      "failed": 79,
       "skipped": 1,
       "needsConfig": 0,
       "blocked": 25,
@@ -127,8 +127,8 @@
     },
     "preferences": {
       "total": 29,
-      "passed": 21,
-      "failed": 8,
+      "passed": 25,
+      "failed": 4,
       "skipped": 0,
       "needsConfig": 0,
       "blocked": 0,
@@ -268,12 +268,12 @@
     "unimplemented-feature-json-operators": 15,
     "no-custom-gucs": 15,
     "no-partitioned-tables": 14,
-    "row-order-unspecified": 13,
     "no-column-type": 11,
     "unimplemented-feature-insert": 11,
     "body-mismatch-update": 11,
     "header-mismatch-content-length": 10,
     "harness-supplies-unverified-identity": 7,
+    "row-order-unspecified": 7,
     "body-mismatch-upsert": 7,
     "no-foreign-keys": 6,
     "no-custom-types": 6,
@@ -2997,13 +2997,13 @@
       "id": "AsymmetricJwtSpec:29",
       "category": "auth",
       "status": "fail",
-      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
+      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
       "gap": "no-set-role",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -3013,13 +3013,13 @@
       "id": "AsymmetricJwtSpec:38",
       "category": "auth",
       "status": "fail",
-      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
+      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
       "gap": "no-set-role",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -3077,13 +3077,13 @@
       "id": "AudienceJwtSecretSpec:73",
       "category": "auth",
       "status": "fail",
-      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
+      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
       "gap": "no-set-role",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -3141,13 +3141,13 @@
       "id": "AudienceJwtSecretSpec:126",
       "category": "auth",
       "status": "fail",
-      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
+      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
       "gap": "no-set-role",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -3157,13 +3157,13 @@
       "id": "AudienceJwtSecretSpec:138",
       "category": "auth",
       "status": "fail",
-      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
+      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
       "gap": "no-set-role",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -3173,13 +3173,13 @@
       "id": "AudienceJwtSecretSpec:150",
       "category": "auth",
       "status": "fail",
-      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
+      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
       "gap": "no-set-role",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -3204,13 +3204,13 @@
       "id": "AudienceJwtSecretSpec:169",
       "category": "auth",
       "status": "fail",
-      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
+      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
       "gap": "no-set-role",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -3220,13 +3220,13 @@
       "id": "AudienceJwtSecretSpec:181",
       "category": "auth",
       "status": "fail",
-      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
+      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
       "gap": "no-set-role",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -3236,13 +3236,13 @@
       "id": "AudienceJwtSecretSpec:194",
       "category": "auth",
       "status": "fail",
-      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
+      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
       "gap": "no-set-role",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -3252,13 +3252,13 @@
       "id": "AudienceJwtSecretSpec:206",
       "category": "auth",
       "status": "fail",
-      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
+      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
       "gap": "no-set-role",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -3268,13 +3268,13 @@
       "id": "AudienceJwtSecretSpec:218",
       "category": "auth",
       "status": "fail",
-      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
+      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
       "gap": "no-set-role",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -3284,13 +3284,13 @@
       "id": "AudienceJwtSecretSpec:230",
       "category": "auth",
       "status": "fail",
-      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
+      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
       "gap": "no-set-role",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -3300,13 +3300,13 @@
       "id": "AudienceJwtSecretSpec:242",
       "category": "auth",
       "status": "fail",
-      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
+      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
       "gap": "no-set-role",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -3369,13 +3369,13 @@
       "id": "AuthSpec:45",
       "category": "auth",
       "status": "fail",
-      "reason": "Not authorized: role='postgrest_test_author' action='call' table='privileged_hello'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403\nbody (exact) mismatch:\n  expected: \"Privileged hello to jdoe\"\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='postgrest_test_author' action='call' table='privileged_hello'.\\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $: expected string \"Privileged hello to jdoe\", actual object {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='postgrest_test_author' action='call' table='privileged_hello'.\\nNo Cedar policy grants it. Loaded from /tmp/…",
+      "reason": "Not authorized: role='postgrest_test_author' action='call' table='privileged_hello'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403\nbody (exact) mismatch:\n  expected: \"Privileged hello to jdoe\"\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='postgrest_test_author' action='call' table='privileged_hello'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $: expected string \"Privileged hello to jdoe\", actual object {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='postgrest_test_author' action='call' table='privileged_hello'.\\nNo Cedar policy grants it. Loaded from /home…",
       "gap": "no-set-role",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='postgrest_test_author' action='call' table='privileged_hello'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='postgrest_test_author' action='call' table='privileged_hello'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -3417,13 +3417,13 @@
       "id": "AuthSpec:68",
       "category": "auth",
       "status": "fail",
-      "reason": "Not authorized: role='postgrest_test_author' action='call' table='reveal_big_jwt'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403\nbody (exact) mismatch:\n  expected: [{\"iss\":\"joe\",\"sub\":\"fun\",\"exp\":9999999999,\"nbf\":1300819380,\"iat\":1300819380,\"jti\":\"foo\",\"http://postgrest.com/foo\":true}]\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='postgrest_test_author' action='call' table='reveal_big_jwt'.\\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"iss\":\"joe\",\"sub\":\"fun\",\"exp\":9999999999,\"nbf\":1300819380,\"iat\":1300819380,\"jti\":\"foo\",\"http://postgrest.com/foo\":true}], actual object {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='postgrest_test_author' action='call' table='reveal_big_jwt'.\\nNo Cedar policy grants it. Loaded from /tmp/fi…",
+      "reason": "Not authorized: role='postgrest_test_author' action='call' table='reveal_big_jwt'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403\nbody (exact) mismatch:\n  expected: [{\"iss\":\"joe\",\"sub\":\"fun\",\"exp\":9999999999,\"nbf\":1300819380,\"iat\":1300819380,\"jti\":\"foo\",\"http://postgrest.com/foo\":true}]\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='postgrest_test_author' action='call' table='reveal_big_jwt'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"iss\":\"joe\",\"sub\":\"fun\",\"exp\":9999999999,\"nbf\":1300819380,\"iat\":1300819380,\"jti\":\"foo\",\"http://postgrest.com/foo\":true}], actual object {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='postgrest_test_author' action='call' table='reveal_big_jwt'.\\nNo Cedar policy grants it. Loaded from /home/e…",
       "gap": "no-set-role",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='postgrest_test_author' action='call' table='reveal_big_jwt'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='postgrest_test_author' action='call' table='reveal_big_jwt'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -3433,13 +3433,13 @@
       "id": "AuthSpec:73",
       "category": "auth",
       "status": "fail",
-      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
+      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
       "gap": "no-set-role",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -3449,13 +3449,13 @@
       "id": "AuthSpec:78",
       "category": "auth",
       "status": "fail",
-      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
+      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
       "gap": "no-set-role",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -3465,13 +3465,13 @@
       "id": "AuthSpec:84",
       "category": "auth",
       "status": "fail",
-      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
+      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
       "gap": "no-set-role",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -3481,13 +3481,13 @@
       "id": "AuthSpec:91",
       "category": "auth",
       "status": "fail",
-      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
+      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
       "gap": "no-set-role",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -3497,13 +3497,13 @@
       "id": "AuthSpec:96",
       "category": "auth",
       "status": "fail",
-      "reason": "the assertion rejects the token, but the harness decodes the JWT payload without verifying it, so the request reached the authorization layer and was denied by policy instead\nheader WWW-Authenticate: expected \"Bearer error=\\\"invalid_token\\\", error_description=\\\"Empty JWT is sent in Authorization header\\\"\", actual \"Bearer\"\nheader Content-Length: expected \"100\", actual \"251\"\nbody (exact) mismatch:\n  expected: {\"message\":\"Empty JWT is sent in Authorization header\",\"code\":\"PGRST301\",\"hint\":null,\"details\":null}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='anon' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.message: expected \"Empty JWT is sent in Authorization header\", actual \"Not authorized: role='anon' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md …\n  at $.code: expected \"PGRST301\", actual \"PGRST403\"",
+      "reason": "the assertion rejects the token, but the harness decodes the JWT payload without verifying it, so the request reached the authorization layer and was denied by policy instead\nheader WWW-Authenticate: expected \"Bearer error=\\\"invalid_token\\\", error_description=\\\"Empty JWT is sent in Authorization header\\\"\", actual \"Bearer\"\nheader Content-Length: expected \"100\", actual \"263\"\nbody (exact) mismatch:\n  expected: {\"message\":\"Empty JWT is sent in Authorization header\",\"code\":\"PGRST301\",\"hint\":null,\"details\":null}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='anon' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.message: expected \"Empty JWT is sent in Authorization header\", actual \"Not authorized: role='anon' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/autho…\n  at $.code: expected \"PGRST301\", actual \"PGRST403\"",
       "gap": "harness-supplies-unverified-identity",
       "actual": {
         "status": 401,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='anon' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='anon' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -3513,13 +3513,13 @@
       "id": "AuthSpec:108",
       "category": "auth",
       "status": "fail",
-      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 401, actual 403\nheader WWW-Authenticate: expected \"Bearer error=\\\"invalid_token\\\", error_description=\\\"JWT expired\\\"\", actual <absent>\nbody (exact) mismatch:\n  expected: {\"message\":\"JWT expired\",\"code\":\"PGRST303\",\"hint\":null,\"details\":null}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.message: expected \"JWT expired\", actual \"Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/…\n  at $.code: expected \"PGRST303\", actual \"PGRST403\"",
+      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 401, actual 403\nheader WWW-Authenticate: expected \"Bearer error=\\\"invalid_token\\\", error_description=\\\"JWT expired\\\"\", actual <absent>\nbody (exact) mismatch:\n  expected: {\"message\":\"JWT expired\",\"code\":\"PGRST303\",\"hint\":null,\"details\":null}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.message: expected \"JWT expired\", actual \"Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policie…\n  at $.code: expected \"PGRST303\", actual \"PGRST403\"",
       "gap": "no-set-role",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -3529,13 +3529,13 @@
       "id": "AuthSpec:119",
       "category": "auth",
       "status": "fail",
-      "reason": "the assertion rejects the token, but the harness decodes the JWT payload without verifying it, so the request reached the authorization layer and was denied by policy instead\nheader WWW-Authenticate: expected \"Bearer error=\\\"invalid_token\\\", error_description=\\\"Expected 3 parts in JWT; got 2\\\"\", actual \"Bearer\"\nbody (exact) mismatch:\n  expected: {\"message\":\"Expected 3 parts in JWT; got 2\",\"code\":\"PGRST301\",\"hint\":null,\"details\":null}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='anon' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.message: expected \"Expected 3 parts in JWT; got 2\", actual \"Not authorized: role='anon' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md …\n  at $.code: expected \"PGRST301\", actual \"PGRST403\"",
+      "reason": "the assertion rejects the token, but the harness decodes the JWT payload without verifying it, so the request reached the authorization layer and was denied by policy instead\nheader WWW-Authenticate: expected \"Bearer error=\\\"invalid_token\\\", error_description=\\\"Expected 3 parts in JWT; got 2\\\"\", actual \"Bearer\"\nbody (exact) mismatch:\n  expected: {\"message\":\"Expected 3 parts in JWT; got 2\",\"code\":\"PGRST301\",\"hint\":null,\"details\":null}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='anon' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.message: expected \"Expected 3 parts in JWT; got 2\", actual \"Not authorized: role='anon' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/autho…\n  at $.code: expected \"PGRST301\", actual \"PGRST403\"",
       "gap": "harness-supplies-unverified-identity",
       "actual": {
         "status": 401,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='anon' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='anon' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -3545,13 +3545,13 @@
       "id": "AuthSpec:130",
       "category": "auth",
       "status": "fail",
-      "reason": "Not authorized: role='authenticated' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 401, actual 403",
+      "reason": "Not authorized: role='authenticated' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 401, actual 403",
       "gap": "no-set-role",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='authenticated' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='authenticated' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -3561,13 +3561,13 @@
       "id": "AuthSpec:135",
       "category": "auth",
       "status": "fail",
-      "reason": "Not authorized: role='authenticated' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 401, actual 403",
+      "reason": "Not authorized: role='authenticated' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 401, actual 403",
       "gap": "no-set-role",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='authenticated' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='authenticated' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -3577,13 +3577,13 @@
       "id": "AuthSpec:142",
       "category": "auth",
       "status": "fail",
-      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
+      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
       "gap": "no-set-role",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -3593,13 +3593,13 @@
       "id": "AuthSpec:152",
       "category": "auth",
       "status": "fail",
-      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 401, actual 403\nbody (exact) mismatch:\n  expected: {\"code\":\"PGRST303\",\"details\":null,\"hint\":null,\"message\":\"The JWT 'exp' claim must be a number\"}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.code: expected \"PGRST303\", actual \"PGRST403\"\n  at $.message: expected \"The JWT 'exp' claim must be a number\", actual \"Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/…",
+      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 401, actual 403\nbody (exact) mismatch:\n  expected: {\"code\":\"PGRST303\",\"details\":null,\"hint\":null,\"message\":\"The JWT 'exp' claim must be a number\"}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.code: expected \"PGRST303\", actual \"PGRST403\"\n  at $.message: expected \"The JWT 'exp' claim must be a number\", actual \"Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policie…",
       "gap": "no-set-role",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -3609,13 +3609,13 @@
       "id": "AuthSpec:164",
       "category": "auth",
       "status": "fail",
-      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 401, actual 403\nbody (exact) mismatch:\n  expected: {\"code\":\"PGRST303\",\"details\":null,\"hint\":null,\"message\":\"The JWT 'nbf' claim must be a number\"}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.code: expected \"PGRST303\", actual \"PGRST403\"\n  at $.message: expected \"The JWT 'nbf' claim must be a number\", actual \"Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/…",
+      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 401, actual 403\nbody (exact) mismatch:\n  expected: {\"code\":\"PGRST303\",\"details\":null,\"hint\":null,\"message\":\"The JWT 'nbf' claim must be a number\"}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.code: expected \"PGRST303\", actual \"PGRST403\"\n  at $.message: expected \"The JWT 'nbf' claim must be a number\", actual \"Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policie…",
       "gap": "no-set-role",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -3625,13 +3625,13 @@
       "id": "AuthSpec:176",
       "category": "auth",
       "status": "fail",
-      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 401, actual 403\nbody (exact) mismatch:\n  expected: {\"code\":\"PGRST303\",\"details\":null,\"hint\":null,\"message\":\"The JWT 'iat' claim must be a number\"}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.code: expected \"PGRST303\", actual \"PGRST403\"\n  at $.message: expected \"The JWT 'iat' claim must be a number\", actual \"Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/…",
+      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 401, actual 403\nbody (exact) mismatch:\n  expected: {\"code\":\"PGRST303\",\"details\":null,\"hint\":null,\"message\":\"The JWT 'iat' claim must be a number\"}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.code: expected \"PGRST303\", actual \"PGRST403\"\n  at $.message: expected \"The JWT 'iat' claim must be a number\", actual \"Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policie…",
       "gap": "no-set-role",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -3641,13 +3641,13 @@
       "id": "AuthSpec:188",
       "category": "auth",
       "status": "fail",
-      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 401, actual 403\nbody (exact) mismatch:\n  expected: {\"code\":\"PGRST303\",\"details\":null,\"hint\":null,\"message\":\"The JWT 'aud' claim must be a string or an array of strings\"}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.code: expected \"PGRST303\", actual \"PGRST403\"\n  at $.message: expected \"The JWT 'aud' claim must be a string or an array of strings\", actual \"Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/…",
+      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 401, actual 403\nbody (exact) mismatch:\n  expected: {\"code\":\"PGRST303\",\"details\":null,\"hint\":null,\"message\":\"The JWT 'aud' claim must be a string or an array of strings\"}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.code: expected \"PGRST303\", actual \"PGRST403\"\n  at $.message: expected \"The JWT 'aud' claim must be a string or an array of strings\", actual \"Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policie…",
       "gap": "no-set-role",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -3657,13 +3657,13 @@
       "id": "AuthSpec:200",
       "category": "auth",
       "status": "fail",
-      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 401, actual 403\nbody (exact) mismatch:\n  expected: {\"code\":\"PGRST303\",\"details\":null,\"hint\":null,\"message\":\"The JWT 'aud' claim must be a string or an array of strings\"}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.code: expected \"PGRST303\", actual \"PGRST403\"\n  at $.message: expected \"The JWT 'aud' claim must be a string or an array of strings\", actual \"Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/…",
+      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 401, actual 403\nbody (exact) mismatch:\n  expected: {\"code\":\"PGRST303\",\"details\":null,\"hint\":null,\"message\":\"The JWT 'aud' claim must be a string or an array of strings\"}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.code: expected \"PGRST303\", actual \"PGRST403\"\n  at $.message: expected \"The JWT 'aud' claim must be a string or an array of strings\", actual \"Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policie…",
       "gap": "no-set-role",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -3673,13 +3673,13 @@
       "id": "AuthSpec:209",
       "category": "auth",
       "status": "fail",
-      "reason": "Not authorized: role='authenticated' action='call' table='get_current_user'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403\nbody (exact) mismatch:\n  expected: \"postgrest_test_author\"\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='authenticated' action='call' table='get_current_user'.\\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $: expected string \"postgrest_test_author\", actual object {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='authenticated' action='call' table='get_current_user'.\\nNo Cedar policy grants it. Loaded from /tmp/final2/t…",
+      "reason": "Not authorized: role='authenticated' action='call' table='get_current_user'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403\nbody (exact) mismatch:\n  expected: \"postgrest_test_author\"\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='authenticated' action='call' table='get_current_user'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $: expected string \"postgrest_test_author\", actual object {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='authenticated' action='call' table='get_current_user'.\\nNo Cedar policy grants it. Loaded from /home/ec2-use…",
       "gap": "no-set-role",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='authenticated' action='call' table='get_current_user'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='authenticated' action='call' table='get_current_user'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -3689,13 +3689,13 @@
       "id": "AuthSpec:218",
       "category": "auth",
       "status": "fail",
-      "reason": "Not authorized: role='authenticated' action='call' table='get_current_user'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403\nbody (exact) mismatch:\n  expected: \"postgrest_test_default_role\"\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='authenticated' action='call' table='get_current_user'.\\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $: expected string \"postgrest_test_default_role\", actual object {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='authenticated' action='call' table='get_current_user'.\\nNo Cedar policy grants it. Loaded from /tmp/final2/t…",
+      "reason": "Not authorized: role='authenticated' action='call' table='get_current_user'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403\nbody (exact) mismatch:\n  expected: \"postgrest_test_default_role\"\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='authenticated' action='call' table='get_current_user'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $: expected string \"postgrest_test_default_role\", actual object {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='authenticated' action='call' table='get_current_user'.\\nNo Cedar policy grants it. Loaded from /home/ec2-use…",
       "gap": "no-set-role",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='authenticated' action='call' table='get_current_user'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='authenticated' action='call' table='get_current_user'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -3705,13 +3705,13 @@
       "id": "AuthSpec:227",
       "category": "auth",
       "status": "fail",
-      "reason": "Not authorized: role='authenticated' action='call' table='get_current_user'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 400, actual 403\nbody (exact) mismatch:\n  expected: {\"hint\":\"Please contact administrator\",\"details\":null,\"code\":\"P0001\",\"message\":\"Disabled ID --> 3\"}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='authenticated' action='call' table='get_current_user'.\\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.hint: expected string \"Please contact administrator\", actual null null\n  at $.code: expected \"P0001\", actual \"PGRST403\"\n  at $.message: expected \"Disabled ID --> 3\", actual \"Not authorized: role='authenticated' action='call' table='get_current_user'.\\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/author…",
+      "reason": "Not authorized: role='authenticated' action='call' table='get_current_user'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 400, actual 403\nbody (exact) mismatch:\n  expected: {\"hint\":\"Please contact administrator\",\"details\":null,\"code\":\"P0001\",\"message\":\"Disabled ID --> 3\"}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='authenticated' action='call' table='get_current_user'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.hint: expected string \"Please contact administrator\", actual null null\n  at $.code: expected \"P0001\", actual \"PGRST403\"\n  at $.message: expected \"Disabled ID --> 3\", actual \"Not authorized: role='authenticated' action='call' table='get_current_user'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See…",
       "gap": "no-set-role",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='authenticated' action='call' table='get_current_user'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='authenticated' action='call' table='get_current_user'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -3721,13 +3721,13 @@
       "id": "AuthSpec:236",
       "category": "auth",
       "status": "fail",
-      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
+      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
       "gap": "no-set-role",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -3737,13 +3737,13 @@
       "id": "AuthSpec:238",
       "category": "auth",
       "status": "fail",
-      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
+      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
       "gap": "no-set-role",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -3753,13 +3753,13 @@
       "id": "BinaryJwtSecretSpec:23",
       "category": "auth",
       "status": "fail",
-      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
+      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
       "gap": "no-set-role",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -6208,15 +6208,15 @@
     {
       "id": "EmbedDisambiguationSpec:278",
       "category": "embedding",
-      "status": "fail",
-      "reason": "the same rows came back in a different order; DSQL does not guarantee the physical order this assertion depends on\nbody (exact) mismatch — same rows, different order:\n  expected: [{\"escapeId\":{\"so6meIdColumn\":1}},{\"escapeId\":{\"so6meIdColumn\":3}},{\"escapeId\":{\"so6meIdColumn\":5}}]\n  actual:   [{\"escapeId\":{\"so6meIdColumn\":5}},{\"escapeId\":{\"so6meIdColumn\":3}},{\"escapeId\":{\"so6meIdColumn\":1}}]\n  at $[0].escapeId.so6meIdColumn: expected 1, actual 5\n  at $[2].escapeId.so6meIdColumn: expected 5, actual 1",
-      "gap": "row-order-unspecified",
+      "status": "pass",
+      "reason": null,
+      "gap": null,
       "actual": {
         "status": 200,
         "body": [
           {
             "escapeId": {
-              "so6meIdColumn": 5
+              "so6meIdColumn": 1
             }
           },
           {
@@ -6226,7 +6226,7 @@
           },
           {
             "escapeId": {
-              "so6meIdColumn": 1
+              "so6meIdColumn": 5
             }
           }
         ]
@@ -8406,13 +8406,13 @@
       "id": "ErrorSpec:53",
       "category": "errors",
       "status": "fail",
-      "reason": "the assertion rejects the token, but the harness decodes the JWT payload without verifying it, so the request reached the authorization layer and was denied by policy instead\nheader Proxy-Status: expected \"PostgREST; error=PGRST301\", actual \"PostgREST; error=PGRST403\"\nheader Content-Length: expected \"89\", actual \"251\"\nbody (exact) mismatch:\n  expected: {\"message\":\"Expected 3 parts in JWT; got 2\",\"code\":\"PGRST301\",\"hint\":null,\"details\":null}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='anon' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.message: expected \"Expected 3 parts in JWT; got 2\", actual \"Not authorized: role='anon' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md …\n  at $.code: expected \"PGRST301\", actual \"PGRST403\"",
+      "reason": "the assertion rejects the token, but the harness decodes the JWT payload without verifying it, so the request reached the authorization layer and was denied by policy instead\nheader Proxy-Status: expected \"PostgREST; error=PGRST301\", actual \"PostgREST; error=PGRST403\"\nheader Content-Length: expected \"89\", actual \"263\"\nbody (exact) mismatch:\n  expected: {\"message\":\"Expected 3 parts in JWT; got 2\",\"code\":\"PGRST301\",\"hint\":null,\"details\":null}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='anon' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.message: expected \"Expected 3 parts in JWT; got 2\", actual \"Not authorized: role='anon' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/autho…\n  at $.code: expected \"PGRST301\", actual \"PGRST403\"",
       "gap": "harness-supplies-unverified-identity",
       "actual": {
         "status": 401,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='anon' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='anon' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -8502,13 +8502,13 @@
       "id": "ErrorSpec:110",
       "category": "errors",
       "status": "fail",
-      "reason": "the assertion rejects the token, but the harness decodes the JWT payload without verifying it, so the request reached the authorization layer and was denied by policy instead\nstatus: expected 401, actual 403\nbody (exact) mismatch:\n  expected: {\"code\":\"PGRST301\",\"details\":\"None of the keys was able to decode the JWT\",\"hint\":null,\"message\":\"No suitable key or wrong key type\"}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='authenticated' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.code: expected \"PGRST301\", actual \"PGRST403\"\n  at $.details: expected string \"None of the keys was able to decode the JWT\", actual null null\n  at $.message: expected \"No suitable key or wrong key type\", actual \"Not authorized: role='authenticated' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authoriz…",
+      "reason": "the assertion rejects the token, but the harness decodes the JWT payload without verifying it, so the request reached the authorization layer and was denied by policy instead\nstatus: expected 401, actual 403\nbody (exact) mismatch:\n  expected: {\"code\":\"PGRST301\",\"details\":\"None of the keys was able to decode the JWT\",\"hint\":null,\"message\":\"No suitable key or wrong key type\"}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='authenticated' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.code: expected \"PGRST301\", actual \"PGRST403\"\n  at $.details: expected string \"None of the keys was able to decode the JWT\", actual null null\n  at $.message: expected \"No suitable key or wrong key type\", actual \"Not authorized: role='authenticated' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See d…",
       "gap": "harness-supplies-unverified-identity",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='authenticated' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='authenticated' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -8518,13 +8518,13 @@
       "id": "ErrorSpec:123",
       "category": "errors",
       "status": "fail",
-      "reason": "Not authorized: role='not existing' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 401, actual 403\nbody (exact) mismatch:\n  expected: {\"code\":\"22023\",\"details\":null,\"hint\":null,\"message\":\"role \\\"not existing\\\" does not exist\"}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='not existing' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.code: expected \"22023\", actual \"PGRST403\"\n  at $.message: expected \"role \\\"not existing\\\" does not exist\", actual \"Not authorized: role='not existing' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authoriza…",
+      "reason": "Not authorized: role='not existing' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 401, actual 403\nbody (exact) mismatch:\n  expected: {\"code\":\"22023\",\"details\":null,\"hint\":null,\"message\":\"role \\\"not existing\\\" does not exist\"}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='not existing' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.code: expected \"22023\", actual \"PGRST403\"\n  at $.message: expected \"role \\\"not existing\\\" does not exist\", actual \"Not authorized: role='not existing' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See do…",
       "gap": "no-set-role",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='not existing' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='not existing' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -8534,13 +8534,13 @@
       "id": "ErrorSpec:138",
       "category": "errors",
       "status": "fail",
-      "reason": "Not authorized: role='authenticated' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 401, actual 403\nbody (exact) mismatch:\n  expected: {\"code\":\"PGRST303\",\"details\":null,\"hint\":null,\"message\":\"JWT expired\"}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='authenticated' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.code: expected \"PGRST303\", actual \"PGRST403\"\n  at $.message: expected \"JWT expired\", actual \"Not authorized: role='authenticated' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authoriz…",
+      "reason": "Not authorized: role='authenticated' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 401, actual 403\nbody (exact) mismatch:\n  expected: {\"code\":\"PGRST303\",\"details\":null,\"hint\":null,\"message\":\"JWT expired\"}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='authenticated' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.code: expected \"PGRST303\", actual \"PGRST403\"\n  at $.message: expected \"JWT expired\", actual \"Not authorized: role='authenticated' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See d…",
       "gap": "no-set-role",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='authenticated' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='authenticated' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -8550,13 +8550,13 @@
       "id": "ErrorSpec:152",
       "category": "errors",
       "status": "fail",
-      "reason": "Not authorized: role='authenticated' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 401, actual 403\nbody (exact) mismatch:\n  expected: {\"code\":\"PGRST303\",\"details\":null,\"hint\":null,\"message\":\"JWT not yet valid\"}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='authenticated' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.code: expected \"PGRST303\", actual \"PGRST403\"\n  at $.message: expected \"JWT not yet valid\", actual \"Not authorized: role='authenticated' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authoriz…",
+      "reason": "Not authorized: role='authenticated' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 401, actual 403\nbody (exact) mismatch:\n  expected: {\"code\":\"PGRST303\",\"details\":null,\"hint\":null,\"message\":\"JWT not yet valid\"}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='authenticated' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.code: expected \"PGRST303\", actual \"PGRST403\"\n  at $.message: expected \"JWT not yet valid\", actual \"Not authorized: role='authenticated' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See d…",
       "gap": "no-set-role",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='authenticated' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='authenticated' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -8566,13 +8566,13 @@
       "id": "ErrorSpec:166",
       "category": "errors",
       "status": "fail",
-      "reason": "Not authorized: role='authenticated' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 401, actual 403\nbody (exact) mismatch:\n  expected: {\"code\":\"PGRST303\",\"details\":null,\"hint\":null,\"message\":\"JWT issued at future\"}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='authenticated' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.code: expected \"PGRST303\", actual \"PGRST403\"\n  at $.message: expected \"JWT issued at future\", actual \"Not authorized: role='authenticated' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authoriz…",
+      "reason": "Not authorized: role='authenticated' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 401, actual 403\nbody (exact) mismatch:\n  expected: {\"code\":\"PGRST303\",\"details\":null,\"hint\":null,\"message\":\"JWT issued at future\"}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='authenticated' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.code: expected \"PGRST303\", actual \"PGRST403\"\n  at $.message: expected \"JWT issued at future\", actual \"Not authorized: role='authenticated' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See d…",
       "gap": "no-set-role",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='authenticated' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='authenticated' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -8598,13 +8598,13 @@
       "id": "ErrorSpec:193",
       "category": "errors",
       "status": "fail",
-      "reason": "the assertion rejects the token, but the harness decodes the JWT payload without verifying it, so the request reached the authorization layer and was denied by policy instead\nbody (exact) mismatch:\n  expected: {\"code\":\"PGRST301\",\"details\":null,\"hint\":null,\"message\":\"Expected 3 parts in JWT; got 2\"}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='anon' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.code: expected \"PGRST301\", actual \"PGRST403\"\n  at $.message: expected \"Expected 3 parts in JWT; got 2\", actual \"Not authorized: role='anon' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md …",
+      "reason": "the assertion rejects the token, but the harness decodes the JWT payload without verifying it, so the request reached the authorization layer and was denied by policy instead\nbody (exact) mismatch:\n  expected: {\"code\":\"PGRST301\",\"details\":null,\"hint\":null,\"message\":\"Expected 3 parts in JWT; got 2\"}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='anon' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.code: expected \"PGRST301\", actual \"PGRST403\"\n  at $.message: expected \"Expected 3 parts in JWT; got 2\", actual \"Not authorized: role='anon' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/autho…",
       "gap": "harness-supplies-unverified-identity",
       "actual": {
         "status": 401,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='anon' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='anon' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -8614,13 +8614,13 @@
       "id": "ErrorSpec:205",
       "category": "errors",
       "status": "fail",
-      "reason": "the assertion rejects the token, but the harness decodes the JWT payload without verifying it, so the request reached the authorization layer and was denied by policy instead\nbody (exact) mismatch:\n  expected: {\"code\":\"PGRST301\",\"details\":null,\"hint\":null,\"message\":\"JWT cryptographic operation failed\"}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='anon' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.code: expected \"PGRST301\", actual \"PGRST403\"\n  at $.message: expected \"JWT cryptographic operation failed\", actual \"Not authorized: role='anon' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md …",
+      "reason": "the assertion rejects the token, but the harness decodes the JWT payload without verifying it, so the request reached the authorization layer and was denied by policy instead\nbody (exact) mismatch:\n  expected: {\"code\":\"PGRST301\",\"details\":null,\"hint\":null,\"message\":\"JWT cryptographic operation failed\"}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='anon' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.code: expected \"PGRST301\", actual \"PGRST403\"\n  at $.message: expected \"JWT cryptographic operation failed\", actual \"Not authorized: role='anon' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/autho…",
       "gap": "harness-supplies-unverified-identity",
       "actual": {
         "status": 401,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='anon' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='anon' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -8630,13 +8630,13 @@
       "id": "ErrorSpec:217",
       "category": "errors",
       "status": "fail",
-      "reason": "the assertion rejects the token, but the harness decodes the JWT payload without verifying it, so the request reached the authorization layer and was denied by policy instead\nstatus: expected 401, actual 403\nbody (exact) mismatch:\n  expected: {\"code\":\"PGRST301\",\"details\":\"JWT is unsecured but expected 'alg' was not 'none'\",\"hint\":null,\"message\":\"Wrong or unsupported encoding algorithm\"}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='authenticated' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.code: expected \"PGRST301\", actual \"PGRST403\"\n  at $.details: expected string \"JWT is unsecured but expected 'alg' was not 'none'\", actual null null\n  at $.message: expected \"Wrong or unsupported encoding algorithm\", actual \"Not authorized: role='authenticated' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authoriz…",
+      "reason": "the assertion rejects the token, but the harness decodes the JWT payload without verifying it, so the request reached the authorization layer and was denied by policy instead\nstatus: expected 401, actual 403\nbody (exact) mismatch:\n  expected: {\"code\":\"PGRST301\",\"details\":\"JWT is unsecured but expected 'alg' was not 'none'\",\"hint\":null,\"message\":\"Wrong or unsupported encoding algorithm\"}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='authenticated' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.code: expected \"PGRST301\", actual \"PGRST403\"\n  at $.details: expected string \"JWT is unsecured but expected 'alg' was not 'none'\", actual null null\n  at $.message: expected \"Wrong or unsupported encoding algorithm\", actual \"Not authorized: role='authenticated' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See d…",
       "gap": "harness-supplies-unverified-identity",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='authenticated' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='authenticated' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -10095,7 +10095,7 @@
       "id": "InsertSpec:716",
       "category": "insert",
       "status": "fail",
-      "reason": "status: expected 401, actual 201\nbody (exact) mismatch:\n  expected: {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}\n  actual:   [{\"article_id\":2,\"user_id\":2,\"created_at\":\"2026-08-21T12:56:08.369588\"}]\n  at $: expected object {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}, actual array [{\"article_id\":2,\"user_id\":2,\"created_at\":\"2026-08-21T12:56:08.369588\"}]",
+      "reason": "status: expected 401, actual 201\nbody (exact) mismatch:\n  expected: {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}\n  actual:   [{\"article_id\":2,\"user_id\":2,\"created_at\":\"2026-08-21T12:33:04.007247\"}]\n  at $: expected object {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}, actual array [{\"article_id\":2,\"user_id\":2,\"created_at\":\"2026-08-21T12:33:04.007247\"}]",
       "gap": "no-set-role",
       "actual": {
         "status": 201,
@@ -10103,7 +10103,7 @@
           {
             "article_id": 2,
             "user_id": 2,
-            "created_at": "2026-08-21T12:56:08.369588"
+            "created_at": "2026-08-21T12:33:04.007247"
           }
         ]
       }
@@ -10112,7 +10112,7 @@
       "id": "InsertSpec:724",
       "category": "insert",
       "status": "fail",
-      "reason": "status: expected 401, actual 201\nbody (exact) mismatch:\n  expected: {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}\n  actual:   [{\"article_id\":3,\"user_id\":1,\"created_at\":\"2026-08-21T12:56:08.38679\"}]\n  at $: expected object {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}, actual array [{\"article_id\":3,\"user_id\":1,\"created_at\":\"2026-08-21T12:56:08.38679\"}]",
+      "reason": "status: expected 401, actual 201\nbody (exact) mismatch:\n  expected: {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}\n  actual:   [{\"article_id\":3,\"user_id\":1,\"created_at\":\"2026-08-21T12:33:04.024911\"}]\n  at $: expected object {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}, actual array [{\"article_id\":3,\"user_id\":1,\"created_at\":\"2026-08-21T12:33:04.024911\"}]",
       "gap": "no-set-role",
       "actual": {
         "status": 201,
@@ -10120,7 +10120,7 @@
           {
             "article_id": 3,
             "user_id": 1,
-            "created_at": "2026-08-21T12:56:08.38679"
+            "created_at": "2026-08-21T12:33:04.024911"
           }
         ]
       }
@@ -11557,13 +11557,13 @@
       "id": "JwtCacheSpec:59",
       "category": "auth",
       "status": "fail",
-      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
+      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
       "gap": "no-set-role",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -11573,13 +11573,13 @@
       "id": "JwtCacheSpec:60",
       "category": "auth",
       "status": "fail",
-      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
+      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
       "gap": "no-set-role",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -12250,13 +12250,13 @@
       "id": "NoAnonSpec:18",
       "category": "auth",
       "status": "fail",
-      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
+      "reason": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403",
       "gap": "no-set-role",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='postgrest_test_author' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -14862,22 +14862,22 @@
       "id": "QuerySpec:436",
       "category": "filters",
       "status": "fail",
-      "reason": "body (exact) mismatch:\n  expected: [{\"text_search\":\"It's kind of fun to do the impossible\"},{\"text_search\":\"But also fun to do what is possible\"},{\"text_search\":\"C'est un peu amusant de faire l'impossible\"},{\"text_search\":\"Es ist eine Art Spaß, das Unmögliche zu machen\"}]\n  actual:   [{\"text_search\":\"Es ist eine Art Spaß, das Unmögliche zu machen\"},{\"text_search\":\"It's kind of fun to do the impossible\"},{\"text_search\":\"Fat cats ate rats\"},{\"text_search\":\"But also fun to do what is possible\"},{\"text_search\":\"C'est un peu amusant de faire l'impossible\"}]\n  at $: expected 4 element(s), actual 5\n  at $[0].text_search: expected \"It's kind of fun to do the impossible\", actual \"Es ist eine Art Spaß, das Unmögliche zu machen\"\n  at $[1].text_search: expected \"But also fun to do what is possible\", actual \"It's kind of fun to do the impossible\"\n  at $[2].text_search: expected \"C'est un peu amusant de faire l'impossible\", actual \"Fat cats ate rats\"\n  at $[3].text_search: expected \"Es ist eine Art Spaß, das Unmögliche zu machen\", actual \"But also fun to do what is possible\"",
+      "reason": "body (exact) mismatch:\n  expected: [{\"text_search\":\"It's kind of fun to do the impossible\"},{\"text_search\":\"But also fun to do what is possible\"},{\"text_search\":\"C'est un peu amusant de faire l'impossible\"},{\"text_search\":\"Es ist eine Art Spaß, das Unmögliche zu machen\"}]\n  actual:   [{\"text_search\":\"Fat cats ate rats\"},{\"text_search\":\"It's kind of fun to do the impossible\"},{\"text_search\":\"But also fun to do what is possible\"},{\"text_search\":\"Es ist eine Art Spaß, das Unmögliche zu machen\"},{\"text_search\":\"C'est un peu amusant de faire l'impossible\"}]\n  at $: expected 4 element(s), actual 5\n  at $[0].text_search: expected \"It's kind of fun to do the impossible\", actual \"Fat cats ate rats\"\n  at $[1].text_search: expected \"But also fun to do what is possible\", actual \"It's kind of fun to do the impossible\"\n  at $[2].text_search: expected \"C'est un peu amusant de faire l'impossible\", actual \"But also fun to do what is possible\"",
       "gap": "body-mismatch-filters",
       "actual": {
         "status": 200,
         "body": [
           {
-            "text_search": "Es ist eine Art Spaß, das Unmögliche zu machen"
+            "text_search": "Fat cats ate rats"
           },
           {
             "text_search": "It's kind of fun to do the impossible"
           },
           {
-            "text_search": "Fat cats ate rats"
+            "text_search": "But also fun to do what is possible"
           },
           {
-            "text_search": "But also fun to do what is possible"
+            "text_search": "Es ist eine Art Spaß, das Unmögliche zu machen"
           },
           {
             "text_search": "C'est un peu amusant de faire l'impossible"
@@ -14889,14 +14889,14 @@
       "id": "QuerySpec:444",
       "category": "filters",
       "status": "fail",
-      "reason": "body (exact) mismatch:\n  expected: [{\"jsonb_search\":{\"text_search\":\"It's kind of fun to do the impossible\"}},{\"jsonb_search\":{\"text_search\":\"But also fun to do what is possible\"}},{\"jsonb_search\":{\"text_search\":\"C'est un peu amusant de faire l'impossible\"}},{\"jsonb_search\":{\"text_search\":\"Es ist eine Art Spaß, das Unmögliche zu machen\"}}]\n  actual:   [{\"jsonb_search\":{\"text_search\":\"Es ist eine Art Spaß, das Unmögliche zu machen\"}},{\"jsonb_search\":{\"text_search\":\"It's kind of fun to do the impossible\"}},{\"jsonb_search\":{\"text_search\":\"Fat cats ate rats\"}},{\"jsonb_search\":{\"text_search\":\"But also fun to do what is possible\"}},{\"jsonb_search\":{\"text_search\":\"C'est un peu amusant de faire l'impossible\"}}]\n  at $: expected 4 element(s), actual 5\n  at $[0].jsonb_search.text_search: expected \"It's kind of fun to do the impossible\", actual \"Es ist eine Art Spaß, das Unmögliche zu machen\"\n  at $[1].jsonb_search.text_search: expected \"But also fun to do what is possible\", actual \"It's kind of fun to do the impossible\"\n  at $[2].jsonb_search.text_search: expected \"C'est un peu amusant de faire l'impossible\", actual \"Fat cats ate rats\"\n  at $[3].jsonb_search.text_search: expected \"Es ist eine Art Spaß, das Unmögliche zu machen\", actual \"But also fun to do what is possible\"",
+      "reason": "body (exact) mismatch:\n  expected: [{\"jsonb_search\":{\"text_search\":\"It's kind of fun to do the impossible\"}},{\"jsonb_search\":{\"text_search\":\"But also fun to do what is possible\"}},{\"jsonb_search\":{\"text_search\":\"C'est un peu amusant de faire l'impossible\"}},{\"jsonb_search\":{\"text_search\":\"Es ist eine Art Spaß, das Unmögliche zu machen\"}}]\n  actual:   [{\"jsonb_search\":{\"text_search\":\"Fat cats ate rats\"}},{\"jsonb_search\":{\"text_search\":\"It's kind of fun to do the impossible\"}},{\"jsonb_search\":{\"text_search\":\"But also fun to do what is possible\"}},{\"jsonb_search\":{\"text_search\":\"Es ist eine Art Spaß, das Unmögliche zu machen\"}},{\"jsonb_search\":{\"text_search\":\"C'est un peu amusant de faire l'impossible\"}}]\n  at $: expected 4 element(s), actual 5\n  at $[0].jsonb_search.text_search: expected \"It's kind of fun to do the impossible\", actual \"Fat cats ate rats\"\n  at $[1].jsonb_search.text_search: expected \"But also fun to do what is possible\", actual \"It's kind of fun to do the impossible\"\n  at $[2].jsonb_search.text_search: expected \"C'est un peu amusant de faire l'impossible\", actual \"But also fun to do what is possible\"",
       "gap": "body-mismatch-filters",
       "actual": {
         "status": 200,
         "body": [
           {
             "jsonb_search": {
-              "text_search": "Es ist eine Art Spaß, das Unmögliche zu machen"
+              "text_search": "Fat cats ate rats"
             }
           },
           {
@@ -14906,12 +14906,12 @@
           },
           {
             "jsonb_search": {
-              "text_search": "Fat cats ate rats"
+              "text_search": "But also fun to do what is possible"
             }
           },
           {
             "jsonb_search": {
-              "text_search": "But also fun to do what is possible"
+              "text_search": "Es ist eine Art Spaß, das Unmögliche zu machen"
             }
           },
           {
@@ -15384,17 +15384,17 @@
     {
       "id": "QuerySpec:571",
       "category": "filters",
-      "status": "fail",
-      "reason": "the same rows came back in a different order; DSQL does not guarantee the physical order this assertion depends on\nbody (exact) mismatch — same rows, different order:\n  expected: [{\"a\":null},{\"a\":\"1\"}]\n  actual:   [{\"a\":\"1\"},{\"a\":null}]\n  at $[0].a: expected null null, actual string \"1\"\n  at $[1].a: expected string \"1\", actual null null",
-      "gap": "row-order-unspecified",
+      "status": "pass",
+      "reason": null,
+      "gap": null,
       "actual": {
         "status": 200,
         "body": [
           {
-            "a": "1"
+            "a": null
           },
           {
-            "a": null
+            "a": "1"
           }
         ]
       }
@@ -17970,20 +17970,20 @@
     {
       "id": "QuerySpec:1265",
       "category": "filters",
-      "status": "fail",
-      "reason": "the same rows came back in a different order; DSQL does not guarantee the physical order this assertion depends on\nbody (exact) mismatch — same rows, different order:\n  expected: [{\"escapeId\":1},{\"escapeId\":3},{\"escapeId\":5}]\n  actual:   [{\"escapeId\":5},{\"escapeId\":1},{\"escapeId\":3}]\n  at $[0].escapeId: expected 1, actual 5\n  at $[1].escapeId: expected 3, actual 1\n  at $[2].escapeId: expected 5, actual 3",
-      "gap": "row-order-unspecified",
+      "status": "pass",
+      "reason": null,
+      "gap": null,
       "actual": {
         "status": 200,
         "body": [
-          {
-            "escapeId": 5
-          },
           {
             "escapeId": 1
           },
           {
             "escapeId": 3
+          },
+          {
+            "escapeId": 5
           }
         ]
       }
@@ -18047,13 +18047,13 @@
       "id": "QuerySpec:1282",
       "category": "filters",
       "status": "fail",
-      "reason": "the same rows came back in a different order; DSQL does not guarantee the physical order this assertion depends on\nbody (exact) mismatch — same rows, different order:\n  expected: [{\"Just A Server Model\":\" IBM,9113-550 (P5-550)\"},{\"Just A Server Model\":\" IBM,9113-550 (P5-550)\"},{\"Just A Server Model\":\" IBM,9131-52A (P5-52A)\"},{\"Just A Server Model\":\" IBM,9133-55A (P5-55A)\"}]\n  actual:   [{\"Just A Server Model\":\" IBM,9133-55A (P5-55A)\"},{\"Just A Server Model\":\" IBM,9131-52A (P5-52A)\"},{\"Just A Server Model\":\" IBM,9113-550 (P5-550)\"},{\"Just A Server Model\":\" IBM,9113-550 (P5-550)\"}]\n  at $[0].Just A Server Model: expected \" IBM,9113-550 (P5-550)\", actual \" IBM,9133-55A (P5-55A)\"\n  at $[1].Just A Server Model: expected \" IBM,9113-550 (P5-550)\", actual \" IBM,9131-52A (P5-52A)\"\n  at $[2].Just A Server Model: expected \" IBM,9131-52A (P5-52A)\", actual \" IBM,9113-550 (P5-550)\"\n  at $[3].Just A Server Model: expected \" IBM,9133-55A (P5-55A)\", actual \" IBM,9113-550 (P5-550)\"",
+      "reason": "the same rows came back in a different order; DSQL does not guarantee the physical order this assertion depends on\nbody (exact) mismatch — same rows, different order:\n  expected: [{\"Just A Server Model\":\" IBM,9113-550 (P5-550)\"},{\"Just A Server Model\":\" IBM,9113-550 (P5-550)\"},{\"Just A Server Model\":\" IBM,9131-52A (P5-52A)\"},{\"Just A Server Model\":\" IBM,9133-55A (P5-55A)\"}]\n  actual:   [{\"Just A Server Model\":\" IBM,9113-550 (P5-550)\"},{\"Just A Server Model\":\" IBM,9131-52A (P5-52A)\"},{\"Just A Server Model\":\" IBM,9113-550 (P5-550)\"},{\"Just A Server Model\":\" IBM,9133-55A (P5-55A)\"}]\n  at $[1].Just A Server Model: expected \" IBM,9113-550 (P5-550)\", actual \" IBM,9131-52A (P5-52A)\"\n  at $[2].Just A Server Model: expected \" IBM,9131-52A (P5-52A)\", actual \" IBM,9113-550 (P5-550)\"",
       "gap": "row-order-unspecified",
       "actual": {
         "status": 200,
         "body": [
           {
-            "Just A Server Model": " IBM,9133-55A (P5-55A)"
+            "Just A Server Model": " IBM,9113-550 (P5-550)"
           },
           {
             "Just A Server Model": " IBM,9131-52A (P5-52A)"
@@ -18062,7 +18062,7 @@
             "Just A Server Model": " IBM,9113-550 (P5-550)"
           },
           {
-            "Just A Server Model": " IBM,9113-550 (P5-550)"
+            "Just A Server Model": " IBM,9133-55A (P5-55A)"
           }
         ]
       }
@@ -18119,19 +18119,19 @@
       "id": "QuerySpec:1305",
       "category": "filters",
       "status": "fail",
-      "reason": "the same rows came back in a different order; DSQL does not guarantee the physical order this assertion depends on\nbody (exact) mismatch — same rows, different order:\n  expected: [{\"name\":\"Hebdon, John\"},{\"name\":\"Williams, Mary\"},{\"name\":\"Smith, Joseph\"}]\n  actual:   [{\"name\":\"Smith, Joseph\"},{\"name\":\"Williams, Mary\"},{\"name\":\"Hebdon, John\"}]\n  at $[0].name: expected \"Hebdon, John\", actual \"Smith, Joseph\"\n  at $[2].name: expected \"Smith, Joseph\", actual \"Hebdon, John\"",
+      "reason": "the same rows came back in a different order; DSQL does not guarantee the physical order this assertion depends on\nbody (exact) mismatch — same rows, different order:\n  expected: [{\"name\":\"Hebdon, John\"},{\"name\":\"Williams, Mary\"},{\"name\":\"Smith, Joseph\"}]\n  actual:   [{\"name\":\"Williams, Mary\"},{\"name\":\"Hebdon, John\"},{\"name\":\"Smith, Joseph\"}]\n  at $[0].name: expected \"Hebdon, John\", actual \"Williams, Mary\"\n  at $[1].name: expected \"Williams, Mary\", actual \"Hebdon, John\"",
       "gap": "row-order-unspecified",
       "actual": {
         "status": 200,
         "body": [
           {
-            "name": "Smith, Joseph"
-          },
-          {
             "name": "Williams, Mary"
           },
           {
             "name": "Hebdon, John"
+          },
+          {
+            "name": "Smith, Joseph"
           }
         ]
       }
@@ -18140,19 +18140,19 @@
       "id": "QuerySpec:1308",
       "category": "filters",
       "status": "fail",
-      "reason": "body (exact) mismatch:\n  expected: [{\"name\":\"David White\"},{\"name\":\"Larry Thompson\"},{\"name\":\"Double O Seven(007)\"}]\n  actual:   [{\"name\":\"\\\\\"},{\"name\":\"Double O Seven(007)\"},{\"name\":\"\\\"\"}]\n  at $[0].name: expected \"David White\", actual \"\\\\\"\n  at $[1].name: expected \"Larry Thompson\", actual \"Double O Seven(007)\"\n  at $[2].name: expected \"Double O Seven(007)\", actual \"\\\"\"",
+      "reason": "body (exact) mismatch:\n  expected: [{\"name\":\"David White\"},{\"name\":\"Larry Thompson\"},{\"name\":\"Double O Seven(007)\"}]\n  actual:   [{\"name\":\"Double\\\"Quote\\\"McGraw\\\"\"},{\"name\":\"\\\"\"},{\"name\":\"Larry Thompson\"}]\n  at $[0].name: expected \"David White\", actual \"Double\\\"Quote\\\"McGraw\\\"\"\n  at $[1].name: expected \"Larry Thompson\", actual \"\\\"\"\n  at $[2].name: expected \"Double O Seven(007)\", actual \"Larry Thompson\"",
       "gap": "body-mismatch-filters",
       "actual": {
         "status": 200,
         "body": [
           {
-            "name": "\\"
-          },
-          {
-            "name": "Double O Seven(007)"
+            "name": "Double\"Quote\"McGraw\""
           },
           {
             "name": "\""
+          },
+          {
+            "name": "Larry Thompson"
           }
         ]
       }
@@ -18179,16 +18179,16 @@
       "id": "QuerySpec:1316",
       "category": "filters",
       "status": "fail",
-      "reason": "body (exact) mismatch:\n  expected: [{\"name\":\"Williams, Mary\"},{\"name\":\"David White\"},{\"name\":\"Double O Seven(007)\"}]\n  actual:   [{\"name\":\"\\\\\"},{\"name\":\"Double O Seven(007)\"},{\"name\":\"\\\"\"}]\n  at $[0].name: expected \"Williams, Mary\", actual \"\\\\\"\n  at $[1].name: expected \"David White\", actual \"Double O Seven(007)\"\n  at $[2].name: expected \"Double O Seven(007)\", actual \"\\\"\"",
+      "reason": "body (exact) mismatch:\n  expected: [{\"name\":\"Williams, Mary\"},{\"name\":\"David White\"},{\"name\":\"Double O Seven(007)\"}]\n  actual:   [{\"name\":\"Double\\\"Quote\\\"McGraw\\\"\"},{\"name\":\"Williams, Mary\"},{\"name\":\"\\\"\"}]\n  at $[0].name: expected \"Williams, Mary\", actual \"Double\\\"Quote\\\"McGraw\\\"\"\n  at $[1].name: expected \"David White\", actual \"Williams, Mary\"\n  at $[2].name: expected \"Double O Seven(007)\", actual \"\\\"\"",
       "gap": "body-mismatch-filters",
       "actual": {
         "status": 200,
         "body": [
           {
-            "name": "\\"
+            "name": "Double\"Quote\"McGraw\""
           },
           {
-            "name": "Double O Seven(007)"
+            "name": "Williams, Mary"
           },
           {
             "name": "\""
@@ -18561,22 +18561,22 @@
     {
       "id": "QuerySpec:1427",
       "category": "embedding",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "the same rows came back in a different order; DSQL does not guarantee the physical order this assertion depends on\nbody (exact) mismatch — same rows, different order:\n  expected: [{\"site\":\"github.com\",\"link\":{\"url\":\"http://postgrest.org/en/v6.0/api.html\"}},{\"site\":\"hub.docker.com\",\"link\":{\"url\":\"http://postgrest.org/en/v6.0/admin.html\"}}]\n  actual:   [{\"site\":\"hub.docker.com\",\"link\":{\"url\":\"http://postgrest.org/en/v6.0/admin.html\"}},{\"site\":\"github.com\",\"link\":{\"url\":\"http://postgrest.org/en/v6.0/api.html\"}}]\n  at $[0].site: expected \"github.com\", actual \"hub.docker.com\"\n  at $[0].link.url: expected \"http://postgrest.org/en/v6.0/api.html\", actual \"http://postgrest.org/en/v6.0/admin.html\"\n  at $[1].site: expected \"hub.docker.com\", actual \"github.com\"\n  at $[1].link.url: expected \"http://postgrest.org/en/v6.0/admin.html\", actual \"http://postgrest.org/en/v6.0/api.html\"",
+      "gap": "row-order-unspecified",
       "actual": {
         "status": 200,
         "body": [
           {
-            "site": "github.com",
-            "link": {
-              "url": "http://postgrest.org/en/v6.0/api.html"
-            }
-          },
-          {
             "site": "hub.docker.com",
             "link": {
               "url": "http://postgrest.org/en/v6.0/admin.html"
+            }
+          },
+          {
+            "site": "github.com",
+            "link": {
+              "url": "http://postgrest.org/en/v6.0/api.html"
             }
           }
         ]
@@ -24101,13 +24101,13 @@
       "id": "RpcSpec:923",
       "category": "rpc",
       "status": "fail",
-      "reason": "Not authorized: role='postgrest_test_author' action='call' table='get_guc_value'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403\nbody (exact) mismatch:\n  expected: \"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoicG9zdGdyZXN0X3Rlc3RfYXV0aG9yIn0.Xod-F15qsGL0WhdOCr2j3DdKuTw9QJERVgoFD3vGaWA\"\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='postgrest_test_author' action='call' table='get_guc_value'.\\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $: expected string \"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoicG9zdGdyZXN0X3Rlc3RfYXV0aG9yIn0.Xod-F15qsGL0WhdOCr2j3DdKuTw9QJERVgoFD3vGaWA\", actual object {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='postgrest_test_author' action='call' table='get_guc_value'.\\nNo Cedar policy grants it. Loaded from /tmp/fin…",
+      "reason": "Not authorized: role='postgrest_test_author' action='call' table='get_guc_value'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\nstatus: expected 200, actual 403\nbody (exact) mismatch:\n  expected: \"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoicG9zdGdyZXN0X3Rlc3RfYXV0aG9yIn0.Xod-F15qsGL0WhdOCr2j3DdKuTw9QJERVgoFD3vGaWA\"\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='postgrest_test_author' action='call' table='get_guc_value'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $: expected string \"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoicG9zdGdyZXN0X3Rlc3RfYXV0aG9yIn0.Xod-F15qsGL0WhdOCr2j3DdKuTw9QJERVgoFD3vGaWA\", actual object {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='postgrest_test_author' action='call' table='get_guc_value'.\\nNo Cedar policy grants it. Loaded from /home/ec…",
       "gap": "no-set-role",
       "actual": {
         "status": 403,
         "body": {
           "code": "PGRST403",
-          "message": "Not authorized: role='postgrest_test_author' action='call' table='get_guc_value'.\nNo Cedar policy grants it. Loaded from /tmp/final2/tree/policies. See docs/authorization.md for the policy model and recipes.",
+          "message": "Not authorized: role='postgrest_test_author' action='call' table='get_guc_value'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -29239,9 +29239,9 @@
     {
       "id": "TimezoneSpec:15",
       "category": "preferences",
-      "status": "fail",
-      "reason": "the same rows came back in a different order; DSQL does not guarantee the physical order this assertion depends on\nbody (exact) mismatch — same rows, different order:\n  expected: [{\"t\":\"2023-10-18T05:37:59.611-07:00\"},{\"t\":\"2023-10-18T07:37:59.611-07:00\"},{\"t\":\"2023-10-18T09:37:59.611-07:00\"}]\n  actual:   [{\"t\":\"2023-10-18T05:37:59.611-07:00\"},{\"t\":\"2023-10-18T09:37:59.611-07:00\"},{\"t\":\"2023-10-18T07:37:59.611-07:00\"}]\n  at $[1].t: expected \"2023-10-18T07:37:59.611-07:00\", actual \"2023-10-18T09:37:59.611-07:00\"\n  at $[2].t: expected \"2023-10-18T09:37:59.611-07:00\", actual \"2023-10-18T07:37:59.611-07:00\"",
-      "gap": "row-order-unspecified",
+      "status": "pass",
+      "reason": null,
+      "gap": null,
       "actual": {
         "status": 200,
         "body": [
@@ -29249,10 +29249,10 @@
             "t": "2023-10-18T05:37:59.611-07:00"
           },
           {
-            "t": "2023-10-18T09:37:59.611-07:00"
+            "t": "2023-10-18T07:37:59.611-07:00"
           },
           {
-            "t": "2023-10-18T07:37:59.611-07:00"
+            "t": "2023-10-18T09:37:59.611-07:00"
           }
         ]
       }
@@ -29260,9 +29260,9 @@
     {
       "id": "TimezoneSpec:25",
       "category": "preferences",
-      "status": "fail",
-      "reason": "the same rows came back in a different order; DSQL does not guarantee the physical order this assertion depends on\nbody (exact) mismatch — same rows, different order:\n  expected: [{\"t\":\"2023-10-18T05:37:59.611-07:00\"},{\"t\":\"2023-10-18T07:37:59.611-07:00\"},{\"t\":\"2023-10-18T09:37:59.611-07:00\"}]\n  actual:   [{\"t\":\"2023-10-18T05:37:59.611-07:00\"},{\"t\":\"2023-10-18T09:37:59.611-07:00\"},{\"t\":\"2023-10-18T07:37:59.611-07:00\"}]\n  at $[1].t: expected \"2023-10-18T07:37:59.611-07:00\", actual \"2023-10-18T09:37:59.611-07:00\"\n  at $[2].t: expected \"2023-10-18T09:37:59.611-07:00\", actual \"2023-10-18T07:37:59.611-07:00\"",
-      "gap": "row-order-unspecified",
+      "status": "pass",
+      "reason": null,
+      "gap": null,
       "actual": {
         "status": 200,
         "body": [
@@ -29270,10 +29270,10 @@
             "t": "2023-10-18T05:37:59.611-07:00"
           },
           {
-            "t": "2023-10-18T09:37:59.611-07:00"
+            "t": "2023-10-18T07:37:59.611-07:00"
           },
           {
-            "t": "2023-10-18T07:37:59.611-07:00"
+            "t": "2023-10-18T09:37:59.611-07:00"
           }
         ]
       }
@@ -29329,9 +29329,9 @@
     {
       "id": "TimezoneSpec:61",
       "category": "preferences",
-      "status": "fail",
-      "reason": "the same rows came back in a different order; DSQL does not guarantee the physical order this assertion depends on\nbody (exact) mismatch — same rows, different order:\n  expected: [{\"t\":\"2023-10-18T07:07:59.611-05:30\"},{\"t\":\"2023-10-18T09:07:59.611-05:30\"},{\"t\":\"2023-10-18T11:07:59.611-05:30\"}]\n  actual:   [{\"t\":\"2023-10-18T07:07:59.611-05:30\"},{\"t\":\"2023-10-18T11:07:59.611-05:30\"},{\"t\":\"2023-10-18T09:07:59.611-05:30\"}]\n  at $[1].t: expected \"2023-10-18T09:07:59.611-05:30\", actual \"2023-10-18T11:07:59.611-05:30\"\n  at $[2].t: expected \"2023-10-18T11:07:59.611-05:30\", actual \"2023-10-18T09:07:59.611-05:30\"",
-      "gap": "row-order-unspecified",
+      "status": "pass",
+      "reason": null,
+      "gap": null,
       "actual": {
         "status": 200,
         "body": [
@@ -29339,10 +29339,10 @@
             "t": "2023-10-18T07:07:59.611-05:30"
           },
           {
-            "t": "2023-10-18T11:07:59.611-05:30"
+            "t": "2023-10-18T09:07:59.611-05:30"
           },
           {
-            "t": "2023-10-18T09:07:59.611-05:30"
+            "t": "2023-10-18T11:07:59.611-05:30"
           }
         ]
       }
@@ -29350,9 +29350,9 @@
     {
       "id": "TimezoneSpec:71",
       "category": "preferences",
-      "status": "fail",
-      "reason": "the same rows came back in a different order; DSQL does not guarantee the physical order this assertion depends on\nbody (exact) mismatch — same rows, different order:\n  expected: [{\"t\":\"2023-10-18T08:37:59.611-04:00\"},{\"t\":\"2023-10-18T10:37:59.611-04:00\"},{\"t\":\"2023-10-18T12:37:59.611-04:00\"}]\n  actual:   [{\"t\":\"2023-10-18T08:37:59.611-04:00\"},{\"t\":\"2023-10-18T12:37:59.611-04:00\"},{\"t\":\"2023-10-18T10:37:59.611-04:00\"}]\n  at $[1].t: expected \"2023-10-18T10:37:59.611-04:00\", actual \"2023-10-18T12:37:59.611-04:00\"\n  at $[2].t: expected \"2023-10-18T12:37:59.611-04:00\", actual \"2023-10-18T10:37:59.611-04:00\"",
-      "gap": "row-order-unspecified",
+      "status": "pass",
+      "reason": null,
+      "gap": null,
       "actual": {
         "status": 200,
         "body": [
@@ -29360,10 +29360,10 @@
             "t": "2023-10-18T08:37:59.611-04:00"
           },
           {
-            "t": "2023-10-18T12:37:59.611-04:00"
+            "t": "2023-10-18T10:37:59.611-04:00"
           },
           {
-            "t": "2023-10-18T10:37:59.611-04:00"
+            "t": "2023-10-18T12:37:59.611-04:00"
           }
         ]
       }
@@ -30014,21 +30014,21 @@
       "id": "UpdateSpec:444",
       "category": "update",
       "status": "fail",
-      "reason": "body (exact) mismatch:\n  expected: [{\"a\":null,\"b\":\"1\"},{\"a\":\"2\",\"b\":\"1\"},{\"a\":\"1\",\"b\":\"1\"}]\n  actual:   [{\"a\":\"圍棋\",\"b\":\"1\"},{\"a\":\"2\",\"b\":\"1\"},{\"a\":null,\"b\":\"1\"}]\n  at $[0].a: expected null null, actual string \"圍棋\"\n  at $[2].a: expected string \"1\", actual null null",
+      "reason": "body (exact) mismatch:\n  expected: [{\"a\":null,\"b\":\"1\"},{\"a\":\"2\",\"b\":\"1\"},{\"a\":\"1\",\"b\":\"1\"}]\n  actual:   [{\"a\":null,\"b\":\"1\"},{\"a\":\"圍棋\",\"b\":\"1\"},{\"a\":\"2\",\"b\":\"1\"}]\n  at $[1].a: expected \"2\", actual \"圍棋\"\n  at $[2].a: expected \"1\", actual \"2\"",
       "gap": "body-mismatch-update",
       "actual": {
         "status": 200,
         "body": [
+          {
+            "a": null,
+            "b": "1"
+          },
           {
             "a": "圍棋",
             "b": "1"
           },
           {
             "a": "2",
-            "b": "1"
-          },
-          {
-            "a": null,
             "b": "1"
           }
         ]
