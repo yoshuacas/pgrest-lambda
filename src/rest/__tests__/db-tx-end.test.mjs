@@ -68,7 +68,7 @@ const columnRows = [
 ];
 const pkRows = [{ table_name: 'todos', column_name: 'id' }];
 
-function mockPool() {
+function mockPool(dataRows = [{ id: 1, title: 'x' }]) {
   const queries = [];
   return {
     queries,
@@ -80,13 +80,13 @@ function mockPool() {
       }
       if (sql.includes('contype')) return { rows: pkRows };
       if (sql.startsWith('SELECT COUNT')) return { rows: [{ count: '1' }] };
-      return { rows: [{ id: 1, title: 'x' }] };
+      return { rows: dataRows };
     },
   };
 }
 
-function makeHandler(dbTxEnd) {
-  const pool = mockPool();
+function makeHandler(dbTxEnd, dataRows) {
+  const pool = mockPool(dataRows);
   const db = createDb({});
   db._setPool(pool);
   const cedar = createCedar({ policiesPath: './policies' });
@@ -133,11 +133,14 @@ const patch = (handler, headers = {}) => handler(event({
 
 describe('db-tx-end: what a mutating request does to its transaction',
   () => {
-    it('opens no transaction at all by default', async () => {
+    // A write always gets a transaction, even when it ends with COMMIT: the
+    // ending cannot be decided until the response has been built, because a
+    // request that fails after writing must not leave the write behind.
+    it('commits its own transaction by default', async () => {
       const { handler, pool } = makeHandler(undefined);
       const res = await patch(handler);
       assert.equal(res.statusCode, 204);
-      assert.deepEqual(txSteps(pool), []);
+      assert.deepEqual(txSteps(pool), ['BEGIN', 'COMMIT']);
       assert.equal(wrote(pool), true);
     });
 
@@ -163,15 +166,12 @@ describe('db-tx-end: what a mutating request does to its transaction',
         assert.equal(res.headers['Preference-Applied'], undefined);
       });
 
-    // Nothing is rolled back, so the write keeps its effect. There is no
-    // transaction to open either: one statement is atomic on its own, and the
-    // engine only pays for a transaction when something has to be undone.
     it('honours Prefer: tx=commit under rollback-allow-override',
       async () => {
         const { handler, pool } = makeHandler('rollback-allow-override');
         const res = await patch(handler, { Prefer: 'tx=commit' });
         assert.equal(wrote(pool), true);
-        assert.ok(!txSteps(pool).includes('ROLLBACK'));
+        assert.deepEqual(txSteps(pool), ['BEGIN', 'COMMIT']);
         assert.equal(res.headers['Preference-Applied'], 'tx=commit');
       });
 
@@ -199,6 +199,25 @@ describe('db-tx-end: what a mutating request does to its transaction',
       assert.equal(res.statusCode, 201);
       assert.deepEqual(txSteps(pool), ['BEGIN', 'ROLLBACK']);
     });
+
+    // Upstream SingularSpec.hs:301 ("fails for multiple rows with rolled back
+    // changes"): the failing request asks for `tx=commit`, and the row it
+    // changed still has to read back unchanged afterwards. The write is real
+    // and the error comes from the engine, not the database, so only the
+    // request's own transaction can undo it.
+    it('rolls back a write the response then failed on, tx=commit and all',
+      async () => {
+        const { handler, pool } = makeHandler('rollback-allow-override',
+          [{ id: 1, title: 'a' }, { id: 2, title: 'b' }]);
+        const res = await patch(handler, {
+          Prefer: 'tx=commit, return=representation',
+          Accept: 'application/vnd.pgrst.object+json',
+        });
+        assert.equal(res.statusCode, 406);
+        assert.equal(JSON.parse(res.body).code, 'PGRST116');
+        assert.equal(wrote(pool), true);
+        assert.deepEqual(txSteps(pool), ['BEGIN', 'ROLLBACK']);
+      });
 
     it('rolls back a DELETE as well', async () => {
       const { handler, pool } = makeHandler('rollback');

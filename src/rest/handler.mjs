@@ -1552,24 +1552,29 @@ export function createRestHandler(ctx, contributions = []) {
    * transaction, so PostgreSQL itself drops it at the end — nothing has to be
    * reset, and a connection can never be handed back carrying it.
    *
-   * `db-tx-end` is the other reason. A request whose transaction has to end
-   * with ROLLBACK needs one connection for all of its statements, and the
-   * rollback has to happen after the response has been built from the rows the
-   * write returned — so the transaction is opened here and ended in `release`.
-   * Only a method that can write opens it: a read has nothing to roll back, and
-   * leaving GET alone keeps it on the pool.
+   * Writing is the other reason, and it applies whatever `db-tx-end` says. The
+   * ending has to be decided after the response has been built from the rows
+   * the statement returned: with `db-tx-end=rollback` because the rows are
+   * then thrown away, and on every other setting because a request that fails
+   * after writing must not leave the write behind — upstream commits one
+   * transaction per request and only a successful one. So the transaction is
+   * opened here and ended in `release`. A read opens none: it has nothing to
+   * undo, and leaving GET alone keeps it on the pool.
    *
    * @param {Object} basePool
    * @param {string} schemaName
    * @param {string} [timezone] the raw `Prefer: timezone=` value; an invalid
    *        one raises PostgreSQL's own 22023, which is the error upstream
    *        reports for it
-   * @param {{rollback?: boolean}} [opts] `rollback`: end with ROLLBACK
+   * @param {{rollback?: boolean, write?: boolean}} [opts] `rollback`: end with
+   *        ROLLBACK; `write`: the method can write, so it needs a transaction
+   *        even when the ending is COMMIT
    */
   async function openSession(basePool, schemaName, timezone, opts = {}) {
     const appSettings = normalizeAppSettings(ctx.appSettings);
     const rollback = Boolean(opts.rollback);
-    const wantsTx = timezone != null || appSettings.length > 0 || rollback;
+    const wantsTx = timezone != null || appSettings.length > 0 || rollback
+      || Boolean(opts.write);
     if (!sessionScoped && !wantsTx) {
       return { pool: basePool, release: null, inTx: false, condemn: () => {} };
     }
@@ -1687,6 +1692,7 @@ export function createRestHandler(ctx, contributions = []) {
     // in scope there.
     let role = event.requestContext?.authorizer?.role || 'anon';
     let releaseSession = null;
+    let condemnSession = null;
     // `client-error-verbosity`: passed to every error() so `minimal` drops
     // `details` and `hint` from the payload (upstream Error.hs).
     const errorOpts = { clientErrorVerbosity: ctx.clientErrorVerbosity };
@@ -1810,8 +1816,10 @@ export function createRestHandler(ctx, contributions = []) {
       const planStart = clock();
       const basePool = await db.getPool();
       const session = await openSession(
-        basePool, profile.schema, prefer.timezone, { rollback: txRollback });
+        basePool, profile.schema, prefer.timezone,
+        { rollback: txRollback, write: canWrite });
       releaseSession = session.release;
+      condemnSession = session.condemn;
       const pool = session.pool;
       const schema = await getSchemaFor(profile.schema, pool);
 
@@ -2413,6 +2421,15 @@ export function createRestHandler(ctx, contributions = []) {
         returnRep ? rows : null, opts);
 
     } catch (err) {
+      // Nothing a failed request wrote reaches the table. Upstream runs the
+      // whole request in one transaction and commits only a successful one, so
+      // a write followed by an error the *engine* raised — a singular
+      // coercion that found two rows, say — is undone with it. A statement
+      // PostgreSQL rejected has already aborted its transaction, but this one
+      // has not, and it is the case SingularSpec.hs:301 asserts: the failing
+      // request there carries `Prefer: tx=commit` and the row it changed still
+      // has to read back unchanged.
+      if (condemnSession) condemnSession();
       if (err instanceof PostgRESTError) {
         return error(err, corsHeaders, err.responseHeaders, errorOpts);
       }
