@@ -10,6 +10,7 @@ import {
   resolveProfile, quoteIdent, searchPathValue, hasAggregate, wantsPlan,
   clampMaxRows, verifyRestJwt, applyBulkGuard,
   normalizeAppSettings, appSettingsSql,
+  validateJwtClaims, defaultVerifier,
 } from '../handler.mjs';
 
 describe('resolveProfile (db-schemas)', () => {
@@ -352,5 +353,187 @@ describe('verifyRestJwt (jwt-secret, jwt-aud, db-anon-role)', () => {
   it('treats a malformed Authorization header as anonymous', () => {
     assert.equal(verifyRestJwt(cfg(), 'Basic dXNlcjpwYXNz', decode).role,
       'anon');
+  });
+
+  // `Authorization: Bearer` with nothing after it is not an anonymous request:
+  // upstream reaches `parseToken _ ""` and answers PGRST301 (AuthSpec:96).
+  it('answers PGRST301 for an empty bearer token', () => {
+    for (const raw of ['Bearer ', 'bearer', 'Bearer   ']) {
+      assert.throws(() => verifyRestJwt(cfg(), raw, decode), (err) => {
+        assert.equal(err.statusCode, 401);
+        assert.equal(err.code, 'PGRST301');
+        assert.equal(err.message, 'Empty JWT is sent in Authorization header');
+        assert.equal(err.details, null);
+        return true;
+      }, raw);
+    }
+  });
+});
+
+/**
+ * Upstream `Auth.Jwt.checkForErrors`. The claim messages are asserted verbatim
+ * by AuthSpec:152/:164/:176/:188/:200, so they are wire vocabulary, not prose.
+ */
+describe('validateJwtClaims (registered claims)', () => {
+  const NOW = 1_700_000_000;
+  const check = (claims, audMatches = () => true) =>
+    validateJwtClaims(claims, audMatches, NOW);
+
+  it('accepts a claim set with nothing to check', () => {
+    assert.equal(check({ role: 'postgrest_test_author' }), null);
+  });
+
+  it('rejects an expired token with PGRST303', () => {
+    const err = check({ exp: NOW - 100 });
+    assert.equal(err.code, 'PGRST303');
+    assert.equal(err.message, 'JWT expired');
+    assert.equal(err.responseHeaders['WWW-Authenticate'],
+      'Bearer error="invalid_token", error_description="JWT expired"');
+  });
+
+  // `allowedSkewSeconds` is 30 in both directions and upstream's own specs
+  // depend on it, so a token one second past its exp is still accepted.
+  it('allows 30 seconds of clock skew on exp', () => {
+    assert.equal(check({ exp: NOW - 1 }), null);
+    assert.equal(check({ exp: NOW - 30 }), null);
+    assert.equal(check({ exp: NOW - 31 }).message, 'JWT expired');
+  });
+
+  it('allows 30 seconds of clock skew on nbf and iat', () => {
+    assert.equal(check({ nbf: NOW + 30 }), null);
+    assert.equal(check({ nbf: NOW + 31 }).message, 'JWT not yet valid');
+    assert.equal(check({ iat: NOW + 30 }), null);
+    assert.equal(check({ iat: NOW + 31 }).message, 'JWT issued at future');
+  });
+
+  // A claim that is present but not a number is its own error, and it wins over
+  // expiry: the type is checked before the value is compared.
+  it('reports a non-numeric exp, nbf or iat as a type error', () => {
+    for (const key of ['exp', 'nbf', 'iat']) {
+      const err = check({ [key]: 'invalid' });
+      assert.equal(err.code, 'PGRST303');
+      assert.equal(err.message, `The JWT '${key}' claim must be a number`);
+    }
+  });
+
+  it('checks the claims in upstream order, exp first', () => {
+    assert.equal(check({ exp: 'invalid', nbf: 'invalid' }).message,
+      "The JWT 'exp' claim must be a number");
+    assert.equal(check({ nbf: 'invalid', iat: 'invalid' }).message,
+      "The JWT 'nbf' claim must be a number");
+  });
+
+  it('rejects an aud that is neither a string nor an array of strings', () => {
+    for (const aud of [{ invalid: 'value' }, 3, ['ok', 4], [{}]]) {
+      const err = check({ aud });
+      assert.equal(err.code, 'PGRST303');
+      assert.equal(err.message,
+        "The JWT 'aud' claim must be a string or an array of strings");
+    }
+  });
+
+  // The *type* of aud is checked whether or not jwt-aud is configured; with no
+  // audience configured every audience matches (AudienceJwtSecretSpec:194).
+  it('checks the aud type even when no audience is configured', () => {
+    assert.equal(check({ aud: 'anything' }), null);
+    assert.equal(check({ aud: { invalid: 'value' } }).code, 'PGRST303');
+  });
+
+  // `validAud`: an empty array matches anything (AudienceJwtSecretSpec:126).
+  it('treats an empty aud array as matching', () => {
+    assert.equal(check({ aud: [] }, () => false), null);
+  });
+
+  it('needs one matching element in a non-empty aud array', () => {
+    const matches = (a) => a === 'youraudience';
+    assert.equal(check({ aud: ['a', 'youraudience', 'b'] }, matches), null);
+    assert.equal(check({ aud: ['a', 'b'] }, matches).message,
+      'JWT not in audience');
+  });
+});
+
+/**
+ * Upstream's decode-error vocabulary (Error.hs `message (JwtDecodeErr e)`).
+ * Each one is a distinct wire body asserted by ErrorSpec:53/:110/:193/:205/:217
+ * and AuthSpec:119, so they are not interchangeable.
+ */
+describe('defaultVerifier (JWT decode errors)', () => {
+  const key = { kind: 'hmac', key: Buffer.from(SECRET, 'utf8') };
+  const fails = (token, expected) => {
+    assert.throws(() => defaultVerifier(token, key), (err) => {
+      assert.equal(err.statusCode, 401);
+      assert.equal(err.code, expected.code);
+      assert.equal(err.message, expected.message);
+      assert.equal(err.details ?? null, expected.details ?? null);
+      return true;
+    }, token);
+  };
+
+  it('returns the claims of a token it can verify', () => {
+    assert.deepEqual(
+      defaultVerifier(mint({ role: 'postgrest_test_author' }), key),
+      { role: 'postgrest_test_author' });
+  });
+
+  it('counts the parts it got', () => {
+    fails('ey9zdGdyZXN0.y4vZuu1dDdwAl0', {
+      code: 'PGRST301', message: 'Expected 3 parts in JWT; got 2',
+    });
+    fails('a.b.c.d', {
+      code: 'PGRST301', message: 'Expected 3 parts in JWT; got 4',
+    });
+  });
+
+  it('reports a wrong signature as a key error, with details', () => {
+    fails(mint({}, 'wrong secret'), {
+      code: 'PGRST301',
+      message: 'No suitable key or wrong key type',
+      details: 'None of the keys was able to decode the JWT',
+    });
+  });
+
+  // Three parts that are not a JWS at all: the header is not even JSON.
+  it('reports three unparseable parts as a cryptographic failure', () => {
+    fails('quifquirndsjagnrgniur.fonvoienqhhdj.iuqvnvhojah', {
+      code: 'PGRST301', message: 'JWT cryptographic operation failed',
+    });
+  });
+
+  it('refuses alg: none before looking at the signature', () => {
+    const token = `${Buffer.from('{"typ":"JWT","alg":"none"}')
+      .toString('base64url')}.e30.anything`;
+    fails(token, {
+      code: 'PGRST301',
+      message: 'Wrong or unsupported encoding algorithm',
+      details: "JWT is unsecured but expected 'alg' was not 'none'",
+    });
+  });
+
+  it('refuses an algorithm the key cannot be used with', () => {
+    const token = mint({}, SECRET, 'HS256')
+      .replace(/^[^.]+/, Buffer.from('{"alg":"RS256","typ":"JWT"}')
+        .toString('base64url'));
+    fails(token, {
+      code: 'PGRST301', message: 'Wrong or unsupported encoding algorithm',
+      details: 'Unsupported alg: RS256',
+    });
+  });
+
+  // Registered claims are not the verifier's business: an expired token has to
+  // report itself as a claim error (PGRST303), not a decode failure.
+  it('leaves expiry to validateJwtClaims', () => {
+    assert.deepEqual(defaultVerifier(mint({ exp: 1 }), key), { exp: 1 });
+  });
+
+  it('rejects a payload that is not a JSON object', () => {
+    const token = mint([], SECRET);
+    fails(token, { code: 'PGRST303', message: 'Parsing claims failed' });
+    const notAnObject = `${Buffer.from('{"alg":"HS256","typ":"JWT"}')
+      .toString('base64url')}.bm90IGFuIG9iamVjdA.x`;
+    // Three parts, header fine, payload is the text `not an object`.
+    assert.throws(() => defaultVerifier(notAnObject, key), (err) => {
+      assert.equal(err.code, 'PGRST301');
+      return true;
+    });
   });
 });

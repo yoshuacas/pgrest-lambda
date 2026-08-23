@@ -118,9 +118,7 @@
             "role": "postgrest_test_author",
             "id": "jdoe",
             "aud": [
-              "notyouraudience",
-              "youraudience",
-              "anotheraudience"
+              "youraudience"
             ]
           }
         }
@@ -167,7 +165,7 @@
             "exp": 9999999999,
             "role": "postgrest_test_author",
             "id": "jdoe",
-            "aud": null
+            "aud": []
           }
         }
       },
@@ -212,7 +210,8 @@
           "claims": {
             "exp": 9999999999,
             "role": "postgrest_test_author",
-            "id": "jdoe"
+            "id": "jdoe",
+            "aud": null
           }
         }
       },
@@ -303,7 +302,7 @@
             "exp": 9999999999,
             "role": "postgrest_test_author",
             "id": "jdoe",
-            "aud": ""
+            "aud": "youraudience"
           }
         }
       },
@@ -349,9 +348,7 @@
             "exp": 9999999999,
             "role": "postgrest_test_author",
             "id": "jdoe",
-            "aud": [
-              "youraudience"
-            ]
+            "aud": ""
           }
         }
       },
@@ -398,9 +395,7 @@
             "role": "postgrest_test_author",
             "id": "jdoe",
             "aud": [
-              "notyouraudience",
-              "youraudience",
-              "anotheraudience"
+              "youraudience"
             ]
           }
         }
@@ -447,7 +442,11 @@
             "exp": 9999999999,
             "role": "postgrest_test_author",
             "id": "jdoe",
-            "aud": []
+            "aud": [
+              "notyouraudience",
+              "youraudience",
+              "anotheraudience"
+            ]
           }
         }
       },
@@ -493,7 +492,7 @@
             "exp": 9999999999,
             "role": "postgrest_test_author",
             "id": "jdoe",
-            "aud": null
+            "aud": []
           }
         }
       },
@@ -538,7 +537,8 @@
           "claims": {
             "exp": 9999999999,
             "role": "postgrest_test_author",
-            "id": "jdoe"
+            "id": "jdoe",
+            "aud": null
           }
         }
       },

@@ -1129,35 +1129,20 @@ function triageInner({ testCase, actual, comparison, thrown, logs, ctx }) {
     return { status: 'fail', gap: 'no-foreign-keys', reason: reason(message) };
   }
 
-  // The assertion is that an invalid token is rejected as a token, and what came
-  // back is an authorization denial. That means the request got past identity: the
-  // conformance harness stands in for the API Gateway authorizer and builds the
-  // authorizer context by decoding the JWT payload without verifying it, so an
-  // empty, truncated or badly signed token still arrives carrying a role and is
-  // then denied by policy instead of rejected outright. Nothing about the
-  // engine's own privilege model is being measured.
+  // `harness-supplies-unverified-identity` was booked here, for the case that
+  // asserts an invalid token is rejected as a token (PGRST301) and instead got an
+  // authorization denial (PGRST403). The cause was the harness: it stood in for
+  // the API Gateway authorizer and built the authorizer context by decoding the
+  // JWT payload without verifying it, so an empty, truncated or badly signed
+  // token still arrived carrying a role and was denied by policy rather than
+  // rejected outright. Seven cases sat in it: AuthSpec:96, :119, ErrorSpec:53,
+  // :110, :193, :205, :217.
   //
-  // These seven cases used to be booked under `no-set-role`, which read as "the
-  // engine's authorization layer lacks a privilege upstream expresses as a
-  // GRANT" — wrong, and it inflated the headline DSQL gap. Once Cedar denials
-  // started answering an anonymous caller 401 (matching upstream's status), five
-  // of them stopped matching the role-shaped log pattern and scattered into
-  // `header-mismatch-www-authenticate`, `body-mismatch-errors` and
-  // `header-mismatch-proxy-status`, which read as ordinary response-shape
-  // defects and were wronger still. One slug, naming the actual cause.
-  //
-  // Measured: AuthSpec:96, :119, ErrorSpec:53, :110, :193, :205, :217. The status
-  // stays `fail` — this is a real gap between the harness and the deployed
-  // authorizer, not an excuse — and it is not in OUT_OF_SCOPE_GAPS.
-  if (testCase.expected?.body?.code === 'PGRST301' && code === 'PGRST403') {
-    return {
-      status: 'fail',
-      gap: 'harness-supplies-unverified-identity',
-      reason: reason('the assertion rejects the token, but the harness decodes '
-        + 'the JWT payload without verifying it, so the request reached the '
-        + 'authorization layer and was denied by policy instead'),
-    };
-  }
+  // The base engine now verifies the token itself with upstream's own secret
+  // (baseEngineConfig `restJwt`), which is what upstream's `baseCfg` configures
+  // for every spec, so the harness no longer supplies an identity it did not
+  // check and the bucket has nothing left to catch. A case of this shape now
+  // falls through to the ordinary buckets and is attributed to the engine.
 
   // An order-only difference means the engine returned the right rows with the
   // right status, so nothing the database complained about in the log explains
@@ -1183,21 +1168,14 @@ function triageInner({ testCase, actual, comparison, thrown, logs, ctx }) {
   }
 
   // 6. PostgREST's auth model is Postgres roles; ours cannot be.
-  const sentJwt = pickHeader(testCase.request?.headers, 'authorization') != null;
-  const expectedStatusRaw = Number(testCase.expected?.status);
-  const authShaped = [401, 403].includes(expectedStatusRaw);
-  // The runner builds the authorizer context from the token payload without
-  // verifying the signature (see authorizerContext), so every assertion whose
-  // subject is token *validation* is unmeasurable here — not an engine gap.
-  if (!comparison.statusOk && sentJwt && expectedStatusRaw === 401
-      && actual.statusCode < 400) {
-    return {
-      status: 'fail',
-      gap: 'harness-no-jwt-verification',
-      reason: reason('the case asserts that the token is rejected; the runner '
-        + 'trusts the payload and never verifies a signature'),
-    };
-  }
+  const authShaped = [401, 403].includes(Number(testCase.expected?.status));
+  // There used to be a `harness-no-jwt-verification` bucket here: the runner
+  // handed the engine an identity decoded from the token without checking the
+  // signature, so an assertion about token *validation* was unmeasurable. The
+  // base engine now runs with `jwt-secret` (baseEngineConfig `restJwt`) and
+  // verifies the token itself, exactly as upstream's `baseCfg` does, so a case
+  // that asserts a rejected token is measured and any failure is the engine's.
+  //
   // A denial from the engine's own authorization layer, or an assertion about a
   // privilege upstream grants to a Postgres role.
   const deniedInEngine = /not authorized/i.test(message)
@@ -2561,11 +2539,16 @@ async function main() {
       join(REPO, 'conformance', 'fixtures', 'representations.json');
   }
 
-  // The engine needs a JWT secret to boot; unless a case's configuration turns
-  // REST-level verification on, conformance never verifies a token (the
-  // authorizer context is built by the runner), so a fixed dummy is fine.
+  // Upstream's `baseCfg` configures `jwt-secret` for every spec, not only the
+  // auth ones (SpecHelper.hs), so the base engine verifies too. Before this the
+  // runner handed the engine an identity decoded from the token without
+  // checking the signature, which passed the specs that assert a *successful*
+  // token and could not fail the ones that assert a rejected one — a token
+  // signed with the wrong secret reached the table. `anonRole` follows --role so
+  // a run with a different default role still gets it for tokenless requests.
   const baseEngineConfig = {
     database: resolveTargetConfig(opts.target),
+    restJwt: { secret: SPEC_JWT_SECRET, anonRole: opts.role || 'anon' },
     jwtSecret: process.env.JWT_SECRET
       || 'conformance-runner-secret-not-used-for-verification',
     auth: false,

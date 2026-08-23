@@ -429,14 +429,34 @@ function nearest(list, line) {
   return best;
 }
 
+/**
+ * Resolve a name to the binding a Haskell reader would see: the nearest one
+ * *above* the use site, and only then the nearest one below it.
+ *
+ * Plain line proximity is wrong, and wrong in a way that silently rewrites a
+ * case rather than dropping it. Two adjacent `it` blocks each open with
+ * `let jwtPayload = [json|…|]`; when the first block's assertion is a bare
+ * `shouldRespondWith 200`, the block is short enough that the *next* block's
+ * `let` is fewer lines away than its own, so the case went out carrying the
+ * next test's token. Measured on AudienceJwtSecretSpec: the case for "succeeds
+ * when the audience claim matches" (upstream line 23, `aud: "youraudience"`)
+ * was extracted with `aud: "notyouraudience"`, the payload of the test below
+ * it, and then failed against a correct engine.
+ *
+ * `let` binds above its use, so preferring an earlier binding is what the
+ * language does. A `where` clause binds below, which is why a later binding is
+ * still accepted when nothing precedes the use site.
+ */
 function makeResolver(bindings) {
   return function resolve(name, nearLine, seen = new Set()) {
     if (seen.has(name)) return null;
     const cands = bindings.get(name);
     if (!cands || !cands.length) return null;
-    let best = cands[0];
-    let bestD = Math.abs(cands[0].line - nearLine);
-    for (const c of cands) {
+    const above = cands.filter((c) => c.line <= nearLine);
+    const pool = above.length ? above : cands;
+    let best = pool[0];
+    let bestD = Math.abs(pool[0].line - nearLine);
+    for (const c of pool) {
       const d = Math.abs(c.line - nearLine);
       if (d < bestD) { best = c; bestD = d; }
     }

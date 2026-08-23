@@ -1179,13 +1179,98 @@ export function clampMaxRows(parsed, maxRows) {
 
 const BEARER = /^bearer\s+(.+)$/i;
 
-function invalidToken(code, message, status = 401) {
-  const err = new PostgRESTError(status, code, message);
+function invalidToken(code, message, status = 401, details = null) {
+  const err = new PostgRESTError(status, code, message, details);
   err.responseHeaders = {
     'WWW-Authenticate':
       `Bearer error="invalid_token", error_description="${message}"`,
   };
   return err;
+}
+
+// Upstream's decode-error vocabulary, verbatim (Error.hs `message (JwtDecodeErr
+// e)`). Each one is a distinct wire body, and the specs assert them by string,
+// so a single "JWT decode error" for all of them is not interchangeable.
+const decodeError = {
+  empty: () =>
+    invalidToken('PGRST301', 'Empty JWT is sent in Authorization header'),
+  parts: (n) =>
+    invalidToken('PGRST301', `Expected 3 parts in JWT; got ${n}`),
+  // jose's KeyError: the structure is a JWS, the signature is not ours.
+  key: () => invalidToken('PGRST301', 'No suitable key or wrong key type', 401,
+    'None of the keys was able to decode the JWT'),
+  badAlgorithm: (details) => invalidToken(
+    'PGRST301', 'Wrong or unsupported encoding algorithm', 401, details),
+  // Three parts that are not a JWS at all.
+  badCrypto: () =>
+    invalidToken('PGRST301', 'JWT cryptographic operation failed'),
+  claims: () => invalidToken('PGRST303', 'Parsing claims failed'),
+};
+
+/**
+ * Upstream `Auth.Jwt.checkForErrors`: validate the registered claims and
+ * return the first error in upstream's own order (exp, nbf, iat, aud), or null.
+ *
+ * Two details that are easy to get wrong and both observable:
+ *
+ *   - a claim that is present but not a number is its own error, distinct from
+ *     an expired one, and the type error wins;
+ *   - there is 30 seconds of allowed clock skew in both directions
+ *     (`allowedSkewSeconds`), so a token that expired one second ago is still
+ *     accepted. Upstream's own specs rely on it.
+ *
+ * `aud` is validated whether or not `jwt-aud` is configured: with no audience
+ * configured every audience matches, but a non-string still fails.
+ */
+export function validateJwtClaims(claims, audMatches, nowSeconds) {
+  const SKEW = 30;
+  const now = nowSeconds ?? Math.floor(Date.now() / 1000);
+  const num = (key) => {
+    const v = claims[key];
+    if (v === undefined || v === null) return null;
+    return typeof v === 'number' ? { value: v } : 'not-a-number';
+  };
+
+  const exp = num('exp');
+  if (exp === 'not-a-number') {
+    return invalidToken('PGRST303', "The JWT 'exp' claim must be a number");
+  }
+  if (exp && now - SKEW > exp.value) {
+    return invalidToken('PGRST303', 'JWT expired');
+  }
+
+  const nbf = num('nbf');
+  if (nbf === 'not-a-number') {
+    return invalidToken('PGRST303', "The JWT 'nbf' claim must be a number");
+  }
+  if (nbf && now + SKEW < nbf.value) {
+    return invalidToken('PGRST303', 'JWT not yet valid');
+  }
+
+  const iat = num('iat');
+  if (iat === 'not-a-number') {
+    return invalidToken('PGRST303', "The JWT 'iat' claim must be a number");
+  }
+  if (iat && now + SKEW < iat.value) {
+    return invalidToken('PGRST303', 'JWT issued at future');
+  }
+
+  const aud = claims.aud;
+  if (aud !== undefined && aud !== null) {
+    const strings = Array.isArray(aud)
+      ? (aud.every((a) => typeof a === 'string') ? aud : null)
+      : (typeof aud === 'string' ? [aud] : null);
+    if (strings === null) {
+      return invalidToken('PGRST303',
+        "The JWT 'aud' claim must be a string or an array of strings");
+    }
+    // `validAud`: an empty array matches anything; a non-empty one needs one
+    // element the configuration accepts.
+    if (strings.length > 0 && !strings.some((a) => audMatches(a))) {
+      return invalidToken('PGRST303', 'JWT not in audience');
+    }
+  }
+  return null;
 }
 
 function jwtKey(cfg) {
@@ -1234,9 +1319,16 @@ export function verifyRestJwt(cfg, authorization, verifier) {
     return { role: cfg.anonRole, userId: '', email: '' };
   };
   if (!raw) return anon();
+  // `Authorization: Bearer` with nothing after it is not an anonymous request:
+  // upstream reaches `parseToken _ ""` and answers PGRST301 (AuthSpec:96). A
+  // header with some other scheme never gets that far and stays anonymous.
   const m = BEARER.exec(raw);
-  if (!m) return anon();
-  const token = m[1].trim();
+  const token = m ? m[1].trim() : '';
+  if (!m) {
+    if (/^bearer\s*$/i.test(raw)) throw decodeError.empty();
+    return anon();
+  }
+  if (!token) throw decodeError.empty();
 
   const key = jwtKey(cfg);
   if (!key) {
@@ -1251,16 +1343,13 @@ export function verifyRestJwt(cfg, authorization, verifier) {
     throw invalidToken('PGRST301', err.message || 'JWT decode error');
   }
 
-  // Audience: upstream checks it itself so the message is its own. A missing
-  // or null `aud` claim is accepted; anything else must contain jwt-aud.
-  if (cfg.audience) {
-    const aud = claims.aud;
-    const present = aud !== undefined && aud !== null;
-    const list = Array.isArray(aud) ? aud : [aud];
-    if (present && !list.includes(cfg.audience)) {
-      throw invalidToken('PGRST303', 'JWT not in audience');
-    }
-  }
+  // Registered claims, in upstream's order. `jwt-aud` unset means every
+  // audience matches, but the claim's *type* is still checked.
+  const audMatches = cfg.audience
+    ? (aud) => aud === cfg.audience
+    : () => true;
+  const claimsError = validateJwtClaims(claims, audMatches);
+  if (claimsError) throw claimsError;
 
   const role = typeof claims.role === 'string' && claims.role
     ? claims.role
@@ -1298,30 +1387,49 @@ export function applyBulkGuard(mode, method, parsed) {
 }
 
 // Signature check, split out so verifyRestJwt stays testable without crypto.
-function defaultVerifier(token, key) {
+//
+// The failures are told apart the way jose tells them apart for upstream, since
+// each one is a different wire body: a token whose header will not decode is
+// `BadCrypto` (three parts, but not a JWS), `alg: none` is `BadAlgorithm`, and a
+// well-formed JWS this key cannot verify is `KeyError`. Registered claims are
+// not checked here — that is validateJwtClaims, which runs after decoding, so a
+// bad `exp` reports itself as a claim error rather than a decode failure.
+export function defaultVerifier(token, key) {
   const parts = String(token).split('.');
-  if (parts.length !== 3) throw new Error('Expected 3 parts in JWS');
-  const header = decodeSegment(parts[0]);
+  if (parts.length !== 3) throw decodeError.parts(parts.length);
+
+  let header;
+  try {
+    header = decodeSegment(parts[0]);
+  } catch {
+    throw decodeError.badCrypto();
+  }
+  if (!header || typeof header !== 'object') throw decodeError.badCrypto();
   const signing = `${parts[0]}.${parts[1]}`;
   const signature = Buffer.from(parts[2], 'base64url');
   const alg = String(header.alg || '');
 
+  if (alg.toLowerCase() === 'none') {
+    throw decodeError.badAlgorithm(
+      "JWT is unsecured but expected 'alg' was not 'none'");
+  }
+
   if (key.kind === 'hmac') {
     if (!/^HS(256|384|512)$/.test(alg)) {
-      throw new Error(`JWSError (JWSInvalidSignature): unsupported alg ${alg}`);
+      throw decodeError.badAlgorithm(`Unsupported alg: ${alg}`);
     }
     const expected = createHmac(`sha${alg.slice(2)}`, key.key)
       .update(signing).digest();
     if (expected.length !== signature.length
         || !timingSafeEqual(expected, signature)) {
-      throw new Error('JWSError JWSInvalidSignature');
+      throw decodeError.key();
     }
   } else {
     const candidates = key.keys.filter(
       k => !header.kid || !k.kid || k.kid === header.kid);
     const digest = { RS256: 'sha256', RS384: 'sha384', RS512: 'sha512' }[alg];
     if (!digest) {
-      throw new Error(`JWSError (JWSInvalidSignature): unsupported alg ${alg}`);
+      throw decodeError.badAlgorithm(`Unsupported alg: ${alg}`);
     }
     const ok = candidates.some((jwk) => {
       try {
@@ -1331,16 +1439,17 @@ function defaultVerifier(token, key) {
         return false;
       }
     });
-    if (!ok) throw new Error('JWSError JWSInvalidSignature');
+    if (!ok) throw decodeError.key();
   }
 
-  const claims = decodeSegment(parts[1]);
-  const now = Math.floor(Date.now() / 1000);
-  if (typeof claims.exp === 'number' && claims.exp <= now) {
-    throw new Error('JWTExpired');
+  let claims;
+  try {
+    claims = decodeSegment(parts[1]);
+  } catch {
+    throw decodeError.claims();
   }
-  if (typeof claims.nbf === 'number' && claims.nbf > now) {
-    throw new Error('JWTNotYetValid');
+  if (!claims || typeof claims !== 'object' || Array.isArray(claims)) {
+    throw decodeError.claims();
   }
   return claims;
 }
