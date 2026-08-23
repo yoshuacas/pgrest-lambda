@@ -173,7 +173,7 @@ Requests carrying a JWT pass 6 of 59 because most of those cases assert what `SE
 
 | Failing cases | Gap | What is missing |
 |---|---|---|
-| 49 | `no-set-role` | Upstream's authorization: `SET ROLE` plus `GRANT` plus RLS. DSQL has none of it. Permanent — see below. |
+| 49 | `no-set-role` | Upstream's authorization: `SET ROLE` plus `GRANT` plus RLS. DSQL has none of it. A substitute exists and has since been measured — see below. |
 | 39 | `unimplemented-feature-filters` | A filter on a column DSQL refused to create (`entities.arr`, `ranges.range`, `entities.text_search_vector`, `complex_items.arr_data`). The engine passes the name to the database, which answers `42703`, exactly as upstream would. Permanent — see below. |
 | 24 | `missing-operator-fts` | Text search configurations DSQL does not ship, and `tsvector` columns it will not store. Permanent — see below. |
 | 23 | `unimplemented-feature-media-types` | Custom media types produced by a function (`application/geo+json`, `text/tab-separated-values`); the engine answers `PGRST107`. |
@@ -231,6 +231,8 @@ What the manifest cannot express is a relationship that was never a foreign key:
 DSQL rejects `SET ROLE` and `SET LOCAL ROLE`, rejects `ALTER TABLE ... ENABLE ROW SECURITY`, and does not implement `CREATE POLICY`. PostgREST's authorization *is* PostgreSQL authorization: it switches role per request and lets `GRANT` and RLS decide. That model is unreachable here, so pgrest-lambda enforces authorization in the engine instead (see [Authorization](./authorization)).
 
 56 cases fail because of it — 43 in `auth`, 9 in `errors`, 2 in `insert`, 1 each in `delete` and `rpc`. They assert the 401 or 403 that a role switch plus a `GRANT` would produce, and the engine's own decision does not reproduce upstream's wire response case for case. Roles can be created on DSQL; they just cannot be assumed.
+
+**This gap is no longer permanent, and the numbers above are the last run before the substitute existed.** The substitute is the same shape as the relationship manifest: upstream's `test/spec/fixtures/privileges.sql` is ported to a Cedar policy set in `conformance/fixtures/policies/`, and the harness resolves a request with no token — and a token whose payload carries no role claim — to `anon`, which is what upstream's `db-anon-role=postgrest_test_anonymous` does (`Auth.hs parseRoleClaim`). Every run up to and including the one published here resolved an untokened request to `service_role`, so every `REVOKE` in the fixture was invisible and no case asserting a denial could pass. Two engine defects had to be fixed alongside it: `buildAuthzFilter` read only Cedar's `nontrivialResiduals` and dropped a permit that Cedar had already satisfied from principal and context alone, and a numeric `sub` or `id` claim was handed to Cedar unquoted, which made the request unparseable and read as a denial. Measured on the same flags on 2026-08-23, `no-set-role` went from 37 failures to 11 and the suite from 1,074 of 1,358 to 1,101 of 1,356. Of the 11 left, 5 assert that an invalid `exp`/`nbf`/`iat`/`aud` claim is rejected — the harness decodes the JWT without validating it — 3 need column-level `GRANT`s a table-and-action policy cannot express, 2 are an `aud`-matching defect rather than a privilege one, and 1 asserts the answer for a role that does not exist. That run is in `conformance/results/history.json`; this page is rewritten against it when it is published.
 
 ### plpgsql, and therefore triggers
 

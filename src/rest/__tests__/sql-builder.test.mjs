@@ -727,7 +727,7 @@ describe('sql-builder', () => {
         `SELECT "orders"."id", `
         + `(SELECT json_build_object('name', "customers"."name") `
         + `FROM "customers" WHERE "customers"."id" = "orders"."customer_id") `
-        + `AS "customers" FROM "orders"`
+        + `AS "customers" FROM "orders" ORDER BY "orders"."id" ASC`
       );
       assert.equal(norm(text), expected);
     });
@@ -745,12 +745,19 @@ describe('sql-builder', () => {
         },
       ]);
       const { text } = buildSelect('customers', parsed, embedSchema);
+      // The embed's own primary-key tiebreak is an order, so the array is
+      // built through the derived table `json_agg` needs to be told an order
+      // explicitly (see `tiebreakTerms` and `buildEmbedSubquery`).
       const expected = norm(
         `SELECT "customers"."id", `
-        + `COALESCE((SELECT json_agg(json_build_object(`
-        + `'id', "orders"."id", 'amount', "orders"."amount")) `
-        + `FROM "orders" WHERE "orders"."customer_id" = "customers"."id"), `
-        + `'[]'::json) AS "orders" FROM "customers"`
+        + `COALESCE((SELECT json_agg("pgrst_agg" ORDER BY "pgrst_o1" ASC) `
+        + `FROM (SELECT json_build_object(`
+        + `'id', "orders"."id", 'amount', "orders"."amount") AS "pgrst_agg", `
+        + `"orders"."id" AS "pgrst_o1" `
+        + `FROM "orders" WHERE "orders"."customer_id" = "customers"."id" `
+        + `ORDER BY "orders"."id" ASC) AS "pgrst_grouped"), `
+        + `'[]'::json) AS "orders" FROM "customers" `
+        + `ORDER BY "customers"."id" ASC`
       );
       assert.equal(norm(text), expected);
     });
@@ -903,7 +910,7 @@ describe('sql-builder', () => {
       const { text } = buildSelect('orders', parsed, embedSchema);
       const n = norm(text);
       // Should use unqualified column names (no table prefix)
-      assert.equal(n, norm('SELECT "id", "amount" FROM "orders"'));
+      assert.equal(n, norm('SELECT "id", "amount" FROM "orders" ORDER BY "orders"."id" ASC'));
     });
 
     it('filters work alongside embed subqueries', () => {
@@ -1230,7 +1237,7 @@ describe('sql-builder', () => {
       ]);
       const { text } = buildSelect('people', parsed, schema);
       const expected = norm(
-        'SELECT "id", "first_name" AS "firstName" FROM "people"');
+        'SELECT "id", "first_name" AS "firstName" FROM "people" ORDER BY "people"."id" ASC');
       assert.equal(norm(text), expected);
     });
 
@@ -1241,7 +1248,7 @@ describe('sql-builder', () => {
       ]);
       const { text } = buildSelect('todos', parsed, schema);
       assert.equal(norm(text),
-        norm('SELECT "id", "title" FROM "todos"'));
+        norm('SELECT "id", "title" FROM "todos" ORDER BY "todos"."id" ASC'));
     });
 
     it('generates AS in embed path for aliased column', () => {
@@ -1398,7 +1405,7 @@ describe('sql-builder', () => {
       const n = norm(text);
       assert.equal(n, norm(
         'SELECT "id", CAST("status" AS text),'
-        + ' "title" AS "t" FROM "todos"'));
+        + ' "title" AS "t" FROM "todos" ORDER BY "todos"."id" ASC'));
     });
 
     it('no casts produces unchanged SQL (regression)', () => {
@@ -1408,7 +1415,7 @@ describe('sql-builder', () => {
       ]);
       const { text } = buildSelect('todos', parsed, schema);
       assert.equal(norm(text),
-        norm('SELECT "id", "title" FROM "todos"'));
+        norm('SELECT "id", "title" FROM "todos" ORDER BY "todos"."id" ASC'));
     });
 
     it('emits CAST in embed path for column alongside embed', () => {

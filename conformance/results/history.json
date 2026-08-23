@@ -4191,7 +4191,7 @@
       "commit": "2488109",
       "tree": "2488109",
       "target": "dsql",
-      "results": "conformance/results/latest.json",
+      "results": "conformance/results/run-2026-08-21T13-03-49-026Z.json",
       "flags": "--target dsql --concurrency 1 --reload-per-spec, PGREST_RELATIONSHIPS_PATH set",
       "note": "published run of tree 2488109, chosen as the midpoint of four runs measuring 1068, 1068, 1074, 1080; every pairwise difference between them is a row-order-unspecified case, and no case failing for a non-order reason changed verdict in this wave",
       "totals": {

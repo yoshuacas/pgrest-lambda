@@ -367,6 +367,20 @@ function isAggregated(selectNodes) {
   return selectNodes.some(n => n.type === 'column' && n.agg);
 }
 
+/**
+ * Does the select list name a field the schema cache does not know?
+ *
+ * Such a field is rendered qualified (see `computedFieldExpr`) and PostgreSQL
+ * decides what it means — a computed column, or, for `?select=count`, an
+ * aggregate. The builder cannot tell which, and an aggregate it cannot see
+ * makes an appended ORDER BY column illegal, so this is what keeps the
+ * primary-key tiebreak off those reads.
+ */
+function selectsOpaqueField(selectNodes, schema, table) {
+  return selectNodes.some(n => n.type === 'column' && n.name !== '*'
+    && !hasColumn(schema, table, n.name));
+}
+
 // Upstream `groupF`/`pgFmtGroup`: a select with at least one aggregate
 // groups by every non-aggregated field. There is no GROUP BY otherwise —
 // `?select=id` must not collapse rows.
@@ -872,6 +886,90 @@ function relatedOrderExpr(
   return `(SELECT ${expr} FROM ${child.from}${whereClause(conds)})`;
 }
 
+// Neither PostgreSQL nor upstream promises an order for a query that does not
+// ask for one, but in practice a freshly loaded, unmutated PostgreSQL table
+// scans in insertion order, and upstream's expectations encode that order.
+// Aurora DSQL makes no such promise even in practice, which is why assertions
+// flip verdict between two runs of the same commit on nothing but physical row
+// order. Appending the primary key to every ORDER BY reproduces the order
+// PostgreSQL is observed to return for fixtures inserted in key order, and it
+// makes a paginated read stable, which luck cannot.
+//
+// The key is appended, never substituted: an explicit `order=` keeps
+// precedence and the key only breaks its ties — which is what PostgreSQL does
+// too, since it returns tied rows in physical order.
+//
+// This is a deliberate divergence from upstream, which emits no implicit order.
+// `PGREST_DETERMINISTIC_ORDER=false` restores upstream's behaviour for a
+// deployment that wants it.
+function deterministicOrder() {
+  return process.env.PGREST_DETERMINISTIC_ORDER !== 'false';
+}
+
+/**
+ * The primary-key terms that break ties in one relation's ORDER BY.
+ *
+ * Empty when there is nothing to add or nowhere to add it:
+ *   - a grouped or aggregated relation, where a key column that is not in the
+ *     GROUP BY cannot be ordered by at all. That includes a relation whose
+ *     select list only *might* aggregate: `?select=count` over a table with no
+ *     `count` column renders as `"entities"."count"`, which PostgreSQL resolves
+ *     to the aggregate (AggregateFunctionsSpec.hs:31, upstream's "count as a
+ *     column" backwards compatibility), and an aggregate the builder cannot see
+ *     turns an appended key into `42803 column must appear in the GROUP BY
+ *     clause`. Any field the schema cache does not know could be such a
+ *     function of the row, so all of them suppress the tiebreak;
+ *   - a to-one embed, which yields at most one row, so an order over it would
+ *     cost a sort to decide nothing;
+ *   - a relation with nothing orderable at all, such as upstream's `json_table`
+ *     (one `json` column, and `json` has no ordering in PostgreSQL).
+ *
+ * A relation with no primary key falls back to every column that can be
+ * ordered, in declaration order. There is no key to identify a row by, so this
+ * cannot make row identity stable — but it does make the *response* stable,
+ * because two rows that still tie after it are rows whose ordered columns are
+ * all equal. A view inherits its source's key (schema-cache
+ * `propagateViewKeys`), so the fallback is mostly for the genuinely keyless
+ * relations upstream's fixtures declare.
+ *
+ * A column the request already ordered by is dropped: ordering by it twice
+ * changes no rows and only lengthens the clause.
+ */
+function tiebreakTerms(schema, table, ref, order, opts) {
+  if (!deterministicOrder()) return [];
+  if (opts?.grouped || opts?.toOne) return [];
+  const columns = schema.tables[table]?.columns;
+  if (!columns) return [];
+  const pk = schema.tables[table]?.primaryKey || [];
+  const candidates = pk.length > 0
+    ? pk.filter(c => columns[c])
+    : Object.keys(columns).filter(c => isOrderable(columns[c]?.type));
+  const already = new Set((order || [])
+    .filter(o => !o.relation && !(o.jsonPath?.length > 0))
+    .map(o => o.column));
+  return candidates
+    .filter(c => !already.has(c))
+    .map(c => ({ expr: `${q(ref)}.${q(c)}`, dir: 'ASC', nulls: '' }));
+}
+
+// Types PostgreSQL has no ordering for: no default btree operator class, so
+// `ORDER BY` on one is `could not identify an ordering operator`. Everything
+// else the keyless fallback above is willing to sort by — text, numbers, dates,
+// uuid, bool, bytea, jsonb, tsvector, enums, ranges, arrays of any of those.
+const UNORDERABLE_TYPES = new Set([
+  'json', 'xml', 'point', 'line', 'lseg', 'box', 'path', 'polygon', 'circle',
+  'txid_snapshot', 'pg_snapshot',
+]);
+
+function isOrderable(type) {
+  if (!type) return false;
+  const base = String(type)
+    .replace(/\[\]$/, '')
+    .replace(/^(?:.*\.)?/, '')
+    .toLowerCase();
+  return !UNORDERABLE_TYPES.has(base);
+}
+
 /**
  * ORDER BY of one relation, as a clause and as the individual expressions a
  * spread's `json_agg(... ORDER BY ...)` needs. `ref` qualifies every column,
@@ -879,11 +977,21 @@ function relatedOrderExpr(
  * `pgFmtField`): a bare name in ORDER BY binds to an *output* column first, so
  * `?select=factory:name,...processes(name)&order=name` would otherwise sort by
  * the spread json array instead of by `factories.name`.
+ *
+ * `opts.grouped` and `opts.toOne` gate the primary-key tiebreak; see
+ * `tiebreakTerms`.
  */
 function relationOrder(
     order, schema, table, ref, selectNodes, values, env, authzFilters, scope,
-    spreadFields) {
-  if (!order || order.length === 0) return { terms: [], sql: '' };
+    spreadFields, opts) {
+  const tiebreak = tiebreakTerms(schema, table, ref, order, opts);
+  if (!order || order.length === 0) {
+    if (tiebreak.length === 0) return { terms: [], sql: '' };
+    return {
+      terms: tiebreak,
+      sql: ` ORDER BY ${tiebreak.map(t => `${t.expr} ${t.dir}`).join(', ')}`,
+    };
+  }
   const validator = makeColumnValidator(schema, table);
   const terms = order.map((o) => {
     let expr;
@@ -907,6 +1015,7 @@ function relationOrder(
         : '',
     };
   });
+  terms.push(...tiebreak);
   const sql = ` ORDER BY ${terms
     .map(t => `${t.expr} ${t.dir}${t.nulls}`).join(', ')}`;
   return { terms, sql };
@@ -1109,10 +1218,15 @@ function buildEmbedSubquery(
 
   const pairs = jsonPairs(inner.fields, values);
   const from = `${child.from}${inner.laterals.join('')}`;
+  const group = groupClause(inner.groupTerms);
   const order = relationOrder(
     node.order, schema, child.childTable, child.childRef, node.select,
-    values, env, authzFilters, child.childScope, inner.spreadFields);
-  const group = groupClause(inner.groupTerms);
+    values, env, authzFilters, child.childScope, inner.spreadFields,
+    {
+      grouped: inner.aggregated || Boolean(group)
+        || selectsOpaqueField(node.select, schema, child.childTable),
+      toOne: embedIsToOne(rel),
+    });
   const range = limitOffsetClause(node.limit, node.offset, values);
 
   if (embedIsToOne(rel)) {
@@ -1191,7 +1305,12 @@ function buildSpreadLateral(
   }));
   const order = relationOrder(
     node.order, schema, child.childTable, child.childRef, node.select,
-    values, env, authzFilters, child.childScope, inner.spreadFields);
+    values, env, authzFilters, child.childScope, inner.spreadFields,
+    {
+      grouped: inner.aggregated || inner.groupTerms.length > 0
+        || selectsOpaqueField(node.select, schema, child.childTable),
+      toOne,
+    });
   const ordCols = order.terms.map((t, i) =>
     `${t.expr} AS ${q(`pgrst_o${i + 1}`)}`);
 
@@ -1662,6 +1781,13 @@ function buildSelectFrom(table, parsed, schema, authzConditions, opts = {}) {
   const groupTerms = [];
   const env = newBuildEnv();
   let rootSpreadFields = null;
+  // An aggregate can reach the root select list without being a root node of
+  // it: a spread embed's aggregated field is hoisted into this list
+  // (AggregateFunctionsSpec.hs:153,
+  // `?select=...budget_categories(total_budget:budget_amount.sum())`), and the
+  // result is an aggregate query with no GROUP BY. `isAggregated` only looks at
+  // root nodes, so the hoisted case is tracked here.
+  let embedAggregated = false;
 
   if (hasEmbeds) {
     const rs = buildRelationSelect(
@@ -1682,6 +1808,7 @@ function buildSelectFrom(table, parsed, schema, authzConditions, opts = {}) {
     innerJoinConds.push(...rs.innerConds);
     groupTerms.push(...rs.groupTerms);
     rootSpreadFields = rs.spreadFields;
+    embedAggregated = rs.aggregated === true;
   } else {
     colList = flatSelectList(parsed.select, schema, table, values, {
       columnValidator, aggregated, groupTerms,
@@ -1713,7 +1840,11 @@ function buildSelectFrom(table, parsed, schema, authzConditions, opts = {}) {
   sql += groupClause(groupTerms);
   sql += relationOrder(
     parsed.order, schema, table, table, parsed.select, values, env,
-    authzConditions?.embeds, [table], rootSpreadFields).sql;
+    authzConditions?.embeds, [table], rootSpreadFields,
+    {
+      grouped: aggregated || groupTerms.length > 0 || embedAggregated
+        || selectsOpaqueField(parsed.select, schema, table),
+    }).sql;
   sql += limitOffsetClause(parsed.limit, parsed.offset, values);
 
   return { text: sql, values };

@@ -45,6 +45,7 @@ your `.gitignore` too.
 | `POLICIES_PATH` | Cedar policy source. Accepts a filesystem path (`./policies`), `file:///absolute/path`, or `s3://<bucket>/<prefix>/`. See below. |
 | `PGREST_RELATIONSHIPS_PATH` | Path to a declared-relationship manifest. Adds foreign keys the catalog cannot report, so resource embedding works on databases that reject `FOREIGN KEY`. See below. |
 | `PGREST_DEFAULT_TS_CONFIG` | Text search configuration for `fts`/`plfts`/`phfts` filters that name none. See below. |
+| `PGREST_DETERMINISTIC_ORDER` | `false` drops the primary-key tiebreak the engine appends to every `ORDER BY`. See below. |
 | `PGREST_DB_SCHEMAS`, `PGREST_DB_EXTRA_SEARCH_PATH`, `PGREST_DB_MAX_ROWS`, `PGREST_DB_PRE_REQUEST`, `PGREST_DB_AGGREGATES_ENABLED`, `PGREST_DB_PLAN_ENABLED`, `PGREST_DB_BULK_MUTATION_GUARD`, `PGREST_SERVER_CORS_ALLOWED_ORIGINS`, `PGREST_SERVER_TIMING_ENABLED`, `PGREST_SERVER_TRACE_HEADER`, `PGREST_OPENAPI_MODE`, `PGREST_CLIENT_ERROR_VERBOSITY`, `PGREST_DB_ROOT_SPEC`, `PGREST_DB_PRE_CONFIG`, `PGREST_DB_PREPARED_STATEMENTS`, `PGREST_URL_USE_LEGACY_TARGET_NAMES`, `PGREST_APP_SETTINGS`, `PGREST_JWT_*` | PostgREST engine options. See below. |
 
 ## PostgREST engine options
@@ -146,6 +147,47 @@ PGREST_DEFAULT_TS_CONFIG=simple
 
 `simple` does no stemming and applies no stopword list, so `plfts`/`phfts`
 matching is exact word-for-word rather than linguistic.
+
+## Row order
+
+The engine appends the relation's primary key to every `ORDER BY` it emits, so
+`GET /todos` is `ORDER BY "todos"."id" ASC` and `GET /todos?order=done.desc` is
+`ORDER BY "todos"."done" DESC, "todos"."id" ASC`. The key is appended, never
+substituted: an explicit `order=` keeps precedence and the key only breaks its
+ties. A to-many embed gets its child's key the same way.
+
+This is a deliberate divergence from upstream PostgREST, which emits no
+implicit order. Neither engine can promise one without asking for it, but
+PostgreSQL in practice scans a freshly loaded, unmutated table in insertion
+order, and Aurora DSQL does not — the same read can come back in a different
+order twice in a row. Two consequences follow on DSQL without the tiebreak:
+`?limit=`/`?offset=` pagination can repeat or skip a row between pages, and a
+client that renders a list gets no stable order to render it in.
+
+A relation with no primary key is ordered by every column instead, in
+declaration order. Without a key there is no way to make row *identity* stable,
+but this does make the *response* stable: two rows that still tie are rows whose
+every ordered column is equal. Columns PostgreSQL cannot order — `json`, the
+geometric types — are left out, and a relation with nothing orderable at all
+(upstream's `json_table`, one `json` column) gets no clause.
+
+Nothing is added where there is nowhere to add it:
+
+- A grouped or aggregated read, where a column outside the `GROUP BY` cannot be
+  ordered by at all.
+- A read whose select list names a field the schema cache does not know. Such a
+  field is passed to PostgreSQL qualified, and PostgreSQL decides what it means:
+  usually a computed column, but `?select=count` on a table with no `count`
+  column resolves to the aggregate. The engine cannot tell which, and an
+  aggregate it cannot see would make an appended column illegal.
+- A to-one embed, which returns at most one row.
+
+```
+PGREST_DETERMINISTIC_ORDER=false
+```
+
+restores upstream's exact behaviour for a deployment that wants it, at the cost
+of the two guarantees above.
 
 ## Declared relationships
 

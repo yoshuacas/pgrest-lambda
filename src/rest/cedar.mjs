@@ -173,7 +173,15 @@ function buildPrincipalUid(role, userId) {
   if (role === 'anon') {
     return { type: 'PgrestLambda::AnonRole', id: 'anon' };
   }
-  return { type: 'PgrestLambda::User', id: userId };
+  // A Cedar entity id is a string. A JWT is free to carry a numeric `sub` or
+  // `id` — upstream's own AuthSpec sends `{"id": 1}` — and passing that number
+  // through made Cedar reject the request as unparseable, which every caller
+  // here reads as a denial. So a numeric or otherwise non-string subject
+  // becomes its string form rather than a blanket 403.
+  return {
+    type: 'PgrestLambda::User',
+    id: typeof userId === 'string' ? userId : String(userId ?? ''),
+  };
 }
 
 function buildEntities(principalUid, principal, schema) {
@@ -776,8 +784,20 @@ export function createCedar(config) {
     const tempValues = new Array(startParam - 1);
     const permitConditions = [];
     const forbidConditions = [];
-    let anyPermitGrantsAccess = false;
-    let permitIsUnconditional = false;
+    // `allow` from a partial authorization means some permit is satisfied
+    // without knowing the resource — a table-scoped grant such as `when {
+    // principal.role == "author" && context.table == "authors_only" }`. Cedar
+    // reports it in `satisfied` and leaves it out of `nontrivialResiduals`, so
+    // the residual loops below never see it. Reading only the residuals denied
+    // the request whenever a *different* permit left a residual that happens to
+    // translate to FALSE — the shipped `resource has user_id` rule does exactly
+    // that on a table with no `user_id` column. The early return above catches
+    // only the case where no residual survives at all.
+    //
+    // Forbids still apply: they are collected below, and a satisfied forbid
+    // would have made the decision `deny`, which already returned.
+    let anyPermitGrantsAccess = response.decision === 'allow';
+    let permitIsUnconditional = response.decision === 'allow';
 
     // Translate one residual's `when` clauses, tagging a PGRST000 with the
     // policy that produced it.

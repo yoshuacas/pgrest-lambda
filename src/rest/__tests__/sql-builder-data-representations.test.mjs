@@ -115,7 +115,7 @@ describe('data representations: response output', () => {
   it('keeps the bare column list when nothing is registered', () => {
     assert.equal(
       sel('datarep_todos', 'select=*', bare),
-      'SELECT "id", "name", "label_color", "due_at" FROM "datarep_todos"');
+      'SELECT "id", "name", "label_color", "due_at" FROM "datarep_todos" ORDER BY "datarep_todos"."id" ASC');
   });
 
   it('uses the requested alias rather than the column name', () => {

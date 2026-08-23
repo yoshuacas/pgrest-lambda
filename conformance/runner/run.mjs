@@ -38,6 +38,10 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = join(HERE, '..', '..');
 const CASES_DIR = join(REPO, 'conformance', 'cases');
 const RESULTS_DIR = join(REPO, 'conformance', 'results');
+// Upstream grants its test roles privileges in SQL; DSQL has neither `SET ROLE`
+// nor `GRANT ... TO <role>`, so the fixture equivalent is a Cedar policy set.
+// See conformance/fixtures/policies/10-privileges.cedar.
+const POLICIES_DIR = join(REPO, 'conformance', 'fixtures', 'policies');
 const LOAD_REPORT = join(REPO, 'conformance', 'fixtures', 'load-report.json');
 
 // DSQL conformance cluster (CONTRACTS.md). Env wins.
@@ -67,8 +71,15 @@ const USAGE = `conformance runner
                             cases flipped between two runs at 4, none at 1.
   --timeout <ms>            per-case timeout (default 30000)
   --role <role>             authorizer role when a case sends no JWT
-                            (default: service_role)
+                            (default: anon, which is what upstream's
+                            db-anon-role=postgrest_test_anonymous is)
   --cases-dir <path>        default conformance/cases
+  --policies <path>         Cedar policy source. Defaults to
+                            conformance/fixtures/policies, which is the
+                            engine's shipped default set plus upstream's
+                            privileges.sql translated into Cedar. Pass
+                            ./policies to measure against the product
+                            defaults alone.
   --out-dir <path>          default conformance/results
   --reload-data             re-apply conformance/fixtures/dsql/07-data.sql
                             before running (dsql target only). Mutating cases
@@ -122,8 +133,9 @@ function parseArgs(argv) {
     limit: null,
     concurrency: 1,
     timeout: 30000,
-    role: 'service_role',
+    role: 'anon',
     casesDir: CASES_DIR,
+    policies: POLICIES_DIR,
     outDir: RESULTS_DIR,
     reloadData: false,
     reloadPerSpec: false,
@@ -151,6 +163,7 @@ function parseArgs(argv) {
       case '--timeout': opts.timeout = parseInt(next(), 10); break;
       case '--role': opts.role = next(); break;
       case '--cases-dir': opts.casesDir = next(); break;
+      case '--policies': opts.policies = next(); break;
       case '--out-dir': opts.outDir = next(); break;
       case '--reload-data': opts.reloadData = true; break;
       case '--reload-per-spec': opts.reloadPerSpec = true; break;
@@ -353,7 +366,11 @@ export function authorizerContext(caseHeaders, defaultRole) {
   const payload = decodeJwtPayload(m[1]);
   if (!payload) return { role: 'anon', userId: '', email: '' };
   return {
-    role: payload.role || 'authenticated',
+    // No role claim means the anon role, not an authenticated one: upstream
+    // reads `jwt-role-claim-key` and falls back to `db-anon-role` when it is
+    // absent (Auth.hs `parseRoleClaim`), which is why a claimless JWT is
+    // refused a table anonymous cannot read (AuthSpec:130, :135).
+    role: payload.role || defaultRole,
     userId: payload.sub || payload.id || payload['user_id'] || '',
     email: payload.email || '',
   };
@@ -418,7 +435,7 @@ export function buildEvent(testCase, opts = {}) {
     else body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
   }
 
-  const authorizer = authorizerContext(headers, opts.role || 'service_role');
+  const authorizer = authorizerContext(headers, opts.role || 'anon');
 
   return {
     resource: '/{proxy+}',
@@ -1527,12 +1544,18 @@ const SPEC_JWK = '{"alg":"RS256","e":"AQAB","key_ops":["verify"],"kty":"RSA",'
   + 'LEMwi48rCplamOpZToIHEPIaPzpveYQwDnB1HFTR1ove9bpKJsHmi-e2uzQ","use":"sig"}';
 const SPEC_JWKS = `{"keys": [${SPEC_JWK}]}`;
 
-// Every JWT block below keeps `anonRole: 'service_role'`. Upstream's
-// `db-anon-role` is `postgrest_test_anonymous`, a database role with GRANTs;
-// this engine authorizes with Cedar and has no such role, and the runner's
-// default for a request without a token is already service_role — so holding
-// that constant means the only thing these entries change is that the engine
-// verifies the token itself, which is what the block is about.
+// Every JWT block below keeps `anonRole: 'anon'`, which is the runner's own
+// default for a request without a token — so the only thing these entries
+// change is that the engine verifies the token itself, which is what the block
+// is about.
+//
+// `anon` stands in for upstream's `db-anon-role=postgrest_test_anonymous`, a
+// database role whose privileges come from GRANTs. This engine authorizes with
+// Cedar and has no such role, so those GRANTs are ported to policy in
+// conformance/fixtures/policies/10-privileges.cedar. Before that port the
+// default here was `service_role`, which the engine permits unconditionally —
+// it made every REVOKE in upstream's fixture invisible, so the cases asserting
+// that an anonymous caller is refused could not pass.
 const JWT_KEYS = ['configJwtSecret', 'configJWKS', 'configJwtAudience',
   'configDbAnonRole'];
 
@@ -1649,7 +1672,7 @@ export const ENGINE_CONFIGS = [
     config: {
       restJwt: {
         secret: SPEC_JWT_SECRET, audience: 'youraudience',
-        anonRole: 'service_role',
+        anonRole: 'anon',
       },
     },
   },
@@ -1663,7 +1686,7 @@ export const ENGINE_CONFIGS = [
     config: {
       restJwt: {
         secret: SPEC_JWT_SECRET, audience: 'spec tests',
-        anonRole: 'service_role',
+        anonRole: 'anon',
       },
     },
   },
@@ -1673,7 +1696,7 @@ export const ENGINE_CONFIGS = [
     label: 'jwt-secret=binary',
     provides: JWT_KEYS,
     config: {
-      restJwt: { secret: SPEC_JWT_SECRET, anonRole: 'service_role' },
+      restJwt: { secret: SPEC_JWT_SECRET, anonRole: 'anon' },
     },
   },
   // test/spec/Feature/Auth/AsymmetricJwtSpec.hs:23 (JWK) and :32 (JWK Set)
@@ -1682,14 +1705,14 @@ export const ENGINE_CONFIGS = [
     to: 31,
     label: 'jwt-secret=JWK',
     provides: JWT_KEYS,
-    config: { restJwt: { secret: SPEC_JWK, anonRole: 'service_role' } },
+    config: { restJwt: { secret: SPEC_JWK, anonRole: 'anon' } },
   },
   {
     spec: 'AsymmetricJwtSpec',
     from: 32,
     label: 'jwt-secret=JWKSet',
     provides: JWT_KEYS,
-    config: { restJwt: { secret: SPEC_JWKS, anonRole: 'service_role' } },
+    config: { restJwt: { secret: SPEC_JWKS, anonRole: 'anon' } },
   },
   // test/spec/Feature/Auth/NoJwtSecretSpec.hs:14
   {
@@ -1697,7 +1720,7 @@ export const ENGINE_CONFIGS = [
     label: 'jwt-secret=<none>',
     provides: JWT_KEYS,
     config: {
-      restJwt: { verify: true, secret: '', anonRole: 'service_role' },
+      restJwt: { verify: true, secret: '', anonRole: 'anon' },
     },
   },
   // test/spec/Feature/Auth/NoAnonSpec.hs:14
@@ -2546,7 +2569,7 @@ async function main() {
     jwtSecret: process.env.JWT_SECRET
       || 'conformance-runner-secret-not-used-for-verification',
     auth: false,
-    policies: join(REPO, 'policies'),
+    policies: opts.policies,
     // One introspection for the whole run.
     schemaCacheTtl: 24 * 60 * 60 * 1000,
     docs: false,

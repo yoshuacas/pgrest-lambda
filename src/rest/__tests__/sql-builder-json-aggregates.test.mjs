@@ -66,13 +66,14 @@ function build(table, query) {
 describe('json path SQL', () => {
   it('binds the key and aliases with the last key', () => {
     const { sql, values } = build('docs', { select: 'data->>id' });
-    assert.equal(sql, 'SELECT "data"->>$1 AS "id" FROM "docs"');
+    assert.equal(sql, 'SELECT "data"->>$1 AS "id" FROM "docs" ORDER BY "docs"."id" ASC');
     assert.deepStrictEqual(values, ['id']);
   });
 
   it('binds every key of a chain in order', () => {
     const { sql, values } = build('docs', { select: 'x:data->foo->>bar::int' });
-    assert.equal(sql, 'SELECT CAST("data"->$1->>$2 AS int) AS "x" FROM "docs"');
+    assert.equal(sql, 'SELECT CAST("data"->$1->>$2 AS int) AS "x" FROM "docs"'
+      + ' ORDER BY "docs"."id" ASC');
     assert.deepStrictEqual(values, ['foo', 'bar']);
   });
 
@@ -80,20 +81,23 @@ describe('json path SQL', () => {
     // Upstream `pgFmtJsonPath`: `-> $1::int`. The cast is what makes the
     // integer form pick the array overload of the operator.
     const { sql, values } = build('docs', { select: 'data->>0' });
-    assert.equal(sql, 'SELECT "data"->>$1::int AS "data" FROM "docs"');
+    assert.equal(sql, 'SELECT "data"->>$1::int AS "data" FROM "docs"'
+      + ' ORDER BY "docs"."id" ASC');
     assert.deepStrictEqual(values, [0]);
   });
 
   it('binds a negative index', () => {
     const { sql, values } = build('docs', { select: 'data->-1->>b' });
-    assert.equal(sql, 'SELECT "data"->$1::int->>$2 AS "b" FROM "docs"');
+    assert.equal(sql, 'SELECT "data"->$1::int->>$2 AS "b" FROM "docs"'
+      + ' ORDER BY "docs"."id" ASC');
     assert.deepStrictEqual(values, [-1, 'b']);
   });
 
   it('never interpolates a key, however hostile', () => {
     const key = 'a\';DROP TABLE docs;';
     const { sql, values } = build('docs', { select: `data->>${key}` });
-    assert.equal(sql, 'SELECT "data"->>$1 AS "a\';DROP TABLE docs;" FROM "docs"');
+    assert.equal(sql, 'SELECT "data"->>$1 AS "a\';DROP TABLE docs;" FROM "docs"'
+      + ' ORDER BY "docs"."id" ASC');
     assert.deepStrictEqual(values, [key]);
   });
 
@@ -101,14 +105,16 @@ describe('json path SQL', () => {
     const { sql, values } = build('docs',
       { select: 'data->!@#$%^&*_d->>!@#$%^&*_e' });
     assert.equal(sql,
-      'SELECT "data"->$1->>$2 AS "!@#$%^&*_e" FROM "docs"');
+      'SELECT "data"->$1->>$2 AS "!@#$%^&*_e" FROM "docs"'
+      + ' ORDER BY "docs"."id" ASC');
     assert.deepStrictEqual(values, ['!@#$%^&*_d', '!@#$%^&*_e']);
   });
 
   it('wraps a non-json column in to_jsonb() first', () => {
     // Plan.hs `cfToJson`: json and jsonb are the only types left alone.
     const { sql, values } = build('docs', { select: 'to:name->>k' });
-    assert.equal(sql, 'SELECT to_jsonb("name")->>$1 AS "to" FROM "docs"');
+    assert.equal(sql, 'SELECT to_jsonb("name")->>$1 AS "to" FROM "docs"'
+      + ' ORDER BY "docs"."id" ASC');
     assert.deepStrictEqual(values, ['k']);
   });
 
@@ -116,7 +122,8 @@ describe('json path SQL', () => {
     const { sql, values } = build('docs',
       { select: 'id', 'data->foo->>bar': 'eq.baz' });
     assert.equal(sql,
-      'SELECT "id" FROM "docs" WHERE "data"->$1->>$2 = $3');
+      'SELECT "id" FROM "docs" WHERE "data"->$1->>$2 = $3'
+      + ' ORDER BY "docs"."id" ASC');
     assert.deepStrictEqual(values, ['foo', 'bar', 'baz']);
   });
 
@@ -124,7 +131,8 @@ describe('json path SQL', () => {
     const { sql, values } = build('docs',
       { select: 'id', or: '(data->>a.eq.1,data->>b.gt.2)' });
     assert.equal(sql, 'SELECT "id" FROM "docs" WHERE'
-      + ' ("data"->>$1 = $2 OR "data"->>$3 > $4)');
+      + ' ("data"->>$1 = $2 OR "data"->>$3 > $4)'
+      + ' ORDER BY "docs"."id" ASC');
     assert.deepStrictEqual(values, ['a', '1', 'b', '2']);
   });
 
@@ -135,7 +143,7 @@ describe('json path SQL', () => {
       { select: 'id', order: 'data->>id.desc.nullslast' });
     assert.equal(sql,
       'SELECT "id" FROM "docs" '
-      + 'ORDER BY "docs"."data"->>$1 DESC NULLS LAST');
+      + 'ORDER BY "docs"."data"->>$1 DESC NULLS LAST, "docs"."id" ASC');
     assert.deepStrictEqual(values, ['id']);
   });
 
@@ -144,7 +152,7 @@ describe('json path SQL', () => {
       { select: 'id', order: 'data->0->>x' });
     assert.equal(sql,
       'SELECT "id" FROM "docs" '
-      + 'ORDER BY "docs"."data"->$1::int->>$2 ASC');
+      + 'ORDER BY "docs"."data"->$1::int->>$2 ASC, "docs"."id" ASC');
     assert.deepStrictEqual(values, [0, 'x']);
   });
 
@@ -209,6 +217,10 @@ describe('aggregate SQL', () => {
     // Upstream never checks select fields against the schema cache, so
     // `count` with no parentheses is `count("docs")` in PostgreSQL
     // functional notation. Kept for backwards compatibility.
+    //
+    // No primary-key tiebreak: the aggregate is invisible to the builder, and
+    // appending `ORDER BY "docs"."id"` to it is `42803 column "docs"."id" must
+    // appear in the GROUP BY clause`. See `selectsOpaqueField`.
     const { sql } = build('docs', { select: 'count' });
     assert.equal(sql, 'SELECT "docs"."count" FROM "docs"');
   });

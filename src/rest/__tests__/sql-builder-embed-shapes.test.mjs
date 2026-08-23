@@ -128,12 +128,12 @@ describe('spread embeds', () => {
       select: 'name,...processes(processes:name,categories:category_id)',
     });
     assert.ok(
-      sql.includes('COALESCE(json_agg("pgrst_src"."pgrst_s1"), '
-        + `'[]'::json) AS "pgrst_s1"`),
+      sql.includes('COALESCE(json_agg("pgrst_src"."pgrst_s1" ORDER BY '
+        + `"pgrst_src"."pgrst_o1" ASC), '[]'::json) AS "pgrst_s1"`),
       `first column should aggregate, got: ${sql}`);
     assert.ok(
-      sql.includes('COALESCE(json_agg("pgrst_src"."pgrst_s2"), '
-        + `'[]'::json) AS "pgrst_s2"`),
+      sql.includes('COALESCE(json_agg("pgrst_src"."pgrst_s2" ORDER BY '
+        + `"pgrst_src"."pgrst_o1" ASC), '[]'::json) AS "pgrst_s2"`),
       `second column should aggregate, got: ${sql}`);
     assert.ok(
       (sql.match(/AS "pgrst_src"/g) || []).length === 1,
@@ -147,7 +147,7 @@ describe('spread embeds', () => {
     });
     assert.ok(
       sql.includes('json_agg("pgrst_src"."pgrst_s1" ORDER BY '
-        + '"pgrst_src"."pgrst_o1" DESC)'),
+        + '"pgrst_src"."pgrst_o1" DESC, "pgrst_src"."pgrst_o2" ASC)'),
       `spread order should order the aggregate, got: ${sql}`);
   });
 
@@ -253,8 +253,11 @@ describe('computed relationships', () => {
     const { sql } = sqlFor('clients', {
       select: 'name,computed_projects(name)',
     });
+    // The embed's primary-key tiebreak is an order, so `json_agg` takes the
+    // object from the derived table it has to be given an order over.
     assert.ok(
-      sql.includes('json_agg(json_build_object')
+      sql.includes('json_agg("pgrst_agg" ORDER BY')
+      && sql.includes('json_build_object')
       && sql.includes('FROM "computed_projects"("clients"::"clients") '
         + 'AS "projects"'),
       `a to-many computed embed aggregates, got: ${sql}`);

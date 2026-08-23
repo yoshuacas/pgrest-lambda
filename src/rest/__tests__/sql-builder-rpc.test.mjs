@@ -330,7 +330,7 @@ describe('sql-builder: buildRpcCall', () => {
         getallprojects, baseParsed(), schema);
       assert.equal(result.text,
         'SELECT "id", "name", "client_id" FROM "getallprojects"() '
-        + 'AS "projects"');
+        + 'AS "projects" ORDER BY "projects"."id" ASC');
       assert.equal(result.resultMode, 'set');
     });
 
@@ -363,8 +363,8 @@ describe('sql-builder: buildRpcCall', () => {
       assert.ok(
         result.text.includes('"clients"."id" = "projects"."client_id"'),
         result.text);
-      assert.ok(result.text.endsWith('FROM "getallprojects"() AS "projects"'),
-        result.text);
+      assert.ok(result.text.endsWith('FROM "getallprojects"() AS "projects"'
+        + ' ORDER BY "projects"."id" ASC'), result.text);
     });
 
     it('keeps a single-row return single', () => {
