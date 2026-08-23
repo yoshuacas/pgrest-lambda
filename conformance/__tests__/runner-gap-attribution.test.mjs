@@ -100,6 +100,108 @@ describe('triage: an order-only difference outranks an incidental log line', () 
   });
 });
 
+// A column DSQL refused to create is not measurable, whichever layer noticed it
+// was missing. Upstream does not validate filter columns against its schema
+// cache — it emits the column and lets PostgreSQL raise 42703 — so the same
+// dropped `entities.arr` arrives as the engine's PGRST204 in a `select=` and as
+// PostgreSQL's 42703 in an `or=(…)`. Before this rule the first was `blocked`
+// and the second `fail`, which read as an engine gap that no engine change could
+// close.
+describe('triage: a dropped column is blocked however it surfaced', () => {
+  const DROPPED = {
+    object: 'public.entities.arr',
+    kind: 'column',
+    reason: 'column type integer[] not supported by DSQL',
+  };
+  const withDrop = () => ({
+    catalog: { relations: new Set(['entities']), functions: new Set() },
+    dropIndex: new Map([
+      ['public.entities.arr', DROPPED],
+      ['entities.arr', DROPPED],
+    ]),
+  });
+
+  const errCase = (query) => ({
+    id: 'AndOrParamsSpec:99',
+    category: 'filters',
+    bodyMatch: 'exact',
+    request: { method: 'GET', path: '/entities', query, headers: {} },
+    expected: { status: 200, body: [], bodyFormat: 'json', headers: {} },
+  });
+
+  function triageErr(query, body, statusCode = 400, ctxObj = withDrop()) {
+    const tc = errCase(query);
+    const actual = respond(body, statusCode);
+    return triage({
+      testCase: tc, actual, comparison: compare(tc, actual), thrown: null,
+      logs: [], ctx: ctxObj,
+    });
+  }
+
+  const pgErr = (message) => ({
+    code: '42703', message, details: null, hint: null,
+  });
+
+  it('blocks the engine PGRST204 spelling', () => {
+    const t = triageErr('select=arr', {
+      code: 'PGRST204',
+      message: "Could not find the 'arr' column of 'entities' in the schema "
+        + 'cache',
+      details: null,
+      hint: null,
+    });
+    assert.equal(t.status, 'blocked');
+    assert.equal(t.gap, 'no-array-columns');
+  });
+
+  it('blocks the qualified 42703 spelling', () => {
+    const t = triageErr('or=(arr.cs.{1,2},id.eq.1)',
+      pgErr('column entities.arr does not exist'));
+    assert.equal(t.status, 'blocked');
+    assert.equal(t.gap, 'no-array-columns');
+    assert.match(t.reason, /dropped at fixture load/);
+  });
+
+  // Unqualified, so the column belongs to the relation under test.
+  it('blocks the unquoted and quoted unqualified 42703 spellings', () => {
+    for (const message of [
+      'column arr does not exist',
+      'column "arr" does not exist',
+    ]) {
+      const t = triageErr('arr=cs.{1,2}', pgErr(message));
+      assert.equal(t.status, 'blocked', message);
+      assert.equal(t.gap, 'no-array-columns', message);
+    }
+  });
+
+  it('leaves a 42703 for a column that is not on the drop list a failure', () => {
+    const t = triageErr('or=(nope.eq.1)',
+      pgErr('column entities.nope does not exist'));
+    assert.equal(t.status, 'fail');
+    assert.notEqual(t.gap, 'no-array-columns');
+  });
+
+  // The drop list is the only evidence that admits a case; with an empty one
+  // nothing is excluded.
+  it('leaves a 42703 a failure when nothing was dropped', () => {
+    const t = triageErr('arr=cs.{1,2}',
+      pgErr('column entities.arr does not exist'), 400, ctx());
+    assert.equal(t.status, 'fail');
+  });
+
+  // A non-42703 error that happens to mention a column is not this rule's
+  // business — only PostgreSQL's undefined_column code counts.
+  it('needs the 42703 code, not just the wording', () => {
+    const t = triageErr('arr=cs.{1,2}', {
+      code: '42883',
+      message: 'operator does not exist: text @> text',
+      details: null,
+      hint: null,
+    });
+    assert.notEqual(t.status, 'blocked');
+  });
+});
+
 // `harness-supplies-unverified-identity` used to be booked here, for the seven
 // cases that assert an invalid JWT is rejected as a JWT (PGRST301) and instead
 // got a policy denial (PGRST403): the harness stood in for the API Gateway

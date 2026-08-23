@@ -1091,22 +1091,48 @@ function triageInner({ testCase, actual, comparison, thrown, logs, ctx }) {
   // wording (Error.hs:254, "Could not find the '<col>' column of '<rel>' in
   // the schema cache"); the older pgrest-lambda text is kept so a result file
   // produced before that change still classifies the same way.
+  //
+  // PostgreSQL's own 42703 counts as the same evidence. Upstream does not check
+  // a filter column against the schema cache — it emits the column and lets the
+  // database raise, which is why `?arr=cs.{1,2}` on a table with no `arr` comes
+  // back as 42703 rather than PGRST204. Whether the engine or the database
+  // noticed is an artifact of which column the case names; the drop list is what
+  // decides whether the assertion was measurable. Without this the same missing
+  // column was booked `blocked` in a `select=` and `fail` in an `or=(…)`
+  // (measured: 39 cases, all of them AndOrParamsSpec and QuerySpec reads of
+  // `entities.arr`, `ranges.range`, `complex_items.arr_data` and
+  // `entities.text_search_vector`).
   const colMatch =
     /Could not find the '([^'.]+)' column of '([^']+)' in the schema cache/
       .exec(message)
     || /Column '([^'.]+)' does not exist in '([^']+)'/.exec(message);
+  const pgColMatch = code === '42703'
+    ? (/column ([A-Za-z0-9_]+)\.([A-Za-z0-9_]+) does not exist/.exec(message)
+      || /column "?([A-Za-z0-9_]+)"? does not exist/.exec(message))
+    : null;
+  let colDrop = null;
   if (colMatch) {
     const [, col, rel] = colMatch;
-    const drop = ctx.dropIndex.get(`public.${rel}.${col}`)
+    colDrop = ctx.dropIndex.get(`public.${rel}.${col}`)
       || ctx.dropIndex.get(`${rel}.${col}`);
-    if (drop && drop.kind === 'column') {
-      return {
-        status: 'blocked',
-        gap: gapForDropReason(drop.reason),
-        reason: reason(`column ${drop.object} was dropped at fixture load: `
-          + drop.reason),
-      };
+  } else if (pgColMatch) {
+    // `column <rel>.<col>` when qualified, `column "<col>"` when not — an
+    // unqualified one belongs to the relation under test.
+    const [, a, b] = pgColMatch;
+    const rel = b === undefined ? target.name : a;
+    const col = b === undefined ? a : b;
+    if (rel && col) {
+      colDrop = ctx.dropIndex.get(`public.${rel}.${col}`)
+        || ctx.dropIndex.get(`${rel}.${col}`);
     }
+  }
+  if (colDrop && colDrop.kind === 'column') {
+    return {
+      status: 'blocked',
+      gap: gapForDropReason(colDrop.reason),
+      reason: reason(`column ${colDrop.object} was dropped at fixture load: `
+        + colDrop.reason),
+    };
   }
 
   // 3. The engine said the capability is missing.
