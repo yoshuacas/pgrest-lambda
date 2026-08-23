@@ -29,41 +29,51 @@ Reads:
   baseline, then written back with this run added.
 - `conformance/cedar/results/latest.json` — the Cedar equivalence run, if it
   exists (`--cedar` points elsewhere). Rendered as its own section and never
-  added to the pass rate; the generator re-checks from the results file that
-  every upstream case behind it is still failing, and says so.
+  added to the pass rate; the generator re-checks every upstream case behind it
+  against the results file and reports what that file says — how many of them
+  pass in the rate above, and any case the two harnesses read differently, which
+  is a contradiction the section has to explain rather than average away.
 
 Writes `compatreport/index.html` and prints the headline numbers, so a
 regeneration is verifiable from the terminal:
 
 ```
-history conformance/results/history.json: 18 run(s), baseline baseline 135/1153
-wrote /home/ec2-user/pgrest-lambda/compatreport/index.html (208,010 bytes)
-pass rate 1074/1358 = 79.1%  [extracted 1539, needs-config 2, skipped 35, blocked 129, out-of-scope 15]
-48 gap slugs, 27 DSQL drop families
-13 order-dependent failures kept as failures
-cedar equivalence (separate measurement, never added): 24/28 hold, 26 with no fair equivalent, 54 upstream cases covered and still all failing above
-same tree, 4 runs with these flags: 1068, 1068, 1074, 1080 of 1358 — published 1074
-vs baseline baseline: +939 passed, −734 failed, denominator +205
-id-matched vs baseline: +946 pass, -7 regress (1539 shared ids)
-id-matched vs 68b09a4 2026-08-21T11:54:33Z (same flags): +8 pass, -1 regress
-noise vs 2488109 (same tree, same flags): 10 cases differ
+history conformance/results/history.json: 23 run(s), baseline baseline 135/1153
+wrote /home/ec2-user/pgrest-lambda/compatreport/index.html (227,799 bytes)
+pass rate 1176/1294 = 90.9%  [extracted 1539, needs-config 2, skipped 35, blocked 191, out-of-scope 17]
+39 gap slugs, 26 DSQL drop families
+12 order-dependent failures kept as failures
+cedar equivalence (separate measurement, never added): 28/30 hold, 24 with no fair equivalent, 54 upstream cases covered of which 44 pass above, 0 read differently by the two harnesses
+same tree, 2 runs with these flags: 1176, 1176 of 1294 — published 1176
+vs baseline baseline: +1,041 passed, −900 failed, denominator +141
+id-matched vs baseline: +1042 pass, -1 regress (1539 shared ids)
+id-matched vs c718ab4 2026-08-23T06:25:20Z (same flags): +3 pass, -0 regress
+noise vs 8bed54e 2026-08-23T06:57:07Z (same tree, same flags): 0 cases differ
 ```
 
-That 1,074 of 1,358 is the current published measurement, on tree `2488109`;
-the previous published measurement was 1,069 of the same 1,358 on commit
-`5586e94`. Four runs of the `2488109` tree exist and they span 1,068 to 1,080 —
-the rule the published number follows is worth stating: when several runs of one
+That 1,176 of 1,294 is the current published measurement, on tree `8bed54e`; the
+previous published measurement was 1,074 of 1,358 on tree `2488109`. Both runs of
+the `8bed54e` tree scored 1,176 and agree case for case, which is the narrowest
+spread this suite has shown — the four runs of `2488109` spanned 1,068 to 1,080.
+The rule the published number follows is worth stating: when several runs of one
 tree disagree, publish one that was not measured by the pass that wrote the code,
-and prefer the middle of the range to the top of it. Here that rules out the
-1,080 (highest) and leaves 1,074, the midpoint. Every run stays in the trend file
-with its own row, so the spread is visible instead of being read as progress, and
-the generator prints it: the `same tree` line above is computed from the trend,
-not written by hand.
+and prefer the middle of the range to the top of it. With a 0-case spread there is
+nothing to choose, so the published run is the one that measured the tree exactly
+as it is committed; the other run's tree differed by an unused declaration removed
+while it was in flight, which its trend note records. Every run stays in the trend
+file with its own row, so the spread is visible instead of being read as progress,
+and the generator prints it: the `same tree` and `noise` lines above are computed
+from the trend, not written by hand.
 
-The 12-case spread is wider than the 1,069 → 1,074 difference between the two
-publications, which is the whole point of printing it. All 11 cases that changed
-verdict between them are `row-order-unspecified`, checked case by case, so the
-right reading of this wave is that the rate did not move.
+Do not read the 0-case spread as the noise band having closed. `json_table` has
+one column, of type `json`, which PostgreSQL will not order by, so the
+deterministic-order tiebreak cannot reach it and `JsonOperatorSpec:248` can still
+move on its own.
+
+The denominator moved in this wave and the report says so in both directions:
+1,176 of 1,294 published, 1,176 of the older 1,358 with all 64 cases that left the
+denominator added back as failures. Quote one pairing or the other, never
+90.9% against 79.1%.
 
 `--tree` is what makes that line possible. A results file records the commit the
 runner saw, which is not always the commit that ends up containing the code: a
@@ -76,9 +86,12 @@ between two runs of one tree is presented as engine work.
 The `vs baseline` line is a totals difference across different runner flags, so
 it is not the claim the report leads with. The `id-matched` lines are: they match
 case ids between two result files and count movements in each direction
-separately, never netted. Against the baseline, 946 cases went from non-pass to
-pass and 7 went the other way. Against the comparable `eeb1ac9` run, 134 went to
-pass and 5 went the other way: `JsonOperatorSpec:248`, `QuerySpec:571`,
+separately, never netted. Against the baseline, 1,042 cases went from non-pass to
+pass in the published run and 1 went the other way; against the previous run with
+the same flags, 3 went to pass and none the other way. Both directions are printed
+even when one of them is zero. An earlier wave shows why: against the comparable
+`eeb1ac9` run, 134 went to pass and 5 went the other way — `JsonOperatorSpec:248`,
+`QuerySpec:571`,
 `QuerySpec:1265` and `EmbedDisambiguationSpec:278`, all order-only, plus
 `QuerySpec:521`, a false pass the engine stopped producing
 (it used to reject any unknown filter column, which happened to match upstream's
@@ -389,9 +402,12 @@ Residual error left after the fix:
    out of the denominator for the same reason a skip is.
 8. **Cedar equivalence** — a separate measurement in a boxed section of its own:
    equivalent behaviour through a different mechanism, with the list of things a
-   reader should not read into it. It is never averaged into the pass rate, and
-   the section states that the upstream cases behind it are still failures in the
-   rate above — checked against the results file, not asserted.
+   reader should not read into it. It is never averaged into the pass rate. It
+   used to stand in for failures; now that the conformance runner loads its own
+   port of the same `GRANT`s, the section reports how many of the upstream cases
+   behind it pass in the rate above (44 of 54 in the published run) and whether
+   the two harnesses disagree about any of them — both read out of the results
+   file, not asserted.
 
 ## What is editorial, and where it lives
 
@@ -458,10 +474,13 @@ rather than being hidden, so nothing disappears silently.
   before and will again; a trend that only goes up is a trend somebody curated.
 - Two full runs of the same commit differ by a handful of cases. Measured: 547
   and 550 on one tree, 943, 945 and 948 on another, 1,066, 1,069, 1,073 and 1,073
-  on a third, and 1,068, 1,068, 1,074 and 1,080 on a fourth — a spread of 7 cases
-  in the third tree and 12 in the fourth, disagreeing on 8 to 18 of 1,539 in every
-  tree measured so far. The spread is not shrinking as the engine improves; it
-  widens as more cases reach the point of returning rows at all. The cause is DSQL
+  on a third, 1,068, 1,068, 1,074 and 1,080 on a fourth, 1,174 and 1,173 on a
+  fifth, and 1,176 and 1,176 on a sixth — a spread of 7 cases in the third tree,
+  12 in the fourth, 1 in the fifth and 0 in the sixth. The two runs of the sixth
+  agree case for case, the first time that has happened, and it is one pair of
+  runs rather than evidence the mechanism went away: the tiebreak that removed
+  most of the movement cannot reach `json_table`, whose only column PostgreSQL
+  will not order by. The cause is DSQL
   optimistic-concurrency conflicts during the fixture reload, the order the
   storage layer returns unordered rows in, and identity-sequence state a data-only
   reload cannot restore. Do not present a difference of that size as progress —
@@ -486,13 +505,24 @@ rather than being hidden, so nothing disappears silently.
   measured 1,068, 1,068, 1,074 and 1,080 and published 1,074, the midpoint. When
   the spread is wide enough to swallow the difference from the previous
   publication, say so in the page rather than letting the reader infer progress:
-  every case that changed verdict between 1,069 and 1,074 is order-only.
+  every case that changed verdict between 1,069 and 1,074 is order-only. The
+  `8bed54e` run is the one case where the two rules cannot both be satisfied: both
+  of its runs were measured by the pass that wrote the code, and they scored the
+  same case for case. That is published with the first rule stated as unmet, in
+  the report and on the compatibility page, and the number to trust is the
+  id-matched delta (+3, −0), which does not depend on who ran it.
 - Report what left the denominator. A case moved from `fail` to `blocked` or
   `out-of-scope` between two runs raises the rate without any engine work, so the
   report counts those moves and recomputes the rate with them added back as
   failures (945/1285 = 73.5% published, 945/1294 = 73.0% with all nine). The
-  published 1,074/1,358 run has the same denominator as the 1,069 before it — no
-  case entered or left it — so there is nothing to add back this time. The wave
+  published 1,176/1,294 run moved 64 cases out of the denominator that the
+  1,074/1,358 run counted as failures and moved none in, so it is quoted both
+  ways: 90.9% on its own denominator and 1,176/1,358 = 86.6% on the older one,
+  which is the like-for-like figure against 79.1%. All 64 are requests naming a
+  column DSQL will not store, answered with PostgreSQL's own `42703` — the same
+  answer upstream gives — so no engine change can make them pass either way. The
+  earlier 1,074/1,358 run had the same denominator as the 1,069 before it — no
+  case entered or left it — so there was nothing to add back that time. The wave
   before it moved 74 cases *into* the denominator (60 from `blocked`, 14 from
   `needs-config`) and 1 out (`InsertSpec:171`, `fail` → `blocked`), which is why
   that rate rose 5 points while the pass count rose 124.
@@ -501,9 +531,12 @@ rather than being hidden, so nothing disappears silently.
   paragraph that explains the denominator, labelled as not the published number.
   Never quote it anywhere a reader could mistake it for the measurement.
 - A second measurement stays a second measurement. The Cedar equivalence score
-  (24 of 28 equivalences hold, 26 of 54 upstream cases with no fair equivalent) is
+  (28 of 30 equivalences hold, 24 of 54 upstream cases with no fair equivalent) is
   equivalent behaviour through a different mechanism. It is never averaged into
-  the PostgREST rate, the upstream cases behind it stay failures in that rate, and
-  the section reporting it has to say what a reader should not read into it —
+  the PostgREST rate. It also no longer stands in for failures — 44 of those 54
+  cases now pass in the rate above, counted there once — so the section reports
+  the overlap out of the results file and flags any case the two harnesses read
+  differently instead of claiming the cases are still failing. It has to say what
+  a reader should not read into it —
   including that this project chose the cases, wrote the policies and wrote the
   runner, so it has no external referee the way the PostgREST rate does.

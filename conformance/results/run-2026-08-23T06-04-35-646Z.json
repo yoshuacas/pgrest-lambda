@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-08-23T07:16:38Z",
+  "generatedAt": "2026-08-23T06:04:35Z",
   "target": "dsql",
   "commit": "c718ab4",
   "totals": {
     "total": 1539,
-    "passed": 1176,
-    "failed": 118,
+    "passed": 1174,
+    "failed": 120,
     "skipped": 35,
     "needsConfig": 2,
     "blocked": 191,
@@ -157,8 +157,8 @@
     },
     "json-operators": {
       "total": 65,
-      "passed": 46,
-      "failed": 1,
+      "passed": 47,
+      "failed": 0,
       "skipped": 2,
       "needsConfig": 0,
       "blocked": 16,
@@ -187,8 +187,8 @@
     },
     "update": {
       "total": 70,
-      "passed": 60,
-      "failed": 8,
+      "passed": 59,
+      "failed": 9,
       "skipped": 0,
       "needsConfig": 0,
       "blocked": 2,
@@ -207,8 +207,8 @@
     },
     "range": {
       "total": 57,
-      "passed": 57,
-      "failed": 0,
+      "passed": 55,
+      "failed": 2,
       "skipped": 0,
       "needsConfig": 0,
       "blocked": 0,
@@ -266,8 +266,8 @@
     "unimplemented-feature-media-types": 22,
     "no-custom-gucs": 17,
     "no-partitioned-tables": 14,
+    "row-order-unspecified": 14,
     "body-mismatch-filters": 14,
-    "row-order-unspecified": 12,
     "no-foreign-keys": 6,
     "body-mismatch-insert": 6,
     "no-custom-types": 6,
@@ -9976,7 +9976,7 @@
       "id": "InsertSpec:716",
       "category": "insert",
       "status": "fail",
-      "reason": "status: expected 401, actual 201\nbody (exact) mismatch:\n  expected: {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}\n  actual:   [{\"article_id\":2,\"user_id\":2,\"created_at\":\"2026-08-23T07:08:47.171561\"}]\n  at $: expected object {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}, actual array [{\"article_id\":2,\"user_id\":2,\"created_at\":\"2026-08-23T07:08:47.171561\"}]",
+      "reason": "status: expected 401, actual 201\nbody (exact) mismatch:\n  expected: {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}\n  actual:   [{\"article_id\":2,\"user_id\":2,\"created_at\":\"2026-08-23T05:56:58.197059\"}]\n  at $: expected object {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}, actual array [{\"article_id\":2,\"user_id\":2,\"created_at\":\"2026-08-23T05:56:58.197059\"}]",
       "gap": "no-set-role",
       "actual": {
         "status": 201,
@@ -9984,7 +9984,7 @@
           {
             "article_id": 2,
             "user_id": 2,
-            "created_at": "2026-08-23T07:08:47.171561"
+            "created_at": "2026-08-23T05:56:58.197059"
           }
         ]
       }
@@ -9993,7 +9993,7 @@
       "id": "InsertSpec:724",
       "category": "insert",
       "status": "fail",
-      "reason": "status: expected 401, actual 201\nbody (exact) mismatch:\n  expected: {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}\n  actual:   [{\"article_id\":3,\"user_id\":1,\"created_at\":\"2026-08-23T07:08:47.1869\"}]\n  at $: expected object {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}, actual array [{\"article_id\":3,\"user_id\":1,\"created_at\":\"2026-08-23T07:08:47.1869\"}]",
+      "reason": "status: expected 401, actual 201\nbody (exact) mismatch:\n  expected: {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}\n  actual:   [{\"article_id\":3,\"user_id\":1,\"created_at\":\"2026-08-23T05:56:58.211895\"}]\n  at $: expected object {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}, actual array [{\"article_id\":3,\"user_id\":1,\"created_at\":\"2026-08-23T05:56:58.211895\"}]",
       "gap": "no-set-role",
       "actual": {
         "status": 201,
@@ -10001,7 +10001,7 @@
           {
             "article_id": 3,
             "user_id": 1,
-            "created_at": "2026-08-23T07:08:47.1869"
+            "created_at": "2026-08-23T05:56:58.211895"
           }
         ]
       }
@@ -11122,20 +11122,20 @@
     {
       "id": "JsonOperatorSpec:248",
       "category": "json-operators",
-      "status": "fail",
-      "reason": "the same rows came back in a different order; DSQL does not guarantee the physical order this assertion depends on\nbody (exact) mismatch — same rows, different order:\n  expected: [{\"data\":{\"id\":3}},{\"data\":{\"id\":0}},{\"data\":{\"id\":1,\"foo\":{\"bar\":\"baz\"}}}]\n  actual:   [{\"data\":{\"id\":0}},{\"data\":{\"id\":3}},{\"data\":{\"foo\":{\"bar\":\"baz\"},\"id\":1}}]\n  at $[0].data.id: expected 3, actual 0\n  at $[1].data.id: expected 0, actual 3",
-      "gap": "row-order-unspecified",
+      "status": "pass",
+      "reason": null,
+      "gap": null,
       "actual": {
         "status": 200,
         "body": [
           {
             "data": {
-              "id": 0
+              "id": 3
             }
           },
           {
             "data": {
-              "id": 3
+              "id": 0
             }
           },
           {
@@ -13250,9 +13250,9 @@
     {
       "id": "QueryLimitedSpec:97",
       "category": "range",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "the same rows came back in a different order; DSQL does not guarantee the physical order this assertion depends on\nbody (exact) mismatch — same rows, different order:\n  expected: [{\"first_name\":\"Daniel B.\",\"last_name\":\"Lyon\",\"occupation\":\"Barista\"},{\"first_name\":\"Frances M.\",\"last_name\":\"Roe\",\"occupation\":\"Barista\"},{\"first_name\":\"Edwin S.\",\"last_name\":\"Smith\",\"occupation\":\"Barista\"}]\n  actual:   [{\"first_name\":\"Daniel B.\",\"last_name\":\"Lyon\",\"occupation\":\"Barista\"},{\"first_name\":\"Edwin S.\",\"last_name\":\"Smith\",\"occupation\":\"Barista\"},{\"first_name\":\"Frances M.\",\"last_name\":\"Roe\",\"occupation\":\"Barista\"}]\n  at $[1].first_name: expected \"Frances M.\", actual \"Edwin S.\"\n  at $[1].last_name: expected \"Roe\", actual \"Smith\"\n  at $[2].first_name: expected \"Edwin S.\", actual \"Frances M.\"\n  at $[2].last_name: expected \"Smith\", actual \"Roe\"",
+      "gap": "row-order-unspecified",
       "actual": {
         "status": 200,
         "body": [
@@ -13262,13 +13262,13 @@
             "occupation": "Barista"
           },
           {
-            "first_name": "Frances M.",
-            "last_name": "Roe",
+            "first_name": "Edwin S.",
+            "last_name": "Smith",
             "occupation": "Barista"
           },
           {
-            "first_name": "Edwin S.",
-            "last_name": "Smith",
+            "first_name": "Frances M.",
+            "last_name": "Roe",
             "occupation": "Barista"
           }
         ]
@@ -13277,9 +13277,9 @@
     {
       "id": "QueryLimitedSpec:108",
       "category": "range",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "the same rows came back in a different order; DSQL does not guarantee the physical order this assertion depends on\nbody (exact) mismatch — same rows, different order:\n  expected: [{\"first_name\":\"Daniel B.\",\"last_name\":\"Lyon\"},{\"first_name\":\"Frances M.\",\"last_name\":\"Roe\"},{\"first_name\":\"Edwin S.\",\"last_name\":\"Smith\"}]\n  actual:   [{\"first_name\":\"Daniel B.\",\"last_name\":\"Lyon\"},{\"first_name\":\"Edwin S.\",\"last_name\":\"Smith\"},{\"first_name\":\"Frances M.\",\"last_name\":\"Roe\"}]\n  at $[1].first_name: expected \"Frances M.\", actual \"Edwin S.\"\n  at $[1].last_name: expected \"Roe\", actual \"Smith\"\n  at $[2].first_name: expected \"Edwin S.\", actual \"Frances M.\"\n  at $[2].last_name: expected \"Smith\", actual \"Roe\"",
+      "gap": "row-order-unspecified",
       "actual": {
         "status": 200,
         "body": [
@@ -13288,12 +13288,12 @@
             "last_name": "Lyon"
           },
           {
-            "first_name": "Frances M.",
-            "last_name": "Roe"
-          },
-          {
             "first_name": "Edwin S.",
             "last_name": "Smith"
+          },
+          {
+            "first_name": "Frances M.",
+            "last_name": "Roe"
           }
         ]
       }
@@ -30054,22 +30054,22 @@
     {
       "id": "UpdateSpec:444",
       "category": "update",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "the same rows came back in a different order; DSQL does not guarantee the physical order this assertion depends on\nbody (exact) mismatch — same rows, different order:\n  expected: [{\"a\":null,\"b\":\"1\"},{\"a\":\"2\",\"b\":\"1\"},{\"a\":\"1\",\"b\":\"1\"}]\n  actual:   [{\"a\":\"1\",\"b\":\"1\"},{\"a\":null,\"b\":\"1\"},{\"a\":\"2\",\"b\":\"1\"}]\n  at $[0].a: expected null null, actual string \"1\"\n  at $[1].a: expected string \"2\", actual null null\n  at $[2].a: expected \"1\", actual \"2\"",
+      "gap": "row-order-unspecified",
       "actual": {
         "status": 200,
         "body": [
+          {
+            "a": "1",
+            "b": "1"
+          },
           {
             "a": null,
             "b": "1"
           },
           {
             "a": "2",
-            "b": "1"
-          },
-          {
-            "a": "1",
             "b": "1"
           }
         ]

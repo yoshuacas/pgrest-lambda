@@ -1,14 +1,14 @@
 {
-  "generatedAt": "2026-08-23T07:16:38Z",
+  "generatedAt": "2026-08-23T04:28:26Z",
   "target": "dsql",
-  "commit": "c718ab4",
+  "commit": "3d55fcd",
   "totals": {
     "total": 1539,
-    "passed": 1176,
-    "failed": 118,
+    "passed": 1101,
+    "failed": 255,
     "skipped": 35,
     "needsConfig": 2,
-    "blocked": 191,
+    "blocked": 129,
     "outOfScope": 17,
     "errored": 0,
     "occRetries": 0,
@@ -27,18 +27,18 @@
     },
     "filters": {
       "total": 240,
-      "passed": 131,
-      "failed": 42,
+      "passed": 129,
+      "failed": 85,
       "skipped": 1,
       "needsConfig": 0,
-      "blocked": 66,
+      "blocked": 25,
       "outOfScope": 0,
       "errored": 0
     },
     "embedding": {
       "total": 299,
-      "passed": 280,
-      "failed": 8,
+      "passed": 276,
+      "failed": 12,
       "skipped": 0,
       "needsConfig": 0,
       "blocked": 11,
@@ -47,8 +47,8 @@
     },
     "delete": {
       "total": 18,
-      "passed": 17,
-      "failed": 1,
+      "passed": 13,
+      "failed": 5,
       "skipped": 0,
       "needsConfig": 0,
       "blocked": 0,
@@ -57,8 +57,8 @@
     },
     "auth": {
       "total": 56,
-      "passed": 48,
-      "failed": 4,
+      "passed": 38,
+      "failed": 14,
       "skipped": 0,
       "needsConfig": 0,
       "blocked": 3,
@@ -68,10 +68,10 @@
     "select": {
       "total": 72,
       "passed": 65,
-      "failed": 2,
+      "failed": 4,
       "skipped": 1,
       "needsConfig": 0,
-      "blocked": 4,
+      "blocked": 2,
       "outOfScope": 0,
       "errored": 0
     },
@@ -87,8 +87,8 @@
     },
     "media-types": {
       "total": 75,
-      "passed": 38,
-      "failed": 24,
+      "passed": 33,
+      "failed": 29,
       "skipped": 0,
       "needsConfig": 0,
       "blocked": 13,
@@ -107,8 +107,8 @@
     },
     "errors": {
       "total": 21,
-      "passed": 17,
-      "failed": 2,
+      "passed": 5,
+      "failed": 14,
       "skipped": 0,
       "needsConfig": 0,
       "blocked": 2,
@@ -117,18 +117,18 @@
     },
     "multiple-schemas": {
       "total": 36,
-      "passed": 26,
-      "failed": 2,
+      "passed": 22,
+      "failed": 7,
       "skipped": 0,
       "needsConfig": 0,
-      "blocked": 8,
+      "blocked": 7,
       "outOfScope": 0,
       "errored": 0
     },
     "preferences": {
       "total": 29,
-      "passed": 29,
-      "failed": 0,
+      "passed": 25,
+      "failed": 4,
       "skipped": 0,
       "needsConfig": 0,
       "blocked": 0,
@@ -147,8 +147,8 @@
     },
     "insert": {
       "total": 85,
-      "passed": 57,
-      "failed": 13,
+      "passed": 51,
+      "failed": 19,
       "skipped": 4,
       "needsConfig": 0,
       "blocked": 11,
@@ -158,10 +158,10 @@
     "json-operators": {
       "total": 65,
       "passed": 46,
-      "failed": 1,
+      "failed": 16,
       "skipped": 2,
       "needsConfig": 0,
-      "blocked": 16,
+      "blocked": 1,
       "outOfScope": 0,
       "errored": 0
     },
@@ -187,11 +187,11 @@
     },
     "update": {
       "total": 70,
-      "passed": 60,
-      "failed": 8,
+      "passed": 49,
+      "failed": 20,
       "skipped": 0,
       "needsConfig": 0,
-      "blocked": 2,
+      "blocked": 1,
       "outOfScope": 0,
       "errored": 0
     },
@@ -207,8 +207,8 @@
     },
     "range": {
       "total": 57,
-      "passed": 57,
-      "failed": 0,
+      "passed": 55,
+      "failed": 2,
       "skipped": 0,
       "needsConfig": 0,
       "blocked": 0,
@@ -227,18 +227,18 @@
     },
     "rpc": {
       "total": 205,
-      "passed": 137,
-      "failed": 7,
+      "passed": 135,
+      "failed": 11,
       "skipped": 2,
       "needsConfig": 0,
-      "blocked": 43,
+      "blocked": 41,
       "outOfScope": 16,
       "errored": 0
     },
     "singular": {
       "total": 36,
-      "passed": 36,
-      "failed": 0,
+      "passed": 33,
+      "failed": 3,
       "skipped": 0,
       "needsConfig": 0,
       "blocked": 0,
@@ -247,8 +247,8 @@
     },
     "upsert": {
       "total": 63,
-      "passed": 52,
-      "failed": 1,
+      "passed": 46,
+      "failed": 7,
       "skipped": 0,
       "needsConfig": 0,
       "blocked": 10,
@@ -258,44 +258,57 @@
   },
   "gaps": {
     "fixture-missing": 63,
+    "unimplemented-feature-filters": 39,
     "extraction-skipped": 35,
-    "no-array-columns": 34,
-    "no-column-type": 33,
     "no-plpgsql": 32,
-    "missing-operator-fts": 26,
-    "unimplemented-feature-media-types": 22,
+    "missing-operator-fts": 24,
+    "unimplemented-feature-media-types": 23,
     "no-custom-gucs": 17,
+    "body-mismatch-filters": 15,
+    "unimplemented-feature-json-operators": 15,
     "no-partitioned-tables": 14,
-    "body-mismatch-filters": 14,
-    "row-order-unspecified": 12,
+    "row-order-unspecified": 14,
+    "no-set-role": 11,
+    "no-column-type": 11,
+    "unimplemented-feature-insert": 11,
+    "body-mismatch-update": 11,
+    "header-mismatch-content-length": 10,
+    "harness-supplies-unverified-identity": 7,
+    "body-mismatch-upsert": 7,
     "no-foreign-keys": 6,
-    "body-mismatch-insert": 6,
     "no-custom-types": 6,
-    "body-mismatch-update": 6,
-    "no-set-role": 4,
+    "body-mismatch-media-types": 5,
+    "body-mismatch-delete": 4,
+    "unimplemented-feature-multiple-schemas": 4,
+    "body-mismatch-insert": 4,
+    "body-mismatch-embedding": 4,
+    "header-mismatch-content-range": 4,
     "body-mismatch-auth": 3,
-    "unimplemented-feature-insert": 3,
-    "no-extensions": 2,
+    "body-mismatch-errors": 3,
+    "body-mismatch-multiple-schemas": 3,
+    "body-mismatch-singular": 3,
+    "unimplemented-feature-update": 3,
     "engine-error": 2,
-    "unimplemented-feature-multiple-schemas": 2,
+    "missing-validation-preferences": 2,
+    "body-mismatch-preferences": 2,
+    "unimplemented-feature-select": 2,
     "missing-status-206-partial-content": 2,
     "needs-engine-config": 2,
-    "unimplemented-feature-update": 2,
     "unimplemented-feature-aggregates": 1,
     "body-mismatch-aggregates": 1,
+    "harness-no-jwt-verification": 1,
     "missing-validation-auth": 1,
     "missing-validation-errors": 1,
+    "no-extensions": 1,
+    "no-array-columns": 1,
     "status-mismatch-media-types": 1,
-    "body-mismatch-media-types": 1,
     "missing-validation-filters": 1,
     "body-mismatch-select": 1,
-    "header-mismatch-content-length": 1,
     "no-materialized-views": 1,
     "body-mismatch-rollback": 1,
     "unimplemented-feature-rpc": 1,
     "header-mismatch-location": 1,
-    "status-mismatch-rpc": 1,
-    "body-mismatch-upsert": 1
+    "status-mismatch-rpc": 1
   },
   "cases": [
     {
@@ -1989,9 +2002,9 @@
     {
       "id": "AndOrParamsSpec:80",
       "category": "filters",
-      "status": "blocked",
-      "reason": "column public.entities.arr was dropped at fixture load: column type integer[] not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":4}]\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":4}], actual object {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-array-columns",
+      "status": "fail",
+      "reason": "42703: column entities.arr does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":4}]\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":4}], actual object {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-filters",
       "actual": {
         "status": 400,
         "body": {
@@ -2005,9 +2018,9 @@
     {
       "id": "AndOrParamsSpec:83",
       "category": "filters",
-      "status": "blocked",
-      "reason": "column public.entities.text_search_vector was dropped at fixture load: column type tsvector not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1},{\"id\":2}]\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.text_search_vector does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1},{\"id\":2}], actual object {\"code\":\"42703\",\"message\":\"column entities.text_search_vector does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "missing-operator-fts",
+      "status": "fail",
+      "reason": "42703: column entities.text_search_vector does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1},{\"id\":2}]\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.text_search_vector does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1},{\"id\":2}], actual object {\"code\":\"42703\",\"message\":\"column entities.text_search_vector does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-filters",
       "actual": {
         "status": 400,
         "body": {
@@ -2077,9 +2090,9 @@
     {
       "id": "AndOrParamsSpec:103",
       "category": "filters",
-      "status": "blocked",
-      "reason": "column public.entities.arr was dropped at fixture load: column type integer[] not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":3},{\"id\":4}]\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":3},{\"id\":4}], actual object {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-array-columns",
+      "status": "fail",
+      "reason": "42703: column entities.arr does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":3},{\"id\":4}]\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":3},{\"id\":4}], actual object {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-filters",
       "actual": {
         "status": 400,
         "body": {
@@ -2109,9 +2122,9 @@
     {
       "id": "AndOrParamsSpec:118",
       "category": "filters",
-      "status": "blocked",
-      "reason": "column public.entities.arr was dropped at fixture load: column type integer[] not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1},{\"id\":3}]\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1},{\"id\":3}], actual object {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-array-columns",
+      "status": "fail",
+      "reason": "42703: column entities.arr does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1},{\"id\":3}]\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1},{\"id\":3}], actual object {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-filters",
       "actual": {
         "status": 400,
         "body": {
@@ -2125,9 +2138,9 @@
     {
       "id": "AndOrParamsSpec:122",
       "category": "filters",
-      "status": "blocked",
-      "reason": "column public.ranges.range was dropped at fixture load: column type numrange not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1}]\n  actual:   {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1}], actual object {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-column-type",
+      "status": "fail",
+      "reason": "42703: column ranges.range does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1}]\n  actual:   {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1}], actual object {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-filters",
       "actual": {
         "status": 400,
         "body": {
@@ -2141,9 +2154,9 @@
     {
       "id": "AndOrParamsSpec:124",
       "category": "filters",
-      "status": "blocked",
-      "reason": "column public.ranges.range was dropped at fixture load: column type numrange not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":2},{\"id\":3},{\"id\":4}]\n  actual:   {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":2},{\"id\":3},{\"id\":4}], actual object {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-column-type",
+      "status": "fail",
+      "reason": "42703: column ranges.range does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":2},{\"id\":3},{\"id\":4}]\n  actual:   {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":2},{\"id\":3},{\"id\":4}], actual object {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-filters",
       "actual": {
         "status": 400,
         "body": {
@@ -2157,9 +2170,9 @@
     {
       "id": "AndOrParamsSpec:126",
       "category": "filters",
-      "status": "blocked",
-      "reason": "column public.ranges.range was dropped at fixture load: column type numrange not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1}]\n  actual:   {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1}], actual object {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-column-type",
+      "status": "fail",
+      "reason": "42703: column ranges.range does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1}]\n  actual:   {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1}], actual object {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-filters",
       "actual": {
         "status": 400,
         "body": {
@@ -2173,9 +2186,9 @@
     {
       "id": "AndOrParamsSpec:128",
       "category": "filters",
-      "status": "blocked",
-      "reason": "column public.ranges.range was dropped at fixture load: column type numrange not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":4}]\n  actual:   {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":4}], actual object {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-column-type",
+      "status": "fail",
+      "reason": "42703: column ranges.range does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":4}]\n  actual:   {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":4}], actual object {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-filters",
       "actual": {
         "status": 400,
         "body": {
@@ -2189,9 +2202,9 @@
     {
       "id": "AndOrParamsSpec:130",
       "category": "filters",
-      "status": "blocked",
-      "reason": "column public.ranges.range was dropped at fixture load: column type numrange not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1}]\n  actual:   {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1}], actual object {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-column-type",
+      "status": "fail",
+      "reason": "42703: column ranges.range does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1}]\n  actual:   {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1}], actual object {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-filters",
       "actual": {
         "status": 400,
         "body": {
@@ -2205,9 +2218,9 @@
     {
       "id": "AndOrParamsSpec:132",
       "category": "filters",
-      "status": "blocked",
-      "reason": "column public.ranges.range was dropped at fixture load: column type numrange not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":2},{\"id\":3},{\"id\":4}]\n  actual:   {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":2},{\"id\":3},{\"id\":4}], actual object {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-column-type",
+      "status": "fail",
+      "reason": "42703: column ranges.range does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":2},{\"id\":3},{\"id\":4}]\n  actual:   {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":2},{\"id\":3},{\"id\":4}], actual object {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-filters",
       "actual": {
         "status": 400,
         "body": {
@@ -2221,9 +2234,9 @@
     {
       "id": "AndOrParamsSpec:134",
       "category": "filters",
-      "status": "blocked",
-      "reason": "column public.ranges.range was dropped at fixture load: column type numrange not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1}]\n  actual:   {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1}], actual object {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-column-type",
+      "status": "fail",
+      "reason": "42703: column ranges.range does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1}]\n  actual:   {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1}], actual object {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-filters",
       "actual": {
         "status": 400,
         "body": {
@@ -2237,9 +2250,9 @@
     {
       "id": "AndOrParamsSpec:136",
       "category": "filters",
-      "status": "blocked",
-      "reason": "column public.ranges.range was dropped at fixture load: column type numrange not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1},{\"id\":2}]\n  actual:   {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1},{\"id\":2}], actual object {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-column-type",
+      "status": "fail",
+      "reason": "42703: column ranges.range does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1},{\"id\":2}]\n  actual:   {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1},{\"id\":2}], actual object {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-filters",
       "actual": {
         "status": 400,
         "body": {
@@ -2253,9 +2266,9 @@
     {
       "id": "AndOrParamsSpec:138",
       "category": "filters",
-      "status": "blocked",
-      "reason": "column public.ranges.range was dropped at fixture load: column type numrange not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1},{\"id\":2}]\n  actual:   {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1},{\"id\":2}], actual object {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-column-type",
+      "status": "fail",
+      "reason": "42703: column ranges.range does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1},{\"id\":2}]\n  actual:   {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1},{\"id\":2}], actual object {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-filters",
       "actual": {
         "status": 400,
         "body": {
@@ -2269,9 +2282,9 @@
     {
       "id": "AndOrParamsSpec:140",
       "category": "filters",
-      "status": "blocked",
-      "reason": "column public.ranges.range was dropped at fixture load: column type numrange not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1},{\"id\":2}]\n  actual:   {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1},{\"id\":2}], actual object {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-column-type",
+      "status": "fail",
+      "reason": "42703: column ranges.range does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1},{\"id\":2}]\n  actual:   {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1},{\"id\":2}], actual object {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-filters",
       "actual": {
         "status": 400,
         "body": {
@@ -2285,9 +2298,9 @@
     {
       "id": "AndOrParamsSpec:142",
       "category": "filters",
-      "status": "blocked",
-      "reason": "column public.ranges.range was dropped at fixture load: column type numrange not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":3},{\"id\":4}]\n  actual:   {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":3},{\"id\":4}], actual object {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-column-type",
+      "status": "fail",
+      "reason": "42703: column ranges.range does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":3},{\"id\":4}]\n  actual:   {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":3},{\"id\":4}], actual object {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-filters",
       "actual": {
         "status": 400,
         "body": {
@@ -2301,9 +2314,9 @@
     {
       "id": "AndOrParamsSpec:144",
       "category": "filters",
-      "status": "blocked",
-      "reason": "column public.ranges.range was dropped at fixture load: column type numrange not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1},{\"id\":2}]\n  actual:   {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1},{\"id\":2}], actual object {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-column-type",
+      "status": "fail",
+      "reason": "42703: column ranges.range does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1},{\"id\":2}]\n  actual:   {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1},{\"id\":2}], actual object {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-filters",
       "actual": {
         "status": 400,
         "body": {
@@ -2317,9 +2330,9 @@
     {
       "id": "AndOrParamsSpec:146",
       "category": "filters",
-      "status": "blocked",
-      "reason": "column public.ranges.range was dropped at fixture load: column type numrange not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":3},{\"id\":4}]\n  actual:   {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":3},{\"id\":4}], actual object {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-column-type",
+      "status": "fail",
+      "reason": "42703: column ranges.range does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":3},{\"id\":4}]\n  actual:   {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":3},{\"id\":4}], actual object {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-filters",
       "actual": {
         "status": 400,
         "body": {
@@ -2333,9 +2346,9 @@
     {
       "id": "AndOrParamsSpec:148",
       "category": "filters",
-      "status": "blocked",
-      "reason": "column public.ranges.range was dropped at fixture load: column type numrange not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1}]\n  actual:   {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1}], actual object {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-column-type",
+      "status": "fail",
+      "reason": "42703: column ranges.range does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1}]\n  actual:   {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1}], actual object {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-filters",
       "actual": {
         "status": 400,
         "body": {
@@ -2349,9 +2362,9 @@
     {
       "id": "AndOrParamsSpec:150",
       "category": "filters",
-      "status": "blocked",
-      "reason": "column public.ranges.range was dropped at fixture load: column type numrange not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":2},{\"id\":3},{\"id\":4},{\"id\":5}]\n  actual:   {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":2},{\"id\":3},{\"id\":4},{\"id\":5}], actual object {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-column-type",
+      "status": "fail",
+      "reason": "42703: column ranges.range does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":2},{\"id\":3},{\"id\":4},{\"id\":5}]\n  actual:   {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":2},{\"id\":3},{\"id\":4},{\"id\":5}], actual object {\"code\":\"42703\",\"message\":\"column ranges.range does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-filters",
       "actual": {
         "status": 400,
         "body": {
@@ -2365,9 +2378,9 @@
     {
       "id": "AndOrParamsSpec:154",
       "category": "filters",
-      "status": "blocked",
-      "reason": "column public.entities.arr was dropped at fixture load: column type integer[] not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":3}]\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":3}], actual object {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-array-columns",
+      "status": "fail",
+      "reason": "42703: column entities.arr does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":3}]\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":3}], actual object {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-filters",
       "actual": {
         "status": 400,
         "body": {
@@ -2381,9 +2394,9 @@
     {
       "id": "AndOrParamsSpec:156",
       "category": "filters",
-      "status": "blocked",
-      "reason": "column public.entities.arr was dropped at fixture load: column type integer[] not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1},{\"id\":3}]\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1},{\"id\":3}], actual object {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-array-columns",
+      "status": "fail",
+      "reason": "42703: column entities.arr does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1},{\"id\":3}]\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1},{\"id\":3}], actual object {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-filters",
       "actual": {
         "status": 400,
         "body": {
@@ -2397,9 +2410,9 @@
     {
       "id": "AndOrParamsSpec:158",
       "category": "filters",
-      "status": "blocked",
-      "reason": "column public.entities.arr was dropped at fixture load: column type integer[] not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1},{\"id\":2},{\"id\":3}]\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1},{\"id\":2},{\"id\":3}], actual object {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-array-columns",
+      "status": "fail",
+      "reason": "42703: column entities.arr does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1},{\"id\":2},{\"id\":3}]\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1},{\"id\":2},{\"id\":3}], actual object {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-filters",
       "actual": {
         "status": 400,
         "body": {
@@ -2413,9 +2426,9 @@
     {
       "id": "AndOrParamsSpec:160",
       "category": "filters",
-      "status": "blocked",
-      "reason": "column public.entities.arr was dropped at fixture load: column type integer[] not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1},{\"id\":2},{\"id\":3}]\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1},{\"id\":2},{\"id\":3}], actual object {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-array-columns",
+      "status": "fail",
+      "reason": "42703: column entities.arr does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1},{\"id\":2},{\"id\":3}]\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1},{\"id\":2},{\"id\":3}], actual object {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-filters",
       "actual": {
         "status": 400,
         "body": {
@@ -2429,9 +2442,9 @@
     {
       "id": "AndOrParamsSpec:162",
       "category": "filters",
-      "status": "blocked",
-      "reason": "column public.entities.arr was dropped at fixture load: column type integer[] not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":2},{\"id\":3}]\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":2},{\"id\":3}], actual object {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-array-columns",
+      "status": "fail",
+      "reason": "42703: column entities.arr does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":2},{\"id\":3}]\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":2},{\"id\":3}], actual object {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-filters",
       "actual": {
         "status": 400,
         "body": {
@@ -2445,9 +2458,9 @@
     {
       "id": "AndOrParamsSpec:164",
       "category": "filters",
-      "status": "blocked",
-      "reason": "column public.entities.arr was dropped at fixture load: column type integer[] not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: []\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [], actual object {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-array-columns",
+      "status": "fail",
+      "reason": "42703: column entities.arr does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: []\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [], actual object {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-filters",
       "actual": {
         "status": 400,
         "body": {
@@ -2461,9 +2474,9 @@
     {
       "id": "AndOrParamsSpec:166",
       "category": "filters",
-      "status": "blocked",
-      "reason": "column public.entities.arr was dropped at fixture load: column type integer[] not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1},{\"id\":2},{\"id\":3}]\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1},{\"id\":2},{\"id\":3}], actual object {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-array-columns",
+      "status": "fail",
+      "reason": "42703: column entities.arr does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1},{\"id\":2},{\"id\":3}]\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1},{\"id\":2},{\"id\":3}], actual object {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-filters",
       "actual": {
         "status": 400,
         "body": {
@@ -2477,9 +2490,9 @@
     {
       "id": "AndOrParamsSpec:168",
       "category": "filters",
-      "status": "blocked",
-      "reason": "column public.entities.arr was dropped at fixture load: column type integer[] not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1},{\"id\":2},{\"id\":3}]\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1},{\"id\":2},{\"id\":3}], actual object {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-array-columns",
+      "status": "fail",
+      "reason": "42703: column entities.arr does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1},{\"id\":2},{\"id\":3}]\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1},{\"id\":2},{\"id\":3}], actual object {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-filters",
       "actual": {
         "status": 400,
         "body": {
@@ -2493,9 +2506,9 @@
     {
       "id": "AndOrParamsSpec:170",
       "category": "filters",
-      "status": "blocked",
-      "reason": "column public.entities.arr was dropped at fixture load: column type integer[] not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1},{\"id\":2}]\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1},{\"id\":2}], actual object {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-array-columns",
+      "status": "fail",
+      "reason": "42703: column entities.arr does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1},{\"id\":2}]\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1},{\"id\":2}], actual object {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-filters",
       "actual": {
         "status": 400,
         "body": {
@@ -2509,9 +2522,9 @@
     {
       "id": "AndOrParamsSpec:172",
       "category": "filters",
-      "status": "blocked",
-      "reason": "column public.entities.arr was dropped at fixture load: column type integer[] not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":2},{\"id\":3}]\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":2},{\"id\":3}], actual object {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-array-columns",
+      "status": "fail",
+      "reason": "42703: column entities.arr does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":2},{\"id\":3}]\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":2},{\"id\":3}], actual object {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-filters",
       "actual": {
         "status": 400,
         "body": {
@@ -2525,9 +2538,9 @@
     {
       "id": "AndOrParamsSpec:174",
       "category": "filters",
-      "status": "blocked",
-      "reason": "column public.entities.arr was dropped at fixture load: column type integer[] not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1},{\"id\":2}]\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1},{\"id\":2}], actual object {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-array-columns",
+      "status": "fail",
+      "reason": "42703: column entities.arr does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1},{\"id\":2}]\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1},{\"id\":2}], actual object {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-filters",
       "actual": {
         "status": 400,
         "body": {
@@ -2541,9 +2554,9 @@
     {
       "id": "AndOrParamsSpec:176",
       "category": "filters",
-      "status": "blocked",
-      "reason": "column public.entities.arr was dropped at fixture load: column type integer[] not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":3}]\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":3}], actual object {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-array-columns",
+      "status": "fail",
+      "reason": "42703: column entities.arr does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":3}]\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":3}], actual object {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-filters",
       "actual": {
         "status": 400,
         "body": {
@@ -2557,9 +2570,9 @@
     {
       "id": "AndOrParamsSpec:178",
       "category": "filters",
-      "status": "blocked",
-      "reason": "column public.entities.arr was dropped at fixture load: column type integer[] not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":2},{\"id\":3}]\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":2},{\"id\":3}], actual object {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-array-columns",
+      "status": "fail",
+      "reason": "42703: column entities.arr does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":2},{\"id\":3}]\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":2},{\"id\":3}], actual object {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-filters",
       "actual": {
         "status": 400,
         "body": {
@@ -2573,9 +2586,9 @@
     {
       "id": "AndOrParamsSpec:180",
       "category": "filters",
-      "status": "blocked",
-      "reason": "column public.entities.arr was dropped at fixture load: column type integer[] not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1},{\"id\":3},{\"id\":4}]\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1},{\"id\":3},{\"id\":4}], actual object {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-array-columns",
+      "status": "fail",
+      "reason": "42703: column entities.arr does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1},{\"id\":3},{\"id\":4}]\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1},{\"id\":3},{\"id\":4}], actual object {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-filters",
       "actual": {
         "status": 400,
         "body": {
@@ -2589,9 +2602,9 @@
     {
       "id": "AndOrParamsSpec:185",
       "category": "filters",
-      "status": "blocked",
-      "reason": "column public.entities.arr was dropped at fixture load: column type integer[] not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1}]\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1}], actual object {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-array-columns",
+      "status": "fail",
+      "reason": "42703: column entities.arr does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1}]\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1}], actual object {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-filters",
       "actual": {
         "status": 400,
         "body": {
@@ -2605,9 +2618,9 @@
     {
       "id": "AndOrParamsSpec:188",
       "category": "filters",
-      "status": "blocked",
-      "reason": "column public.entities.text_search_vector was dropped at fixture load: column type tsvector not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":2}]\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.text_search_vector does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":2}], actual object {\"code\":\"42703\",\"message\":\"column entities.text_search_vector does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "missing-operator-fts",
+      "status": "fail",
+      "reason": "42703: column entities.text_search_vector does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":2}]\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.text_search_vector does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":2}], actual object {\"code\":\"42703\",\"message\":\"column entities.text_search_vector does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-filters",
       "actual": {
         "status": 400,
         "body": {
@@ -2621,9 +2634,9 @@
     {
       "id": "AndOrParamsSpec:191",
       "category": "filters",
-      "status": "blocked",
-      "reason": "column public.entities.arr was dropped at fixture load: column type integer[] not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":2},{\"id\":3}]\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":2},{\"id\":3}], actual object {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-array-columns",
+      "status": "fail",
+      "reason": "42703: column entities.arr does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":2},{\"id\":3}]\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":2},{\"id\":3}], actual object {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-filters",
       "actual": {
         "status": 400,
         "body": {
@@ -2658,9 +2671,9 @@
     {
       "id": "AndOrParamsSpec:197",
       "category": "filters",
-      "status": "blocked",
-      "reason": "column public.entities.arr was dropped at fixture load: column type integer[] not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":3}]\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":3}], actual object {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-array-columns",
+      "status": "fail",
+      "reason": "42703: column entities.arr does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":3}]\n  actual:   {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":3}], actual object {\"code\":\"42703\",\"message\":\"column entities.arr does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-filters",
       "actual": {
         "status": 400,
         "body": {
@@ -2934,34 +2947,30 @@
     {
       "id": "AndOrParamsSpec:267",
       "category": "filters",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "body (exact) mismatch:\n  expected: [{\"id\":4}]\n  actual:   []\n  at $: expected 1 element(s), actual 0",
+      "gap": "body-mismatch-filters",
       "actual": {
         "status": 200,
-        "body": [
-          {
-            "id": 4
-          }
-        ]
+        "body": []
       }
     },
     {
       "id": "AndOrParamsSpec:275",
       "category": "delete",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "body (exact) mismatch:\n  expected: [{\"id\":1,\"name\":\"grandchild entity 1\"},{\"id\":2,\"name\":\"grandchild entity 2\"}]\n  actual:   [{\"id\":1,\"name\":\"updated grandchild entity\"},{\"id\":2,\"name\":\"updated grandchild entity\"}]\n  at $[0].name: expected \"grandchild entity 1\", actual \"updated grandchild entity\"\n  at $[1].name: expected \"grandchild entity 2\", actual \"updated grandchild entity\"",
+      "gap": "body-mismatch-delete",
       "actual": {
         "status": 200,
         "body": [
           {
             "id": 1,
-            "name": "grandchild entity 1"
+            "name": "updated grandchild entity"
           },
           {
             "id": 2,
-            "name": "grandchild entity 2"
+            "name": "updated grandchild entity"
           }
         ]
       }
@@ -2969,16 +2978,12 @@
     {
       "id": "AndOrParamsSpec:281",
       "category": "delete",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "body (exact) mismatch:\n  expected: [{\"id\":4}]\n  actual:   []\n  at $: expected 1 element(s), actual 0",
+      "gap": "body-mismatch-delete",
       "actual": {
         "status": 200,
-        "body": [
-          {
-            "id": 4
-          }
-        ]
+        "body": []
       }
     },
     {
@@ -3017,12 +3022,17 @@
     {
       "id": "AudienceJwtSecretSpec:32",
       "category": "auth",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "JWT not in audience\nstatus: expected 200, actual 401",
+      "gap": "no-set-role",
       "actual": {
-        "status": 200,
-        "body": []
+        "status": 401,
+        "body": {
+          "code": "PGRST303",
+          "message": "JWT not in audience",
+          "details": null,
+          "hint": null
+        }
       }
     },
     {
@@ -3071,12 +3081,17 @@
     {
       "id": "AudienceJwtSecretSpec:85",
       "category": "auth",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "JWT not in audience\nstatus: expected 200, actual 401",
+      "gap": "no-set-role",
       "actual": {
-        "status": 200,
-        "body": []
+        "status": 401,
+        "body": {
+          "code": "PGRST303",
+          "message": "JWT not in audience",
+          "details": null,
+          "hint": null
+        }
       }
     },
     {
@@ -3405,14 +3420,14 @@
     {
       "id": "AuthSpec:96",
       "category": "auth",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "the assertion rejects the token, but the harness decodes the JWT payload without verifying it, so the request reached the authorization layer and was denied by policy instead\nheader WWW-Authenticate: expected \"Bearer error=\\\"invalid_token\\\", error_description=\\\"Empty JWT is sent in Authorization header\\\"\", actual \"Bearer\"\nheader Content-Length: expected \"100\", actual \"284\"\nbody (exact) mismatch:\n  expected: {\"message\":\"Empty JWT is sent in Authorization header\",\"code\":\"PGRST301\",\"hint\":null,\"details\":null}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='anon' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/conformance/fixtures/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.message: expected \"Empty JWT is sent in Authorization header\", actual \"Not authorized: role='anon' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/conformance/fixtures/pol…\n  at $.code: expected \"PGRST301\", actual \"PGRST403\"",
+      "gap": "harness-supplies-unverified-identity",
       "actual": {
         "status": 401,
         "body": {
-          "code": "PGRST301",
-          "message": "Empty JWT is sent in Authorization header",
+          "code": "PGRST403",
+          "message": "Not authorized: role='anon' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/conformance/fixtures/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -3421,30 +3436,25 @@
     {
       "id": "AuthSpec:108",
       "category": "auth",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "the case asserts that the token is rejected; the runner trusts the payload and never verifies a signature\nstatus: expected 401, actual 200\nheader WWW-Authenticate: expected \"Bearer error=\\\"invalid_token\\\", error_description=\\\"JWT expired\\\"\", actual <absent>\nbody (exact) mismatch:\n  expected: {\"message\":\"JWT expired\",\"code\":\"PGRST303\",\"hint\":null,\"details\":null}\n  actual:   []\n  at $: expected object {\"message\":\"JWT expired\",\"code\":\"PGRST303\",\"hint\":null,\"details\":null}, actual array []",
+      "gap": "harness-no-jwt-verification",
       "actual": {
-        "status": 401,
-        "body": {
-          "code": "PGRST303",
-          "message": "JWT expired",
-          "details": null,
-          "hint": null
-        }
+        "status": 200,
+        "body": []
       }
     },
     {
       "id": "AuthSpec:119",
       "category": "auth",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "the assertion rejects the token, but the harness decodes the JWT payload without verifying it, so the request reached the authorization layer and was denied by policy instead\nheader WWW-Authenticate: expected \"Bearer error=\\\"invalid_token\\\", error_description=\\\"Expected 3 parts in JWT; got 2\\\"\", actual \"Bearer\"\nbody (exact) mismatch:\n  expected: {\"message\":\"Expected 3 parts in JWT; got 2\",\"code\":\"PGRST301\",\"hint\":null,\"details\":null}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='anon' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/conformance/fixtures/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.message: expected \"Expected 3 parts in JWT; got 2\", actual \"Not authorized: role='anon' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/conformance/fixtures/pol…\n  at $.code: expected \"PGRST301\", actual \"PGRST403\"",
+      "gap": "harness-supplies-unverified-identity",
       "actual": {
         "status": 401,
         "body": {
-          "code": "PGRST301",
-          "message": "Expected 3 parts in JWT; got 2",
+          "code": "PGRST403",
+          "message": "Not authorized: role='anon' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/conformance/fixtures/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -3496,81 +3506,56 @@
     {
       "id": "AuthSpec:152",
       "category": "auth",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "status: expected 401, actual 200\nbody (exact) mismatch:\n  expected: {\"code\":\"PGRST303\",\"details\":null,\"hint\":null,\"message\":\"The JWT 'exp' claim must be a number\"}\n  actual:   []\n  at $: expected object {\"code\":\"PGRST303\",\"details\":null,\"hint\":null,\"message\":\"The JWT 'exp' claim must be a number\"}, actual array []",
+      "gap": "no-set-role",
       "actual": {
-        "status": 401,
-        "body": {
-          "code": "PGRST303",
-          "message": "The JWT 'exp' claim must be a number",
-          "details": null,
-          "hint": null
-        }
+        "status": 200,
+        "body": []
       }
     },
     {
       "id": "AuthSpec:164",
       "category": "auth",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "status: expected 401, actual 200\nbody (exact) mismatch:\n  expected: {\"code\":\"PGRST303\",\"details\":null,\"hint\":null,\"message\":\"The JWT 'nbf' claim must be a number\"}\n  actual:   []\n  at $: expected object {\"code\":\"PGRST303\",\"details\":null,\"hint\":null,\"message\":\"The JWT 'nbf' claim must be a number\"}, actual array []",
+      "gap": "no-set-role",
       "actual": {
-        "status": 401,
-        "body": {
-          "code": "PGRST303",
-          "message": "The JWT 'nbf' claim must be a number",
-          "details": null,
-          "hint": null
-        }
+        "status": 200,
+        "body": []
       }
     },
     {
       "id": "AuthSpec:176",
       "category": "auth",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "status: expected 401, actual 200\nbody (exact) mismatch:\n  expected: {\"code\":\"PGRST303\",\"details\":null,\"hint\":null,\"message\":\"The JWT 'iat' claim must be a number\"}\n  actual:   []\n  at $: expected object {\"code\":\"PGRST303\",\"details\":null,\"hint\":null,\"message\":\"The JWT 'iat' claim must be a number\"}, actual array []",
+      "gap": "no-set-role",
       "actual": {
-        "status": 401,
-        "body": {
-          "code": "PGRST303",
-          "message": "The JWT 'iat' claim must be a number",
-          "details": null,
-          "hint": null
-        }
+        "status": 200,
+        "body": []
       }
     },
     {
       "id": "AuthSpec:188",
       "category": "auth",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "status: expected 401, actual 200\nbody (exact) mismatch:\n  expected: {\"code\":\"PGRST303\",\"details\":null,\"hint\":null,\"message\":\"The JWT 'aud' claim must be a string or an array of strings\"}\n  actual:   []\n  at $: expected object {\"code\":\"PGRST303\",\"details\":null,\"hint\":null,\"message\":\"The JWT 'aud' claim must be a string or an array of strings\"}, actual array []",
+      "gap": "no-set-role",
       "actual": {
-        "status": 401,
-        "body": {
-          "code": "PGRST303",
-          "message": "The JWT 'aud' claim must be a string or an array of strings",
-          "details": null,
-          "hint": null
-        }
+        "status": 200,
+        "body": []
       }
     },
     {
       "id": "AuthSpec:200",
       "category": "auth",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "status: expected 401, actual 200\nbody (exact) mismatch:\n  expected: {\"code\":\"PGRST303\",\"details\":null,\"hint\":null,\"message\":\"The JWT 'aud' claim must be a string or an array of strings\"}\n  actual:   []\n  at $: expected object {\"code\":\"PGRST303\",\"details\":null,\"hint\":null,\"message\":\"The JWT 'aud' claim must be a string or an array of strings\"}, actual array []",
+      "gap": "no-set-role",
       "actual": {
-        "status": 401,
-        "body": {
-          "code": "PGRST303",
-          "message": "The JWT 'aud' claim must be a string or an array of strings",
-          "details": null,
-          "hint": null
-        }
+        "status": 200,
+        "body": []
       }
     },
     {
@@ -5272,17 +5257,15 @@
     {
       "id": "DeleteSpec:91",
       "category": "delete",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "body (exact) mismatch:\n  expected: [{\"address\":\"Street 1\",\"students\":{\"name\":\"John Doe\"}}]\n  actual:   [{\"address\":\"Street 1\",\"students\":null}]\n  at $[0].students: expected object {\"name\":\"John Doe\"}, actual null null",
+      "gap": "body-mismatch-delete",
       "actual": {
         "status": 200,
         "body": [
           {
             "address": "Street 1",
-            "students": {
-              "name": "John Doe"
-            }
+            "students": null
           }
         ]
       }
@@ -5334,17 +5317,12 @@
     {
       "id": "DeleteSpec:128",
       "category": "delete",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "body (exact) mismatch:\n  expected: [{\"id\":1,\"email\":\"test@123.com\"}]\n  actual:   []\n  at $: expected 1 element(s), actual 0",
+      "gap": "body-mismatch-delete",
       "actual": {
         "status": 200,
-        "body": [
-          {
-            "id": 1,
-            "email": "test@123.com"
-          }
-        ]
+        "body": []
       }
     },
     {
@@ -8270,9 +8248,9 @@
     {
       "id": "ErrorSpec:43",
       "category": "errors",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "header Content-Length: expected \"129\", actual \"131\"",
+      "gap": "header-mismatch-content-length",
       "actual": {
         "status": 404,
         "body": {
@@ -8286,14 +8264,14 @@
     {
       "id": "ErrorSpec:53",
       "category": "errors",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "the assertion rejects the token, but the harness decodes the JWT payload without verifying it, so the request reached the authorization layer and was denied by policy instead\nheader Proxy-Status: expected \"PostgREST; error=PGRST301\", actual \"PostgREST; error=PGRST403\"\nheader Content-Length: expected \"89\", actual \"284\"\nbody (exact) mismatch:\n  expected: {\"message\":\"Expected 3 parts in JWT; got 2\",\"code\":\"PGRST301\",\"hint\":null,\"details\":null}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='anon' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/conformance/fixtures/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.message: expected \"Expected 3 parts in JWT; got 2\", actual \"Not authorized: role='anon' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/conformance/fixtures/pol…\n  at $.code: expected \"PGRST301\", actual \"PGRST403\"",
+      "gap": "harness-supplies-unverified-identity",
       "actual": {
         "status": 401,
         "body": {
-          "code": "PGRST301",
-          "message": "Expected 3 parts in JWT; got 2",
+          "code": "PGRST403",
+          "message": "Not authorized: role='anon' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/conformance/fixtures/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -8334,9 +8312,9 @@
     {
       "id": "ErrorSpec:81",
       "category": "errors",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "header Content-Length: expected \"160\", actual \"164\"",
+      "gap": "header-mismatch-content-length",
       "actual": {
         "status": 404,
         "body": {
@@ -8350,9 +8328,9 @@
     {
       "id": "ErrorSpec:89",
       "category": "errors",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "header Content-Length: expected \"160\", actual \"164\"",
+      "gap": "header-mismatch-content-length",
       "actual": {
         "status": 404,
         "body": {
@@ -8366,9 +8344,9 @@
     {
       "id": "ErrorSpec:98",
       "category": "errors",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "header Content-Length: expected \"119\", actual \"121\"",
+      "gap": "header-mismatch-content-length",
       "actual": {
         "status": 404,
         "body": {
@@ -8382,15 +8360,15 @@
     {
       "id": "ErrorSpec:110",
       "category": "errors",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "the assertion rejects the token, but the harness decodes the JWT payload without verifying it, so the request reached the authorization layer and was denied by policy instead\nbody (exact) mismatch:\n  expected: {\"code\":\"PGRST301\",\"details\":\"None of the keys was able to decode the JWT\",\"hint\":null,\"message\":\"No suitable key or wrong key type\"}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='anon' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/conformance/fixtures/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.code: expected \"PGRST301\", actual \"PGRST403\"\n  at $.details: expected string \"None of the keys was able to decode the JWT\", actual null null\n  at $.message: expected \"No suitable key or wrong key type\", actual \"Not authorized: role='anon' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/conformance/fixtures/pol…",
+      "gap": "harness-supplies-unverified-identity",
       "actual": {
         "status": 401,
         "body": {
-          "code": "PGRST301",
-          "message": "No suitable key or wrong key type",
-          "details": "None of the keys was able to decode the JWT",
+          "code": "PGRST403",
+          "message": "Not authorized: role='anon' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/conformance/fixtures/policies. See docs/authorization.md for the policy model and recipes.",
+          "details": null,
           "hint": null
         }
       }
@@ -8414,14 +8392,14 @@
     {
       "id": "ErrorSpec:138",
       "category": "errors",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "body (exact) mismatch:\n  expected: {\"code\":\"PGRST303\",\"details\":null,\"hint\":null,\"message\":\"JWT expired\"}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='anon' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/conformance/fixtures/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.code: expected \"PGRST303\", actual \"PGRST403\"\n  at $.message: expected \"JWT expired\", actual \"Not authorized: role='anon' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/conformance/fixtures/pol…",
+      "gap": "body-mismatch-errors",
       "actual": {
         "status": 401,
         "body": {
-          "code": "PGRST303",
-          "message": "JWT expired",
+          "code": "PGRST403",
+          "message": "Not authorized: role='anon' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/conformance/fixtures/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -8430,14 +8408,14 @@
     {
       "id": "ErrorSpec:152",
       "category": "errors",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "body (exact) mismatch:\n  expected: {\"code\":\"PGRST303\",\"details\":null,\"hint\":null,\"message\":\"JWT not yet valid\"}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='anon' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/conformance/fixtures/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.code: expected \"PGRST303\", actual \"PGRST403\"\n  at $.message: expected \"JWT not yet valid\", actual \"Not authorized: role='anon' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/conformance/fixtures/pol…",
+      "gap": "body-mismatch-errors",
       "actual": {
         "status": 401,
         "body": {
-          "code": "PGRST303",
-          "message": "JWT not yet valid",
+          "code": "PGRST403",
+          "message": "Not authorized: role='anon' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/conformance/fixtures/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -8446,14 +8424,14 @@
     {
       "id": "ErrorSpec:166",
       "category": "errors",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "body (exact) mismatch:\n  expected: {\"code\":\"PGRST303\",\"details\":null,\"hint\":null,\"message\":\"JWT issued at future\"}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='anon' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/conformance/fixtures/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.code: expected \"PGRST303\", actual \"PGRST403\"\n  at $.message: expected \"JWT issued at future\", actual \"Not authorized: role='anon' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/conformance/fixtures/pol…",
+      "gap": "body-mismatch-errors",
       "actual": {
         "status": 401,
         "body": {
-          "code": "PGRST303",
-          "message": "JWT issued at future",
+          "code": "PGRST403",
+          "message": "Not authorized: role='anon' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/conformance/fixtures/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -8478,14 +8456,14 @@
     {
       "id": "ErrorSpec:193",
       "category": "errors",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "the assertion rejects the token, but the harness decodes the JWT payload without verifying it, so the request reached the authorization layer and was denied by policy instead\nbody (exact) mismatch:\n  expected: {\"code\":\"PGRST301\",\"details\":null,\"hint\":null,\"message\":\"Expected 3 parts in JWT; got 2\"}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='anon' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/conformance/fixtures/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.code: expected \"PGRST301\", actual \"PGRST403\"\n  at $.message: expected \"Expected 3 parts in JWT; got 2\", actual \"Not authorized: role='anon' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/conformance/fixtures/pol…",
+      "gap": "harness-supplies-unverified-identity",
       "actual": {
         "status": 401,
         "body": {
-          "code": "PGRST301",
-          "message": "Expected 3 parts in JWT; got 2",
+          "code": "PGRST403",
+          "message": "Not authorized: role='anon' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/conformance/fixtures/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -8494,14 +8472,14 @@
     {
       "id": "ErrorSpec:205",
       "category": "errors",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "the assertion rejects the token, but the harness decodes the JWT payload without verifying it, so the request reached the authorization layer and was denied by policy instead\nbody (exact) mismatch:\n  expected: {\"code\":\"PGRST301\",\"details\":null,\"hint\":null,\"message\":\"JWT cryptographic operation failed\"}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='anon' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/conformance/fixtures/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.code: expected \"PGRST301\", actual \"PGRST403\"\n  at $.message: expected \"JWT cryptographic operation failed\", actual \"Not authorized: role='anon' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/conformance/fixtures/pol…",
+      "gap": "harness-supplies-unverified-identity",
       "actual": {
         "status": 401,
         "body": {
-          "code": "PGRST301",
-          "message": "JWT cryptographic operation failed",
+          "code": "PGRST403",
+          "message": "Not authorized: role='anon' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/conformance/fixtures/policies. See docs/authorization.md for the policy model and recipes.",
           "details": null,
           "hint": null
         }
@@ -8510,15 +8488,15 @@
     {
       "id": "ErrorSpec:217",
       "category": "errors",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "the assertion rejects the token, but the harness decodes the JWT payload without verifying it, so the request reached the authorization layer and was denied by policy instead\nbody (exact) mismatch:\n  expected: {\"code\":\"PGRST301\",\"details\":\"JWT is unsecured but expected 'alg' was not 'none'\",\"hint\":null,\"message\":\"Wrong or unsupported encoding algorithm\"}\n  actual:   {\"code\":\"PGRST403\",\"message\":\"Not authorized: role='anon' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/conformance/fixtures/policies. See docs/authorization.md for the policy model and recipes.\",\"details\":null,\"hint\":null}\n  at $.code: expected \"PGRST301\", actual \"PGRST403\"\n  at $.details: expected string \"JWT is unsecured but expected 'alg' was not 'none'\", actual null null\n  at $.message: expected \"Wrong or unsupported encoding algorithm\", actual \"Not authorized: role='anon' action='select' table='authors_only'.\\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/conformance/fixtures/pol…",
+      "gap": "harness-supplies-unverified-identity",
       "actual": {
         "status": 401,
         "body": {
-          "code": "PGRST301",
-          "message": "Wrong or unsupported encoding algorithm",
-          "details": "JWT is unsecured but expected 'alg' was not 'none'",
+          "code": "PGRST403",
+          "message": "Not authorized: role='anon' action='select' table='authors_only'.\nNo Cedar policy grants it. Loaded from /home/ec2-user/pgrest-lambda/conformance/fixtures/policies. See docs/authorization.md for the policy model and recipes.",
+          "details": null,
           "hint": null
         }
       }
@@ -8620,9 +8598,9 @@
     {
       "id": "ExtraSearchPathSpec:53",
       "category": "multiple-schemas",
-      "status": "blocked",
-      "reason": "column public.isn_sample.id was dropped at fixture load: column type extensions.isbn not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"name\":\"Mathematics: From the Birth of Numbers\"}]\n  actual:   {\"code\":\"42703\",\"message\":\"column isn_sample.id does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"name\":\"Mathematics: From the Birth of Numbers\"}], actual object {\"code\":\"42703\",\"message\":\"column isn_sample.id does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-extensions",
+      "status": "fail",
+      "reason": "42703: column isn_sample.id does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"name\":\"Mathematics: From the Birth of Numbers\"}]\n  actual:   {\"code\":\"42703\",\"message\":\"column isn_sample.id does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"name\":\"Mathematics: From the Birth of Numbers\"}], actual object {\"code\":\"42703\",\"message\":\"column isn_sample.id does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-multiple-schemas",
       "actual": {
         "status": 400,
         "body": {
@@ -9976,7 +9954,7 @@
       "id": "InsertSpec:716",
       "category": "insert",
       "status": "fail",
-      "reason": "status: expected 401, actual 201\nbody (exact) mismatch:\n  expected: {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}\n  actual:   [{\"article_id\":2,\"user_id\":2,\"created_at\":\"2026-08-23T07:08:47.171561\"}]\n  at $: expected object {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}, actual array [{\"article_id\":2,\"user_id\":2,\"created_at\":\"2026-08-23T07:08:47.171561\"}]",
+      "reason": "status: expected 401, actual 201\nbody (exact) mismatch:\n  expected: {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}\n  actual:   [{\"article_id\":2,\"user_id\":2,\"created_at\":\"2026-08-23T04:20:37.12801\"}]\n  at $: expected object {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}, actual array [{\"article_id\":2,\"user_id\":2,\"created_at\":\"2026-08-23T04:20:37.12801\"}]",
       "gap": "no-set-role",
       "actual": {
         "status": 201,
@@ -9984,7 +9962,7 @@
           {
             "article_id": 2,
             "user_id": 2,
-            "created_at": "2026-08-23T07:08:47.171561"
+            "created_at": "2026-08-23T04:20:37.12801"
           }
         ]
       }
@@ -9993,7 +9971,7 @@
       "id": "InsertSpec:724",
       "category": "insert",
       "status": "fail",
-      "reason": "status: expected 401, actual 201\nbody (exact) mismatch:\n  expected: {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}\n  actual:   [{\"article_id\":3,\"user_id\":1,\"created_at\":\"2026-08-23T07:08:47.1869\"}]\n  at $: expected object {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}, actual array [{\"article_id\":3,\"user_id\":1,\"created_at\":\"2026-08-23T07:08:47.1869\"}]",
+      "reason": "status: expected 401, actual 201\nbody (exact) mismatch:\n  expected: {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}\n  actual:   [{\"article_id\":3,\"user_id\":1,\"created_at\":\"2026-08-23T04:20:37.14827\"}]\n  at $: expected object {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}, actual array [{\"article_id\":3,\"user_id\":1,\"created_at\":\"2026-08-23T04:20:37.14827\"}]",
       "gap": "no-set-role",
       "actual": {
         "status": 201,
@@ -10001,7 +9979,7 @@
           {
             "article_id": 3,
             "user_id": 1,
-            "created_at": "2026-08-23T07:08:47.1869"
+            "created_at": "2026-08-23T04:20:37.14827"
           }
         ]
       }
@@ -10047,12 +10025,17 @@
     {
       "id": "InsertSpec:771",
       "category": "insert",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "23505: duplicate key value violates unique constraint \"compound_pk_pkey\"\nstatus: expected 201, actual 409\nheader Location: expected \"/compound_pk_view?k1=eq.1&k2=eq.test\", actual <absent>\nheader Content-Range: expected \"*/*\", actual <absent>\nheader Content-Length: expected \"0\", actual \"159\"\nheader Preference-Applied: expected \"return=headers-only\", actual <absent>\nheader Content-Type: expected absent, actual \"application/json; charset=utf-8\"\nbody: expected no body, actual \"{\\\"code\\\":\\\"23505\\\",\\\"message\\\":\\\"duplicate key value violates unique constraint \\\\\\\"compound_pk_pkey\\\\\\\"\\\",\\\"details\\\":\\\"Key (k1, k2)=(1, test) already exists.\\\",\\\"hint\\\":null}\"",
+      "gap": "unimplemented-feature-insert",
       "actual": {
-        "status": 201,
-        "body": null
+        "status": 409,
+        "body": {
+          "code": "23505",
+          "message": "duplicate key value violates unique constraint \"compound_pk_pkey\"",
+          "details": "Key (k1, k2)=(1, test) already exists.",
+          "hint": null
+        }
       }
     },
     {
@@ -10085,64 +10068,49 @@
     {
       "id": "InsertSpec:815",
       "category": "insert",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "23505: duplicate key value violates unique constraint \"datarep_todos_pkey\"\nstatus: expected 201, actual 409\nheader Content-Range: expected \"*/*\", actual <absent>\nbody (exact) mismatch:\n  expected: [{\"id\":5,\"label_color\":\"#001100\"}]\n  actual:   {\"code\":\"23505\",\"message\":\"duplicate key value violates unique constraint \\\"datarep_todos_pkey\\\"\",\"details\":\"Key (id)=(5) already exists.\",\"hint\":null}\n  at $: expected array [{\"id\":5,\"label_color\":\"#001100\"}], actual object {\"code\":\"23505\",\"message\":\"duplicate key value violates unique constraint \\\"datarep_todos_pkey\\\"\",\"details\":\"Key (id)=(5) already exists.\",\"hint\":null}",
+      "gap": "unimplemented-feature-insert",
       "actual": {
-        "status": 201,
-        "body": [
-          {
-            "id": 5,
-            "label_color": "#001100"
-          }
-        ]
+        "status": 409,
+        "body": {
+          "code": "23505",
+          "message": "duplicate key value violates unique constraint \"datarep_todos_pkey\"",
+          "details": "Key (id)=(5) already exists.",
+          "hint": null
+        }
       }
     },
     {
       "id": "InsertSpec:825",
       "category": "insert",
       "status": "fail",
-      "reason": "body (exact) mismatch:\n  expected: [{\"id\":5,\"name\":\"party\",\"label_color\":\"#001100\",\"due_at\":\"2018-01-03T11:00:00Z\",\"icon_image\":\"3q2+7w==\",\"created_at\":-15,\"budget\":\"-100000000000000.13\"}]\n  actual:   [{\"id\":5,\"name\":\"party\",\"label_color\":4352,\"due_at\":\"2018-01-03T11:00:00+00:00\",\"icon_image\":{\"type\":\"Buffer\",\"data\":[222,173,190,239]},\"created_at\":\"1969-12-31T23:59:45+00:00\",\"budget\":\"-100000000000000.13\"}]\n  at $[0].label_color: expected string \"#001100\", actual number 4352\n  at $[0].due_at: expected \"2018-01-03T11:00:00Z\", actual \"2018-01-03T11:00:00+00:00\"\n  at $[0].icon_image: expected string \"3q2+7w==\", actual object {\"type\":\"Buffer\",\"data\":[222,173,190,239]}\n  at $[0].created_at: expected number -15, actual string \"1969-12-31T23:59:45+00:00\"",
-      "gap": "body-mismatch-insert",
+      "reason": "23505: duplicate key value violates unique constraint \"datarep_todos_pkey\"\nstatus: expected 201, actual 409\nheader Content-Range: expected \"*/*\", actual <absent>\nbody (exact) mismatch:\n  expected: [{\"id\":5,\"name\":\"party\",\"label_color\":\"#001100\",\"due_at\":\"2018-01-03T11:00:00Z\",\"icon_image\":\"3q2+7w==\",\"created_at\":-15,\"budget\":\"-100000000000000.13\"}]\n  actual:   {\"code\":\"23505\",\"message\":\"duplicate key value violates unique constraint \\\"datarep_todos_pkey\\\"\",\"details\":\"Key (id)=(5) already exists.\",\"hint\":null}\n  at $: expected array [{\"id\":5,\"name\":\"party\",\"label_color\":\"#001100\",\"due_at\":\"2018-01-03T11:00:00Z\",\"icon_image\":\"3q2+7w==\",\"created_at\":-15,\"budget\":\"-100000000000000.13\"}], actual object {\"code\":\"23505\",\"message\":\"duplicate key value violates unique constraint \\\"datarep_todos_pkey\\\"\",\"details\":\"Key (id)=(5) already exists.\",\"hint\":null}",
+      "gap": "unimplemented-feature-insert",
       "actual": {
-        "status": 201,
-        "body": [
-          {
-            "id": 5,
-            "name": "party",
-            "label_color": 4352,
-            "due_at": "2018-01-03T11:00:00+00:00",
-            "icon_image": {
-              "type": "Buffer",
-              "data": [
-                222,
-                173,
-                190,
-                239
-              ]
-            },
-            "created_at": "1969-12-31T23:59:45+00:00",
-            "budget": "-100000000000000.13"
-          }
-        ]
+        "status": 409,
+        "body": {
+          "code": "23505",
+          "message": "duplicate key value violates unique constraint \"datarep_todos_pkey\"",
+          "details": "Key (id)=(5) already exists.",
+          "hint": null
+        }
       }
     },
     {
       "id": "InsertSpec:836",
       "category": "insert",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "23505: duplicate key value violates unique constraint \"datarep_todos_pkey\"\nstatus: expected 201, actual 409\nheader Content-Range: expected \"*/*\", actual <absent>\nbody (exact) mismatch:\n  expected: [{\"id\":5,\"name\":null,\"label_color\":\"#001100\",\"due_at\":\"2018-01-01T00:00:00Z\"}]\n  actual:   {\"code\":\"23505\",\"message\":\"duplicate key value violates unique constraint \\\"datarep_todos_pkey\\\"\",\"details\":\"Key (id)=(5) already exists.\",\"hint\":null}\n  at $: expected array [{\"id\":5,\"name\":null,\"label_color\":\"#001100\",\"due_at\":\"2018-01-01T00:00:00Z\"}], actual object {\"code\":\"23505\",\"message\":\"duplicate key value violates unique constraint \\\"datarep_todos_pkey\\\"\",\"details\":\"Key (id)=(5) already exists.\",\"hint\":null}",
+      "gap": "unimplemented-feature-insert",
       "actual": {
-        "status": 201,
-        "body": [
-          {
-            "id": 5,
-            "name": null,
-            "label_color": "#001100",
-            "due_at": "2018-01-01T00:00:00Z"
-          }
-        ]
+        "status": 409,
+        "body": {
+          "code": "23505",
+          "message": "duplicate key value violates unique constraint \"datarep_todos_pkey\"",
+          "details": "Key (id)=(5) already exists.",
+          "hint": null
+        }
       }
     },
     {
@@ -10164,65 +10132,65 @@
     {
       "id": "InsertSpec:858",
       "category": "insert",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "23505: duplicate key value violates unique constraint \"datarep_todos_pkey\"\nstatus: expected 201, actual 409\nheader Location: expected \"/datarep_todos_computed?id=eq.5\", actual <absent>\nheader Content-Range: expected \"*/*\", actual <absent>\nheader Content-Length: expected \"0\", actual \"151\"\nheader Preference-Applied: expected \"return=headers-only\", actual <absent>\nheader Content-Type: expected absent, actual \"application/json; charset=utf-8\"\nbody: expected no body, actual \"{\\\"code\\\":\\\"23505\\\",\\\"message\\\":\\\"duplicate key value violates unique constraint \\\\\\\"datarep_todos_pkey\\\\\\\"\\\",\\\"details\\\":\\\"Key (id)=(5) already exists.\\\",\\\"hint\\\":null}\"",
+      "gap": "unimplemented-feature-insert",
       "actual": {
-        "status": 201,
-        "body": null
+        "status": 409,
+        "body": {
+          "code": "23505",
+          "message": "duplicate key value violates unique constraint \"datarep_todos_pkey\"",
+          "details": "Key (id)=(5) already exists.",
+          "hint": null
+        }
       }
     },
     {
       "id": "InsertSpec:871",
       "category": "insert",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "23505: duplicate key value violates unique constraint \"datarep_todos_pkey\"\nstatus: expected 201, actual 409\nheader Content-Range: expected \"*/*\", actual <absent>\nbody (exact) mismatch:\n  expected: [{\"id\":5,\"label_color\":\"#001100\"}]\n  actual:   {\"code\":\"23505\",\"message\":\"duplicate key value violates unique constraint \\\"datarep_todos_pkey\\\"\",\"details\":\"Key (id)=(5) already exists.\",\"hint\":null}\n  at $: expected array [{\"id\":5,\"label_color\":\"#001100\"}], actual object {\"code\":\"23505\",\"message\":\"duplicate key value violates unique constraint \\\"datarep_todos_pkey\\\"\",\"details\":\"Key (id)=(5) already exists.\",\"hint\":null}",
+      "gap": "unimplemented-feature-insert",
       "actual": {
-        "status": 201,
-        "body": [
-          {
-            "id": 5,
-            "label_color": "#001100"
-          }
-        ]
+        "status": 409,
+        "body": {
+          "code": "23505",
+          "message": "duplicate key value violates unique constraint \"datarep_todos_pkey\"",
+          "details": "Key (id)=(5) already exists.",
+          "hint": null
+        }
       }
     },
     {
       "id": "InsertSpec:881",
       "category": "insert",
       "status": "fail",
-      "reason": "body (exact) mismatch:\n  expected: [{\"id\":5,\"name\":\"party\",\"label_color\":\"#001100\",\"due_at\":\"2018-01-03T11:00:00Z\",\"dark_color\":\"#000880\"}]\n  actual:   [{\"id\":5,\"name\":\"party\",\"label_color\":4352,\"due_at\":\"2018-01-03T11:00:00+00:00\",\"dark_color\":2176}]\n  at $[0].label_color: expected string \"#001100\", actual number 4352\n  at $[0].due_at: expected \"2018-01-03T11:00:00Z\", actual \"2018-01-03T11:00:00+00:00\"\n  at $[0].dark_color: expected string \"#000880\", actual number 2176",
-      "gap": "body-mismatch-insert",
+      "reason": "23505: duplicate key value violates unique constraint \"datarep_todos_pkey\"\nstatus: expected 201, actual 409\nheader Content-Range: expected \"*/*\", actual <absent>\nbody (exact) mismatch:\n  expected: [{\"id\":5,\"name\":\"party\",\"label_color\":\"#001100\",\"due_at\":\"2018-01-03T11:00:00Z\",\"dark_color\":\"#000880\"}]\n  actual:   {\"code\":\"23505\",\"message\":\"duplicate key value violates unique constraint \\\"datarep_todos_pkey\\\"\",\"details\":\"Key (id)=(5) already exists.\",\"hint\":null}\n  at $: expected array [{\"id\":5,\"name\":\"party\",\"label_color\":\"#001100\",\"due_at\":\"2018-01-03T11:00:00Z\",\"dark_color\":\"#000880\"}], actual object {\"code\":\"23505\",\"message\":\"duplicate key value violates unique constraint \\\"datarep_todos_pkey\\\"\",\"details\":\"Key (id)=(5) already exists.\",\"hint\":null}",
+      "gap": "unimplemented-feature-insert",
       "actual": {
-        "status": 201,
-        "body": [
-          {
-            "id": 5,
-            "name": "party",
-            "label_color": 4352,
-            "due_at": "2018-01-03T11:00:00+00:00",
-            "dark_color": 2176
-          }
-        ]
+        "status": 409,
+        "body": {
+          "code": "23505",
+          "message": "duplicate key value violates unique constraint \"datarep_todos_pkey\"",
+          "details": "Key (id)=(5) already exists.",
+          "hint": null
+        }
       }
     },
     {
       "id": "InsertSpec:892",
       "category": "insert",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "23505: duplicate key value violates unique constraint \"datarep_todos_pkey\"\nstatus: expected 201, actual 409\nheader Content-Range: expected \"*/*\", actual <absent>\nbody (exact) mismatch:\n  expected: [{\"id\":5,\"name\":null,\"label_color\":\"#001100\",\"due_at\":\"2018-01-01T00:00:00Z\"}]\n  actual:   {\"code\":\"23505\",\"message\":\"duplicate key value violates unique constraint \\\"datarep_todos_pkey\\\"\",\"details\":\"Key (id)=(5) already exists.\",\"hint\":null}\n  at $: expected array [{\"id\":5,\"name\":null,\"label_color\":\"#001100\",\"due_at\":\"2018-01-01T00:00:00Z\"}], actual object {\"code\":\"23505\",\"message\":\"duplicate key value violates unique constraint \\\"datarep_todos_pkey\\\"\",\"details\":\"Key (id)=(5) already exists.\",\"hint\":null}",
+      "gap": "unimplemented-feature-insert",
       "actual": {
-        "status": 201,
-        "body": [
-          {
-            "id": 5,
-            "name": null,
-            "label_color": "#001100",
-            "due_at": "2018-01-01T00:00:00Z"
-          }
-        ]
+        "status": 409,
+        "body": {
+          "code": "23505",
+          "message": "duplicate key value violates unique constraint \"datarep_todos_pkey\"",
+          "details": "Key (id)=(5) already exists.",
+          "hint": null
+        }
       }
     },
     {
@@ -10675,9 +10643,9 @@
     {
       "id": "JsonOperatorSpec:151",
       "category": "json-operators",
-      "status": "blocked",
-      "reason": "column public.fav_numbers.num was dropped at fixture load: column type complex not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"i\":0.5},{\"i\":0.6}]\n  actual:   {\"code\":\"42703\",\"message\":\"column fav_numbers.num does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"i\":0.5},{\"i\":0.6}], actual object {\"code\":\"42703\",\"message\":\"column fav_numbers.num does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-column-type",
+      "status": "fail",
+      "reason": "42703: column fav_numbers.num does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"i\":0.5},{\"i\":0.6}]\n  actual:   {\"code\":\"42703\",\"message\":\"column fav_numbers.num does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"i\":0.5},{\"i\":0.6}], actual object {\"code\":\"42703\",\"message\":\"column fav_numbers.num does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-json-operators",
       "actual": {
         "status": 400,
         "body": {
@@ -10691,9 +10659,9 @@
     {
       "id": "JsonOperatorSpec:154",
       "category": "json-operators",
-      "status": "blocked",
-      "reason": "column public.fav_numbers.num was dropped at fixture load: column type complex not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"i\":\"0.5\"},{\"i\":\"0.6\"}]\n  actual:   {\"code\":\"42703\",\"message\":\"column fav_numbers.num does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"i\":\"0.5\"},{\"i\":\"0.6\"}], actual object {\"code\":\"42703\",\"message\":\"column fav_numbers.num does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-column-type",
+      "status": "fail",
+      "reason": "42703: column fav_numbers.num does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"i\":\"0.5\"},{\"i\":\"0.6\"}]\n  actual:   {\"code\":\"42703\",\"message\":\"column fav_numbers.num does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"i\":\"0.5\"},{\"i\":\"0.6\"}], actual object {\"code\":\"42703\",\"message\":\"column fav_numbers.num does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-json-operators",
       "actual": {
         "status": 400,
         "body": {
@@ -10707,9 +10675,9 @@
     {
       "id": "JsonOperatorSpec:159",
       "category": "json-operators",
-      "status": "blocked",
-      "reason": "column public.arrays.numbers was dropped at fixture load: column type int[] not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"a\":1,\"b\":2,\"c\":1,\"d\":6},{\"a\":11,\"b\":12,\"c\":11,\"d\":16}]\n  actual:   {\"code\":\"42703\",\"message\":\"column arrays.numbers does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"a\":1,\"b\":2,\"c\":1,\"d\":6},{\"a\":11,\"b\":12,\"c\":11,\"d\":16}], actual object {\"code\":\"42703\",\"message\":\"column arrays.numbers does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-array-columns",
+      "status": "fail",
+      "reason": "42703: column arrays.numbers does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"a\":1,\"b\":2,\"c\":1,\"d\":6},{\"a\":11,\"b\":12,\"c\":11,\"d\":16}]\n  actual:   {\"code\":\"42703\",\"message\":\"column arrays.numbers does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"a\":1,\"b\":2,\"c\":1,\"d\":6},{\"a\":11,\"b\":12,\"c\":11,\"d\":16}], actual object {\"code\":\"42703\",\"message\":\"column arrays.numbers does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-json-operators",
       "actual": {
         "status": 400,
         "body": {
@@ -10723,9 +10691,9 @@
     {
       "id": "JsonOperatorSpec:162",
       "category": "json-operators",
-      "status": "blocked",
-      "reason": "column public.arrays.numbers was dropped at fixture load: column type int[] not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"a\":\"1\",\"b\":\"2\",\"c\":\"1\",\"d\":\"6\"},{\"a\":\"11\",\"b\":\"12\",\"c\":\"11\",\"d\":\"16\"}]\n  actual:   {\"code\":\"42703\",\"message\":\"column arrays.numbers does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"a\":\"1\",\"b\":\"2\",\"c\":\"1\",\"d\":\"6\"},{\"a\":\"11\",\"b\":\"12\",\"c\":\"11\",\"d\":\"16\"}], actual object {\"code\":\"42703\",\"message\":\"column arrays.numbers does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-array-columns",
+      "status": "fail",
+      "reason": "42703: column arrays.numbers does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"a\":\"1\",\"b\":\"2\",\"c\":\"1\",\"d\":\"6\"},{\"a\":\"11\",\"b\":\"12\",\"c\":\"11\",\"d\":\"16\"}]\n  actual:   {\"code\":\"42703\",\"message\":\"column arrays.numbers does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"a\":\"1\",\"b\":\"2\",\"c\":\"1\",\"d\":\"6\"},{\"a\":\"11\",\"b\":\"12\",\"c\":\"11\",\"d\":\"16\"}], actual object {\"code\":\"42703\",\"message\":\"column arrays.numbers does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-json-operators",
       "actual": {
         "status": 400,
         "body": {
@@ -11012,9 +10980,9 @@
     {
       "id": "JsonOperatorSpec:223",
       "category": "json-operators",
-      "status": "blocked",
-      "reason": "column public.fav_numbers.num was dropped at fixture load: column type complex not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"num\":{\"r\":0.6,\"i\":0.6},\"person\":\"B\"}]\n  actual:   {\"code\":\"42703\",\"message\":\"column fav_numbers.num does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"num\":{\"r\":0.6,\"i\":0.6},\"person\":\"B\"}], actual object {\"code\":\"42703\",\"message\":\"column fav_numbers.num does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-column-type",
+      "status": "fail",
+      "reason": "42703: column fav_numbers.num does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"num\":{\"r\":0.6,\"i\":0.6},\"person\":\"B\"}]\n  actual:   {\"code\":\"42703\",\"message\":\"column fav_numbers.num does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"num\":{\"r\":0.6,\"i\":0.6},\"person\":\"B\"}], actual object {\"code\":\"42703\",\"message\":\"column fav_numbers.num does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-json-operators",
       "actual": {
         "status": 400,
         "body": {
@@ -11028,9 +10996,9 @@
     {
       "id": "JsonOperatorSpec:228",
       "category": "json-operators",
-      "status": "blocked",
-      "reason": "column public.arrays.numbers was dropped at fixture load: column type int[] not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":0}]\n  actual:   {\"code\":\"42703\",\"message\":\"column arrays.numbers does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":0}], actual object {\"code\":\"42703\",\"message\":\"column arrays.numbers does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-array-columns",
+      "status": "fail",
+      "reason": "42703: column arrays.numbers does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":0}]\n  actual:   {\"code\":\"42703\",\"message\":\"column arrays.numbers does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":0}], actual object {\"code\":\"42703\",\"message\":\"column arrays.numbers does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-json-operators",
       "actual": {
         "status": 400,
         "body": {
@@ -11044,9 +11012,9 @@
     {
       "id": "JsonOperatorSpec:231",
       "category": "json-operators",
-      "status": "blocked",
-      "reason": "column public.arrays.numbers was dropped at fixture load: column type int[] not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1}]\n  actual:   {\"code\":\"42703\",\"message\":\"column arrays.numbers does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1}], actual object {\"code\":\"42703\",\"message\":\"column arrays.numbers does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-array-columns",
+      "status": "fail",
+      "reason": "42703: column arrays.numbers does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1}]\n  actual:   {\"code\":\"42703\",\"message\":\"column arrays.numbers does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1}], actual object {\"code\":\"42703\",\"message\":\"column arrays.numbers does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-json-operators",
       "actual": {
         "status": 400,
         "body": {
@@ -11060,9 +11028,9 @@
     {
       "id": "JsonOperatorSpec:234",
       "category": "json-operators",
-      "status": "blocked",
-      "reason": "column public.arrays.numbers_mult was dropped at fixture load: column type int[][] not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":0}]\n  actual:   {\"code\":\"42703\",\"message\":\"column arrays.numbers_mult does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":0}], actual object {\"code\":\"42703\",\"message\":\"column arrays.numbers_mult does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-array-columns",
+      "status": "fail",
+      "reason": "42703: column arrays.numbers_mult does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":0}]\n  actual:   {\"code\":\"42703\",\"message\":\"column arrays.numbers_mult does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":0}], actual object {\"code\":\"42703\",\"message\":\"column arrays.numbers_mult does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-json-operators",
       "actual": {
         "status": 400,
         "body": {
@@ -11076,9 +11044,9 @@
     {
       "id": "JsonOperatorSpec:237",
       "category": "json-operators",
-      "status": "blocked",
-      "reason": "column public.arrays.numbers_mult was dropped at fixture load: column type int[][] not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1}]\n  actual:   {\"code\":\"42703\",\"message\":\"column arrays.numbers_mult does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1}], actual object {\"code\":\"42703\",\"message\":\"column arrays.numbers_mult does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-array-columns",
+      "status": "fail",
+      "reason": "42703: column arrays.numbers_mult does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1}]\n  actual:   {\"code\":\"42703\",\"message\":\"column arrays.numbers_mult does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1}], actual object {\"code\":\"42703\",\"message\":\"column arrays.numbers_mult does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-json-operators",
       "actual": {
         "status": 400,
         "body": {
@@ -11152,9 +11120,9 @@
     {
       "id": "JsonOperatorSpec:253",
       "category": "json-operators",
-      "status": "blocked",
-      "reason": "column public.fav_numbers.num was dropped at fixture load: column type complex not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"num\":{\"r\":0.5,\"i\":0.5},\"person\":\"A\"},{\"num\":{\"r\":0.6,\"i\":0.6},\"person\":\"B\"}]\n  actual:   {\"code\":\"42703\",\"message\":\"column fav_numbers.num does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"num\":{\"r\":0.5,\"i\":0.5},\"person\":\"A\"},{\"num\":{\"r\":0.6,\"i\":0.6},\"person\":\"B\"}], actual object {\"code\":\"42703\",\"message\":\"column fav_numbers.num does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-column-type",
+      "status": "fail",
+      "reason": "42703: column fav_numbers.num does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"num\":{\"r\":0.5,\"i\":0.5},\"person\":\"A\"},{\"num\":{\"r\":0.6,\"i\":0.6},\"person\":\"B\"}]\n  actual:   {\"code\":\"42703\",\"message\":\"column fav_numbers.num does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"num\":{\"r\":0.5,\"i\":0.5},\"person\":\"A\"},{\"num\":{\"r\":0.6,\"i\":0.6},\"person\":\"B\"}], actual object {\"code\":\"42703\",\"message\":\"column fav_numbers.num does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-json-operators",
       "actual": {
         "status": 400,
         "body": {
@@ -11168,9 +11136,9 @@
     {
       "id": "JsonOperatorSpec:256",
       "category": "json-operators",
-      "status": "blocked",
-      "reason": "column public.fav_numbers.num was dropped at fixture load: column type complex not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"num\":{\"r\":0.6,\"i\":0.6},\"person\":\"B\"},{\"num\":{\"r\":0.5,\"i\":0.5},\"person\":\"A\"}]\n  actual:   {\"code\":\"42703\",\"message\":\"column fav_numbers.num does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"num\":{\"r\":0.6,\"i\":0.6},\"person\":\"B\"},{\"num\":{\"r\":0.5,\"i\":0.5},\"person\":\"A\"}], actual object {\"code\":\"42703\",\"message\":\"column fav_numbers.num does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-column-type",
+      "status": "fail",
+      "reason": "42703: column fav_numbers.num does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"num\":{\"r\":0.6,\"i\":0.6},\"person\":\"B\"},{\"num\":{\"r\":0.5,\"i\":0.5},\"person\":\"A\"}]\n  actual:   {\"code\":\"42703\",\"message\":\"column fav_numbers.num does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"num\":{\"r\":0.6,\"i\":0.6},\"person\":\"B\"},{\"num\":{\"r\":0.5,\"i\":0.5},\"person\":\"A\"}], actual object {\"code\":\"42703\",\"message\":\"column fav_numbers.num does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-json-operators",
       "actual": {
         "status": 400,
         "body": {
@@ -11184,9 +11152,9 @@
     {
       "id": "JsonOperatorSpec:261",
       "category": "json-operators",
-      "status": "blocked",
-      "reason": "column public.arrays.numbers was dropped at fixture load: column type int[] not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1},{\"id\":0}]\n  actual:   {\"code\":\"42703\",\"message\":\"column arrays.numbers does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1},{\"id\":0}], actual object {\"code\":\"42703\",\"message\":\"column arrays.numbers does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-array-columns",
+      "status": "fail",
+      "reason": "42703: column arrays.numbers does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1},{\"id\":0}]\n  actual:   {\"code\":\"42703\",\"message\":\"column arrays.numbers does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1},{\"id\":0}], actual object {\"code\":\"42703\",\"message\":\"column arrays.numbers does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-json-operators",
       "actual": {
         "status": 400,
         "body": {
@@ -11200,9 +11168,9 @@
     {
       "id": "JsonOperatorSpec:264",
       "category": "json-operators",
-      "status": "blocked",
-      "reason": "column public.arrays.numbers was dropped at fixture load: column type int[] not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":0},{\"id\":1}]\n  actual:   {\"code\":\"42703\",\"message\":\"column arrays.numbers does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":0},{\"id\":1}], actual object {\"code\":\"42703\",\"message\":\"column arrays.numbers does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-array-columns",
+      "status": "fail",
+      "reason": "42703: column arrays.numbers does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":0},{\"id\":1}]\n  actual:   {\"code\":\"42703\",\"message\":\"column arrays.numbers does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":0},{\"id\":1}], actual object {\"code\":\"42703\",\"message\":\"column arrays.numbers does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-json-operators",
       "actual": {
         "status": 400,
         "body": {
@@ -11216,9 +11184,9 @@
     {
       "id": "JsonOperatorSpec:267",
       "category": "json-operators",
-      "status": "blocked",
-      "reason": "column public.arrays.numbers_mult was dropped at fixture load: column type int[][] not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1},{\"id\":0}]\n  actual:   {\"code\":\"42703\",\"message\":\"column arrays.numbers_mult does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1},{\"id\":0}], actual object {\"code\":\"42703\",\"message\":\"column arrays.numbers_mult does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-array-columns",
+      "status": "fail",
+      "reason": "42703: column arrays.numbers_mult does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1},{\"id\":0}]\n  actual:   {\"code\":\"42703\",\"message\":\"column arrays.numbers_mult does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1},{\"id\":0}], actual object {\"code\":\"42703\",\"message\":\"column arrays.numbers_mult does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-json-operators",
       "actual": {
         "status": 400,
         "body": {
@@ -11232,9 +11200,9 @@
     {
       "id": "JsonOperatorSpec:270",
       "category": "json-operators",
-      "status": "blocked",
-      "reason": "column public.arrays.numbers_mult was dropped at fixture load: column type int[][] not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":0},{\"id\":1}]\n  actual:   {\"code\":\"42703\",\"message\":\"column arrays.numbers_mult does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":0},{\"id\":1}], actual object {\"code\":\"42703\",\"message\":\"column arrays.numbers_mult does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-array-columns",
+      "status": "fail",
+      "reason": "42703: column arrays.numbers_mult does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":0},{\"id\":1}]\n  actual:   {\"code\":\"42703\",\"message\":\"column arrays.numbers_mult does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":0},{\"id\":1}], actual object {\"code\":\"42703\",\"message\":\"column arrays.numbers_mult does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-json-operators",
       "actual": {
         "status": 400,
         "body": {
@@ -11567,147 +11535,49 @@
     {
       "id": "MaxAffectedSpec:87",
       "category": "preferences",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "status: expected 400, actual 200\nbody (exact) mismatch:\n  expected: {\"code\":\"PGRST124\",\"details\":\"The query affects 15 rows\",\"hint\":null,\"message\":\"Query result exceeds max-affected preference constraint\"}\n  actual:   [{\"id\":15}]\n  at $: expected object {\"code\":\"PGRST124\",\"details\":\"The query affects 15 rows\",\"hint\":null,\"message\":\"Query result exceeds max-affected preference constraint\"}, actual array [{\"id\":15}]",
+      "gap": "missing-validation-preferences",
       "actual": {
-        "status": 400,
-        "body": {
-          "code": "PGRST124",
-          "message": "Query result exceeds max-affected preference constraint",
-          "details": "The query affects 15 rows",
-          "hint": null
-        }
+        "status": 200,
+        "body": [
+          {
+            "id": 15
+          }
+        ]
       }
     },
     {
       "id": "MaxAffectedSpec:95",
       "category": "preferences",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "status: expected 400, actual 200\nbody (exact) mismatch:\n  expected: {\"code\":\"PGRST124\",\"details\":\"The query affects 15 rows\",\"hint\":null,\"message\":\"Query result exceeds max-affected preference constraint\"}\n  actual:   []\n  at $: expected object {\"code\":\"PGRST124\",\"details\":\"The query affects 15 rows\",\"hint\":null,\"message\":\"Query result exceeds max-affected preference constraint\"}, actual array []",
+      "gap": "missing-validation-preferences",
       "actual": {
-        "status": 400,
-        "body": {
-          "code": "PGRST124",
-          "message": "Query result exceeds max-affected preference constraint",
-          "details": "The query affects 15 rows",
-          "hint": null
-        }
+        "status": 200,
+        "body": []
       }
     },
     {
       "id": "MaxAffectedSpec:103",
       "category": "preferences",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "body (exact) mismatch:\n  expected: [{\"id\":1},{\"id\":2},{\"id\":3},{\"id\":4},{\"id\":5},{\"id\":6},{\"id\":7},{\"id\":8},{\"id\":9},{\"id\":10},{\"id\":11},{\"id\":12},{\"id\":13},{\"id\":14},{\"id\":15}]\n  actual:   []\n  at $: expected 15 element(s), actual 0",
+      "gap": "body-mismatch-preferences",
       "actual": {
         "status": 200,
-        "body": [
-          {
-            "id": 1
-          },
-          {
-            "id": 2
-          },
-          {
-            "id": 3
-          },
-          {
-            "id": 4
-          },
-          {
-            "id": 5
-          },
-          {
-            "id": 6
-          },
-          {
-            "id": 7
-          },
-          {
-            "id": 8
-          },
-          {
-            "id": 9
-          },
-          {
-            "id": 10
-          },
-          {
-            "id": 11
-          },
-          {
-            "id": 12
-          },
-          {
-            "id": 13
-          },
-          {
-            "id": 14
-          },
-          {
-            "id": 15
-          }
-        ]
+        "body": []
       }
     },
     {
       "id": "MaxAffectedSpec:113",
       "category": "preferences",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "body (exact) mismatch:\n  expected: [{\"id\":1},{\"id\":2},{\"id\":3},{\"id\":4},{\"id\":5},{\"id\":6},{\"id\":7},{\"id\":8},{\"id\":9},{\"id\":10},{\"id\":11},{\"id\":12},{\"id\":13},{\"id\":14},{\"id\":15}]\n  actual:   []\n  at $: expected 15 element(s), actual 0",
+      "gap": "body-mismatch-preferences",
       "actual": {
         "status": 200,
-        "body": [
-          {
-            "id": 1
-          },
-          {
-            "id": 2
-          },
-          {
-            "id": 3
-          },
-          {
-            "id": 4
-          },
-          {
-            "id": 5
-          },
-          {
-            "id": 6
-          },
-          {
-            "id": 7
-          },
-          {
-            "id": 8
-          },
-          {
-            "id": 9
-          },
-          {
-            "id": 10
-          },
-          {
-            "id": 11
-          },
-          {
-            "id": 12
-          },
-          {
-            "id": 13
-          },
-          {
-            "id": 14
-          },
-          {
-            "id": 15
-          }
-        ]
+        "body": []
       }
     },
     {
@@ -11930,20 +11800,17 @@
     {
       "id": "MultipleSchemaSpec:131",
       "category": "multiple-schemas",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "23505: duplicate key value violates unique constraint \"children_pkey\"\nstatus: expected 201, actual 409\nheader Content-Profile: expected \"v1\", actual <absent>\nbody (exact) mismatch:\n  expected: [{\"id\":0,\"parent\":{\"id\":2,\"name\":\"parent v1-2\"}}]\n  actual:   {\"code\":\"23505\",\"message\":\"duplicate key value violates unique constraint \\\"children_pkey\\\"\",\"details\":\"Key (id)=(0) already exists.\",\"hint\":null}\n  at $: expected array [{\"id\":0,\"parent\":{\"id\":2,\"name\":\"parent v1-2\"}}], actual object {\"code\":\"23505\",\"message\":\"duplicate key value violates unique constraint \\\"children_pkey\\\"\",\"details\":\"Key (id)=(0) already exists.\",\"hint\":null}",
+      "gap": "unimplemented-feature-multiple-schemas",
       "actual": {
-        "status": 201,
-        "body": [
-          {
-            "id": 0,
-            "parent": {
-              "id": 2,
-              "name": "parent v1-2"
-            }
-          }
-        ]
+        "status": 409,
+        "body": {
+          "code": "23505",
+          "message": "duplicate key value violates unique constraint \"children_pkey\"",
+          "details": "Key (id)=(0) already exists.",
+          "hint": null
+        }
       }
     },
     {
@@ -12036,9 +11903,9 @@
     {
       "id": "MultipleSchemaSpec:186",
       "category": "multiple-schemas",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "body (exact) mismatch:\n  expected: [{\"id\":1,\"name\":\"parent v1-1\",\"children\":[{\"id\":1,\"name\":\"child v1-1\"}]},{\"id\":2,\"name\":\"parent v1-2\",\"children\":[{\"id\":2,\"name\":\"child v1-2\"}]}]\n  actual:   [{\"id\":1,\"name\":\"parent v1-1\",\"children\":[{\"id\":0,\"name\":\"child v1-1\"},{\"id\":1,\"name\":\"child v1-1\"}]},{\"id\":2,\"name\":\"parent v1-2\",\"children\":[{\"id\":2,\"name\":\"child v1-2\"}]}]\n  at $[0].children: expected 1 element(s), actual 2\n  at $[0].children[0].id: expected 1, actual 0",
+      "gap": "body-mismatch-multiple-schemas",
       "actual": {
         "status": 200,
         "body": [
@@ -12046,6 +11913,10 @@
             "id": 1,
             "name": "parent v1-1",
             "children": [
+              {
+                "id": 0,
+                "name": "child v1-1"
+              },
               {
                 "id": 1,
                 "name": "child v1-1"
@@ -12068,9 +11939,9 @@
     {
       "id": "MultipleSchemaSpec:197",
       "category": "multiple-schemas",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "body (exact) mismatch:\n  expected: [{\"id\":3,\"name\":\"parent v2-3\",\"children\":[{\"id\":1,\"name\":\"child v2-3\"}]},{\"id\":4,\"name\":\"parent v2-4\",\"children\":[]}]\n  actual:   [{\"id\":3,\"name\":\"parent v2-3\",\"children\":[{\"id\":0,\"name\":\"child v2-3\"},{\"id\":1,\"name\":\"child v2-3\"}]},{\"id\":4,\"name\":\"parent v2-4\",\"children\":[]}]\n  at $[0].children: expected 1 element(s), actual 2\n  at $[0].children[0].id: expected 1, actual 0",
+      "gap": "body-mismatch-multiple-schemas",
       "actual": {
         "status": 200,
         "body": [
@@ -12078,6 +11949,10 @@
             "id": 3,
             "name": "parent v2-3",
             "children": [
+              {
+                "id": 0,
+                "name": "child v2-3"
+              },
               {
                 "id": 1,
                 "name": "child v2-3"
@@ -12173,15 +12048,15 @@
     {
       "id": "MultipleSchemaSpec:255",
       "category": "multiple-schemas",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "body (exact) mismatch:\n  expected: [{\"id\":1,\"name\":\"child v2-3\",\"parent_id\":3}]\n  actual:   [{\"id\":1,\"name\":\"child v2-1 updated\",\"parent_id\":3}]\n  at $[0].name: expected \"child v2-3\", actual \"child v2-1 updated\"",
+      "gap": "body-mismatch-multiple-schemas",
       "actual": {
         "status": 200,
         "body": [
           {
             "id": 1,
-            "name": "child v2-3",
+            "name": "child v2-1 updated",
             "parent_id": 3
           }
         ]
@@ -12419,9 +12294,9 @@
     {
       "id": "NullsStripSpec:47",
       "category": "media-types",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "body (exact) mismatch:\n  expected: [{\"id\":1,\"name\":\"Referee Org\",\"manager_id\":1},{\"id\":2,\"name\":\"Auditor Org\",\"manager_id\":2},{\"id\":3,\"name\":\"Acme\",\"referee\":1,\"auditor\":2,\"manager_id\":3},{\"id\":4,\"name\":\"Umbrella\",\"referee\":1,\"auditor\":2,\"manager_id\":4},{\"id\":5,\"name\":\"Cyberdyne\",\"referee\":3,\"auditor\":4,\"manager_id\":5},{\"id\":6,\"name\":\"Oscorp\",\"referee\":3,\"auditor\":4,\"manager_id\":6}]\n  actual:   [{\"id\":1,\"name\":\"Referee Org\",\"manager_id\":1},{\"id\":2,\"name\":\"Auditor Org\",\"manager_id\":2},{\"id\":3,\"name\":\"John\",\"auditor\":2,\"manager_id\":3},{\"id\":4,\"name\":\"Umbrella\",\"referee\":1,\"auditor\":2,\"manager_id\":4},{\"id\":5,\"name\":\"Cyberdyne\",\"referee\":3,\"auditor\":4,\"manager_id\":5},{\"id\":6,\"name\":\"Oscorp\",\"referee\":3,\"auditor\":4,\"manager_id\":6},{\"id\":7,\"name\":\"John\",\"manager_id\":6}]\n  at $: expected 6 element(s), actual 7\n  at $[2].name: expected \"Acme\", actual \"John\"\n  at $[2].referee: missing from actual (expected 1)",
+      "gap": "body-mismatch-media-types",
       "actual": {
         "status": 200,
         "body": [
@@ -12437,8 +12312,7 @@
           },
           {
             "id": 3,
-            "name": "Acme",
-            "referee": 1,
+            "name": "John",
             "auditor": 2,
             "manager_id": 3
           },
@@ -12462,6 +12336,11 @@
             "referee": 3,
             "auditor": 4,
             "manager_id": 6
+          },
+          {
+            "id": 7,
+            "name": "John",
+            "manager_id": 6
           }
         ]
       }
@@ -12484,15 +12363,15 @@
     {
       "id": "NullsStripSpec:67",
       "category": "media-types",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "body (exact) mismatch:\n  expected: {\"details\":\"The result contains 6 rows\",\"message\":\"Cannot coerce the result to a single JSON object\",\"code\":\"PGRST116\",\"hint\":null}\n  actual:   {\"code\":\"PGRST116\",\"message\":\"Cannot coerce the result to a single JSON object\",\"details\":\"The result contains 7 rows\",\"hint\":null}\n  at $.details: expected \"The result contains 6 rows\", actual \"The result contains 7 rows\"",
+      "gap": "body-mismatch-media-types",
       "actual": {
         "status": 406,
         "body": {
           "code": "PGRST116",
           "message": "Cannot coerce the result to a single JSON object",
-          "details": "The result contains 6 rows",
+          "details": "The result contains 7 rows",
           "hint": null
         }
       }
@@ -12500,9 +12379,9 @@
     {
       "id": "NullsStripSpec:78",
       "category": "media-types",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "body (exact) mismatch:\n  expected: [{\"id\":1},{\"id\":2},{\"id\":3,\"referee\":1,\"auditor\":2},{\"id\":4,\"referee\":1,\"auditor\":2},{\"id\":5,\"referee\":3,\"auditor\":4},{\"id\":6,\"referee\":3,\"auditor\":4}]\n  actual:   [{\"id\":1},{\"id\":2},{\"id\":3,\"auditor\":2},{\"id\":4,\"referee\":1,\"auditor\":2},{\"id\":5,\"referee\":3,\"auditor\":4},{\"id\":6,\"referee\":3,\"auditor\":4},{\"id\":7}]\n  at $: expected 6 element(s), actual 7\n  at $[2].referee: missing from actual (expected 1)",
+      "gap": "body-mismatch-media-types",
       "actual": {
         "status": 200,
         "body": [
@@ -12514,7 +12393,6 @@
           },
           {
             "id": 3,
-            "referee": 1,
             "auditor": 2
           },
           {
@@ -12531,6 +12409,9 @@
             "id": 6,
             "referee": 3,
             "auditor": 4
+          },
+          {
+            "id": 7
           }
         ]
       }
@@ -12538,16 +12419,17 @@
     {
       "id": "NullsStripSpec:87",
       "category": "media-types",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "23505: duplicate key value violates unique constraint \"organizations_pkey\"\nstatus: expected 201, actual 409\nheader Content-Type: expected \"application/vnd.pgrst.array+json;nulls=stripped; charset=utf-8\", actual \"application/json; charset=utf-8\"\nbody (exact) mismatch:\n  expected: [{\"id\":7}]\n  actual:   {\"code\":\"23505\",\"message\":\"duplicate key value violates unique constraint \\\"organizations_pkey\\\"\",\"details\":\"Key (id)=(7) already exists.\",\"hint\":null}\n  at $: expected array [{\"id\":7}], actual object {\"code\":\"23505\",\"message\":\"duplicate key value violates unique constraint \\\"organizations_pkey\\\"\",\"details\":\"Key (id)=(7) already exists.\",\"hint\":null}",
+      "gap": "unimplemented-feature-media-types",
       "actual": {
-        "status": 201,
-        "body": [
-          {
-            "id": 7
-          }
-        ]
+        "status": 409,
+        "body": {
+          "code": "23505",
+          "message": "duplicate key value violates unique constraint \"organizations_pkey\"",
+          "details": "Key (id)=(7) already exists.",
+          "hint": null
+        }
       }
     },
     {
@@ -12583,9 +12465,9 @@
     {
       "id": "NullsStripSpec:117",
       "category": "media-types",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "body (exact) mismatch:\n  expected: [{\"id\":1,\"referee\":null,\"auditor\":null},{\"id\":2,\"referee\":null,\"auditor\":null},{\"id\":3,\"referee\":1,\"auditor\":2},{\"id\":4,\"referee\":1,\"auditor\":2},{\"id\":5,\"referee\":3,\"auditor\":4},{\"id\":6,\"referee\":3,\"auditor\":4}]\n  actual:   [{\"id\":1,\"referee\":null,\"auditor\":null},{\"id\":2,\"referee\":null,\"auditor\":null},{\"id\":3,\"referee\":null,\"auditor\":2},{\"id\":4,\"referee\":1,\"auditor\":2},{\"id\":5,\"referee\":3,\"auditor\":4},{\"id\":6,\"referee\":3,\"auditor\":4},{\"id\":7,\"referee\":null,\"auditor\":null}]\n  at $: expected 6 element(s), actual 7\n  at $[2].referee: expected number 1, actual null null",
+      "gap": "body-mismatch-media-types",
       "actual": {
         "status": 200,
         "body": [
@@ -12601,7 +12483,7 @@
           },
           {
             "id": 3,
-            "referee": 1,
+            "referee": null,
             "auditor": 2
           },
           {
@@ -12618,6 +12500,11 @@
             "id": 6,
             "referee": 3,
             "auditor": 4
+          },
+          {
+            "id": 7,
+            "referee": null,
+            "auditor": null
           }
         ]
       }
@@ -13250,9 +13137,9 @@
     {
       "id": "QueryLimitedSpec:97",
       "category": "range",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "the same rows came back in a different order; DSQL does not guarantee the physical order this assertion depends on\nbody (exact) mismatch — same rows, different order:\n  expected: [{\"first_name\":\"Daniel B.\",\"last_name\":\"Lyon\",\"occupation\":\"Barista\"},{\"first_name\":\"Frances M.\",\"last_name\":\"Roe\",\"occupation\":\"Barista\"},{\"first_name\":\"Edwin S.\",\"last_name\":\"Smith\",\"occupation\":\"Barista\"}]\n  actual:   [{\"first_name\":\"Daniel B.\",\"last_name\":\"Lyon\",\"occupation\":\"Barista\"},{\"first_name\":\"Edwin S.\",\"last_name\":\"Smith\",\"occupation\":\"Barista\"},{\"first_name\":\"Frances M.\",\"last_name\":\"Roe\",\"occupation\":\"Barista\"}]\n  at $[1].first_name: expected \"Frances M.\", actual \"Edwin S.\"\n  at $[1].last_name: expected \"Roe\", actual \"Smith\"\n  at $[2].first_name: expected \"Edwin S.\", actual \"Frances M.\"\n  at $[2].last_name: expected \"Smith\", actual \"Roe\"",
+      "gap": "row-order-unspecified",
       "actual": {
         "status": 200,
         "body": [
@@ -13262,13 +13149,13 @@
             "occupation": "Barista"
           },
           {
-            "first_name": "Frances M.",
-            "last_name": "Roe",
+            "first_name": "Edwin S.",
+            "last_name": "Smith",
             "occupation": "Barista"
           },
           {
-            "first_name": "Edwin S.",
-            "last_name": "Smith",
+            "first_name": "Frances M.",
+            "last_name": "Roe",
             "occupation": "Barista"
           }
         ]
@@ -13277,9 +13164,9 @@
     {
       "id": "QueryLimitedSpec:108",
       "category": "range",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "the same rows came back in a different order; DSQL does not guarantee the physical order this assertion depends on\nbody (exact) mismatch — same rows, different order:\n  expected: [{\"first_name\":\"Daniel B.\",\"last_name\":\"Lyon\"},{\"first_name\":\"Frances M.\",\"last_name\":\"Roe\"},{\"first_name\":\"Edwin S.\",\"last_name\":\"Smith\"}]\n  actual:   [{\"first_name\":\"Daniel B.\",\"last_name\":\"Lyon\"},{\"first_name\":\"Edwin S.\",\"last_name\":\"Smith\"},{\"first_name\":\"Frances M.\",\"last_name\":\"Roe\"}]\n  at $[1].first_name: expected \"Frances M.\", actual \"Edwin S.\"\n  at $[1].last_name: expected \"Roe\", actual \"Smith\"\n  at $[2].first_name: expected \"Edwin S.\", actual \"Frances M.\"\n  at $[2].last_name: expected \"Smith\", actual \"Roe\"",
+      "gap": "row-order-unspecified",
       "actual": {
         "status": 200,
         "body": [
@@ -13288,12 +13175,12 @@
             "last_name": "Lyon"
           },
           {
-            "first_name": "Frances M.",
-            "last_name": "Roe"
-          },
-          {
             "first_name": "Edwin S.",
             "last_name": "Smith"
+          },
+          {
+            "first_name": "Frances M.",
+            "last_name": "Roe"
           }
         ]
       }
@@ -13338,9 +13225,9 @@
     {
       "id": "QuerySpec:32",
       "category": "filters",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "header Content-Length: expected \"120\", actual \"122\"",
+      "gap": "header-mismatch-content-length",
       "actual": {
         "status": 404,
         "body": {
@@ -14338,8 +14225,8 @@
     {
       "id": "QuerySpec:303",
       "category": "filters",
-      "status": "blocked",
-      "reason": "column public.tsearch_to_tsvector.text_search_domain was dropped at fixture load: column type tsvector_not_null not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"text_search_domain\":\"'do':7 'fun':5 'impossible':9 'it':1 'kind':3 'of':4 's':2 'the':8 'to':6\"}]\n  actual:   {\"code\":\"42703\",\"message\":\"column tsearch_to_tsvector.text_search_domain does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"text_search_domain\":\"'do':7 'fun':5 'impossible':9 'it':1 'kind':3 'of':4 's':2 'the':8 'to':6\"}], actual object {\"code\":\"42703\",\"message\":\"column tsearch_to_tsvector.text_search_domain does not exist\",\"details\":null,\"hint\":null}",
+      "status": "fail",
+      "reason": "42703: column tsearch_to_tsvector.text_search_domain does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"text_search_domain\":\"'do':7 'fun':5 'impossible':9 'it':1 'kind':3 'of':4 's':2 'the':8 'to':6\"}]\n  actual:   {\"code\":\"42703\",\"message\":\"column tsearch_to_tsvector.text_search_domain does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"text_search_domain\":\"'do':7 'fun':5 'impossible':9 'it':1 'kind':3 'of':4 's':2 'the':8 'to':6\"}], actual object {\"code\":\"42703\",\"message\":\"column tsearch_to_tsvector.text_search_domain does not exist\",\"details\":null,\"hint\":null}",
       "gap": "missing-operator-fts",
       "actual": {
         "status": 400,
@@ -14354,8 +14241,8 @@
     {
       "id": "QuerySpec:310",
       "category": "filters",
-      "status": "blocked",
-      "reason": "column public.tsearch_to_tsvector.text_search_rec_domain was dropped at fixture load: column type tsvector_not_empty not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"text_search_rec_domain\":\"'do':7 'fun':5 'impossible':9 'it':1 'kind':3 'of':4 's':2 'the':8 'to':6\"}]\n  actual:   {\"code\":\"42703\",\"message\":\"column tsearch_to_tsvector.text_search_rec_domain does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"text_search_rec_domain\":\"'do':7 'fun':5 'impossible':9 'it':1 'kind':3 'of':4 's':2 'the':8 'to':6\"}], actual object {\"code\":\"42703\",\"message\":\"column tsearch_to_tsvector.text_search_rec_domain does not exist\",\"details\":null,\"hint\":null}",
+      "status": "fail",
+      "reason": "42703: column tsearch_to_tsvector.text_search_rec_domain does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"text_search_rec_domain\":\"'do':7 'fun':5 'impossible':9 'it':1 'kind':3 'of':4 's':2 'the':8 'to':6\"}]\n  actual:   {\"code\":\"42703\",\"message\":\"column tsearch_to_tsvector.text_search_rec_domain does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"text_search_rec_domain\":\"'do':7 'fun':5 'impossible':9 'it':1 'kind':3 'of':4 's':2 'the':8 'to':6\"}], actual object {\"code\":\"42703\",\"message\":\"column tsearch_to_tsvector.text_search_rec_domain does not exist\",\"details\":null,\"hint\":null}",
       "gap": "missing-operator-fts",
       "actual": {
         "status": 400,
@@ -15309,9 +15196,9 @@
     {
       "id": "QuerySpec:561",
       "category": "filters",
-      "status": "blocked",
-      "reason": "column public.complex_items.arr_data was dropped at fixture load: column type integer[] not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":2},{\"id\":3}]\n  actual:   {\"code\":\"42703\",\"message\":\"column complex_items.arr_data does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":2},{\"id\":3}], actual object {\"code\":\"42703\",\"message\":\"column complex_items.arr_data does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-array-columns",
+      "status": "fail",
+      "reason": "42703: column complex_items.arr_data does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":2},{\"id\":3}]\n  actual:   {\"code\":\"42703\",\"message\":\"column complex_items.arr_data does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":2},{\"id\":3}], actual object {\"code\":\"42703\",\"message\":\"column complex_items.arr_data does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-filters",
       "actual": {
         "status": 400,
         "body": {
@@ -15325,9 +15212,9 @@
     {
       "id": "QuerySpec:566",
       "category": "filters",
-      "status": "blocked",
-      "reason": "column public.complex_items.arr_data was dropped at fixture load: column type integer[] not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1},{\"id\":2}]\n  actual:   {\"code\":\"42703\",\"message\":\"column complex_items.arr_data does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1},{\"id\":2}], actual object {\"code\":\"42703\",\"message\":\"column complex_items.arr_data does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-array-columns",
+      "status": "fail",
+      "reason": "42703: column complex_items.arr_data does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1},{\"id\":2}]\n  actual:   {\"code\":\"42703\",\"message\":\"column complex_items.arr_data does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1},{\"id\":2}], actual object {\"code\":\"42703\",\"message\":\"column complex_items.arr_data does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-filters",
       "actual": {
         "status": 400,
         "body": {
@@ -15521,9 +15408,9 @@
     {
       "id": "QuerySpec:622",
       "category": "select",
-      "status": "blocked",
-      "reason": "column public.oid_test.oid_array_col was dropped at fixture load: column type oid[] not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1,\"oid_col\":12345,\"oid_array_col\":[1,2,3,4,5]}]\n  actual:   {\"code\":\"42703\",\"message\":\"column oid_test.oid_array_col does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1,\"oid_col\":12345,\"oid_array_col\":[1,2,3,4,5]}], actual object {\"code\":\"42703\",\"message\":\"column oid_test.oid_array_col does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-array-columns",
+      "status": "fail",
+      "reason": "42703: column oid_test.oid_array_col does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"id\":1,\"oid_col\":12345,\"oid_array_col\":[1,2,3,4,5]}]\n  actual:   {\"code\":\"42703\",\"message\":\"column oid_test.oid_array_col does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"id\":1,\"oid_col\":12345,\"oid_array_col\":[1,2,3,4,5]}], actual object {\"code\":\"42703\",\"message\":\"column oid_test.oid_array_col does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-select",
       "actual": {
         "status": 400,
         "body": {
@@ -16960,35 +16847,23 @@
     {
       "id": "QuerySpec:962",
       "category": "embedding",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "body (exact) mismatch:\n  expected: [{\"id\":1,\"contract\":[{\"purchase_price\":10}]},{\"id\":3,\"contract\":[{\"purchase_price\":30}]},{\"id\":5,\"contract\":[{\"purchase_price\":50}]},{\"id\":7,\"contract\":[]}]\n  actual:   [{\"id\":1,\"contract\":[]},{\"id\":3,\"contract\":[]},{\"id\":5,\"contract\":[]},{\"id\":7,\"contract\":[]}]\n  at $[0].contract: expected 1 element(s), actual 0\n  at $[1].contract: expected 1 element(s), actual 0\n  at $[2].contract: expected 1 element(s), actual 0",
+      "gap": "body-mismatch-embedding",
       "actual": {
         "status": 200,
         "body": [
           {
             "id": 1,
-            "contract": [
-              {
-                "purchase_price": 10
-              }
-            ]
+            "contract": []
           },
           {
             "id": 3,
-            "contract": [
-              {
-                "purchase_price": 30
-              }
-            ]
+            "contract": []
           },
           {
             "id": 5,
-            "contract": [
-              {
-                "purchase_price": 50
-              }
-            ]
+            "contract": []
           },
           {
             "id": 7,
@@ -17000,65 +16875,34 @@
     {
       "id": "QuerySpec:969",
       "category": "embedding",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "body (exact) mismatch:\n  expected: [{\"tournament\":\"tournament_1\",\"player_view\":{\"first_name\":\"first_name_1\"}},{\"tournament\":\"tournament_2\",\"player_view\":{\"first_name\":\"first_name_2\"}},{\"tournament\":\"tournament_3\",\"player_view\":{\"first_name\":\"first_name_3\"}}]\n  actual:   []\n  at $: expected 3 element(s), actual 0",
+      "gap": "body-mismatch-embedding",
       "actual": {
         "status": 200,
-        "body": [
-          {
-            "tournament": "tournament_1",
-            "player_view": {
-              "first_name": "first_name_1"
-            }
-          },
-          {
-            "tournament": "tournament_2",
-            "player_view": {
-              "first_name": "first_name_2"
-            }
-          },
-          {
-            "tournament": "tournament_3",
-            "player_view": {
-              "first_name": "first_name_3"
-            }
-          }
-        ]
+        "body": []
       }
     },
     {
       "id": "QuerySpec:977",
       "category": "embedding",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "body (exact) mismatch:\n  expected: [{\"id\":1,\"contract_view\":[{\"purchase_price\":10}]},{\"id\":3,\"contract_view\":[{\"purchase_price\":30}]},{\"id\":5,\"contract_view\":[{\"purchase_price\":50}]},{\"id\":7,\"contract_view\":[]}]\n  actual:   [{\"id\":1,\"contract_view\":[]},{\"id\":3,\"contract_view\":[]},{\"id\":5,\"contract_view\":[]},{\"id\":7,\"contract_view\":[]}]\n  at $[0].contract_view: expected 1 element(s), actual 0\n  at $[1].contract_view: expected 1 element(s), actual 0\n  at $[2].contract_view: expected 1 element(s), actual 0",
+      "gap": "body-mismatch-embedding",
       "actual": {
         "status": 200,
         "body": [
           {
             "id": 1,
-            "contract_view": [
-              {
-                "purchase_price": 10
-              }
-            ]
+            "contract_view": []
           },
           {
             "id": 3,
-            "contract_view": [
-              {
-                "purchase_price": 30
-              }
-            ]
+            "contract_view": []
           },
           {
             "id": 5,
-            "contract_view": [
-              {
-                "purchase_price": 50
-              }
-            ]
+            "contract_view": []
           },
           {
             "id": 7,
@@ -17070,31 +16914,12 @@
     {
       "id": "QuerySpec:984",
       "category": "embedding",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "body (exact) mismatch:\n  expected: [{\"tournament\":\"tournament_1\",\"player_view\":{\"first_name\":\"first_name_1\"}},{\"tournament\":\"tournament_2\",\"player_view\":{\"first_name\":\"first_name_2\"}},{\"tournament\":\"tournament_3\",\"player_view\":{\"first_name\":\"first_name_3\"}}]\n  actual:   []\n  at $: expected 3 element(s), actual 0",
+      "gap": "body-mismatch-embedding",
       "actual": {
         "status": 200,
-        "body": [
-          {
-            "tournament": "tournament_1",
-            "player_view": {
-              "first_name": "first_name_1"
-            }
-          },
-          {
-            "tournament": "tournament_2",
-            "player_view": {
-              "first_name": "first_name_2"
-            }
-          },
-          {
-            "tournament": "tournament_3",
-            "player_view": {
-              "first_name": "first_name_3"
-            }
-          }
-        ]
+        "body": []
       }
     },
     {
@@ -19576,9 +19401,9 @@
     {
       "id": "QuerySpec:1700",
       "category": "select",
-      "status": "blocked",
-      "reason": "column public.visits.visit_type was dropped at fixture load: column type visit_type not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"name\":\"Lake\",\"visits\":[{\"id\":1,\"start_time\":\"2025-01-01T10:00:00\",\"visit_type\":\"vacation\"},{\"id\":2,\"start_time\":\"2025-01-01T15:00:00\",\"visit_type\":\"vacation\"}],\"work_visits\":[{\"id\":3,\"start_time\":\"2025-01-01T20:00:00\",\"visit_type\":\"work\"}]}]\n  actual:   {\"code\":\"42703\",\"message\":\"column visits.visit_type does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"name\":\"Lake\",\"visits\":[{\"id\":1,\"start_time\":\"2025-01-01T10:00:00\",\"visit_type\":\"vacation\"},{\"id\":2,\"start_time\":\"2025-01-01T15:00:00\",\"visit_type\":\"vacation\"…, actual object {\"code\":\"42703\",\"message\":\"column visits.visit_type does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-column-type",
+      "status": "fail",
+      "reason": "42703: column visits.visit_type does not exist\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"name\":\"Lake\",\"visits\":[{\"id\":1,\"start_time\":\"2025-01-01T10:00:00\",\"visit_type\":\"vacation\"},{\"id\":2,\"start_time\":\"2025-01-01T15:00:00\",\"visit_type\":\"vacation\"}],\"work_visits\":[{\"id\":3,\"start_time\":\"2025-01-01T20:00:00\",\"visit_type\":\"work\"}]}]\n  actual:   {\"code\":\"42703\",\"message\":\"column visits.visit_type does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"name\":\"Lake\",\"visits\":[{\"id\":1,\"start_time\":\"2025-01-01T10:00:00\",\"visit_type\":\"vacation\"},{\"id\":2,\"start_time\":\"2025-01-01T15:00:00\",\"visit_type\":\"vacation\"…, actual object {\"code\":\"42703\",\"message\":\"column visits.visit_type does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-select",
       "actual": {
         "status": 400,
         "body": {
@@ -22426,9 +22251,9 @@
     {
       "id": "RpcSpec:212",
       "category": "rpc",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "header Content-Length: expected \"291\", actual \"297\"",
+      "gap": "header-mismatch-content-length",
       "actual": {
         "status": 404,
         "body": {
@@ -22538,9 +22363,9 @@
     {
       "id": "RpcSpec:271",
       "category": "rpc",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "header Content-Length: expected \"353\", actual \"359\"",
+      "gap": "header-mismatch-content-length",
       "actual": {
         "status": 300,
         "body": {
@@ -24385,8 +24210,8 @@
     {
       "id": "RpcSpec:1005",
       "category": "rpc",
-      "status": "blocked",
-      "reason": "column public.tsearch_to_tsvector.text_search_domain was dropped at fixture load: column type tsvector_not_null not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"text_search_domain\":\"'do':7 'fun':5 'impossible':9 'it':1 'kind':3 'of':4 's':2 'the':8 'to':6\"},{\"text_search_domain\":\"'amusant':5 'c':1 'de':6 'est':2 'faire':7 'impossible':9 'l':8 'peu':4 'un':3\"}]\n  actual:   {\"code\":\"42703\",\"message\":\"column tsearch_to_tsvector.text_search_domain does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"text_search_domain\":\"'do':7 'fun':5 'impossible':9 'it':1 'kind':3 'of':4 's':2 'the':8 'to':6\"},{\"text_search_domain\":\"'amusant':5 'c':1 'de':6 'est':2 'fai…, actual object {\"code\":\"42703\",\"message\":\"column tsearch_to_tsvector.text_search_domain does not exist\",\"details\":null,\"hint\":null}",
+      "status": "fail",
+      "reason": "[pgrest-lambda] rpc: get_tsearch_to_tsvector()\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"text_search_domain\":\"'do':7 'fun':5 'impossible':9 'it':1 'kind':3 'of':4 's':2 'the':8 'to':6\"},{\"text_search_domain\":\"'amusant':5 'c':1 'de':6 'est':2 'faire':7 'impossible':9 'l':8 'peu':4 'un':3\"}]\n  actual:   {\"code\":\"42703\",\"message\":\"column tsearch_to_tsvector.text_search_domain does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"text_search_domain\":\"'do':7 'fun':5 'impossible':9 'it':1 'kind':3 'of':4 's':2 'the':8 'to':6\"},{\"text_search_domain\":\"'amusant':5 'c':1 'de':6 'est':2 'fai…, actual object {\"code\":\"42703\",\"message\":\"column tsearch_to_tsvector.text_search_domain does not exist\",\"details\":null,\"hint\":null}",
       "gap": "missing-operator-fts",
       "actual": {
         "status": 400,
@@ -24401,8 +24226,8 @@
     {
       "id": "RpcSpec:1013",
       "category": "rpc",
-      "status": "blocked",
-      "reason": "column public.tsearch_to_tsvector.text_search_rec_domain was dropped at fixture load: column type tsvector_not_empty not supported by DSQL\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"text_search_rec_domain\":\"'do':7 'fun':5 'impossible':9 'it':1 'kind':3 'of':4 's':2 'the':8 'to':6\"},{\"text_search_rec_domain\":\"'amusant':5 'c':1 'de':6 'est':2 'faire':7 'impossible':9 'l':8 'peu':4 'un':3\"}]\n  actual:   {\"code\":\"42703\",\"message\":\"column tsearch_to_tsvector.text_search_rec_domain does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"text_search_rec_domain\":\"'do':7 'fun':5 'impossible':9 'it':1 'kind':3 'of':4 's':2 'the':8 'to':6\"},{\"text_search_rec_domain\":\"'amusant':5 'c':1 'de':6 'est…, actual object {\"code\":\"42703\",\"message\":\"column tsearch_to_tsvector.text_search_rec_domain does not exist\",\"details\":null,\"hint\":null}",
+      "status": "fail",
+      "reason": "[pgrest-lambda] rpc: get_tsearch_to_tsvector()\nstatus: expected 200, actual 400\nbody (exact) mismatch:\n  expected: [{\"text_search_rec_domain\":\"'do':7 'fun':5 'impossible':9 'it':1 'kind':3 'of':4 's':2 'the':8 'to':6\"},{\"text_search_rec_domain\":\"'amusant':5 'c':1 'de':6 'est':2 'faire':7 'impossible':9 'l':8 'peu':4 'un':3\"}]\n  actual:   {\"code\":\"42703\",\"message\":\"column tsearch_to_tsvector.text_search_rec_domain does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"text_search_rec_domain\":\"'do':7 'fun':5 'impossible':9 'it':1 'kind':3 'of':4 's':2 'the':8 'to':6\"},{\"text_search_rec_domain\":\"'amusant':5 'c':1 'de':6 'est…, actual object {\"code\":\"42703\",\"message\":\"column tsearch_to_tsvector.text_search_rec_domain does not exist\",\"details\":null,\"hint\":null}",
       "gap": "missing-operator-fts",
       "actual": {
         "status": 400,
@@ -25369,15 +25194,15 @@
     {
       "id": "SingularSpec:78",
       "category": "singular",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "body (exact) mismatch:\n  expected: [{\"id\":1,\"address\":\"address 1\"}]\n  actual:   [{\"id\":1,\"address\":\"C Street\"}]\n  at $[0].address: expected \"address 1\", actual \"C Street\"",
+      "gap": "body-mismatch-singular",
       "actual": {
         "status": 200,
         "body": [
           {
             "id": 1,
-            "address": "address 1"
+            "address": "C Street"
           }
         ]
       }
@@ -25401,15 +25226,15 @@
     {
       "id": "SingularSpec:93",
       "category": "singular",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "body (exact) mismatch:\n  expected: [{\"id\":1,\"address\":\"address 1\"}]\n  actual:   [{\"id\":1,\"address\":\"C Street\"}]\n  at $[0].address: expected \"address 1\", actual \"C Street\"",
+      "gap": "body-mismatch-singular",
       "actual": {
         "status": 200,
         "body": [
           {
             "id": 1,
-            "address": "address 1"
+            "address": "C Street"
           }
         ]
       }
@@ -25795,15 +25620,15 @@
     {
       "id": "SingularSpec:317",
       "category": "singular",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "body (exact) mismatch:\n  expected: [{\"id\":1,\"name\":\"Windows 7\"}]\n  actual:   [{\"id\":1,\"name\":\"changed\"}]\n  at $[0].name: expected \"Windows 7\", actual \"changed\"",
+      "gap": "body-mismatch-singular",
       "actual": {
         "status": 200,
         "body": [
           {
             "id": 1,
-            "name": "Windows 7"
+            "name": "changed"
           }
         ]
       }
@@ -29458,9 +29283,9 @@
     {
       "id": "UpdateSpec:17",
       "category": "update",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "header Content-Length: expected \"115\", actual \"117\"",
+      "gap": "header-mismatch-content-length",
       "actual": {
         "status": 404,
         "body": {
@@ -29565,16 +29390,12 @@
     {
       "id": "UpdateSpec:94",
       "category": "update",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "header Content-Range: expected \"0-0/*\", actual \"*/*\"\nbody (exact) mismatch:\n  expected: [{\"id\":2}]\n  actual:   []\n  at $: expected 1 element(s), actual 0",
+      "gap": "header-mismatch-content-range",
       "actual": {
         "status": 200,
-        "body": [
-          {
-            "id": 2
-          }
-        ]
+        "body": []
       }
     },
     {
@@ -29647,16 +29468,12 @@
     {
       "id": "UpdateSpec:144",
       "category": "update",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "header Content-Range: expected \"0-0/*\", actual \"*/*\"\nbody (exact) mismatch:\n  expected: [{\"id\":100}]\n  actual:   []\n  at $: expected 1 element(s), actual 0",
+      "gap": "header-mismatch-content-range",
       "actual": {
         "status": 200,
-        "body": [
-          {
-            "id": 100
-          }
-        ]
+        "body": []
       }
     },
     {
@@ -29673,48 +29490,34 @@
     {
       "id": "UpdateSpec:169",
       "category": "update",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "body (exact) mismatch:\n  expected: [{\"id\":99}]\n  actual:   []\n  at $: expected 1 element(s), actual 0",
+      "gap": "body-mismatch-update",
       "actual": {
         "status": 200,
-        "body": [
-          {
-            "id": 99
-          }
-        ]
+        "body": []
       }
     },
     {
       "id": "UpdateSpec:181",
       "category": "update",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "body (exact) mismatch:\n  expected: [{\"id\":1,\"always_true\":true}]\n  actual:   []\n  at $: expected 1 element(s), actual 0",
+      "gap": "body-mismatch-update",
       "actual": {
         "status": 200,
-        "body": [
-          {
-            "id": 1,
-            "always_true": true
-          }
-        ]
+        "body": []
       }
     },
     {
       "id": "UpdateSpec:191",
       "category": "update",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "body (exact) mismatch:\n  expected: [{\"id\":1,\"computed_overload\":true}]\n  actual:   []\n  at $: expected 1 element(s), actual 0",
+      "gap": "body-mismatch-update",
       "actual": {
         "status": 200,
-        "body": [
-          {
-            "id": 1,
-            "computed_overload": true
-          }
-        ]
+        "body": []
       }
     },
     {
@@ -29736,9 +29539,9 @@
     {
       "id": "UpdateSpec:209",
       "category": "update",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "header Content-Range: expected \"0-0/*\", actual \"*/*\"",
+      "gap": "header-mismatch-content-range",
       "actual": {
         "status": 204,
         "body": null
@@ -29747,9 +29550,9 @@
     {
       "id": "UpdateSpec:220",
       "category": "update",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "header Content-Range: expected \"0-0/*\", actual \"*/*\"",
+      "gap": "header-mismatch-content-range",
       "actual": {
         "status": 204,
         "body": null
@@ -29917,9 +29720,9 @@
     {
       "id": "UpdateSpec:359",
       "category": "update",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "header Content-Length: expected \"117\", actual \"119\"",
+      "gap": "header-mismatch-content-length",
       "actual": {
         "status": 404,
         "body": {
@@ -30011,9 +29814,9 @@
     {
       "id": "UpdateSpec:421",
       "category": "update",
-      "status": "blocked",
-      "reason": "column public.bitchar_with_length.bit was dropped at fixture load: column type bit(5) not supported by DSQL\nstatus: expected 200, actual 400\nheader Preference-Applied: expected \"return=representation\", actual <absent>\nbody (exact) mismatch:\n  expected: [{\"bit\":\"00000\",\"char\":\"zzzyy\"}]\n  actual:   {\"code\":\"42703\",\"message\":\"column bitchar_with_length.bit does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"bit\":\"00000\",\"char\":\"zzzyy\"}], actual object {\"code\":\"42703\",\"message\":\"column bitchar_with_length.bit does not exist\",\"details\":null,\"hint\":null}",
-      "gap": "no-column-type",
+      "status": "fail",
+      "reason": "42703: column bitchar_with_length.bit does not exist\nstatus: expected 200, actual 400\nheader Preference-Applied: expected \"return=representation\", actual <absent>\nbody (exact) mismatch:\n  expected: [{\"bit\":\"00000\",\"char\":\"zzzyy\"}]\n  actual:   {\"code\":\"42703\",\"message\":\"column bitchar_with_length.bit does not exist\",\"details\":null,\"hint\":null}\n  at $: expected array [{\"bit\":\"00000\",\"char\":\"zzzyy\"}], actual object {\"code\":\"42703\",\"message\":\"column bitchar_with_length.bit does not exist\",\"details\":null,\"hint\":null}",
+      "gap": "unimplemented-feature-update",
       "actual": {
         "status": 400,
         "body": {
@@ -30054,9 +29857,9 @@
     {
       "id": "UpdateSpec:444",
       "category": "update",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "body (exact) mismatch:\n  expected: [{\"a\":null,\"b\":\"1\"},{\"a\":\"2\",\"b\":\"1\"},{\"a\":\"1\",\"b\":\"1\"}]\n  actual:   [{\"a\":null,\"b\":\"1\"},{\"a\":\"圍棋\",\"b\":\"1\"},{\"a\":\"2\",\"b\":\"1\"}]\n  at $[1].a: expected \"2\", actual \"圍棋\"\n  at $[2].a: expected \"1\", actual \"2\"",
+      "gap": "body-mismatch-update",
       "actual": {
         "status": 200,
         "body": [
@@ -30065,11 +29868,11 @@
             "b": "1"
           },
           {
-            "a": "2",
+            "a": "圍棋",
             "b": "1"
           },
           {
-            "a": "1",
+            "a": "2",
             "b": "1"
           }
         ]
@@ -30302,16 +30105,16 @@
     {
       "id": "UpdateSpec:592",
       "category": "update",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "body (exact) mismatch:\n  expected: [{\"address\":\"New Street 1\",\"students\":{\"name\":\"John Doe\"}}]\n  actual:   [{\"address\":\"New Street 1\",\"students\":{\"name\":\"Johnny Doe\"}}]\n  at $[0].students.name: expected \"John Doe\", actual \"Johnny Doe\"",
+      "gap": "body-mismatch-update",
       "actual": {
         "status": 200,
         "body": [
           {
             "address": "New Street 1",
             "students": {
-              "name": "John Doe"
+              "name": "Johnny Doe"
             }
           }
         ]
@@ -30468,7 +30271,7 @@
       "id": "UpdateSpec:712",
       "category": "update",
       "status": "fail",
-      "reason": "body (exact) mismatch:\n  expected: [{\"id\":2,\"name\":\"Essay\",\"label_color\":\"#000100\",\"dark_color\":\"#000080\",\"due_at\":\"2019-01-03T11:00:00Z\"}]\n  actual:   [{\"id\":2,\"name\":\"Essay\",\"label_color\":256,\"due_at\":\"2019-01-03T11:00:00+00:00\",\"dark_color\":128}]\n  at $[0].label_color: expected string \"#000100\", actual number 256\n  at $[0].dark_color: expected string \"#000080\", actual number 128\n  at $[0].due_at: expected \"2019-01-03T11:00:00Z\", actual \"2019-01-03T11:00:00+00:00\"",
+      "reason": "body (exact) mismatch:\n  expected: [{\"id\":2,\"name\":\"Essay\",\"label_color\":\"#000100\",\"dark_color\":\"#000080\",\"due_at\":\"2019-01-03T11:00:00Z\"}]\n  actual:   [{\"id\":2,\"name\":\"Essay\",\"label_color\":2232576,\"due_at\":\"2019-01-03T11:00:00+00:00\",\"dark_color\":1116288}]\n  at $[0].label_color: expected string \"#000100\", actual number 2232576\n  at $[0].dark_color: expected string \"#000080\", actual number 1116288\n  at $[0].due_at: expected \"2019-01-03T11:00:00Z\", actual \"2019-01-03T11:00:00+00:00\"",
       "gap": "body-mismatch-update",
       "actual": {
         "status": 200,
@@ -30476,9 +30279,9 @@
           {
             "id": 2,
             "name": "Essay",
-            "label_color": 256,
+            "label_color": 2232576,
             "due_at": "2019-01-03T11:00:00+00:00",
-            "dark_color": 128
+            "dark_color": 1116288
           }
         ]
       }
@@ -30823,16 +30626,12 @@
     {
       "id": "UpsertSpec:202",
       "category": "upsert",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "body (exact) mismatch:\n  expected: [{\"unique_key\":2,\"value\":\"C\"},{\"unique_key\":3,\"value\":\"D\"}]\n  actual:   [{\"unique_key\":3,\"value\":\"D\"}]\n  at $: expected 2 element(s), actual 1\n  at $[0].unique_key: expected 2, actual 3\n  at $[0].value: expected \"C\", actual \"D\"",
+      "gap": "body-mismatch-upsert",
       "actual": {
         "status": 201,
         "body": [
-          {
-            "unique_key": 2,
-            "value": "C"
-          },
           {
             "unique_key": 3,
             "value": "D"
@@ -30843,17 +30642,12 @@
     {
       "id": "UpsertSpec:219",
       "category": "upsert",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "body (exact) mismatch:\n  expected: [{\"key1\":1,\"key2\":2,\"value\":\"C\"},{\"key1\":1,\"key2\":3,\"value\":\"D\"}]\n  actual:   [{\"key1\":1,\"key2\":3,\"value\":\"D\"}]\n  at $: expected 2 element(s), actual 1\n  at $[0].key2: expected 2, actual 3\n  at $[0].value: expected \"C\", actual \"D\"",
+      "gap": "body-mismatch-upsert",
       "actual": {
         "status": 201,
         "body": [
-          {
-            "key1": 1,
-            "key2": 2,
-            "value": "C"
-          },
           {
             "key1": 1,
             "key2": 3,
@@ -31238,15 +31032,15 @@
     {
       "id": "UpsertSpec:417",
       "category": "upsert",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "body (exact) mismatch:\n  expected: [{\"name\":\"Java\",\"rank\":1}]\n  actual:   [{\"name\":\"Java\",\"rank\":2}]\n  at $[0].rank: expected 1, actual 2",
+      "gap": "body-mismatch-upsert",
       "actual": {
         "status": 200,
         "body": [
           {
             "name": "Java",
-            "rank": 1
+            "rank": 2
           }
         ]
       }
@@ -31270,15 +31064,15 @@
     {
       "id": "UpsertSpec:430",
       "category": "upsert",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "body (exact) mismatch:\n  expected: [{\"name\":\"Java\",\"rank\":1}]\n  actual:   [{\"name\":\"Java\",\"rank\":13}]\n  at $[0].rank: expected 1, actual 13",
+      "gap": "body-mismatch-upsert",
       "actual": {
         "status": 200,
         "body": [
           {
             "name": "Java",
-            "rank": 1
+            "rank": 13
           }
         ]
       }
@@ -31396,15 +31190,15 @@
     {
       "id": "UpsertSpec:479",
       "category": "upsert",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "body (exact) mismatch:\n  expected: [{\"name\":\"Java\",\"rank\":1}]\n  actual:   [{\"name\":\"Java\",\"rank\":19}]\n  at $[0].rank: expected 1, actual 19",
+      "gap": "body-mismatch-upsert",
       "actual": {
         "status": 200,
         "body": [
           {
             "name": "Java",
-            "rank": 1
+            "rank": 19
           }
         ]
       }
@@ -31462,17 +31256,12 @@
     {
       "id": "UpsertSpec:518",
       "category": "upsert",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "body (exact) mismatch:\n  expected: [{\"idUnitTest\":2,\"nameUnitTest\":\"name of unittest 2\"}]\n  actual:   []\n  at $: expected 1 element(s), actual 0",
+      "gap": "body-mismatch-upsert",
       "actual": {
         "status": 201,
-        "body": [
-          {
-            "idUnitTest": 2,
-            "nameUnitTest": "name of unittest 2"
-          }
-        ]
+        "body": []
       }
     },
     {

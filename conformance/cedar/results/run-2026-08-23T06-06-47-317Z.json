@@ -1,21 +1,22 @@
 {
-  "generatedAt": "2026-08-23T07:23:34Z",
+  "generatedAt": "2026-08-23T06:06:47Z",
   "target": "dsql",
   "commit": "c718ab4",
   "casesFile": "/home/ec2-user/pgrest-lambda/conformance/cedar/cases.json",
   "policySet": "/home/ec2-user/pgrest-lambda/conformance/cedar/policies",
   "summary": {
     "measurement": "cedar-equivalence",
-    "notThePostgrestRate": "This is equivalent behaviour through a different mechanism. It is not a PostgREST pass rate and it is never added to one. It also does not stand in for failures any more: the conformance runner loads its own port of the same GRANTs (conformance/fixtures/policies), so most of the upstream cases this derives from are already counted in conformance/results/latest.json. Read this as a second harness over the same mechanism, not as anything to add.",
-    "equivalencesRan": 30,
-    "equivalencesHold": 28,
+    "notThePostgrestRate": "This is equivalent behaviour through a different mechanism. It is not a PostgREST pass rate, it is never added to one, and the upstream cases it derives from remain failures in conformance/results/latest.json.",
+    "equivalencesRan": 28,
+    "equivalencesHold": 26,
     "equivalencesDiverge": 2,
     "divergenceKinds": {
       "body": 1,
       "identity-mapping": 1
     },
-    "noFairEquivalent": 24,
+    "noFairEquivalent": 26,
     "noFairEquivalentByClass": {
+      "extraction-defect": 2,
       "session-identity-guc": 5,
       "jwt-verification": 16,
       "column-level-privilege": 3
@@ -35,7 +36,7 @@
       "engineConfig": "jwt-secret=JWK",
       "upstreamMechanism": "GRANT ALL ON TABLE authors_only TO postgrest_test_author (conformance/fixtures/dsql/06-privileges.sql:40), reached by SET ROLE postgrest_test_author from the JWT `role` claim",
       "cedarMechanism": "permit(principal is PgrestLambda::User, action in [select, ...], resource is PgrestLambda::Row) when { principal.role == \"postgrest_test_author\" && context.table == \"authors_only\" } (conformance/cedar/policies/10-roles.cedar)",
-      "doNotRead": "A pass means a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised: authors_only holds no rows in the fixtures, so the asserted body is []. The engine does verify the token (jwt-secret, upstream's own secret), so the identity is checked rather than taken from the payload — but the identity check is not what this equivalence is about."
+      "doNotRead": "The engine did not verify this token — the harness supplies the identity from the payload — so a pass means only that a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised."
     },
     {
       "id": "Cedar:AsymmetricJwtSpec:38",
@@ -49,21 +50,7 @@
       "engineConfig": "jwt-secret=JWKSet",
       "upstreamMechanism": "GRANT ALL ON TABLE authors_only TO postgrest_test_author (conformance/fixtures/dsql/06-privileges.sql:40), reached by SET ROLE postgrest_test_author from the JWT `role` claim",
       "cedarMechanism": "permit(principal is PgrestLambda::User, action in [select, ...], resource is PgrestLambda::Row) when { principal.role == \"postgrest_test_author\" && context.table == \"authors_only\" } (conformance/cedar/policies/10-roles.cedar)",
-      "doNotRead": "A pass means a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised: authors_only holds no rows in the fixtures, so the asserted body is []. The engine does verify the token (jwt-secret, upstream's own secret), so the identity is checked rather than taken from the payload — but the identity check is not what this equivalence is about."
-    },
-    {
-      "id": "Cedar:AudienceJwtSecretSpec:32",
-      "upstreamId": "AudienceJwtSecretSpec:32",
-      "verdict": "hold",
-      "divergence": null,
-      "reason": null,
-      "expectedStatus": 200,
-      "actualStatus": 200,
-      "actualBody": "[]",
-      "engineConfig": "jwt-secret+jwt-aud=youraudience",
-      "upstreamMechanism": "GRANT ALL ON TABLE authors_only TO postgrest_test_author (conformance/fixtures/dsql/06-privileges.sql:40), reached by SET ROLE postgrest_test_author from the JWT `role` claim",
-      "cedarMechanism": "permit(principal is PgrestLambda::User, action in [select, ...], resource is PgrestLambda::Row) when { principal.role == \"postgrest_test_author\" && context.table == \"authors_only\" } (conformance/cedar/policies/10-roles.cedar)",
-      "doNotRead": "A pass means a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised: authors_only holds no rows in the fixtures, so the asserted body is []. The engine does verify the token (jwt-secret, upstream's own secret), so the identity is checked rather than taken from the payload — but the identity check is not what this equivalence is about."
+      "doNotRead": "The engine did not verify this token — the harness supplies the identity from the payload — so a pass means only that a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised."
     },
     {
       "id": "Cedar:AudienceJwtSecretSpec:73",
@@ -77,21 +64,7 @@
       "engineConfig": "jwt-secret+jwt-aud=youraudience",
       "upstreamMechanism": "GRANT ALL ON TABLE authors_only TO postgrest_test_author (conformance/fixtures/dsql/06-privileges.sql:40), reached by SET ROLE postgrest_test_author from the JWT `role` claim",
       "cedarMechanism": "permit(principal is PgrestLambda::User, action in [select, ...], resource is PgrestLambda::Row) when { principal.role == \"postgrest_test_author\" && context.table == \"authors_only\" } (conformance/cedar/policies/10-roles.cedar)",
-      "doNotRead": "A pass means a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised: authors_only holds no rows in the fixtures, so the asserted body is []. The engine does verify the token (jwt-secret, upstream's own secret), so the identity is checked rather than taken from the payload — but the identity check is not what this equivalence is about."
-    },
-    {
-      "id": "Cedar:AudienceJwtSecretSpec:85",
-      "upstreamId": "AudienceJwtSecretSpec:85",
-      "verdict": "hold",
-      "divergence": null,
-      "reason": null,
-      "expectedStatus": 200,
-      "actualStatus": 200,
-      "actualBody": "[]",
-      "engineConfig": "jwt-secret+jwt-aud=youraudience",
-      "upstreamMechanism": "GRANT ALL ON TABLE authors_only TO postgrest_test_author (conformance/fixtures/dsql/06-privileges.sql:40), reached by SET ROLE postgrest_test_author from the JWT `role` claim",
-      "cedarMechanism": "permit(principal is PgrestLambda::User, action in [select, ...], resource is PgrestLambda::Row) when { principal.role == \"postgrest_test_author\" && context.table == \"authors_only\" } (conformance/cedar/policies/10-roles.cedar)",
-      "doNotRead": "A pass means a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised: authors_only holds no rows in the fixtures, so the asserted body is []. The engine does verify the token (jwt-secret, upstream's own secret), so the identity is checked rather than taken from the payload — but the identity check is not what this equivalence is about."
+      "doNotRead": "The engine did not verify this token — the harness supplies the identity from the payload — so a pass means only that a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised."
     },
     {
       "id": "Cedar:AudienceJwtSecretSpec:126",
@@ -105,7 +78,7 @@
       "engineConfig": "jwt-secret+jwt-aud=youraudience",
       "upstreamMechanism": "GRANT ALL ON TABLE authors_only TO postgrest_test_author (conformance/fixtures/dsql/06-privileges.sql:40), reached by SET ROLE postgrest_test_author from the JWT `role` claim",
       "cedarMechanism": "permit(principal is PgrestLambda::User, action in [select, ...], resource is PgrestLambda::Row) when { principal.role == \"postgrest_test_author\" && context.table == \"authors_only\" } (conformance/cedar/policies/10-roles.cedar)",
-      "doNotRead": "A pass means a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised: authors_only holds no rows in the fixtures, so the asserted body is []. The engine does verify the token (jwt-secret, upstream's own secret), so the identity is checked rather than taken from the payload — but the identity check is not what this equivalence is about."
+      "doNotRead": "The engine did not verify this token — the harness supplies the identity from the payload — so a pass means only that a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised."
     },
     {
       "id": "Cedar:AudienceJwtSecretSpec:138",
@@ -119,7 +92,7 @@
       "engineConfig": "jwt-secret+jwt-aud=youraudience",
       "upstreamMechanism": "GRANT ALL ON TABLE authors_only TO postgrest_test_author (conformance/fixtures/dsql/06-privileges.sql:40), reached by SET ROLE postgrest_test_author from the JWT `role` claim",
       "cedarMechanism": "permit(principal is PgrestLambda::User, action in [select, ...], resource is PgrestLambda::Row) when { principal.role == \"postgrest_test_author\" && context.table == \"authors_only\" } (conformance/cedar/policies/10-roles.cedar)",
-      "doNotRead": "A pass means a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised: authors_only holds no rows in the fixtures, so the asserted body is []. The engine does verify the token (jwt-secret, upstream's own secret), so the identity is checked rather than taken from the payload — but the identity check is not what this equivalence is about."
+      "doNotRead": "The engine did not verify this token — the harness supplies the identity from the payload — so a pass means only that a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised."
     },
     {
       "id": "Cedar:AudienceJwtSecretSpec:150",
@@ -133,7 +106,7 @@
       "engineConfig": "jwt-secret+jwt-aud=youraudience",
       "upstreamMechanism": "GRANT ALL ON TABLE authors_only TO postgrest_test_author (conformance/fixtures/dsql/06-privileges.sql:40), reached by SET ROLE postgrest_test_author from the JWT `role` claim",
       "cedarMechanism": "permit(principal is PgrestLambda::User, action in [select, ...], resource is PgrestLambda::Row) when { principal.role == \"postgrest_test_author\" && context.table == \"authors_only\" } (conformance/cedar/policies/10-roles.cedar)",
-      "doNotRead": "A pass means a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised: authors_only holds no rows in the fixtures, so the asserted body is []. The engine does verify the token (jwt-secret, upstream's own secret), so the identity is checked rather than taken from the payload — but the identity check is not what this equivalence is about."
+      "doNotRead": "The engine did not verify this token — the harness supplies the identity from the payload — so a pass means only that a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised."
     },
     {
       "id": "Cedar:AudienceJwtSecretSpec:169",
@@ -147,7 +120,7 @@
       "engineConfig": "base",
       "upstreamMechanism": "GRANT ALL ON TABLE authors_only TO postgrest_test_author (conformance/fixtures/dsql/06-privileges.sql:40), reached by SET ROLE postgrest_test_author from the JWT `role` claim",
       "cedarMechanism": "permit(principal is PgrestLambda::User, action in [select, ...], resource is PgrestLambda::Row) when { principal.role == \"postgrest_test_author\" && context.table == \"authors_only\" } (conformance/cedar/policies/10-roles.cedar)",
-      "doNotRead": "A pass means a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised: authors_only holds no rows in the fixtures, so the asserted body is []. The engine does verify the token (jwt-secret, upstream's own secret), so the identity is checked rather than taken from the payload — but the identity check is not what this equivalence is about."
+      "doNotRead": "The engine did not verify this token — the harness supplies the identity from the payload — so a pass means only that a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised."
     },
     {
       "id": "Cedar:AudienceJwtSecretSpec:181",
@@ -161,7 +134,7 @@
       "engineConfig": "base",
       "upstreamMechanism": "GRANT ALL ON TABLE authors_only TO postgrest_test_author (conformance/fixtures/dsql/06-privileges.sql:40), reached by SET ROLE postgrest_test_author from the JWT `role` claim",
       "cedarMechanism": "permit(principal is PgrestLambda::User, action in [select, ...], resource is PgrestLambda::Row) when { principal.role == \"postgrest_test_author\" && context.table == \"authors_only\" } (conformance/cedar/policies/10-roles.cedar)",
-      "doNotRead": "A pass means a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised: authors_only holds no rows in the fixtures, so the asserted body is []. The engine does verify the token (jwt-secret, upstream's own secret), so the identity is checked rather than taken from the payload — but the identity check is not what this equivalence is about."
+      "doNotRead": "The engine did not verify this token — the harness supplies the identity from the payload — so a pass means only that a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised."
     },
     {
       "id": "Cedar:AudienceJwtSecretSpec:194",
@@ -175,7 +148,7 @@
       "engineConfig": "base",
       "upstreamMechanism": "GRANT ALL ON TABLE authors_only TO postgrest_test_author (conformance/fixtures/dsql/06-privileges.sql:40), reached by SET ROLE postgrest_test_author from the JWT `role` claim",
       "cedarMechanism": "permit(principal is PgrestLambda::User, action in [select, ...], resource is PgrestLambda::Row) when { principal.role == \"postgrest_test_author\" && context.table == \"authors_only\" } (conformance/cedar/policies/10-roles.cedar)",
-      "doNotRead": "A pass means a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised: authors_only holds no rows in the fixtures, so the asserted body is []. The engine does verify the token (jwt-secret, upstream's own secret), so the identity is checked rather than taken from the payload — but the identity check is not what this equivalence is about."
+      "doNotRead": "The engine did not verify this token — the harness supplies the identity from the payload — so a pass means only that a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised."
     },
     {
       "id": "Cedar:AudienceJwtSecretSpec:206",
@@ -189,7 +162,7 @@
       "engineConfig": "base",
       "upstreamMechanism": "GRANT ALL ON TABLE authors_only TO postgrest_test_author (conformance/fixtures/dsql/06-privileges.sql:40), reached by SET ROLE postgrest_test_author from the JWT `role` claim",
       "cedarMechanism": "permit(principal is PgrestLambda::User, action in [select, ...], resource is PgrestLambda::Row) when { principal.role == \"postgrest_test_author\" && context.table == \"authors_only\" } (conformance/cedar/policies/10-roles.cedar)",
-      "doNotRead": "A pass means a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised: authors_only holds no rows in the fixtures, so the asserted body is []. The engine does verify the token (jwt-secret, upstream's own secret), so the identity is checked rather than taken from the payload — but the identity check is not what this equivalence is about."
+      "doNotRead": "The engine did not verify this token — the harness supplies the identity from the payload — so a pass means only that a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised."
     },
     {
       "id": "Cedar:AudienceJwtSecretSpec:218",
@@ -203,7 +176,7 @@
       "engineConfig": "base",
       "upstreamMechanism": "GRANT ALL ON TABLE authors_only TO postgrest_test_author (conformance/fixtures/dsql/06-privileges.sql:40), reached by SET ROLE postgrest_test_author from the JWT `role` claim",
       "cedarMechanism": "permit(principal is PgrestLambda::User, action in [select, ...], resource is PgrestLambda::Row) when { principal.role == \"postgrest_test_author\" && context.table == \"authors_only\" } (conformance/cedar/policies/10-roles.cedar)",
-      "doNotRead": "A pass means a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised: authors_only holds no rows in the fixtures, so the asserted body is []. The engine does verify the token (jwt-secret, upstream's own secret), so the identity is checked rather than taken from the payload — but the identity check is not what this equivalence is about."
+      "doNotRead": "The engine did not verify this token — the harness supplies the identity from the payload — so a pass means only that a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised."
     },
     {
       "id": "Cedar:AudienceJwtSecretSpec:230",
@@ -217,7 +190,7 @@
       "engineConfig": "base",
       "upstreamMechanism": "GRANT ALL ON TABLE authors_only TO postgrest_test_author (conformance/fixtures/dsql/06-privileges.sql:40), reached by SET ROLE postgrest_test_author from the JWT `role` claim",
       "cedarMechanism": "permit(principal is PgrestLambda::User, action in [select, ...], resource is PgrestLambda::Row) when { principal.role == \"postgrest_test_author\" && context.table == \"authors_only\" } (conformance/cedar/policies/10-roles.cedar)",
-      "doNotRead": "A pass means a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised: authors_only holds no rows in the fixtures, so the asserted body is []. The engine does verify the token (jwt-secret, upstream's own secret), so the identity is checked rather than taken from the payload — but the identity check is not what this equivalence is about."
+      "doNotRead": "The engine did not verify this token — the harness supplies the identity from the payload — so a pass means only that a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised."
     },
     {
       "id": "Cedar:AudienceJwtSecretSpec:242",
@@ -231,7 +204,7 @@
       "engineConfig": "base",
       "upstreamMechanism": "GRANT ALL ON TABLE authors_only TO postgrest_test_author (conformance/fixtures/dsql/06-privileges.sql:40), reached by SET ROLE postgrest_test_author from the JWT `role` claim",
       "cedarMechanism": "permit(principal is PgrestLambda::User, action in [select, ...], resource is PgrestLambda::Row) when { principal.role == \"postgrest_test_author\" && context.table == \"authors_only\" } (conformance/cedar/policies/10-roles.cedar)",
-      "doNotRead": "A pass means a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised: authors_only holds no rows in the fixtures, so the asserted body is []. The engine does verify the token (jwt-secret, upstream's own secret), so the identity is checked rather than taken from the payload — but the identity check is not what this equivalence is about."
+      "doNotRead": "The engine did not verify this token — the harness supplies the identity from the payload — so a pass means only that a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised."
     },
     {
       "id": "Cedar:AuthSpec:16",
@@ -287,7 +260,7 @@
       "engineConfig": "base",
       "upstreamMechanism": "GRANT ALL ON TABLE authors_only TO postgrest_test_author (conformance/fixtures/dsql/06-privileges.sql:40), reached by SET ROLE postgrest_test_author from the JWT `role` claim",
       "cedarMechanism": "permit(principal is PgrestLambda::User, action in [select, ...], resource is PgrestLambda::Row) when { principal.role == \"postgrest_test_author\" && context.table == \"authors_only\" } (conformance/cedar/policies/10-roles.cedar)",
-      "doNotRead": "A pass means a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised: authors_only holds no rows in the fixtures, so the asserted body is []. The engine does verify the token (jwt-secret, upstream's own secret), so the identity is checked rather than taken from the payload — but the identity check is not what this equivalence is about."
+      "doNotRead": "The engine did not verify this token — the harness supplies the identity from the payload — so a pass means only that a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised."
     },
     {
       "id": "Cedar:AuthSpec:78",
@@ -301,7 +274,7 @@
       "engineConfig": "base",
       "upstreamMechanism": "GRANT ALL ON TABLE authors_only TO postgrest_test_author (conformance/fixtures/dsql/06-privileges.sql:40), reached by SET ROLE postgrest_test_author from the JWT `role` claim",
       "cedarMechanism": "permit(principal is PgrestLambda::User, action in [select, ...], resource is PgrestLambda::Row) when { principal.role == \"postgrest_test_author\" && context.table == \"authors_only\" } (conformance/cedar/policies/10-roles.cedar)",
-      "doNotRead": "A pass means a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised: authors_only holds no rows in the fixtures, so the asserted body is []. The engine does verify the token (jwt-secret, upstream's own secret), so the identity is checked rather than taken from the payload — but the identity check is not what this equivalence is about."
+      "doNotRead": "The engine did not verify this token — the harness supplies the identity from the payload — so a pass means only that a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised."
     },
     {
       "id": "Cedar:AuthSpec:84",
@@ -315,7 +288,7 @@
       "engineConfig": "base",
       "upstreamMechanism": "GRANT ALL ON TABLE authors_only TO postgrest_test_author (conformance/fixtures/dsql/06-privileges.sql:40), reached by SET ROLE postgrest_test_author from the JWT `role` claim",
       "cedarMechanism": "permit(principal is PgrestLambda::User, action in [select, ...], resource is PgrestLambda::Row) when { principal.role == \"postgrest_test_author\" && context.table == \"authors_only\" } (conformance/cedar/policies/10-roles.cedar)",
-      "doNotRead": "A pass means a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised: authors_only holds no rows in the fixtures, so the asserted body is []. The engine does verify the token (jwt-secret, upstream's own secret), so the identity is checked rather than taken from the payload — but the identity check is not what this equivalence is about."
+      "doNotRead": "The engine did not verify this token — the harness supplies the identity from the payload — so a pass means only that a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised."
     },
     {
       "id": "Cedar:AuthSpec:91",
@@ -329,7 +302,7 @@
       "engineConfig": "base",
       "upstreamMechanism": "GRANT ALL ON TABLE authors_only TO postgrest_test_author (conformance/fixtures/dsql/06-privileges.sql:40), reached by SET ROLE postgrest_test_author from the JWT `role` claim",
       "cedarMechanism": "permit(principal is PgrestLambda::User, action in [select, ...], resource is PgrestLambda::Row) when { principal.role == \"postgrest_test_author\" && context.table == \"authors_only\" } (conformance/cedar/policies/10-roles.cedar)",
-      "doNotRead": "A pass means a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised: authors_only holds no rows in the fixtures, so the asserted body is []. The engine does verify the token (jwt-secret, upstream's own secret), so the identity is checked rather than taken from the payload — but the identity check is not what this equivalence is about."
+      "doNotRead": "The engine did not verify this token — the harness supplies the identity from the payload — so a pass means only that a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised."
     },
     {
       "id": "Cedar:AuthSpec:130",
@@ -371,7 +344,7 @@
       "engineConfig": "base",
       "upstreamMechanism": "GRANT ALL ON TABLE authors_only TO postgrest_test_author (conformance/fixtures/dsql/06-privileges.sql:40), reached by SET ROLE postgrest_test_author from the JWT `role` claim",
       "cedarMechanism": "permit(principal is PgrestLambda::User, action in [select, ...], resource is PgrestLambda::Row) when { principal.role == \"postgrest_test_author\" && context.table == \"authors_only\" } (conformance/cedar/policies/10-roles.cedar)",
-      "doNotRead": "A pass means a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised: authors_only holds no rows in the fixtures, so the asserted body is []. The engine does verify the token (jwt-secret, upstream's own secret), so the identity is checked rather than taken from the payload — but the identity check is not what this equivalence is about."
+      "doNotRead": "The engine did not verify this token — the harness supplies the identity from the payload — so a pass means only that a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised."
     },
     {
       "id": "Cedar:AuthSpec:236",
@@ -385,7 +358,7 @@
       "engineConfig": "base",
       "upstreamMechanism": "GRANT ALL ON TABLE authors_only TO postgrest_test_author (conformance/fixtures/dsql/06-privileges.sql:40), reached by SET ROLE postgrest_test_author from the JWT `role` claim",
       "cedarMechanism": "permit(principal is PgrestLambda::User, action in [select, ...], resource is PgrestLambda::Row) when { principal.role == \"postgrest_test_author\" && context.table == \"authors_only\" } (conformance/cedar/policies/10-roles.cedar)",
-      "doNotRead": "A pass means a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised: authors_only holds no rows in the fixtures, so the asserted body is []. The engine does verify the token (jwt-secret, upstream's own secret), so the identity is checked rather than taken from the payload — but the identity check is not what this equivalence is about."
+      "doNotRead": "The engine did not verify this token — the harness supplies the identity from the payload — so a pass means only that a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised."
     },
     {
       "id": "Cedar:AuthSpec:238",
@@ -399,7 +372,7 @@
       "engineConfig": "base",
       "upstreamMechanism": "GRANT ALL ON TABLE authors_only TO postgrest_test_author (conformance/fixtures/dsql/06-privileges.sql:40), reached by SET ROLE postgrest_test_author from the JWT `role` claim",
       "cedarMechanism": "permit(principal is PgrestLambda::User, action in [select, ...], resource is PgrestLambda::Row) when { principal.role == \"postgrest_test_author\" && context.table == \"authors_only\" } (conformance/cedar/policies/10-roles.cedar)",
-      "doNotRead": "A pass means a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised: authors_only holds no rows in the fixtures, so the asserted body is []. The engine does verify the token (jwt-secret, upstream's own secret), so the identity is checked rather than taken from the payload — but the identity check is not what this equivalence is about."
+      "doNotRead": "The engine did not verify this token — the harness supplies the identity from the payload — so a pass means only that a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised."
     },
     {
       "id": "Cedar:BinaryJwtSecretSpec:23",
@@ -413,7 +386,7 @@
       "engineConfig": "jwt-secret=binary",
       "upstreamMechanism": "GRANT ALL ON TABLE authors_only TO postgrest_test_author (conformance/fixtures/dsql/06-privileges.sql:40), reached by SET ROLE postgrest_test_author from the JWT `role` claim",
       "cedarMechanism": "permit(principal is PgrestLambda::User, action in [select, ...], resource is PgrestLambda::Row) when { principal.role == \"postgrest_test_author\" && context.table == \"authors_only\" } (conformance/cedar/policies/10-roles.cedar)",
-      "doNotRead": "A pass means a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised: authors_only holds no rows in the fixtures, so the asserted body is []. The engine does verify the token (jwt-secret, upstream's own secret), so the identity is checked rather than taken from the payload — but the identity check is not what this equivalence is about."
+      "doNotRead": "The engine did not verify this token — the harness supplies the identity from the payload — so a pass means only that a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised."
     },
     {
       "id": "Cedar:ErrorSpec:123",
@@ -441,10 +414,28 @@
       "engineConfig": "db-anon-role=<none>",
       "upstreamMechanism": "GRANT ALL ON TABLE authors_only TO postgrest_test_author (conformance/fixtures/dsql/06-privileges.sql:40), reached by SET ROLE postgrest_test_author from the JWT `role` claim",
       "cedarMechanism": "permit(principal is PgrestLambda::User, action in [select, ...], resource is PgrestLambda::Row) when { principal.role == \"postgrest_test_author\" && context.table == \"authors_only\" } (conformance/cedar/policies/10-roles.cedar)",
-      "doNotRead": "A pass means a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised: authors_only holds no rows in the fixtures, so the asserted body is []. The engine does verify the token (jwt-secret, upstream's own secret), so the identity is checked rather than taken from the payload — but the identity check is not what this equivalence is about."
+      "doNotRead": "The engine did not verify this token — the harness supplies the identity from the payload — so a pass means only that a Cedar permit replaced a table-level GRANT on an empty table, not that any RLS policy or row filter was exercised."
     }
   ],
   "noFairEquivalent": [
+    {
+      "upstreamId": "AudienceJwtSecretSpec:32",
+      "upstreamCategory": "auth",
+      "class": "extraction-defect",
+      "upstreamMechanism": "GRANT ALL ON TABLE authors_only TO postgrest_test_author (conformance/fixtures/dsql/06-privileges.sql:40), reached by SET ROLE postgrest_test_author from the JWT `role` claim",
+      "upstreamExpectedStatus": 200,
+      "reason": "the assertion at line 32 belongs to `it \"succeeds when the audience claim matches\"` (line 23), whose payload has aud \"youraudience\", but the extracted request carries aud \"notyouraudience\" — the payload of the *next* `it`. The engine runs this spec range with jwt-aud=youraudience (conformance/runner/run.mjs ENGINE_CONFIGS), so it answers 401 \"JWT not in audience\" — which is what upstream would answer to the request as extracted. Asserting 200 for that request contradicts upstream's own behaviour, so no policy set can make the case hold without disabling audience checking, and disabling it would be weakening the expectation.",
+      "doNotRead": "the grant equivalence these two cases would have measured is already measured by the eleven sibling AudienceJwtSecretSpec cases that extracted cleanly; excluding these two removes a harness defect from the numerator and the denominator, not an engine failure."
+    },
+    {
+      "upstreamId": "AudienceJwtSecretSpec:85",
+      "upstreamCategory": "auth",
+      "class": "extraction-defect",
+      "upstreamMechanism": "GRANT ALL ON TABLE authors_only TO postgrest_test_author (conformance/fixtures/dsql/06-privileges.sql:40), reached by SET ROLE postgrest_test_author from the JWT `role` claim",
+      "upstreamExpectedStatus": 200,
+      "reason": "the assertion at line 85 belongs to `it \"succeeds when the audience claim has more than 1 element and one matches\"` (line 75), whose payload includes \"youraudience\", but the extracted request carries aud [\"notyouraudience\"] — the payload of the *next* `it`. The engine runs this spec range with jwt-aud=youraudience (conformance/runner/run.mjs ENGINE_CONFIGS), so it answers 401 \"JWT not in audience\" — which is what upstream would answer to the request as extracted. Asserting 200 for that request contradicts upstream's own behaviour, so no policy set can make the case hold without disabling audience checking, and disabling it would be weakening the expectation.",
+      "doNotRead": "the grant equivalence these two cases would have measured is already measured by the eleven sibling AudienceJwtSecretSpec cases that extracted cleanly; excluding these two removes a harness defect from the numerator and the denominator, not an engine failure."
+    },
     {
       "upstreamId": "AuthSpec:68",
       "upstreamCategory": "auth",
@@ -460,7 +451,7 @@
       "class": "jwt-verification",
       "upstreamMechanism": "JWT decoding and claim validation inside PostgREST, before any role is assumed; the role never gets set and no privilege is ever consulted",
       "upstreamExpectedStatus": 401,
-      "reason": "The asserted 401 comes from JWT validation — the Authorization header is `Bearer ` with an empty token — not from a privilege check. Substituting a Cedar policy set would not be testing the same mechanism: no policy set can make the engine reject a token, and no policy set is consulted upstream. The case was swept into the no-set-role group because the harness used to build the authorizer context by decoding the payload without verifying it, so the request reached the authorization layer and was denied by policy instead of being rejected outright. The engine verifies the token now, and the case passes the PostgREST rate on its own mechanism.",
+      "reason": "The asserted 401 comes from JWT validation — the Authorization header is `Bearer ` with an empty token — not from a privilege check. Substituting a Cedar policy set would not be testing the same mechanism: no policy set can make the engine reject a token, and no policy set is consulted upstream. The case appears in the no-set-role group only because this harness builds the authorizer context by decoding the payload without verifying it, so the request reaches the authorization layer at all.",
       "doNotRead": "the absence of an equivalence here says nothing about whether the engine can reject this token: the engine has its own JWT verification path (jwt-secret / restJwt), it is simply not the mechanism upstream's SET ROLE cases stand in for."
     },
     {
@@ -469,7 +460,7 @@
       "class": "jwt-verification",
       "upstreamMechanism": "JWT decoding and claim validation inside PostgREST, before any role is assumed; the role never gets set and no privilege is ever consulted",
       "upstreamExpectedStatus": 401,
-      "reason": "The asserted 401 comes from JWT validation — the token is expired (exp in the past) — not from a privilege check. Substituting a Cedar policy set would not be testing the same mechanism: no policy set can make the engine reject a token, and no policy set is consulted upstream. The case was swept into the no-set-role group because the harness used to build the authorizer context by decoding the payload without verifying it, so the request reached the authorization layer and was denied by policy instead of being rejected outright. The engine verifies the token now, and the case passes the PostgREST rate on its own mechanism.",
+      "reason": "The asserted 401 comes from JWT validation — the token is expired (exp in the past) — not from a privilege check. Substituting a Cedar policy set would not be testing the same mechanism: no policy set can make the engine reject a token, and no policy set is consulted upstream. The case appears in the no-set-role group only because this harness builds the authorizer context by decoding the payload without verifying it, so the request reaches the authorization layer at all.",
       "doNotRead": "the absence of an equivalence here says nothing about whether the engine can reject this token: the engine has its own JWT verification path (jwt-secret / restJwt), it is simply not the mechanism upstream's SET ROLE cases stand in for."
     },
     {
@@ -478,7 +469,7 @@
       "class": "jwt-verification",
       "upstreamMechanism": "JWT decoding and claim validation inside PostgREST, before any role is assumed; the role never gets set and no privilege is ever consulted",
       "upstreamExpectedStatus": 401,
-      "reason": "The asserted 401 comes from JWT validation — the token has two segments instead of three — not from a privilege check. Substituting a Cedar policy set would not be testing the same mechanism: no policy set can make the engine reject a token, and no policy set is consulted upstream. The case was swept into the no-set-role group because the harness used to build the authorizer context by decoding the payload without verifying it, so the request reached the authorization layer and was denied by policy instead of being rejected outright. The engine verifies the token now, and the case passes the PostgREST rate on its own mechanism.",
+      "reason": "The asserted 401 comes from JWT validation — the token has two segments instead of three — not from a privilege check. Substituting a Cedar policy set would not be testing the same mechanism: no policy set can make the engine reject a token, and no policy set is consulted upstream. The case appears in the no-set-role group only because this harness builds the authorizer context by decoding the payload without verifying it, so the request reaches the authorization layer at all.",
       "doNotRead": "the absence of an equivalence here says nothing about whether the engine can reject this token: the engine has its own JWT verification path (jwt-secret / restJwt), it is simply not the mechanism upstream's SET ROLE cases stand in for."
     },
     {
@@ -487,7 +478,7 @@
       "class": "jwt-verification",
       "upstreamMechanism": "JWT decoding and claim validation inside PostgREST, before any role is assumed; the role never gets set and no privilege is ever consulted",
       "upstreamExpectedStatus": 401,
-      "reason": "The asserted 401 comes from JWT validation — the `exp` claim is a string, not a number — not from a privilege check. Substituting a Cedar policy set would not be testing the same mechanism: no policy set can make the engine reject a token, and no policy set is consulted upstream. The case was swept into the no-set-role group because the harness used to build the authorizer context by decoding the payload without verifying it, so the request reached the authorization layer and was denied by policy instead of being rejected outright. The engine verifies the token now, and the case passes the PostgREST rate on its own mechanism.",
+      "reason": "The asserted 401 comes from JWT validation — the `exp` claim is a string, not a number — not from a privilege check. Substituting a Cedar policy set would not be testing the same mechanism: no policy set can make the engine reject a token, and no policy set is consulted upstream. The case appears in the no-set-role group only because this harness builds the authorizer context by decoding the payload without verifying it, so the request reaches the authorization layer at all.",
       "doNotRead": "the absence of an equivalence here says nothing about whether the engine can reject this token: the engine has its own JWT verification path (jwt-secret / restJwt), it is simply not the mechanism upstream's SET ROLE cases stand in for."
     },
     {
@@ -496,7 +487,7 @@
       "class": "jwt-verification",
       "upstreamMechanism": "JWT decoding and claim validation inside PostgREST, before any role is assumed; the role never gets set and no privilege is ever consulted",
       "upstreamExpectedStatus": 401,
-      "reason": "The asserted 401 comes from JWT validation — the `nbf` claim is a string, not a number — not from a privilege check. Substituting a Cedar policy set would not be testing the same mechanism: no policy set can make the engine reject a token, and no policy set is consulted upstream. The case was swept into the no-set-role group because the harness used to build the authorizer context by decoding the payload without verifying it, so the request reached the authorization layer and was denied by policy instead of being rejected outright. The engine verifies the token now, and the case passes the PostgREST rate on its own mechanism.",
+      "reason": "The asserted 401 comes from JWT validation — the `nbf` claim is a string, not a number — not from a privilege check. Substituting a Cedar policy set would not be testing the same mechanism: no policy set can make the engine reject a token, and no policy set is consulted upstream. The case appears in the no-set-role group only because this harness builds the authorizer context by decoding the payload without verifying it, so the request reaches the authorization layer at all.",
       "doNotRead": "the absence of an equivalence here says nothing about whether the engine can reject this token: the engine has its own JWT verification path (jwt-secret / restJwt), it is simply not the mechanism upstream's SET ROLE cases stand in for."
     },
     {
@@ -505,7 +496,7 @@
       "class": "jwt-verification",
       "upstreamMechanism": "JWT decoding and claim validation inside PostgREST, before any role is assumed; the role never gets set and no privilege is ever consulted",
       "upstreamExpectedStatus": 401,
-      "reason": "The asserted 401 comes from JWT validation — the `iat` claim is a string, not a number — not from a privilege check. Substituting a Cedar policy set would not be testing the same mechanism: no policy set can make the engine reject a token, and no policy set is consulted upstream. The case was swept into the no-set-role group because the harness used to build the authorizer context by decoding the payload without verifying it, so the request reached the authorization layer and was denied by policy instead of being rejected outright. The engine verifies the token now, and the case passes the PostgREST rate on its own mechanism.",
+      "reason": "The asserted 401 comes from JWT validation — the `iat` claim is a string, not a number — not from a privilege check. Substituting a Cedar policy set would not be testing the same mechanism: no policy set can make the engine reject a token, and no policy set is consulted upstream. The case appears in the no-set-role group only because this harness builds the authorizer context by decoding the payload without verifying it, so the request reaches the authorization layer at all.",
       "doNotRead": "the absence of an equivalence here says nothing about whether the engine can reject this token: the engine has its own JWT verification path (jwt-secret / restJwt), it is simply not the mechanism upstream's SET ROLE cases stand in for."
     },
     {
@@ -514,7 +505,7 @@
       "class": "jwt-verification",
       "upstreamMechanism": "JWT decoding and claim validation inside PostgREST, before any role is assumed; the role never gets set and no privilege is ever consulted",
       "upstreamExpectedStatus": 401,
-      "reason": "The asserted 401 comes from JWT validation — the `aud` claim is an object, not a string or array — not from a privilege check. Substituting a Cedar policy set would not be testing the same mechanism: no policy set can make the engine reject a token, and no policy set is consulted upstream. The case was swept into the no-set-role group because the harness used to build the authorizer context by decoding the payload without verifying it, so the request reached the authorization layer and was denied by policy instead of being rejected outright. The engine verifies the token now, and the case passes the PostgREST rate on its own mechanism.",
+      "reason": "The asserted 401 comes from JWT validation — the `aud` claim is an object, not a string or array — not from a privilege check. Substituting a Cedar policy set would not be testing the same mechanism: no policy set can make the engine reject a token, and no policy set is consulted upstream. The case appears in the no-set-role group only because this harness builds the authorizer context by decoding the payload without verifying it, so the request reaches the authorization layer at all.",
       "doNotRead": "the absence of an equivalence here says nothing about whether the engine can reject this token: the engine has its own JWT verification path (jwt-secret / restJwt), it is simply not the mechanism upstream's SET ROLE cases stand in for."
     },
     {
@@ -523,7 +514,7 @@
       "class": "jwt-verification",
       "upstreamMechanism": "JWT decoding and claim validation inside PostgREST, before any role is assumed; the role never gets set and no privilege is ever consulted",
       "upstreamExpectedStatus": 401,
-      "reason": "The asserted 401 comes from JWT validation — the `aud` array holds a non-string element — not from a privilege check. Substituting a Cedar policy set would not be testing the same mechanism: no policy set can make the engine reject a token, and no policy set is consulted upstream. The case was swept into the no-set-role group because the harness used to build the authorizer context by decoding the payload without verifying it, so the request reached the authorization layer and was denied by policy instead of being rejected outright. The engine verifies the token now, and the case passes the PostgREST rate on its own mechanism.",
+      "reason": "The asserted 401 comes from JWT validation — the `aud` array holds a non-string element — not from a privilege check. Substituting a Cedar policy set would not be testing the same mechanism: no policy set can make the engine reject a token, and no policy set is consulted upstream. The case appears in the no-set-role group only because this harness builds the authorizer context by decoding the payload without verifying it, so the request reaches the authorization layer at all.",
       "doNotRead": "the absence of an equivalence here says nothing about whether the engine can reject this token: the engine has its own JWT verification path (jwt-secret / restJwt), it is simply not the mechanism upstream's SET ROLE cases stand in for."
     },
     {
@@ -568,7 +559,7 @@
       "class": "jwt-verification",
       "upstreamMechanism": "JWT decoding and claim validation inside PostgREST, before any role is assumed; the role never gets set and no privilege is ever consulted",
       "upstreamExpectedStatus": 401,
-      "reason": "The asserted 401 comes from JWT validation — the token has two segments instead of three — not from a privilege check. Substituting a Cedar policy set would not be testing the same mechanism: no policy set can make the engine reject a token, and no policy set is consulted upstream. The case was swept into the no-set-role group because the harness used to build the authorizer context by decoding the payload without verifying it, so the request reached the authorization layer and was denied by policy instead of being rejected outright. The engine verifies the token now, and the case passes the PostgREST rate on its own mechanism.",
+      "reason": "The asserted 401 comes from JWT validation — the token has two segments instead of three — not from a privilege check. Substituting a Cedar policy set would not be testing the same mechanism: no policy set can make the engine reject a token, and no policy set is consulted upstream. The case appears in the no-set-role group only because this harness builds the authorizer context by decoding the payload without verifying it, so the request reaches the authorization layer at all.",
       "doNotRead": "the absence of an equivalence here says nothing about whether the engine can reject this token: the engine has its own JWT verification path (jwt-secret / restJwt), it is simply not the mechanism upstream's SET ROLE cases stand in for."
     },
     {
@@ -577,7 +568,7 @@
       "class": "jwt-verification",
       "upstreamMechanism": "JWT decoding and claim validation inside PostgREST, before any role is assumed; the role never gets set and no privilege is ever consulted",
       "upstreamExpectedStatus": 401,
-      "reason": "The asserted 401 comes from JWT validation — the token is signed with the wrong secret — not from a privilege check. Substituting a Cedar policy set would not be testing the same mechanism: no policy set can make the engine reject a token, and no policy set is consulted upstream. The case was swept into the no-set-role group because the harness used to build the authorizer context by decoding the payload without verifying it, so the request reached the authorization layer and was denied by policy instead of being rejected outright. The engine verifies the token now, and the case passes the PostgREST rate on its own mechanism.",
+      "reason": "The asserted 401 comes from JWT validation — the token is signed with the wrong secret — not from a privilege check. Substituting a Cedar policy set would not be testing the same mechanism: no policy set can make the engine reject a token, and no policy set is consulted upstream. The case appears in the no-set-role group only because this harness builds the authorizer context by decoding the payload without verifying it, so the request reaches the authorization layer at all.",
       "doNotRead": "the absence of an equivalence here says nothing about whether the engine can reject this token: the engine has its own JWT verification path (jwt-secret / restJwt), it is simply not the mechanism upstream's SET ROLE cases stand in for."
     },
     {
@@ -586,7 +577,7 @@
       "class": "jwt-verification",
       "upstreamMechanism": "JWT decoding and claim validation inside PostgREST, before any role is assumed; the role never gets set and no privilege is ever consulted",
       "upstreamExpectedStatus": 401,
-      "reason": "The asserted 401 comes from JWT validation — the token is expired (exp 35 s in the past) — not from a privilege check. Substituting a Cedar policy set would not be testing the same mechanism: no policy set can make the engine reject a token, and no policy set is consulted upstream. The case was swept into the no-set-role group because the harness used to build the authorizer context by decoding the payload without verifying it, so the request reached the authorization layer and was denied by policy instead of being rejected outright. The engine verifies the token now, and the case passes the PostgREST rate on its own mechanism.",
+      "reason": "The asserted 401 comes from JWT validation — the token is expired (exp 35 s in the past) — not from a privilege check. Substituting a Cedar policy set would not be testing the same mechanism: no policy set can make the engine reject a token, and no policy set is consulted upstream. The case appears in the no-set-role group only because this harness builds the authorizer context by decoding the payload without verifying it, so the request reaches the authorization layer at all.",
       "doNotRead": "the absence of an equivalence here says nothing about whether the engine can reject this token: the engine has its own JWT verification path (jwt-secret / restJwt), it is simply not the mechanism upstream's SET ROLE cases stand in for."
     },
     {
@@ -595,7 +586,7 @@
       "class": "jwt-verification",
       "upstreamMechanism": "JWT decoding and claim validation inside PostgREST, before any role is assumed; the role never gets set and no privilege is ever consulted",
       "upstreamExpectedStatus": 401,
-      "reason": "The asserted 401 comes from JWT validation — the token is not yet valid (nbf 35 s in the future) — not from a privilege check. Substituting a Cedar policy set would not be testing the same mechanism: no policy set can make the engine reject a token, and no policy set is consulted upstream. The case was swept into the no-set-role group because the harness used to build the authorizer context by decoding the payload without verifying it, so the request reached the authorization layer and was denied by policy instead of being rejected outright. The engine verifies the token now, and the case passes the PostgREST rate on its own mechanism.",
+      "reason": "The asserted 401 comes from JWT validation — the token is not yet valid (nbf 35 s in the future) — not from a privilege check. Substituting a Cedar policy set would not be testing the same mechanism: no policy set can make the engine reject a token, and no policy set is consulted upstream. The case appears in the no-set-role group only because this harness builds the authorizer context by decoding the payload without verifying it, so the request reaches the authorization layer at all.",
       "doNotRead": "the absence of an equivalence here says nothing about whether the engine can reject this token: the engine has its own JWT verification path (jwt-secret / restJwt), it is simply not the mechanism upstream's SET ROLE cases stand in for."
     },
     {
@@ -604,7 +595,7 @@
       "class": "jwt-verification",
       "upstreamMechanism": "JWT decoding and claim validation inside PostgREST, before any role is assumed; the role never gets set and no privilege is ever consulted",
       "upstreamExpectedStatus": 401,
-      "reason": "The asserted 401 comes from JWT validation — the token was issued in the future (iat) — not from a privilege check. Substituting a Cedar policy set would not be testing the same mechanism: no policy set can make the engine reject a token, and no policy set is consulted upstream. The case was swept into the no-set-role group because the harness used to build the authorizer context by decoding the payload without verifying it, so the request reached the authorization layer and was denied by policy instead of being rejected outright. The engine verifies the token now, and the case passes the PostgREST rate on its own mechanism.",
+      "reason": "The asserted 401 comes from JWT validation — the token was issued in the future (iat) — not from a privilege check. Substituting a Cedar policy set would not be testing the same mechanism: no policy set can make the engine reject a token, and no policy set is consulted upstream. The case appears in the no-set-role group only because this harness builds the authorizer context by decoding the payload without verifying it, so the request reaches the authorization layer at all.",
       "doNotRead": "the absence of an equivalence here says nothing about whether the engine can reject this token: the engine has its own JWT verification path (jwt-secret / restJwt), it is simply not the mechanism upstream's SET ROLE cases stand in for."
     },
     {
@@ -613,7 +604,7 @@
       "class": "jwt-verification",
       "upstreamMechanism": "JWT decoding and claim validation inside PostgREST, before any role is assumed; the role never gets set and no privilege is ever consulted",
       "upstreamExpectedStatus": 401,
-      "reason": "The asserted 401 comes from JWT validation — the token has two segments instead of three — not from a privilege check. Substituting a Cedar policy set would not be testing the same mechanism: no policy set can make the engine reject a token, and no policy set is consulted upstream. The case was swept into the no-set-role group because the harness used to build the authorizer context by decoding the payload without verifying it, so the request reached the authorization layer and was denied by policy instead of being rejected outright. The engine verifies the token now, and the case passes the PostgREST rate on its own mechanism.",
+      "reason": "The asserted 401 comes from JWT validation — the token has two segments instead of three — not from a privilege check. Substituting a Cedar policy set would not be testing the same mechanism: no policy set can make the engine reject a token, and no policy set is consulted upstream. The case appears in the no-set-role group only because this harness builds the authorizer context by decoding the payload without verifying it, so the request reaches the authorization layer at all.",
       "doNotRead": "the absence of an equivalence here says nothing about whether the engine can reject this token: the engine has its own JWT verification path (jwt-secret / restJwt), it is simply not the mechanism upstream's SET ROLE cases stand in for."
     },
     {
@@ -622,7 +613,7 @@
       "class": "jwt-verification",
       "upstreamMechanism": "JWT decoding and claim validation inside PostgREST, before any role is assumed; the role never gets set and no privilege is ever consulted",
       "upstreamExpectedStatus": 401,
-      "reason": "The asserted 401 comes from JWT validation — the token is three segments of random characters — not from a privilege check. Substituting a Cedar policy set would not be testing the same mechanism: no policy set can make the engine reject a token, and no policy set is consulted upstream. The case was swept into the no-set-role group because the harness used to build the authorizer context by decoding the payload without verifying it, so the request reached the authorization layer and was denied by policy instead of being rejected outright. The engine verifies the token now, and the case passes the PostgREST rate on its own mechanism.",
+      "reason": "The asserted 401 comes from JWT validation — the token is three segments of random characters — not from a privilege check. Substituting a Cedar policy set would not be testing the same mechanism: no policy set can make the engine reject a token, and no policy set is consulted upstream. The case appears in the no-set-role group only because this harness builds the authorizer context by decoding the payload without verifying it, so the request reaches the authorization layer at all.",
       "doNotRead": "the absence of an equivalence here says nothing about whether the engine can reject this token: the engine has its own JWT verification path (jwt-secret / restJwt), it is simply not the mechanism upstream's SET ROLE cases stand in for."
     },
     {
@@ -631,7 +622,7 @@
       "class": "jwt-verification",
       "upstreamMechanism": "JWT decoding and claim validation inside PostgREST, before any role is assumed; the role never gets set and no privilege is ever consulted",
       "upstreamExpectedStatus": 401,
-      "reason": "The asserted 401 comes from JWT validation — the token declares alg 'none' — not from a privilege check. Substituting a Cedar policy set would not be testing the same mechanism: no policy set can make the engine reject a token, and no policy set is consulted upstream. The case was swept into the no-set-role group because the harness used to build the authorizer context by decoding the payload without verifying it, so the request reached the authorization layer and was denied by policy instead of being rejected outright. The engine verifies the token now, and the case passes the PostgREST rate on its own mechanism.",
+      "reason": "The asserted 401 comes from JWT validation — the token declares alg 'none' — not from a privilege check. Substituting a Cedar policy set would not be testing the same mechanism: no policy set can make the engine reject a token, and no policy set is consulted upstream. The case appears in the no-set-role group only because this harness builds the authorizer context by decoding the payload without verifying it, so the request reaches the authorization layer at all.",
       "doNotRead": "the absence of an equivalence here says nothing about whether the engine can reject this token: the engine has its own JWT verification path (jwt-secret / restJwt), it is simply not the mechanism upstream's SET ROLE cases stand in for."
     },
     {

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-23T07:16:38Z",
+  "generatedAt": "2026-08-23T06:57:07Z",
   "target": "dsql",
   "commit": "c718ab4",
   "totals": {
@@ -9976,7 +9976,7 @@
       "id": "InsertSpec:716",
       "category": "insert",
       "status": "fail",
-      "reason": "status: expected 401, actual 201\nbody (exact) mismatch:\n  expected: {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}\n  actual:   [{\"article_id\":2,\"user_id\":2,\"created_at\":\"2026-08-23T07:08:47.171561\"}]\n  at $: expected object {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}, actual array [{\"article_id\":2,\"user_id\":2,\"created_at\":\"2026-08-23T07:08:47.171561\"}]",
+      "reason": "status: expected 401, actual 201\nbody (exact) mismatch:\n  expected: {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}\n  actual:   [{\"article_id\":2,\"user_id\":2,\"created_at\":\"2026-08-23T06:49:16.687437\"}]\n  at $: expected object {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}, actual array [{\"article_id\":2,\"user_id\":2,\"created_at\":\"2026-08-23T06:49:16.687437\"}]",
       "gap": "no-set-role",
       "actual": {
         "status": 201,
@@ -9984,7 +9984,7 @@
           {
             "article_id": 2,
             "user_id": 2,
-            "created_at": "2026-08-23T07:08:47.171561"
+            "created_at": "2026-08-23T06:49:16.687437"
           }
         ]
       }
@@ -9993,7 +9993,7 @@
       "id": "InsertSpec:724",
       "category": "insert",
       "status": "fail",
-      "reason": "status: expected 401, actual 201\nbody (exact) mismatch:\n  expected: {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}\n  actual:   [{\"article_id\":3,\"user_id\":1,\"created_at\":\"2026-08-23T07:08:47.1869\"}]\n  at $: expected object {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}, actual array [{\"article_id\":3,\"user_id\":1,\"created_at\":\"2026-08-23T07:08:47.1869\"}]",
+      "reason": "status: expected 401, actual 201\nbody (exact) mismatch:\n  expected: {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}\n  actual:   [{\"article_id\":3,\"user_id\":1,\"created_at\":\"2026-08-23T06:49:16.702044\"}]\n  at $: expected object {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}, actual array [{\"article_id\":3,\"user_id\":1,\"created_at\":\"2026-08-23T06:49:16.702044\"}]",
       "gap": "no-set-role",
       "actual": {
         "status": 201,
@@ -10001,7 +10001,7 @@
           {
             "article_id": 3,
             "user_id": 1,
-            "created_at": "2026-08-23T07:08:47.1869"
+            "created_at": "2026-08-23T06:49:16.702044"
           }
         ]
       }
