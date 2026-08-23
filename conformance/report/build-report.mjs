@@ -109,10 +109,12 @@ function parseArgs(argv) {
 // switch, not a defect. Gaps with no `fail` cases are excluded from the pass
 // rate and are labelled out-of-scope.
 //
-// `harness-supplies-unverified-identity` is deliberately in neither set below:
-// it is a fidelity gap between the harness and the deployed authorizer, and
-// putting it in either one would lift the rate for a gap this project owns.
-// It takes the default label and stays a counted failure.
+// `harness-supplies-unverified-identity` was deliberately in neither set below:
+// it was a fidelity gap between the harness and the deployed authorizer, and
+// putting it in either one would have lifted the rate for a gap this project
+// owns. It took the default label and stayed a counted failure until the runner
+// started verifying the token with upstream's own `jwt-secret`, which closed it;
+// the note below stays so a regression renders with its history.
 
 const DSQL_SUBSTITUTE_NEEDED = new Set([
   // `no-foreign-keys` used to be here. The substitute now exists and is
@@ -136,18 +138,19 @@ const DSQL_SUBSTITUTE_NEEDED = new Set([
   // ordering failures; the runner now attributes those to
   // row-order-unspecified, and the note says which they were.
   'missing-operator-fts',
-  // Moved out of engine-fixable in the published run, because the gap changed
-  // category rather than because the label was wrong before. Until this wave
-  // these cases were scored `blocked`: the harness attributed them to the
-  // fixture drop by matching the engine's own PGRST204 wording. The engine now
-  // answers with PostgreSQL's 42703 for an unknown column, which is upstream's
-  // behaviour, so they entered the denominator as failures for the first time.
-  // Every one of the 54 is a filter or JSON operator naming a column DSQL
-  // refused to create; verified case by case in the published run, where every
-  // reason string reads `column <relation>.<column> does not exist`. No engine
-  // change can make them pass and there is no substitute for the column type,
-  // so labelling them engine work would put 54 cases on a backlog that cannot
-  // be worked.
+  // These two are empty now and should stay listed. They held the cases that
+  // filter or apply a JSON operator to a column DSQL refused to create. They
+  // were scored `blocked` while the engine answered its own PGRST204 for a
+  // dropped column; when the engine started answering PostgreSQL's 42703 —
+  // which is what upstream does, since Plan.hs never checks a filter column
+  // against the schema cache — triage stopped recognising the evidence and all
+  // 54 became counted failures, which is the state the notes below describe.
+  // Triage now accepts 42703 against the drop list as the same evidence
+  // (`Book a dropped column as blocked whichever layer noticed`), so they are
+  // blocked again under `no-array-columns` and `no-column-type` and the report's
+  // own "cases that left the denominator" section quotes both rates. Nothing
+  // about the cases changed in either direction: no engine change can make them
+  // pass and there is no substitute for the column type.
   'unimplemented-feature-filters',
   'unimplemented-feature-json-operators'
 ]);
@@ -258,15 +261,15 @@ const GAP_NOTES = {
   'unimplemented-feature-aggregates':
     'Aggregates in a top-level select list parse and emit GROUP BY. What is left is aggregates inside a spread embed (<code>...processes(cost.sum())</code>): the engine computes them per parent row instead of grouping at the parent level, which is also what the larger <code>body-mismatch-aggregates</code> gap is.',
   'missing-operator-fts':
-    'The <code>fts</code>, <code>plfts</code>, <code>phfts</code> and <code>wfts</code> operators are implemented and upstream cases pass with them. In the published run 24 of these failures are DSQL\'s: 19 name a text search configuration (<code>english</code>, <code>french</code>, <code>german</code>) that DSQL\'s <code>pg_ts_config</code> does not contain, and 5 use a <code>tsvector</code> column or function DSQL dropped at fixture load. There is no substitute — DSQL ships one configuration, <code>simple</code>, which is what <code>PGREST_DEFAULT_TS_CONFIG</code> is set to for these runs. Earlier runs reported 26 here, 2 of them mislabelled: <code>RpcSpec:985</code> and <code>RpcSpec:997</code> failed with the runner\'s own reason text reading "same rows, different order", which is an order-dependent failure and not a missing text search configuration. <code>conformance/runner/run.mjs</code> now attributes an order-only difference to <code>row-order-unspecified</code> whatever the log says, so this gap cannot absorb them again. In the run published before this one both happened to come back in upstream\'s order and pass, which was order luck rather than a working text search configuration. With the order tiebreak in place they are sorted deterministically, the wrong way for these two, so both now fail under <code>row-order-unspecified</code>. Neither the relabel, nor their passing then, nor their failing now is evidence about text search.',
+    'The <code>fts</code>, <code>plfts</code>, <code>phfts</code> and <code>wfts</code> operators are implemented and upstream cases pass with them. Every failure here is DSQL\'s: 17 name a text search configuration (<code>english</code> 6, <code>french</code> 6, <code>german</code> 5) that DSQL\'s <code>pg_ts_config</code> does not contain, and 3 reach a <code>tsvector</code> column or a function over one that DSQL dropped at fixture load. There is no substitute — DSQL ships one configuration, <code>simple</code>, which is what <code>PGREST_DEFAULT_TS_CONFIG</code> is set to for these runs. Creating the missing one was probed on the conformance cluster and rejected outright: <code>CREATE TEXT SEARCH CONFIGURATION</code> and <code>CREATE TEXT SEARCH DICTIONARY</code> both answer <code>unsupported statement: Define</code>, <code>ALTER TEXT SEARCH CONFIGURATION ... ALTER MAPPING</code> answers <code>unsupported statement: AlterTSConfiguration</code>, and <code>pg_ts_template</code> holds no <code>snowball</code> to build a stemmer from — so this is a ceiling, not a fixture omission (conformance/DSQL-CAPABILITIES.md). It is also why the 14 <code>body-mismatch-filters</code> failures below return an empty array instead of an error: with no English stop words, <code>plainto_tsquery(\'simple\', \'The Fat Rats\')</code> keeps <code>the</code> and matches nothing. Earlier runs reported 26 here, 2 of them mislabelled: <code>RpcSpec:985</code> and <code>RpcSpec:997</code> failed with the runner\'s own reason text reading "same rows, different order", which is an order-dependent failure and not a missing text search configuration. <code>conformance/runner/run.mjs</code> now attributes an order-only difference to <code>row-order-unspecified</code> whatever the log says, so this gap cannot absorb them again. In the run published before this one both happened to come back in upstream\'s order and pass, which was order luck rather than a working text search configuration. With the order tiebreak in place they are sorted deterministically, the wrong way for these two, so both now fail under <code>row-order-unspecified</code>. Neither the relabel, nor their passing then, nor their failing now is evidence about text search.',
   'unimplemented-feature-filters':
     'Moved out of <code>engine-fixable</code> in this run. All 39 failures are a filter on a column Aurora DSQL refused to create — <code>entities.arr</code> (20), <code>ranges.range</code> (15), <code>entities.text_search_vector</code> (2), <code>complex_items.arr_data</code> (2) — and every reason string in the published run reads <code>column … does not exist</code>, PostgreSQL\'s own 42703, which is what upstream answers for an unknown column (QuerySpec.hs:1556). The operators are implemented and unit-tested; upstream only exercises them through array, range and tsvector columns, and DSQL stores none of those. These cases were <code>blocked</code> until this wave, when the engine stopped answering <code>PGRST204</code> and the harness\'s drop-attribution stopped recognising them, so this is the gap changing category rather than a relabelled backlog: the count of cases DSQL makes impossible did not change, only which bucket they are reported in.',
   'unimplemented-feature-json-operators':
     'Moved out of <code>engine-fixable</code> in this run, for the same reason as <code>unimplemented-feature-filters</code> and with the same evidence. All 15 failures apply a JSON operator to an array column DSQL refused to create — <code>arrays.numbers</code> (6), <code>fav_numbers.num</code> (5), <code>arrays.numbers_mult</code> (4) — and answer 42703. The <code>json-operators</code> category passes 46 of the 62 cases that reach a column DSQL can store.',
   'no-set-role':
-    'Upstream asserts authorization performed with SET ROLE + GRANT + RLS. DSQL rejects SET ROLE and has no RLS, so the privilege model has to be replaced rather than emulated. <strong>The substitute is now measured in this rate,</strong> which is why the gap moved out of <code>dsql-substitute-needed</code>: upstream\'s <code>test/spec/fixtures/privileges.sql</code> is ported to a Cedar policy set (<code>conformance/fixtures/policies/</code>) the same way <code>relationships.json</code> replaced the foreign keys, and the harness resolves a request with no token — and a token with no role claim — to <code>anon</code>, which is what upstream\'s <code>db-anon-role=postgrest_test_anonymous</code> does (<code>Auth.hs parseRoleClaim</code>). Runs before this one defaulted every untokened request to <code>service_role</code>, so every REVOKE in the fixture was invisible and the cases that assert a denial could not pass. Closing that took two engine fixes as well: <code>buildAuthzFilter</code> ignored Cedar\'s <code>satisfied</code> set, so a permit decided from principal and context alone was discarded whenever another policy left a residual that translates to FALSE; and a numeric <code>sub</code>/<code>id</code> claim — which upstream\'s own AuthSpec sends — was passed to Cedar unquoted and made the whole request unparseable, read by every caller as a denial. Measured on the same flags, the gap went from 37 failures to 11 and the headline from 1074/1358 to 1101/1356. What is left is not a privilege model, and the 11 split four ways: 5 assert that a JWT with a non-numeric <code>exp</code>, <code>nbf</code> or <code>iat</code> or a non-string <code>aud</code> is rejected, which the harness cannot do because it decodes the token without validating it (the same root cause as <code>harness-supplies-unverified-identity</code>); 3 need column-level GRANTs on <code>limited_article_stars</code> and <code>app_users</code>, which a policy set keyed on table and action cannot express; 2 assert that a <em>matching</em> audience succeeds and are an <code>aud</code>-matching defect, not a privilege one; and 1 asserts the response for a role that does not exist. The wider Cedar-vs-PostgreSQL equivalence measurement is still reported separately and is still never added to this rate — see docs/reference/cedar-equivalence.md.',
+    'Upstream asserts authorization performed with SET ROLE + GRANT + RLS. DSQL rejects SET ROLE and has no RLS, so the privilege model has to be replaced rather than emulated. <strong>The substitute is now measured in this rate,</strong> which is why the gap moved out of <code>dsql-substitute-needed</code>: upstream\'s <code>test/spec/fixtures/privileges.sql</code> is ported to a Cedar policy set (<code>conformance/fixtures/policies/</code>) the same way <code>relationships.json</code> replaced the foreign keys, and the harness resolves a request with no token — and a token with no role claim — to <code>anon</code>, which is what upstream\'s <code>db-anon-role=postgrest_test_anonymous</code> does (<code>Auth.hs parseRoleClaim</code>). Runs before this one defaulted every untokened request to <code>service_role</code>, so every REVOKE in the fixture was invisible and the cases that assert a denial could not pass. Closing that took two engine fixes as well: <code>buildAuthzFilter</code> ignored Cedar\'s <code>satisfied</code> set, so a permit decided from principal and context alone was discarded whenever another policy left a residual that translates to FALSE; and a numeric <code>sub</code>/<code>id</code> claim — which upstream\'s own AuthSpec sends — was passed to Cedar unquoted and made the whole request unparseable, read by every caller as a denial. Measured on the same flags, the gap went from 37 failures to 11 and the headline from 1074/1358 to 1101/1356; making the runner verify the token (below) took it from 11 to 4. What is left is not a privilege model, and the 4 split two ways: 3 need column-level GRANTs — <code>POST /limited_article_stars</code> twice and <code>DELETE /app_users</code> with <code>return=representation</code> — which a policy set keyed on table and action cannot express, and 1 asserts the response for a role that does not exist (<code>ErrorSpec:123</code>), where upstream reports PostgreSQL\'s <code>22023</code> from the failed <code>SET ROLE</code> and this engine has no role to set. The wider Cedar-vs-PostgreSQL equivalence measurement is still reported separately and is still never added to this rate — see docs/reference/cedar-equivalence.md.',
   'harness-supplies-unverified-identity':
-    'Upstream expects <code>PGRST301</code> — the token is rejected before any privilege is consulted. The engine answers <code>PGRST403</code> instead, because the conformance harness builds the API Gateway authorizer context by decoding the JWT payload <em>without verifying it</em>, so the request reaches the authorization layer and is denied by policy rather than turned away at the door. 7 cases: <code>AuthSpec:96</code>, <code>:119</code>, <code>ErrorSpec:53</code>, <code>:110</code>, <code>:193</code>, <code>:205</code>, <code>:217</code>. <strong>They stay failures in the rate.</strong> The deployed <code>src/authorizer/index.mjs</code> does verify signature, <code>exp</code> and <code>alg</code>, so this is a fidelity gap between the harness and the deployment, not a claim that the engine accepts bad tokens — and it is not evidence that it rejects them either, since nothing here measured that path. The label is <code>engine-fixable</code> because nothing in DSQL prevents closing it, but the work is in the harness\'s identity handling, not in a query feature. Before this run these 7 were scattered across <code>no-set-role</code> and three body/header mismatch gaps, which read as four unrelated defects instead of one.',
+    'Closed, and it should not appear above: if it does, the harness has stopped verifying tokens again. It named the 7 cases where upstream expects <code>PGRST301</code> — the token is rejected before any privilege is consulted — and the engine answered <code>PGRST403</code>, because the harness built the API Gateway authorizer context by decoding the JWT payload <em>without verifying it</em>, so a request with a bad token reached the authorization layer and was denied by policy rather than turned away at the door. Upstream\'s <code>baseCfg</code> configures <code>jwt-secret</code> for every spec, so the runner now boots its base engine with <code>rest-jwt</code> and upstream\'s own secret and the engine verifies. Closing it needed the decode-error vocabulary (<code>Error.hs message (JwtDecodeErr e)</code>, asserted by string) and registered-claim validation (<code>Auth/Jwt.hs checkForErrors</code>: exp, nbf, iat, aud in that order, a present-but-non-numeric claim beating expiry, 30 seconds of skew, and the type of <code>aud</code> checked whether or not <code>jwt-aud</code> is set). All 27 literal HS256 tokens in the case files were checked against that secret first; the one that does not verify, <code>ErrorSpec:110</code>, is the case asserting 401.',
   'extraction-skipped':
     'Haskell the extractor cannot evaluate without guessing: higher-order helpers whose request headers arrive as a parameter, bodies read from a fixture file, paths taken from a previous response, expectations behind a PostgreSQL version check. Never guessed: skipped and counted outside the pass rate.',
   'needs-engine-config':
@@ -277,7 +280,13 @@ const GAP_NOTES = {
     'The database raised an error the engine does not translate into the PostgREST body upstream returns: both cases insert through a view DSQL will not write to (SQLSTATE 55000), where upstream returns 201.',
   'no-plpgsql': 'The fixture function is plpgsql, which DSQL cannot create.',
   'row-order-unspecified':
-    'Same rows, different order. Upstream emits no implicit <code>ORDER BY</code>: a read with no <code>order=</code> returns rows in PostgreSQL\'s scan order, which on a freshly loaded table is insertion order, stable enough that upstream\'s expectations encode it. DSQL promises no physical order, so the same read can come back two ways. The engine now appends the relation\'s primary key to every <code>ORDER BY</code> (<code>PGREST_DETERMINISTIC_ORDER</code>, on by default), and for a relation with no primary key it appends every column PostgreSQL can order by. That took the gap from 18 failures to 14 and, more importantly, made the rest of the suite repeatable — earlier runs varied between 1067 and 1080 passes on identical code, and that spread was this gap. What is left is the same 14 cases every run. 12 are relations with no primary key — <code>tsearch_to_tsvector</code> (8), <code>w_or_wo_comma_names</code> (2), <code>no_pk</code> (1), <code>json_table</code> (1) — whose rows were inserted in an order no column sorts into. The other 2 are a bulk <code>PATCH /employees</code> whose <code>RETURNING</code> rows upstream hands back in update order; <code>employees</code> has the key <code>(first_name, last_name)</code>, and ordering by it in key order is not that order. In neither case does anything derived from the data reproduce insertion order, and the one mechanism that would — physical order via <code>ctid</code> — DSQL refuses outright: <code>SELECT ctid FROM w_or_wo_comma_names</code> answers <code>cannot retrieve a system column in this context</code> (probed on the conformance cluster). 5 of the 14 used to pass and now fail: they came back in upstream\'s order by luck before and are sorted the wrong way deterministically now, which is the trade the tiebreak makes — a stable wrong answer over an unstable right one. All 14 are counted as failures here, not hidden.',
+    'Same rows, different order. Upstream emits no implicit <code>ORDER BY</code>: a read with no <code>order=</code> returns rows in PostgreSQL\'s scan order, which on a freshly loaded table is insertion order, stable enough that upstream\'s expectations encode it. DSQL promises no physical order, so the same read can come back two ways. The engine now appends the relation\'s primary key to every <code>ORDER BY</code> (<code>PGREST_DETERMINISTIC_ORDER</code>, on by default), and for a relation with no primary key it appends every column PostgreSQL can order by. That did not shrink this gap — the count of order-only failures has been 12 to 15 with the tiebreak and was 7, 13, 19 and 19 across four runs of the tree before it — what it did was stop the rest of the suite moving: the widest spread between runs of one tree was 12 cases before it (1068 to 1080 on tree <code>2488109</code>) and has been 1 case and then 0 on the two trees measured since. Read the tiebreak as buying repeatability, not passes.'
+    + ' Three cases in this gap were never DSQL\'s order. <code>QueryLimitedSpec:97</code>, <code>:108</code> and <code>UpdateSpec:444</code> ask a mutation to order the representation it returns (<code>order=last_name</code> on a bulk <code>PATCH</code> and on a <code>DELETE</code>, <code>order=a.desc</code> on an <code>UPDATE</code>), and the engine dropped the order: it built the representation from the statement\'s own <code>RETURNING</code> list, which has no <code>ORDER BY</code> to put it in. Upstream plans every mutation\'s representation as a read over the source CTE (<code>Plan.hs</code> <code>mutateReadPlan</code>, and the <code>addRels</code> root case that re-points it at <code>pgrst_source</code>), which is where the order goes; the engine now does the same whenever the request orders or embeds, and all three pass. That was an engine defect this gap was hiding, and it is the reason the gap reads 12 here and 15 in the run published before it.'
+    + ' What is left is 12 cases, and every one of them is a relation with no primary key whose rows were inserted in an order no column sorts into: <code>tsearch_to_tsvector</code> (<code>text_search text</code>, <code>jsonb_search jsonb</code>) 8 — six direct reads and two through <code>/rpc/get_tsearch_to_tsvector</code> — <code>w_or_wo_comma_names</code> (<code>name text</code>) 2, <code>no_pk</code> (<code>a</code>, <code>b</code>) 1 and <code>json_table</code> 1. <code>json_table</code> is the one the tiebreak cannot reach at all: its only column is <code>data json</code>, a type PostgreSQL will not order by, so nothing is appended and the rows that carry no <code>foo</code> key stay tied — which is why <code>JsonOperatorSpec:248</code> passed in one earlier run of a tree whose other runs failed it, and why this count can still move by one. Nothing derived from the data reproduces insertion order here, and the one mechanism that would — physical order via <code>ctid</code> — DSQL refuses outright: <code>SELECT ctid FROM w_or_wo_comma_names</code> answers <code>cannot retrieve a system column in this context</code> (probed on the conformance cluster). 8 of the 12 passed in the last run before the tiebreak and fail in every run with it: they came back in upstream\'s order by luck then and are sorted the wrong way consistently now, which is the trade the tiebreak makes — a stable wrong answer over an unstable right one. All 12 are counted as failures here, not hidden.',
+  'unimplemented-feature-media-types':
+    'A custom media type is registered in upstream\'s fixtures by a <code>CREATE AGGREGATE</code> over a domain named after the media type (<code>schema.sql</code> line 3460 and the ones after it), and DSQL rejects <code>CREATE AGGREGATE</code> with <code>unsupported statement: Define</code> — 7 aggregates dropped, each on conformance/fixtures/load-report.json. 11 of these failures are <code>PostGISSpec</code>, which needs <code>CREATE EXTENSION postgis</code> as well, and the other 11 are <code>CustomMediaSpec</code>: the handler for <code>application/vnd.geo2+json</code>, <code>pg/outfunc</code> and <code>text/tab-separated-values</code> does not exist to be negotiated with, so the engine answers <code>PGRST107</code>. <strong>They stay failures</strong> rather than moving to blocked, because the engine has no mechanism for an aggregate-backed media handler either — it recognises a media-type domain on a function\'s return type but not an aggregate — so this is engine work as well as a DSQL ceiling, and on DSQL closing the engine half would not make one of the 22 pass.',
+  'body-mismatch-filters':
+    'The same text search ceiling as <code>missing-operator-fts</code>, one layer further in: 12 of these are <code>plfts</code>/<code>phfts</code>/<code>wfts</code> against the <code>simple</code> configuration, which parses without error and matches nothing, so the response is <code>[]</code> where upstream has a row. The remaining 2 (<code>QuerySpec:1308</code>, <code>:1316</code>) are <code>not.in</code> with <code>limit=3</code> on <code>w_or_wo_comma_names</code>, a table with no primary key: the deterministic-order tiebreak sorts by <code>name</code>, and the first three rows in name order are not the first three in insertion order. Those two belong with <code>row-order-unspecified</code> by cause; they are reported here because the row sets differ, not just the order, so the runner cannot see it. Either way they are counted as failures.',
   'no-custom-gucs':
     'Namespaced run-time parameters (<code>response.headers</code>, <code>request.*</code> claims). DSQL rejects set_config on them and rejects the CREATE FUNCTION whose body contains the SET.'
 };
@@ -302,34 +311,35 @@ const AUDITED_DISCLOSURES = [
       + '<code>docs/reference/configuration.md</code> documents the setting as inert.'
   },
   {
-    title: '23 of the gains ride on the data-representations manifest, not on catalog reading',
+    title: '23 of the gains on tree 2488109 rode on the data-representations manifest, not on catalog reading',
     body: 'DSQL rejects <code>CREATE CAST</code>, so all 15 casts upstream\'s <code>schema.sql</code> '
       + 'defines are dropped at fixture load and <code>pg_cast</code> reports nothing for the engine '
       + 'to read. <code>conformance/fixtures/representations.json</code> declares those 15 pairs and '
       + 'the runner points <code>PGREST_REPRESENTATIONS_PATH</code> at it by default for '
-      + '<code>--target dsql</code>. 23 cases that were failures in the last comparable run pass '
+      + '<code>--target dsql</code>. 23 cases that were failures in the run before tree '
+      + '<code>2488109</code> passed there '
       + 'because of it — <code>ComputedRelsSpec:110/123/129</code>, '
       + '<code>QuerySpec:1549</code>…<code>1650</code> (16 cases), <code>InsertSpec:802</code> and '
       + '<code>UpdateSpec:649/660/682</code>. The manifest is a substitute for a catalog DSQL cannot '
       + 'populate, exactly like the relationship manifest, and it is not tuned to pass everything: '
       + '11 data-representation cases still fail with it in place. But a reader is entitled to know '
-      + 'that 23 of this wave\'s gains are configuration-enabled, and that on a database with '
+      + 'that 23 of that wave\'s gains were configuration-enabled, and that on a database with '
       + '<code>pg_cast</code> the engine reads them from the catalog instead.'
   },
   {
-    title: 'The full-text-search feature row moved 6 cases on row order, not on text search',
-    body: 'The feature table reads 14 of 47 for <code>fts</code>/<code>plfts</code>/'
-      + '<code>phfts</code>/<code>wfts</code> in this run and read 8 of 47 in the previous '
-      + 'publication. None of that is a text search change. Six of those cases assert an unordered '
+    title: 'On tree 2488109 the full-text-search feature row moved 6 cases on row order, not on text search',
+    body: 'The feature table read 14 of 47 for <code>fts</code>/<code>plfts</code>/'
+      + '<code>phfts</code>/<code>wfts</code> on tree <code>2488109</code> and 8 of 47 in the '
+      + 'publication before it. None of that is a text search change. Six of those cases assert an unordered '
       + 'result set and pass only on the runs where DSQL happens to return the rows in upstream\'s '
       + 'sequence: <code>QuerySpec:75</code>, <code>:80</code>, <code>:338</code>, <code>:345</code>, '
       + '<code>:382</code>, <code>:389</code>, plus <code>RpcSpec:985</code> and <code>:997</code>, '
       + 'which the runner now files as order-dependent rather than as a missing configuration. Read '
       + 'that row as "between 8 and 14 of 47". DSQL still ships one text search configuration, '
-      + '<code>simple</code>, and the 24 remaining failures in the gap are all its.'
+      + '<code>simple</code>, and every remaining failure in the gap is its.'
   },
   {
-    title: 'The most important fix in this wave is invisible to this measurement',
+    title: 'The most important fix on tree 2488109 is invisible to this measurement',
     body: '<code>buildAuthzFilter</code> in <code>src/rest/cedar.mjs</code> discarded every '
       + '<code>forbid</code> in a policy set whenever any <code>permit</code> granted the table '
       + 'unconditionally — in both policy orders, not intermittently — so a deployment whose '
@@ -338,7 +348,7 @@ const AUDITED_DISCLOSURES = [
       + '<strong>No case in this report exercises it</strong>, because no upstream PostgREST case '
       + 'uses a Cedar <code>forbid</code>: upstream has no Cedar. It was found by reading the code '
       + 'the Cedar equivalence measurement runs through, not by either measurement. Take it as a '
-      + 'limit on what a flat pass rate tells you about this wave, in both directions.'
+      + 'limit on what a flat pass rate tells you about a wave, in both directions.'
   },
   {
     title: 'Two corrections were made to the case files themselves',
@@ -365,41 +375,93 @@ const AUDITED_DISCLOSURES = [
       + '<code>QuerySpec:629</code> also asserts a <code>Content-Length</code> and is <em>not</em> '
       + 'touched: it is 10 bytes short of upstream on a body the schema rename never saw, and it '
       + 'stays a failure.'
+  },
+  {
+    title: '41 of this run\'s gains are isolation, bought by running the engine the way upstream runs it',
+    body: 'Upstream\'s <code>SpecHelper.hs</code> sets <code>configDbTxRollbackAll = True</code> and '
+      + '<code>configDbTxAllowOverride = True</code> for every spec — <code>db-tx-end = '
+      + 'rollback-allow-override</code> — so every mutating request its suite makes is undone unless '
+      + 'that request asks for <code>Prefer: tx=commit</code>. The engine now implements the same '
+      + 'option and the runner sets the same value, so a mutating case stops changing the fixtures '
+      + 'the cases after it read. That is where 41 of the id-matched gains in this run come from: '
+      + '<code>UpdateSpec</code> (9), <code>InsertSpec</code> (6), <code>UpsertSpec</code> (6), '
+      + '<code>NullsStripSpec</code> (5), <code>MaxAffectedSpec</code> (4), '
+      + '<code>MultipleSchemaSpec</code> (4), <code>AndOrParamsSpec</code> (3), '
+      + '<code>DeleteSpec</code> (2) and <code>SingularSpec</code> (2). None of them is a new query '
+      + 'feature — they are assertions that were being read against data an earlier case had already '
+      + 'changed. The engine\'s own default is <code>db-tx-end=commit</code>, and a deployment on the '
+      + 'default gets none of this isolation and does not need it. Two consequences worth stating: '
+      + 'the same tree measured with <code>commit</code> scores lower for a reason that is about the '
+      + 'harness rather than the engine, and the setting therefore belongs beside the flags — it is '
+      + 'recorded in <code>compatreport/README.md</code> with the rest of the runner\'s base engine '
+      + 'configuration, next to <code>bulkMutationGuard: \'off\'</code>.'
+  },
+  {
+    title: '18 more gains are the JWT path being measured for the first time',
+    body: 'Until this run the harness built the API Gateway authorizer context by decoding the JWT '
+      + 'payload <em>without verifying it</em>, while upstream configures <code>jwt-secret</code> for '
+      + 'every spec and PostgREST verifies on every request. A token signed with the wrong secret '
+      + 'therefore reached the table: the specs asserting a <em>rejected</em> token could not fail, '
+      + 'which is what the <code>harness-supplies-unverified-identity</code> gap was, and the ones '
+      + 'asserting an accepted token passed without the check being exercised. The runner\'s base '
+      + 'engine now runs with <code>rest-jwt</code> and upstream\'s own secret. 18 cases gained — 8 in '
+      + '<code>ErrorSpec</code>, 8 in <code>AuthSpec</code>, 2 in <code>AudienceJwtSecretSpec</code> — '
+      + 'and closing them needed engine work as well as harness work: the decode-error vocabulary '
+      + '(<code>Error.hs message (JwtDecodeErr e)</code>, which the specs assert by string) and '
+      + 'registered-claim validation (<code>Auth/Jwt.hs checkForErrors</code> — exp, nbf, iat, aud in '
+      + 'that order, a present-but-non-numeric claim beating expiry, 30 seconds of skew both ways). '
+      + 'Read the 18 as "this path is now measured", not as "this path got faster to fix": before '
+      + 'this run neither a pass nor a failure here said anything about token handling.'
+  },
+  {
+    title: '4 gains are a fixture the transform used to drop whole',
+    body: 'Upstream fills <code>public.contract</code> with its only <code>INSERT ... SELECT</code>, '
+      + 'and one of the columns it writes is a <code>tsrange</code> DSQL will not store. The '
+      + 'transform could cut a dropped column out of a <code>VALUES</code> tuple but not out of a '
+      + 'select list, so it dropped the statement and the table stayed empty — and four embed '
+      + 'assertions that read it (<code>QuerySpec:962/969/977/984</code>) could not pass for want of '
+      + 'rows. The transform now cuts the select list positionally the same way. This is the same '
+      + 'class of gain as the relationship and data-representation manifests: fixture fidelity, not '
+      + 'engine behaviour. It differs from them in one way worth the distinction — it restores '
+      + 'upstream\'s own data rather than substituting for a catalog DSQL cannot populate.'
   }
 ];
 
 // Why this results file and not another run of the same tree. The rule is in
 // compatreport/README.md: do not publish the run measured by the pass that wrote
 // the code, and prefer the middle of the observed range to the top of it. Only
-// the second half is satisfiable for this tree — all four of its runs were
+// the second half is satisfiable for this tree — both of its runs were
 // measured by the pass that wrote the code — so the note says so rather than
 // borrowing the credibility of an independent measurement it did not have. The
 // spread beside this note is computed; the reasoning is not, so it is editorial.
 const PUBLISHED_RUN_CHOICE =
-  'Four full-suite runs of this tree are in the trend above, one per Aurora DSQL cluster, scoring '
-  + '1068, 1068, 1074 and 1080. The published one is 1074, the midpoint of that range: the rule is '
-  + 'to prefer the middle of the observed spread to the top of it. Every one of the six pairwise '
-  + 'differences between the four is a row-order-unspecified case, checked case by case with no '
-  + 'exceptions, so the 12-case spread is storage order rather than engine behaviour. '
-  + 'One caveat this report will not paper over: unlike the previous publication, all four of '
-  + 'these runs were measured by the same pass that wrote the code in them, so the second '
-  + 'rule — publish a run measured by a pass with no code in the result — is not satisfied here. '
-  + 'The spread is published in full instead, and the id-matched comparison against the previous '
-  + 'publication is the check that does not depend on who ran it: the denominator is identical and '
-  + 'every case that changed verdict is order-only.';
+  'Two full-suite runs of this tree are in the trend above, same flags, same cluster, and they '
+  + 'scored the same: 1176 of 1294 each, agreeing case for case — no case passed in one and failed '
+  + 'in the other. There is nothing to choose between them, so the published one is simply the '
+  + 'second, which ran against the tree exactly as it is committed. A 0-case spread is narrower '
+  + 'than this suite has ever shown (7 to 21 order-only failures across earlier trees, a 12-case '
+  + 'spread in passes on tree 2488109), and it should not be read as the noise band having closed: '
+  + 'json_table still has no column PostgreSQL can order by, so JsonOperatorSpec:248 can move '
+  + 'again. '
+  + 'Two caveats this report will not paper over. Both runs were measured by the same pass that '
+  + 'wrote the code in them, so the second rule — publish a run measured by a pass with no code in '
+  + 'the result — is not satisfied here. And two runs are a thin sample for a spread; the number to '
+  + 'trust is the id-matched comparison against the previous publication, which does not depend on '
+  + 'who ran it or on how wide the band is.';
 
 // Cedar equivalence is a second measurement of a different question. These lines
 // state what it is not, and are rendered with it every time.
 const CEDAR_DO_NOT_READ = [
   'It is not a PostgREST pass rate and is never added to one. The upstream cases it derives from '
-    + 'stay failures in this report\'s denominator — they are not excluded, not marked out of scope '
-    + 'and not skipped.',
+    + 'are in this report\'s denominator on their own merits — not excluded, not marked out of scope '
+    + 'and not skipped — and where they pass there, they are counted there once and only there.',
   'A holding equivalence means a Cedar <code>permit</code> standing in for a <code>GRANT</code> '
     + 'produced the same status, body and asserted headers. It does not mean row-level security was '
-    + 'exercised: the table behind most of them is empty in the fixtures, and the harness supplies '
-    + 'the identity from the JWT payload rather than the engine verifying it.',
-  'The denominator is the derived cases, not the 54 upstream cases they cover. 26 of those 54 have '
-    + 'no fair equivalent and are counted in neither the numerator nor the denominator.',
+    + 'exercised: the table behind most of them is empty in the fixtures, so the asserted body is '
+    + '<code>[]</code> and no row was filtered either way.',
+  'The denominator is the derived cases, not the upstream cases they cover. The ones with no fair '
+    + 'equivalent are in neither this numerator nor this denominator; the rate above still judges '
+    + 'them on upstream\'s own assertion, and the table below says how they land there.',
   'It has no external referee. This project chose which cases are about authorization, wrote the '
     + 'policy set and wrote the runner. The PostgREST rate above has upstream\'s own assertions as '
     + 'the referee; this number does not.'
@@ -697,11 +759,14 @@ export function isolationEvidence(runs) {
 // ---------------------------------------------------------------- model
 
 /**
- * The Cedar equivalence measurement, as a section of its own. Two things are
- * checked here rather than restated: that the upstream cases it derives from are
- * still failures in *this* results file, and how many of them are. If a derived
- * case's upstream original ever stopped being a failure, this measurement would
- * be double-counting a pass, and the report would say so instead of hiding it.
+ * The Cedar equivalence measurement, as a section of its own. What is checked
+ * here rather than restated is how each covered upstream case stands in *this*
+ * results file. It started out as a measurement of cases that could only fail
+ * above; since the conformance runner started loading its own port of the same
+ * GRANTs (conformance/fixtures/policies) most of them pass there too, so the
+ * numbers below are cross-checked against the run and the overlap is stated. A
+ * `hold` here whose upstream case fails above — or a `diverges` whose upstream
+ * case passes — is the two harnesses disagreeing, and it is surfaced, not hidden.
  */
 function buildCedar(cedar, results) {
   if (!cedar?.summary) return null;
@@ -718,7 +783,42 @@ function buildCedar(cedar, results) {
     const status = byId.get(id)?.status || 'not in this run';
     upstreamStatus[status] = (upstreamStatus[status] || 0) + 1;
   }
+  // Case-for-case against the run: a held equivalence should be a pass above,
+  // a divergence should not be. Anything else is the harnesses disagreeing.
+  const statusOf = (id) => byId.get(id)?.status || 'not in this run';
+  const disagree = [];
+  for (const o of cedar.outcomes || []) {
+    const status = statusOf(o.upstreamId);
+    const held = o.verdict === 'hold';
+    if (held !== (status === 'pass')) {
+      disagree.push({ id: o.upstreamId, verdict: o.verdict, status });
+    }
+  }
+  const equivalenceStatus = {};
+  for (const o of cedar.outcomes || []) {
+    const status = statusOf(o.upstreamId);
+    equivalenceStatus[status] = (equivalenceStatus[status] || 0) + 1;
+  }
+  const noFairStatus = {};
+  for (const o of cedar.noFairEquivalent || []) {
+    const status = statusOf(o.upstreamId);
+    noFairStatus[status] = (noFairStatus[status] || 0) + 1;
+  }
+  const sortDesc = (obj) => Object.entries(obj).sort((a, b) => b[1] - a[1]);
   return {
+    divergences: (cedar.outcomes || [])
+      .filter((o) => o.verdict !== 'hold')
+      .map((o) => ({
+        id: o.upstreamId,
+        kind: o.divergence,
+        expectedStatus: o.expectedStatus ?? null,
+        actualStatus: o.actualStatus ?? null,
+        status: statusOf(o.upstreamId)
+      })),
+    equivalenceStatus: sortDesc(equivalenceStatus),
+    noFairStatus: sortDesc(noFairStatus),
+    disagree,
+    overlapPasses: (upstreamStatus.pass || 0),
     generatedAt: cedar.generatedAt || null,
     commit: cedar.commit || null,
     target: cedar.target || null,
@@ -731,7 +831,6 @@ function buildCedar(cedar, results) {
       .sort((a, b) => b[1] - a[1]),
     upstreamCasesCovered: s.upstreamCasesCovered || upstreamIds.length,
     upstreamStatus: Object.entries(upstreamStatus).sort((a, b) => b[1] - a[1]),
-    upstreamAllFailing: Object.keys(upstreamStatus).every((k) => k === 'fail'),
     notThePostgrestRate: s.notThePostgrestRate || null,
     doNotRead: CEDAR_DO_NOT_READ
   };
@@ -1451,19 +1550,20 @@ error text, which made the cause visible to the classifier.</p>`
     : '';
 
   const audited = AUDITED_DISCLOSURES.length
-    ? `<h3>${conservative ? '5' : '4'}. What an audit of this run found in the passes</h3>
-<p>An independent pass re-measured this tree and went looking for passes that are weaker than they
-look. It found no inflation in the rate — its own run scored higher than the one published here —
-but it did find two things about <em>how</em> some passes are reached that no input file can
-compute. Both are recorded here rather than in a commit message:</p>
+    ? `<h3>${conservative ? '5' : '4'}. What an audit of the passes found</h3>
+<p>Each wave is audited for passes that are weaker than they look, and for gains whose cause is not
+the one the case name suggests. No audit so far has found a pass that was not earned; what they find
+is <em>how</em> a pass was reached, which no input file can compute. Entries accumulate — one is
+never removed to tidy the page up, so a finding about an earlier tree stays here and says which tree
+it was about. ${num(AUDITED_DISCLOSURES.length)} findings, oldest first:</p>
 <ul>
 ${AUDITED_DISCLOSURES.map(
     (d) => `<li><strong>${esc(d.title)}.</strong> ${note(d.body)}</li>`
   ).join('\n')}
 </ul>
 <p class="fine">Editorial, like the gap notes: an audit finding is a judgement about a cause, and
-causes are not in the results file. Each one names what was run so it can be checked. Neither
-changes a status, and neither is netted off the rate — they change what the rate means, not what it
+causes are not in the results file. Each one names what was run so it can be checked. None of them
+changes a status, and none is netted off the rate — they change what the rate means, not what it
 is.</p>`
     : '';
 
@@ -1782,7 +1882,9 @@ ${oosRows}
  * above answers "does upstream's own assertion pass". This answers "where the
  * outcome depends on SET ROLE and RLS, which DSQL does not have, does the Cedar
  * policy layer produce the same client-visible outcome". The two are never
- * averaged, and the cases below are failures in the rate above.
+ * averaged. They do now overlap — the runner loads a Cedar port of the same
+ * GRANTs — so this renders the overlap instead of the old claim that everything
+ * below is a failure above.
  */
 function renderCedar(m) {
   const c = m.cedar;
@@ -1795,23 +1897,33 @@ function renderCedar(m) {
       ([k, n]) => `<tr><th scope="row"><code>${esc(k)}</code></th><td class="n">${num(n)}</td></tr>`
     )
     .join('\n');
-  const upstream = c.upstreamAllFailing
-    ? `All ${num(c.upstreamCasesCovered)} upstream cases behind this measurement are
-<code>fail</code> in the run this report is built from — checked against that file, not asserted.
-Nothing here moves a case out of the pass rate's denominator or into its numerator.`
-    : `<strong>Check this:</strong> the upstream cases behind this measurement are not all failures
-in this run (${c.upstreamStatus.map(([k, n]) => `${esc(k)} ${num(n)}`).join(', ')}). If one of them
-now passes on its own mechanism, this section is describing a case the rate above already counts, and
-the two measurements have started to overlap.`;
+  const upstream = c.disagree.length === 0
+    ? `<strong>The two harnesses agree case for case.</strong> Every equivalence that holds here is a
+<code>pass</code> in the run this report is built from, and every divergence is not — checked against
+that file, not asserted. Across all ${num(c.upstreamCasesCovered)} covered upstream cases the run
+records ${c.upstreamStatus.map(([k, n]) => `${esc(k)} ${num(n)}`).join(', ')}. Nothing here moves a
+case out of the pass rate's denominator or into its numerator; the ${num(c.overlapPasses)} passes are
+counted once, above.`
+    : `<strong>Check this:</strong> ${num(c.disagree.length)} case(s) are read differently by the two
+harnesses — ${c.disagree
+        .map((d) => `<code>${esc(d.id)}</code> ${esc(d.verdict)} here, ${esc(d.status)} above`)
+        .join('; ')}. One of the two is wrong about the same request, and this section is not settled
+until that is explained.`;
 
   return `<div class="cedar">
 <p><strong>This is not part of the ${pct(m.headline.rate)} above and is never averaged into it.</strong>
 Aurora DSQL has neither <code>SET ROLE</code> nor row-level security, and PostgREST's authorization
 is built on both. ${num(c.upstreamCasesCovered)} extracted upstream cases assert an outcome reached
-that way; on this architecture they cannot pass by that mechanism and they remain failures above
-(the <code>no-set-role</code> gap). This measurement asks a different question about those same
-cases: with a Cedar policy set standing in for the <code>GRANT</code>, is the client-visible outcome
-— status, body, asserted headers — the same?</p>
+that way. This measurement asks a different question about them: with a Cedar policy set standing in
+for the <code>GRANT</code>, is the client-visible outcome — status, body, asserted headers — the
+same?</p>
+
+<p><strong>It no longer stands in for failures.</strong> When it was written, every case below was a
+failure in the rate above, because the runner had no substitute for upstream's <code>GRANT</code>s.
+The runner now loads its own port of them
+(<code>conformance/fixtures/policies/10-privileges.cedar</code>), so
+${num(c.overlapPasses)} of the ${num(c.upstreamCasesCovered)} pass in the published run. What is left
+here is a second, independent harness over the same mechanism — a cross-check, not an addition.</p>
 
 <div class="strip">
   <div class="tile pass"><div class="v">${num(c.hold)}</div><div class="k">equivalences hold</div></div>
@@ -1821,9 +1933,15 @@ cases: with a Cedar policy set standing in for the <code>GRANT</code>, is the cl
 </div>
 
 <p><strong>Cedar equivalence: ${num(c.hold)} of ${num(c.ran)} hold.</strong> The
-${num(c.diverge)} divergences are all one kind (${kinds || 'none recorded'}): both mechanisms deny
-the request and disagree on the shape of the denial — PostgREST answers <code>401</code> with
-<code>WWW-Authenticate</code> for an anonymous caller, the Cedar layer answers <code>403</code>.
+${num(c.diverge)} divergences (${kinds || 'none recorded'}) are the same disagreement seen twice:
+both mechanisms deny the request, and they disagree about who authors the denial. PostgREST reports
+the database's own error — <code>42501 permission denied for table …</code>, or <code>22023 role
+"…" does not exist</code> for a role that was never created — and the Cedar layer reports
+<code>PGRST403</code> from the policy decision, once with a different status as well.
+${c.divergences
+    .map((d) => `<code>${esc(d.id)}</code> (${esc(d.kind || 'unclassified')}, expected `
+      + `${num(d.expectedStatus)} got ${num(d.actualStatus)}, <code>${esc(d.status)}</code> above)`)
+    .join('; ')}.
 Measured ${esc(c.generatedAt || 'unknown')} on commit <code>${esc(c.commit || 'unknown')}</code>,
 target <code>${esc(c.target || 'unknown')}</code>, from
 <code>conformance/cedar/results/latest.json</code>.</p>
@@ -1836,7 +1954,9 @@ ${c.doNotRead.map((line) => `<li>${note(line)}</li>`).join('\n')}
 </ul>
 
 <h3>The ${num(c.noFairEquivalent)} with no fair equivalent</h3>
-<p class="fine">Counted in neither the numerator nor the denominator, itemised with a written reason
+<p class="fine">Outside this measurement's numerator and denominator — the rate above judges them on
+upstream's own assertion, where they land
+${c.noFairStatus.map(([k, n]) => `${esc(k)} ${num(n)}`).join(', ')}. Itemised with a written reason
 in <code>conformance/cedar/equivalence-map.mjs</code> and on the
 <code>docs/reference/cedar-equivalence.md</code> page. Only one of these classes is a finding about
 the engine: <code>column-level-privilege</code>, where upstream grants a write on the table and
@@ -2219,8 +2339,9 @@ function main() {
         ? `cedar equivalence (separate measurement, never added): `
           + `${model.cedar.hold}/${model.cedar.ran} hold, `
           + `${model.cedar.noFairEquivalent} with no fair equivalent, `
-          + `${model.cedar.upstreamCasesCovered} upstream cases covered and still `
-          + `${model.cedar.upstreamAllFailing ? 'all failing above' : 'NOT all failing above'}\n`
+          + `${model.cedar.upstreamCasesCovered} upstream cases covered of which `
+          + `${model.cedar.overlapPasses} pass above, `
+          + `${model.cedar.disagree.length} read differently by the two harnesses\n`
         : '') +
       (trend?.spread
         ? `same tree, ${trend.spread.runs.length} runs with these flags: `

@@ -1536,7 +1536,7 @@ async function readCatalog(pool) {
 
 // SpecHelper.hs: `baseCfg` signs with "reallyreallyreallyreallyverysafe", and
 // `generateSecret` is the base64 of the same bytes.
-const SPEC_JWT_SECRET = 'reallyreallyreallyreallyverysafe';
+export const SPEC_JWT_SECRET = 'reallyreallyreallyreallyverysafe';
 
 // Feature/Auth/AsymmetricJwtSpec.hs: the RS256 public key, as a JWK and as a
 // JWK Set. Verbatim from the spec file.

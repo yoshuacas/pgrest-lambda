@@ -126,12 +126,16 @@ export function deriveCases(upstream, group, map = EQUIVALENCE_MAP) {
 
   return {
     description:
-      'Cedar equivalence cases: for each upstream PostgREST case in the '
-      + '`no-set-role` group, the same client-visible outcome re-asked with a '
-      + 'Cedar policy set standing in for SET ROLE + row-level security. This '
-      + 'is a SECOND measurement. It is never added to the PostgREST pass '
-      + 'rate, never averaged with it, and never presented as one combined '
-      + 'number. See docs/reference/cedar-equivalence.md.',
+      'Cedar equivalence cases: for each upstream PostgREST case in the group '
+      + 'recorded in upstream-group.json — every case carrying the '
+      + '`no-set-role` gap when the group was fixed — the same client-visible '
+      + 'outcome re-asked with a Cedar policy set standing in for SET ROLE + '
+      + 'row-level security. This is a SECOND measurement. It is never added '
+      + 'to the PostgREST pass rate, never averaged with it, and never '
+      + 'presented as one combined number. Most of these cases now pass that '
+      + 'rate on their own, which makes this a cross-check of the same '
+      + 'mechanism rather than a substitute for a failure. See '
+      + 'docs/reference/cedar-equivalence.md.',
     doNotReadOverall: DO_NOT_READ_OVERALL,
     generatedBy: 'conformance/cedar/derive.mjs',
     upstreamGroup: 'conformance/cedar/upstream-group.json',

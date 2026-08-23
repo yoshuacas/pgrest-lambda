@@ -84,23 +84,28 @@ export const CEDAR_MECHANISMS = {
 };
 
 const GRANT_CAVEAT =
-  'The engine did not verify this token — the harness supplies the identity '
-  + 'from the payload — so a pass means only that a Cedar permit replaced a '
-  + 'table-level GRANT on an empty table, not that any RLS policy or row '
-  + 'filter was exercised.';
+  'A pass means a Cedar permit replaced a table-level GRANT on an empty table, '
+  + 'not that any RLS policy or row filter was exercised: authors_only holds no '
+  + 'rows in the fixtures, so the asserted body is []. The engine does verify '
+  + 'the token (jwt-secret, upstream\'s own secret), so the identity is checked '
+  + 'rather than taken from the payload — but the identity check is not what '
+  + 'this equivalence is about.';
 
 /** Whole-measurement caveat, written into cases.json as `doNotReadOverall`. */
 export const DO_NOT_READ_OVERALL =
   'Do not read a passing grant equivalence as evidence that the *denial* '
   + 'shape matches upstream: the denials are measured case by case, and of the '
-  + 'five, one holds outright (AuthSpec:41), one now matches on status and '
-  + 'WWW-Authenticate but not on body (AuthSpec:16, which reports PGRST403 '
-  + 'where upstream reports SQLSTATE 42501), and three differ because the two '
-  + 'mechanisms resolve the caller to different identities rather than because '
-  + 'the denial shape differs (AuthSpec:130, AuthSpec:135, ErrorSpec:123 — '
-  + 'divergence kind identity-mapping). And do not read any of this as a '
-  + 'PostgREST pass — the upstream cases stay failures in the PostgREST rate, '
-  + 'which is the only number computed from upstream assertions run unmodified.';
+  + 'five, three hold (AuthSpec:41, and AuthSpec:130 and AuthSpec:135 once the '
+  + 'engine read a role-less token as the anonymous role), one matches on '
+  + 'status and WWW-Authenticate but not on body (AuthSpec:16, which reports '
+  + 'PGRST403 where upstream reports SQLSTATE 42501), and one differs because '
+  + 'the two mechanisms resolve the caller to different identities rather than '
+  + 'because the denial shape differs (ErrorSpec:123 — divergence kind '
+  + 'identity-mapping). And do not read any of this as a PostgREST pass: the '
+  + 'PostgREST rate is the only number computed from upstream assertions run '
+  + 'unmodified, it counts these cases on their own merits, and a holding '
+  + 'equivalence is a second view of a pass it already counted, never an '
+  + 'addition to it.';
 
 /**
  * Verbatim-request grant equivalences: upstream expects 200 because a role
@@ -110,7 +115,14 @@ export const DO_NOT_READ_OVERALL =
 const GRANT_TABLE_READ = [
   'AsymmetricJwtSpec:29',
   'AsymmetricJwtSpec:38',
+  // :32 and :85 were held out while the extractor paired their assertion with
+  // the next `it` block's JWT payload. That defect is fixed (the resolver now
+  // prefers the nearest `let` binding at or above the use site), the case files
+  // were re-extracted, and both requests now carry the audience their own `it`
+  // declares — so they are ordinary grant equivalences again.
+  'AudienceJwtSecretSpec:32',
   'AudienceJwtSecretSpec:73',
+  'AudienceJwtSecretSpec:85',
   'AudienceJwtSecretSpec:126',
   'AudienceJwtSecretSpec:138',
   'AudienceJwtSecretSpec:150',
@@ -266,10 +278,12 @@ export const EQUIVALENCE_MAP = Object.fromEntries([
       `The asserted 401 comes from JWT validation — ${why} — not from a `
       + 'privilege check. Substituting a Cedar policy set would not be '
       + 'testing the same mechanism: no policy set can make the engine reject '
-      + 'a token, and no policy set is consulted upstream. The case appears '
-      + 'in the no-set-role group only because this harness builds the '
+      + 'a token, and no policy set is consulted upstream. The case was swept '
+      + 'into the no-set-role group because the harness used to build the '
       + 'authorizer context by decoding the payload without verifying it, so '
-      + 'the request reaches the authorization layer at all.',
+      + 'the request reached the authorization layer and was denied by policy '
+      + 'instead of being rejected outright. The engine verifies the token '
+      + 'now, and the case passes the PostgREST rate on its own mechanism.',
     doNotRead:
       'the absence of an equivalence here says nothing about whether the '
       + 'engine can reject this token: the engine has its own JWT '
@@ -370,34 +384,10 @@ export const EQUIVALENCE_MAP = Object.fromEntries([
       + 'that the case is uninteresting.',
   }]),
 
-  // (d) the extracted case is internally inconsistent.
-  ...[
-    ['AudienceJwtSecretSpec:32',
-      'the assertion at line 32 belongs to `it "succeeds when the audience '
-      + 'claim matches"` (line 23), whose payload has aud "youraudience", but '
-      + 'the extracted request carries aud "notyouraudience" — the payload of '
-      + 'the *next* `it`'],
-    ['AudienceJwtSecretSpec:85',
-      'the assertion at line 85 belongs to `it "succeeds when the audience '
-      + 'claim has more than 1 element and one matches"` (line 75), whose '
-      + 'payload includes "youraudience", but the extracted request carries '
-      + 'aud ["notyouraudience"] — the payload of the *next* `it`'],
-  ].map(([id, why]) => [id, {
-    equivalence: 'none',
-    class: 'extraction-defect',
-    upstreamMechanism: MECHANISMS.grantAuthorsOnly,
-    reason:
-      `${why}. The engine runs this spec range with jwt-aud=youraudience `
-      + '(conformance/runner/run.mjs ENGINE_CONFIGS), so it answers 401 "JWT '
-      + 'not in audience" — which is what upstream would answer to the '
-      + 'request as extracted. Asserting 200 for that request contradicts '
-      + 'upstream\'s own behaviour, so no policy set can make the case hold '
-      + 'without disabling audience checking, and disabling it would be '
-      + 'weakening the expectation.',
-    doNotRead:
-      'the grant equivalence these two cases would have measured is already '
-      + 'measured by the eleven sibling AudienceJwtSecretSpec cases that '
-      + 'extracted cleanly; excluding these two removes a harness defect from '
-      + 'the numerator and the denominator, not an engine failure.',
-  }]),
+  // (d) the extracted case is internally inconsistent. Empty: the one defect
+  // that put cases here — AudienceJwtSecretSpec:32 and :85, whose assertion was
+  // paired with the next `it` block's JWT payload — was fixed in the extractor
+  // rather than worked around here, and both cases moved back into
+  // GRANT_TABLE_READ above. The class is kept so a future extraction defect has
+  // somewhere honest to go instead of being scored as an engine failure.
 ]);

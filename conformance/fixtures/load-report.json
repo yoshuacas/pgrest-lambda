@@ -1,6 +1,6 @@
 {
-  "statementsTotal": 1116,
-  "statementsApplied": 1116,
+  "statementsTotal": 1135,
+  "statementsApplied": 1135,
   "statementsFailed": 0,
   "objects": {
     "tables": 215,
@@ -3042,14 +3042,6 @@
       "object": "copy (select id, name, client_id from projects) to '/tmp/pro",
       "kind": "data",
       "reason": "COPY to/from file not supported by DSQL",
-      "affectsCategories": [
-        "select"
-      ]
-    },
-    {
-      "object": "insert into contract select 'tournament_' || generate_series, tsrange(",
-      "kind": "data",
-      "reason": "public.contract lost columns and this INSERT ... SELECT cannot be rewritten mechanically",
       "affectsCategories": [
         "select"
       ]

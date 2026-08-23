@@ -1,5 +1,5 @@
 {
-  "description": "The upstream PostgREST cases this measurement is derived from: every case carrying the `no-set-role` gap in the PostgREST conformance run. They are and stay failures in that run (conformance/results/latest.json); this file only records which ones the Cedar equivalence measurement is built over.",
+  "description": "The upstream PostgREST cases this measurement is derived from: every case carrying the `no-set-role` gap in the PostgREST conformance run at the commit recorded below. The group is fixed at that selection on purpose, so the same cases are re-asked run after run. It is no longer a set of failures: the conformance runner now loads its own port of the same GRANTs (conformance/fixtures/policies), so most of these pass in conformance/results/latest.json and are counted there once. This file records which cases the Cedar equivalence measurement is built over, and the `postgrestStatus` / `measuredReason` fields below are what the PostgREST run recorded at that commit, not now.",
   "gap": "no-set-role",
   "measuredWith": "node conformance/runner/run.mjs --target dsql --concurrency 1 --reload-per-spec --id <each id>",
   "measuredAt": "2026-08-21T06:01:17Z",

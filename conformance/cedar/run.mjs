@@ -28,7 +28,9 @@ import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 
 import { createPgrest } from '../../src/index.mjs';
-import { buildEvent, compare, engineConfigFor } from '../runner/run.mjs';
+import {
+  SPEC_JWT_SECRET, buildEvent, compare, engineConfigFor,
+} from '../runner/run.mjs';
 import { CASES_PATH, readDerived } from './derive.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -206,9 +208,12 @@ export function summarize(doc, outcomes) {
     measurement: 'cedar-equivalence',
     notThePostgrestRate:
       'This is equivalent behaviour through a different mechanism. It is not '
-      + 'a PostgREST pass rate, it is never added to one, and the upstream '
-      + 'cases it derives from remain failures in '
-      + 'conformance/results/latest.json.',
+      + 'a PostgREST pass rate and it is never added to one. It also does not '
+      + 'stand in for failures any more: the conformance runner loads its own '
+      + 'port of the same GRANTs (conformance/fixtures/policies), so most of '
+      + 'the upstream cases this derives from are already counted in '
+      + 'conformance/results/latest.json. Read this as a second harness over '
+      + 'the same mechanism, not as anything to add.',
     equivalencesRan: outcomes.length,
     equivalencesHold: hold.length,
     equivalencesDiverge: diverges.length,
@@ -269,10 +274,21 @@ async function main() {
   // measurements comparable case by case.
   const baseEngineConfig = {
     database: resolveTargetConfig(opts.target),
+    // Same as the PostgREST runner: the engine verifies the token with
+    // upstream's own secret rather than trusting an identity the harness
+    // decoded. Without this the two measurements would be authorizing
+    // different things — one an unverified payload, one a checked token — and
+    // the case-for-case cross-check in the compatibility report would be
+    // comparing a Cedar decision against a request the rate never made.
+    restJwt: { secret: SPEC_JWT_SECRET, anonRole: 'anon' },
     jwtSecret: process.env.JWT_SECRET
       || 'conformance-runner-secret-not-used-for-verification',
     auth: false,
     policies: POLICIES,
+    // Read-only by construction here (the runner refuses a derived case that
+    // would write), and set anyway so this config stays a copy of the
+    // PostgREST runner's with `policies` as the only difference.
+    dbTxEnd: 'rollback-allow-override',
     schemaCacheTtl: 24 * 60 * 60 * 1000,
     docs: false,
     production: false,

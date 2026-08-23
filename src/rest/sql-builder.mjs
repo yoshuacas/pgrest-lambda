@@ -1707,8 +1707,14 @@ function mutationProjects(selectNodes) {
  * the table's composite type. Over the CTE the row is a RECORD, so an
  * overloaded computed column cannot resolve there (`function
  * computed_overload(record) is not unique`); in RETURNING it does.
+ *
+ * `opts.readPlan` is the caller saying it will build the representation with
+ * `buildMutationRead` instead, which reads the whole row out of the CTE: the
+ * read plan projects the select list itself, and `?order=` may name a column
+ * the select list leaves out.
  */
-function mutationReturning(table, parsed, schema, values) {
+function mutationReturning(table, parsed, schema, values, opts = {}) {
+  if (opts.readPlan === true) return ' RETURNING *';
   if (!mutationProjects(parsed.select)) return ' RETURNING *';
   const projection = flatSelectList(
     parsed.select, schema, table, values, { ref: table });
@@ -1716,6 +1722,23 @@ function mutationReturning(table, parsed, schema, values) {
 }
 
 const MUTATION_SOURCE_CTE = 'pgrst_source';
+
+/**
+ * Does this mutation's representation have to come from a read plan over the
+ * source CTE (`buildMutationRead`) rather than from the RETURNING list?
+ *
+ * Upstream always plans over the CTE (Plan.hs `mutateReadPlan` builds the whole
+ * read plan and `addRels` re-points its root at `pgrst_source`), so this only
+ * decides where the engine takes the cheaper path. It cannot: a RETURNING list
+ * has no ORDER BY, so `?order=` on a mutation is dropped unless the
+ * representation is read back out of the CTE — which is what UpdateSpec.hs:444
+ * ("with ordering on top-level resource") and QueryLimitedSpec.hs:97/:108
+ * assert. An embed needs the same path for its joins.
+ */
+export function mutationNeedsReadPlan(parsed) {
+  if (parsed?.select?.some(n => n.type === 'embed')) return true;
+  return (parsed?.order?.length || 0) > 0;
+}
 
 /**
  * A mutation whose representation is a full read plan — embeds included —
@@ -1887,6 +1910,9 @@ function assertUniformPayload(rows) {
  *        otherwise.
  * @param {boolean} [opts.applyDefaults] `Prefer: missing=default` — a key
  *        absent from a row takes the column's default instead of NULL.
+ * @param {boolean} [opts.readPlan] the caller will build the representation
+ *        with `buildMutationRead`, so RETURNING keeps the whole row
+ *        (see `mutationNeedsReadPlan`).
  */
 export function buildInsert(table, body, schema, parsed, opts = {}) {
   const rows = Array.isArray(body) ? body : [body];
@@ -1977,7 +2003,7 @@ export function buildInsert(table, body, schema, parsed, opts = {}) {
     }
   }
 
-  sql += mutationReturning(table, parsed, schema, values);
+  sql += mutationReturning(table, parsed, schema, values, opts);
   return {
     text: sql,
     values,
@@ -2115,7 +2141,7 @@ export function buildUpdate(
 
   let sql = `UPDATE ${q(table)} SET ${setClauses.join(', ')}`;
   sql += whereClause(conds);
-  sql += mutationReturning(table, parsed, schema, values);
+  sql += mutationReturning(table, parsed, schema, values, opts);
 
   return {
     text: sql,
@@ -2123,7 +2149,8 @@ export function buildUpdate(
   };
 }
 
-export function buildDelete(table, parsed, schema, authzConditions) {
+export function buildDelete(
+    table, parsed, schema, authzConditions, opts = {}) {
   // See buildUpdate: opt-in bypass for a deliberately filterless mutation.
   if (parsed.filters.length === 0 && parsed.allowBulkMutation !== true) {
     throw new PostgRESTError(
@@ -2149,7 +2176,7 @@ export function buildDelete(table, parsed, schema, authzConditions) {
 
   let sql = `DELETE FROM ${q(table)}`;
   sql += whereClause(conds);
-  sql += mutationReturning(table, parsed, schema, values);
+  sql += mutationReturning(table, parsed, schema, values, opts);
 
   return {
     text: sql,

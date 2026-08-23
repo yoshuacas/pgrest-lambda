@@ -246,7 +246,7 @@ describe('summarize', () => {
     assert.equal(s.rate, undefined);
     // The one PostgREST mention is the disclaimer, and it disclaims.
     assert.match(s.notThePostgrestRate, /never added to one/);
-    assert.match(s.notThePostgrestRate, /remain failures/);
+    assert.match(s.notThePostgrestRate, /not as anything to add/);
   });
 
   it('holds + diverges is the whole denominator', () => {

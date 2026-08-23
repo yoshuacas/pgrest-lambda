@@ -5,6 +5,7 @@ import { parseQuery } from './query-parser.mjs';
 import {
   buildSelect, buildInsert, buildUpdate, buildDelete, buildCount,
   buildConflictCount, buildMutationRead, buildRpcCall, RPC_SCALAR,
+  mutationNeedsReadPlan,
 } from './sql-builder.mjs';
 import { getFunction } from './schema-cache.mjs';
 import {
@@ -1946,8 +1947,11 @@ export function createRestHandler(ctx, contributions = []) {
           { ...parsedRaw, limit: range.limit, offset: range.offset },
           ctx.dbMaxRows)
         : parsedRaw;
-      const hasEmbeds = parsed.select.some(
-        n => n.type === 'embed');
+      // A representation the RETURNING list cannot produce on its own — an
+      // embed, or an `?order=` a RETURNING list has no clause for. It is read
+      // back out of the mutation's source CTE instead (see runMutation).
+      const readPlanMutation = prefer.return === 'representation'
+        && mutationNeedsReadPlan(parsed);
 
       // Filterless UPDATE/DELETE. Upstream ships no guard of its own — it
       // relies on the pg-safeupdate extension, which is loaded per session by
@@ -2122,13 +2126,15 @@ export function createRestHandler(ctx, contributions = []) {
       /**
        * Run a mutation and return the rows its representation is built from.
        *
-       * With an embed in `?select=` the statement carries the whole read plan
-       * with it, over its own source CTE (sql-builder `buildMutationRead`),
-       * because the rows a DELETE returns cannot be read again afterwards and
-       * because `?order=` applies to the representation.
+       * With an embed or an `?order=` in the request the statement carries the
+       * whole read plan with it, over its own source CTE (sql-builder
+       * `buildMutationRead`), because the rows a DELETE returns cannot be read
+       * again afterwards and because a RETURNING list has no ORDER BY.
+       * Otherwise the RETURNING list is the representation, which is one query
+       * level less.
        */
       async function runMutation(q) {
-        if (!(prefer.return === 'representation' && hasEmbeds)) {
+        if (!readPlanMutation) {
           return (await queryWrite(session, q, { rollback: txRollback })).rows;
         }
         const embTables = collectTables(parsed.select, table);
@@ -2219,6 +2225,7 @@ export function createRestHandler(ctx, contributions = []) {
           const q = buildInsert(table, payload, schema, insertParsed, {
             resolution: prefer.resolution || null,
             applyDefaults: prefer.missing === 'default',
+            readPlan: readPlanMutation,
           });
 
           rows = await runMutation(q);
@@ -2234,6 +2241,7 @@ export function createRestHandler(ctx, contributions = []) {
           await assertSingularMutation('update');
           const updateOpts = {
             applyDefaults: prefer.missing === 'default',
+            readPlan: readPlanMutation,
           };
           const preview = buildUpdate(
             table, payload, mutationParsed, schema, null, updateOpts);
@@ -2288,13 +2296,15 @@ export function createRestHandler(ctx, contributions = []) {
         case 'DELETE': {
           await assertMaxAffected();
           await assertSingularMutation('delete');
-          const preview = buildDelete(table, mutationParsed, schema);
+          const deleteOpts = { readPlan: readPlanMutation };
+          const preview = buildDelete(
+            table, mutationParsed, schema, null, deleteOpts);
           const authz = cedar.buildAuthzFilter({
             principal, action: 'delete', context: { table }, schema,
             startParam: preview.values.length + 1,
           });
           const q = buildDelete(
-            table, mutationParsed, schema, authz,
+            table, mutationParsed, schema, authz, deleteOpts,
           );
           rows = await runMutation(q);
           break;

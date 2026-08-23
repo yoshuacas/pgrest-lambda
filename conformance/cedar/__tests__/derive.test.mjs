@@ -198,6 +198,11 @@ describe('deriveCases', () => {
   it('states in the document itself that this is not the PostgREST rate', () => {
     assert.match(doc.description, /SECOND measurement/);
     assert.match(doc.description, /never added to the PostgREST pass/);
-    assert.match(doc.doNotReadOverall, /stay failures in the PostgREST rate/);
+    // The old wording asserted here — "the upstream cases stay failures in the
+    // PostgREST rate" — stopped being true when the conformance runner started
+    // loading its own port of the same GRANTs. What must stay pinned is the rule
+    // that survived the change: a holding equivalence is never added to the rate.
+    assert.match(doc.doNotReadOverall, /never an addition to it/);
+    assert.doesNotMatch(doc.doNotReadOverall, /stay failures/);
   });
 });

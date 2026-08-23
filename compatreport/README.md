@@ -156,13 +156,21 @@ Rules that keep the trend usable:
   warns on stderr and skips the delta when a file's `generatedAt` disagrees with
   the entry that names it.
 - `flags` records the runner flags, not the runner's base engine configuration.
-  One entry in that base configuration changes the score: the runner boots the
-  engine with `bulkMutationGuard: 'off'`, because the engine's default `on`
-  refuses a filterless `PATCH`/`DELETE` and upstream has no such guard unless
-  `pg_safeupdate` is loaded. It is worth about a dozen cases: 10 filterless
-  `PATCH`/`DELETE` assertions in `UpdateSpec` and `UnicodeSpec` pass in this run
-  and would answer `PGRST106` with the guard on. Read
-  `conformance/runner/run.mjs` for the rest of that config, and for the 29
+  Two entries in that base configuration change the score, and both make the
+  engine match how upstream runs its own suite rather than how a deployment runs:
+  - `bulkMutationGuard: 'off'`, because the engine's default `on` refuses a
+    filterless `PATCH`/`DELETE` and upstream has no such guard unless
+    `pg_safeupdate` is loaded. Worth about a dozen cases: 10 filterless
+    `PATCH`/`DELETE` assertions in `UpdateSpec` and `UnicodeSpec` pass with it
+    off and would answer `PGRST106` with it on.
+  - `dbTxEnd: 'rollback-allow-override'`, which is what upstream's
+    `SpecHelper.hs` sets (`configDbTxRollbackAll` + `configDbTxAllowOverride`):
+    every mutating request is undone unless it sends `Prefer: tx=commit`, so a
+    mutating case stops changing the fixtures the cases after it read. The
+    engine's own default is `commit`. Worth 41 cases when it was turned on —
+    itemised in the audit section of the report — none of them a query feature.
+
+  Read `conformance/runner/run.mjs` for the rest of that config, and for the 29
   spec ranges across 25 spec files that the runner measures under upstream's own
   non-default settings (`ENGINE_CONFIGS`).
 
