@@ -358,7 +358,33 @@ function resolveRestConfig(config) {
     jwtCacheMaxEntries: parseCount(
       config.jwtCacheMaxEntries ?? process.env.PGREST_JWT_CACHE_MAX_ENTRIES,
       1000, 'jwt-cache-max-entries'),
+    // `db-tx-end`: how the transaction a write runs in ends, and whether the
+    // request may override it with `Prefer: tx=`. `commit` by default, like
+    // upstream.
+    dbTxEnd: parseDbTxEnd(config.dbTxEnd ?? process.env.PGREST_DB_TX_END),
   };
+}
+
+const TX_END_MODES = [
+  'commit', 'commit-allow-override', 'rollback', 'rollback-allow-override',
+];
+
+/**
+ * `db-tx-end` (upstream `configDbTxRollbackAll` + `configDbTxAllowOverride`).
+ *
+ * `rollback` ends every write transaction with ROLLBACK, which is how
+ * PostgREST's own test suite runs: SpecHelper.hs `baseCfg` sets
+ * `configDbTxRollbackAll = True` and `configDbTxAllowOverride = True`, so no
+ * request in the suite leaves anything behind unless it asks with
+ * `Prefer: tx=commit`.
+ */
+export function parseDbTxEnd(value) {
+  if (value === undefined || value === null || value === '') return 'commit';
+  const v = String(value).trim().toLowerCase();
+  if (TX_END_MODES.includes(v)) return v;
+  throw new Error(
+    `pgrest-lambda: db-tx-end must be one of ${TX_END_MODES.join(', ')} `
+    + `(got ${JSON.stringify(String(value))})`);
 }
 
 const BULK_GUARD_MODES = ['on', 'off', 'safeupdate'];
@@ -609,6 +635,7 @@ export function createPgrest(config = {}) {
   ctx.dbPreparedStatements = resolved.rest.dbPreparedStatements;
   ctx.urlUseLegacyTargetNames = resolved.rest.urlUseLegacyTargetNames;
   ctx.jwtCacheMaxEntries = resolved.rest.jwtCacheMaxEntries;
+  ctx.dbTxEnd = resolved.rest.dbTxEnd;
   ctx.restJwt = resolved.restJwt;
   ctx.getSchemaFor = (schemaName, pool) =>
     cacheFor(schemaName).getSchema(poolFor(pool, schemaName));

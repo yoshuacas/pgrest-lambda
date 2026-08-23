@@ -187,9 +187,10 @@ export function preferenceApplied(prefer, plan, opts = {}) {
     vals.push(`return=${prefer.return}`);
   }
   if (prefer.count) vals.push(`count=${prefer.count}`);
-  // Only `tx=commit` is echoed: this engine has no request-scoped rollback,
-  // so claiming `tx=rollback` was applied would be a lie.
-  if (prefer.tx === 'commit') vals.push('tx=commit');
+  // Whichever ending the request asked for, and only when it was accepted:
+  // the handler clears `tx` when `db-tx-end` does not allow the override, so
+  // anything still here was applied.
+  if (prefer.tx) vals.push(`tx=${prefer.tx}`);
   if (prefer.handling) vals.push(`handling=${prefer.handling}`);
   if (prefer.timezone !== undefined) {
     vals.push(`timezone=${prefer.timezone}`);
@@ -958,29 +959,94 @@ async function queryReadOnly(pool, q) {
 }
 
 /**
- * Run one statement and keep its effects only if it touched no more rows than
- * `max` allows.
+ * `db-tx-end` as the two flags upstream keeps it as: whether every transaction
+ * ends with ROLLBACK (`configDbTxRollbackAll`) and whether the request may say
+ * otherwise with `Prefer: tx=` (`configDbTxAllowOverride`).
  *
- * This is `Prefer: max-affected` on a function call. A function is a black box —
- * the rows it writes cannot be counted before it runs, the way a DELETE's can —
- * so upstream runs it, counts the rows it returned and aborts the request's
- * transaction when there are too many (`failMaxAffected`, checked inside
- * `MainTx.hs`'s transaction). The refusal therefore leaves the table exactly as
- * it was, which is the whole point of asking.
+ * @param {string} [dbTxEnd]
+ * @returns {{rollbackAll: boolean, allowOverride: boolean}}
+ */
+export function txEndPolicy(dbTxEnd) {
+  const mode = String(dbTxEnd || 'commit');
+  return {
+    rollbackAll: mode.startsWith('rollback'),
+    allowOverride: mode.endsWith('-allow-override'),
+  };
+}
+
+/**
+ * Does this request's transaction end with ROLLBACK? Upstream's
+ * `shouldRollback`: the configured ending decides, and the accepted
+ * `Prefer: tx=` inverts it. `preferTx` must already be `undefined` when the
+ * configuration does not allow the override — that is where upstream drops it
+ * (`Preferences.fromHeaders` never parses it), so an unacceptable preference is
+ * not echoed either.
  *
- * @param {Object} pool
+ * @param {{rollbackAll: boolean}} policy from txEndPolicy()
+ * @param {'commit'|'rollback'|undefined} preferTx
+ */
+export function shouldRollback(policy, preferTx) {
+  return policy.rollbackAll ? preferTx !== 'commit' : preferTx === 'rollback';
+}
+
+const maxAffectedError = (affected) => new PostgRESTError(
+  400, 'PGRST124',
+  'Query result exceeds max-affected preference constraint',
+  `The query affects ${affected} rows`);
+
+/**
+ * Run one write statement under the request's transaction policy.
+ *
+ * Two things can make a write need a transaction of its own:
+ *
+ * `rollback` is `db-tx-end`. The statement runs and is then thrown away, so the
+ * response describes rows that no longer exist — which is exactly what
+ * PostgREST does when it is configured this way, and how its own test suite
+ * runs every mutating request (SpecHelper.hs `baseCfg`).
+ *
+ * `max` is `Prefer: max-affected` on a function call. A function is a black
+ * box — the rows it writes cannot be counted before it runs, the way a DELETE's
+ * can — so upstream runs it, counts the rows it returned and aborts the
+ * request's transaction when there are too many (`failMaxAffected`, checked
+ * inside `MainTx.hs`'s transaction). The refusal leaves the table exactly as it
+ * was, which is the whole point of asking.
+ *
+ * When the request already holds a transaction (`session.inTx`) the statement
+ * joins it: a nested BEGIN is a no-op that PostgreSQL warns about, and the
+ * COMMIT that followed it would end the request's transaction early. The ending
+ * is left to the session instead, and `session.condemn()` is upstream's
+ * `SQL.condemn` — the transaction will roll back whatever else happens.
+ *
+ * @param {{pool: Object, inTx?: boolean, condemn?: () => void}} session
  * @param {{text: string, values: any[]}} q
- * @param {number} max
+ * @param {{max?: number|null, rollback?: boolean}} [opts]
  * @throws {PostgRESTError} 400 PGRST124 when the count is over `max`
  */
-async function queryMaxAffected(pool, q, max) {
+async function queryWrite(session, q, opts = {}) {
+  const { max = null, rollback = false } = opts;
+  const pool = session.pool;
+
+  if (session.inTx) {
+    const result = await pool.query(q.text, q.values);
+    const affected = Array.isArray(result.rows) ? result.rows.length : 0;
+    if (max != null && affected > max) {
+      session.condemn();
+      throw maxAffectedError(affected);
+    }
+    if (rollback) session.condemn();
+    return result;
+  }
+
+  // Nothing to decide: one statement is atomic on its own.
+  if (max == null && !rollback) return pool.query(q.text, q.values);
+
   const checkout = typeof pool.connect === 'function'
     && typeof pool.release !== 'function';
   const client = checkout ? await pool.connect() : pool;
   if (typeof client.query !== 'function') {
     throw new Error('pool has no query()');
   }
-  const rollback = async () => {
+  const undo = async () => {
     try {
       await client.query('ROLLBACK');
     } catch {
@@ -993,17 +1059,16 @@ async function queryMaxAffected(pool, q, max) {
     try {
       result = await client.query(q.text, q.values);
     } catch (err) {
-      await rollback();
+      await undo();
       throw err;
     }
     const affected = Array.isArray(result.rows) ? result.rows.length : 0;
-    if (affected > max) {
-      await rollback();
-      throw new PostgRESTError(400, 'PGRST124',
-        'Query result exceeds max-affected preference constraint',
-        `The query affects ${affected} rows`);
+    if (max != null && affected > max) {
+      await undo();
+      throw maxAffectedError(affected);
     }
-    await client.query('COMMIT');
+    if (rollback) await undo();
+    else await client.query('COMMIT');
     return result;
   } finally {
     if (checkout) client.release();
@@ -1473,6 +1538,8 @@ export function createRestHandler(ctx, contributions = []) {
   const sessionScoped = Boolean(ctx.dbPreRequest)
     || exposedSchemas.some(s => s !== 'public')
     || !(extraSearchPath.length === 1 && extraSearchPath[0] === 'public');
+  // `db-tx-end`, as the two flags upstream carries it as.
+  const txEnd = txEndPolicy(ctx.dbTxEnd);
 
   /**
    * Check out the connection this request will use and put the settings it
@@ -1485,16 +1552,27 @@ export function createRestHandler(ctx, contributions = []) {
    * transaction, so PostgreSQL itself drops it at the end — nothing has to be
    * reset, and a connection can never be handed back carrying it.
    *
+   * `db-tx-end` is the other reason. A request whose transaction has to end
+   * with ROLLBACK needs one connection for all of its statements, and the
+   * rollback has to happen after the response has been built from the rows the
+   * write returned — so the transaction is opened here and ended in `release`.
+   * Only a method that can write opens it: a read has nothing to roll back, and
+   * leaving GET alone keeps it on the pool.
+   *
    * @param {Object} basePool
    * @param {string} schemaName
    * @param {string} [timezone] the raw `Prefer: timezone=` value; an invalid
    *        one raises PostgreSQL's own 22023, which is the error upstream
    *        reports for it
+   * @param {{rollback?: boolean}} [opts] `rollback`: end with ROLLBACK
    */
-  async function openSession(basePool, schemaName, timezone) {
+  async function openSession(basePool, schemaName, timezone, opts = {}) {
     const appSettings = normalizeAppSettings(ctx.appSettings);
-    const wantsTx = timezone != null || appSettings.length > 0;
-    if (!sessionScoped && !wantsTx) return { pool: basePool, release: null };
+    const rollback = Boolean(opts.rollback);
+    const wantsTx = timezone != null || appSettings.length > 0 || rollback;
+    if (!sessionScoped && !wantsTx) {
+      return { pool: basePool, release: null, inTx: false, condemn: () => {} };
+    }
     // Test doubles inject a bare `{query}`; there is nothing to check out, so
     // the session settings land on whatever that object talks to.
     const client = typeof basePool.connect === 'function'
@@ -1502,21 +1580,38 @@ export function createRestHandler(ctx, contributions = []) {
       : null;
     const target = client || basePool;
     let inTx = false;
+    // Upstream's `SQL.condemn`: the transaction must not commit, whatever the
+    // configured ending is. `db-tx-end=commit` with `Prefer: max-affected`
+    // over the limit is the case that needs it.
+    let condemned = rollback;
+    const session = {
+      pool: target,
+      get inTx() { return inTx; },
+      condemn: () => { condemned = true; },
+    };
     const release = async () => {
       if (inTx) {
-        try {
-          // A failed statement has already aborted the transaction, and there
-          // COMMIT is PostgreSQL's own spelling of ROLLBACK — no write from a
-          // request that errored can reach the table this way.
-          await target.query('COMMIT');
-        } catch {
+        if (condemned) {
           try { await target.query('ROLLBACK'); } catch { /* gone already */ }
+        } else {
+          try {
+            // A failed statement has already aborted the transaction, and
+            // there COMMIT is PostgreSQL's own spelling of ROLLBACK — no write
+            // from a request that errored can reach the table this way.
+            await target.query('COMMIT');
+          } catch {
+            try { await target.query('ROLLBACK'); } catch { /* gone */ }
+          }
         }
       }
       if (client) client.release();
     };
+    session.release = release;
     try {
       if (sessionScoped) {
+        // Before BEGIN on purpose: a session-scoped setting must survive the
+        // transaction, and `is_local = false` inside one that rolls back would
+        // not.
         await target.query('select set_config($1, $2, false)',
           ['search_path', searchPathValue(schemaName, extraSearchPath)]);
         if (ctx.dbPreRequest) {
@@ -1538,7 +1633,7 @@ export function createRestHandler(ctx, contributions = []) {
       await release();
       throw err;
     }
-    return { pool: target, release };
+    return session;
   }
 
   // int8/numeric must reach the client as JSON numbers, the way PostgREST's
@@ -1675,6 +1770,15 @@ export function createRestHandler(ctx, contributions = []) {
         event.multiValueQueryStringParameters || null;
       const prefer = parsePrefer(headers['prefer']);
       assertValidPrefer(prefer);
+      // `Prefer: tx=` only exists when `db-tx-end` allows the override.
+      // Upstream drops it at parse time (`Preferences.fromHeaders` is given
+      // `configDbTxAllowOverride`), which is also why an unacceptable one is
+      // not echoed in Preference-Applied.
+      if (!txEnd.allowOverride) delete prefer.tx;
+      // A read has nothing to roll back, and OPTIONS never reaches the table.
+      const canWrite = rawMethod !== 'GET' && rawMethod !== 'HEAD'
+        && rawMethod !== 'OPTIONS';
+      const txRollback = canWrite && shouldRollback(txEnd, prefer.tx);
       const accept = headers['accept'] || '';
       // Negotiated for a relation or a routine: `application/openapi+json` is
       // produced by the root path alone, and the root path below negotiates on
@@ -1706,7 +1810,7 @@ export function createRestHandler(ctx, contributions = []) {
       const planStart = clock();
       const basePool = await db.getPool();
       const session = await openSession(
-        basePool, profile.schema, prefer.timezone);
+        basePool, profile.schema, prefer.timezone, { rollback: txRollback });
       releaseSession = session.release;
       const pool = session.pool;
       const schema = await getSchemaFor(profile.schema, pool);
@@ -1786,6 +1890,9 @@ export function createRestHandler(ctx, contributions = []) {
           schema, pool, cedar, ctx, corsHeaders,
           role, userId, email,
           media, headersOnly, headerRange,
+          // The request's transaction, so a function that writes ends the way
+          // `db-tx-end` says it must.
+          session, txRollback,
           // `client-error-verbosity` reaches the RPC 416 the same way it
           // reaches every other error(): passed in, since handleRpc is not
           // nested inside handleRequest's scope.
@@ -2014,7 +2121,7 @@ export function createRestHandler(ctx, contributions = []) {
        */
       async function runMutation(q) {
         if (!(prefer.return === 'representation' && hasEmbeds)) {
-          return (await pool.query(q.text, q.values)).rows;
+          return (await queryWrite(session, q, { rollback: txRollback })).rows;
         }
         const embTables = collectTables(parsed.select, table);
         const perTableAuthz = buildPerTableAuthz(
@@ -2029,7 +2136,8 @@ export function createRestHandler(ctx, contributions = []) {
         };
         const read = buildMutationRead(
           q, table, parsed, schema, authzFilters);
-        return (await pool.query(read.text, read.values)).rows;
+        return (await queryWrite(
+          session, read, { rollback: txRollback })).rows;
       }
 
       const txStart = clock();
@@ -2163,7 +2271,8 @@ export function createRestHandler(ctx, contributions = []) {
           const q = buildInsert(table, [payloadRow], schema, {
             ...parsed, onConflict: pk.join(','),
           }, { resolution: 'merge-duplicates' });
-          const result = await pool.query(q.text, q.values);
+          const result = await queryWrite(
+            session, q, { rollback: txRollback });
           rows = result.rows;
           break;
         }
@@ -2370,6 +2479,7 @@ export function createRestHandler(ctx, contributions = []) {
       accept, prefer, headers, schema, pool, cedar,
       ctx, corsHeaders, role, userId, email,
       media, headersOnly, headerRange, errorOpts,
+      session, txRollback,
   }) {
     if (method !== 'GET' && method !== 'POST' && method !== 'OPTIONS') {
       throw new PostgRESTError(405, 'PGRST101',
@@ -2463,7 +2573,7 @@ export function createRestHandler(ctx, contributions = []) {
     // 25006, which maps to 405). Only a VOLATILE function can write, and only
     // that case pays for the transaction.
     // `max-affected` on a set-returning function is settled after the call, by
-    // rolling it back when it returned too many rows (queryMaxAffected).
+    // rolling it back when it returned too many rows (queryWrite).
     const enforceMaxAffected = prefer.handling === 'strict'
       && prefer.maxAffected !== undefined
       && routine.returnsSet;
@@ -2471,9 +2581,14 @@ export function createRestHandler(ctx, contributions = []) {
     let result;
     if (routine.volatility === 'v' && method === 'GET') {
       result = await queryReadOnly(pool, q);
-    } else if (enforceMaxAffected) {
-      result = await queryMaxAffected(pool, q, prefer.maxAffected);
+    } else if (routine.volatility === 'v' || enforceMaxAffected) {
+      result = await queryWrite(session, q, {
+        max: enforceMaxAffected ? prefer.maxAffected : null,
+        rollback: txRollback,
+      });
     } else {
+      // Nothing to end: a stable or immutable function cannot write, and
+      // upstream plans it as a read-only transaction.
       result = await pool.query(q.text, q.values);
     }
 

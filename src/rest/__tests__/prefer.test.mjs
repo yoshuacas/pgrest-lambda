@@ -147,10 +147,16 @@ describe('preferenceApplied', () => {
     assert.equal(preferenceApplied(p, 'read'), null);
   });
 
-  it('echoes tx=commit but never tx=rollback', () => {
+  // Whichever ending the request asked for. The handler clears `prefer.tx`
+  // when `db-tx-end` does not allow the override, so anything still set here
+  // was applied — upstream does the same at parse time
+  // (`Preferences.fromHeaders configDbTxAllowOverride`).
+  it('echoes the transaction ending the request asked for', () => {
     assert.equal(preferenceApplied(parsePrefer('tx=commit'), 'read'),
       'tx=commit');
-    assert.equal(preferenceApplied(parsePrefer('tx=rollback'), 'read'), null);
+    assert.equal(preferenceApplied(parsePrefer('tx=rollback'), 'read'),
+      'tx=rollback');
+    assert.equal(preferenceApplied(parsePrefer(''), 'read'), null);
   });
 
   it('echoes max-affected only with handling=strict on update/delete/rpc',

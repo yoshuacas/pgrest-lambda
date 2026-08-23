@@ -2591,6 +2591,16 @@ async function main() {
     // db-pre-request function. This engine's guard is on by default; measuring
     // upstream's behaviour means running with the guard in upstream's state.
     bulkMutationGuard: 'off',
+    // Upstream's `baseCfg` sets `configDbTxRollbackAll = True` and
+    // `configDbTxAllowOverride = True` (SpecHelper.hs:175-176), i.e.
+    // `db-tx-end = "rollback-allow-override"`, for every spec it runs. Every
+    // mutating request in the suite is therefore undone before the next one
+    // starts, unless it asked for `Prefer: tx=commit` — which is how a spec can
+    // delete the same 15 rows twice and expect both to succeed
+    // (MaxAffectedSpec.hs:87-118). Running the engine with the ending upstream
+    // configured is what makes those assertions measurable at all; without it
+    // the second one is scored against rows the first one removed.
+    dbTxEnd: 'rollback-allow-override',
     // Upstream's `baseCfg` (test/spec/fixtures/*.conf) sets two `app-settings`
     // for every spec — `app.settings.app_host` and
     // `app.settings.external_api_secret` — and RpcSpec:915 reads the first back
