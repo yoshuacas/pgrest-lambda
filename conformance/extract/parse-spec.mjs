@@ -250,6 +250,22 @@ function rewriteSchemaNames(value) {
   return value;
 }
 
+/** How many `test.` the rename above would replace. */
+function countSchemaNames(value) {
+  if (typeof value === 'string') return (value.match(/\btest\./g) || []).length;
+  if (Array.isArray(value)) {
+    return value.reduce((n, v) => n + countSchemaNames(v), 0);
+  }
+  if (value && typeof value === 'object') {
+    return Object.values(value).reduce((n, v) => n + countSchemaNames(v), 0);
+  }
+  return 0;
+}
+
+// `public.` is two bytes longer than `test.`, so a body the rename touched is
+// two bytes longer per occurrence than the one upstream measured.
+const SCHEMA_RENAME_BYTES = 'public.'.length - 'test.'.length;
+
 // ---------------------------------------------------------------------------
 // Token helpers
 // ---------------------------------------------------------------------------
@@ -1445,9 +1461,27 @@ export function parseSpec(src, sourceRel) {
     if (req && !pickHeaderName(req.headers, 'accept-profile')
         && !pickHeaderName(req.headers, 'content-profile')
         && /\btest\./.test(JSON.stringify(expected.body ?? null))) {
+      const renamed = countSchemaNames(expected.body);
       expected.body = rewriteSchemaNames(expected.body);
       transforms.push('expected body: schema "test." rewritten to "public." '
         + '(the DSQL fixtures load upstream\'s test schema into public)');
+      // A `Content-Length` assertion counts the bytes of the body upstream
+      // sent. Rewriting the body changes that count, and by a known amount:
+      // `public.` is two bytes longer than `test.`, whatever the serializer's
+      // key order or spacing. Leaving the number alone made a byte-exact engine
+      // fail on the length of a schema name — measured: ErrorSpec:43, :81, :89,
+      // :98, QuerySpec:32, RpcSpec:212, :271, UpdateSpec:17, :359, all off by
+      // exactly two bytes per rewritten occurrence. This tightens the assertion
+      // rather than dropping it: the length still has to be exact.
+      const delta = renamed * SCHEMA_RENAME_BYTES;
+      for (const [k, v] of Object.entries(expected.headers)) {
+        if (k.toLowerCase() !== 'content-length') continue;
+        const bytes = parseInt(v, 10);
+        if (!Number.isFinite(bytes)) continue;
+        expected.headers[k] = String(bytes + delta);
+        transforms.push(`expected Content-Length: ${v} -> ${bytes + delta} `
+          + `(${renamed} schema rename(s), ${SCHEMA_RENAME_BYTES} byte(s) each)`);
+      }
     }
 
     cases.push({

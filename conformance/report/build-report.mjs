@@ -339,6 +339,32 @@ const AUDITED_DISCLOSURES = [
       + 'uses a Cedar <code>forbid</code>: upstream has no Cedar. It was found by reading the code '
       + 'the Cedar equivalence measurement runs through, not by either measurement. Take it as a '
       + 'limit on what a flat pass rate tells you about this wave, in both directions.'
+  },
+  {
+    title: 'Two corrections were made to the case files themselves',
+    body: 'The rule for this suite is that <code>conformance/cases/</code> is never edited to make a '
+      + 'test pass. Both changes here are to the <em>extractor</em>, and both are checkable against '
+      + 'the upstream source. First, <code>makeResolver</code> in '
+      + '<code>conformance/extract/parse-spec.mjs</code> picked a <code>let jwtPayload</code> binding '
+      + 'by absolute line distance, so an <code>it</code> block ending in a bare '
+      + '<code>shouldRespondWith 200</code> took the <em>next</em> block\'s binding. '
+      + '<code>AudienceJwtSecretSpec:32</code> ("succeeds when the audience claim matches") carried '
+      + '<code>aud: "notyouraudience"</code> where <code>AudienceJwtSecretSpec.hs:29</code> has '
+      + '<code>"youraudience"</code>, so a correct engine could not pass it. Haskell '
+      + '<code>let</code> is lexical; the resolver now prefers the nearest binding at or above the '
+      + 'use site. Re-extraction changed exactly one case file and all 19 of its cases now match the '
+      + 'upstream source one for one. Second, the fixtures load upstream\'s <code>test</code> schema '
+      + 'into <code>public</code> and the extractor already rewrites <code>test.</code> to '
+      + '<code>public.</code> inside an expected error body — but it left the '
+      + '<code>Content-Length</code> assertion at upstream\'s byte count, so a byte-exact engine '
+      + 'failed on the length of a schema name. The count is now adjusted by the two bytes each '
+      + 'rewrite adds, which is 9 cases: <code>ErrorSpec:43/81/89/98</code>, '
+      + '<code>QuerySpec:32</code>, <code>RpcSpec:212/271</code>, <code>UpdateSpec:17/359</code>. '
+      + 'That tightens the assertion rather than dropping it — the length still has to be exact — and '
+      + 'each affected case records the adjustment in its own <code>transforms</code> list. '
+      + '<code>QuerySpec:629</code> also asserts a <code>Content-Length</code> and is <em>not</em> '
+      + 'touched: it is 10 bytes short of upstream on a body the schema rename never saw, and it '
+      + 'stays a failure.'
   }
 ];
 

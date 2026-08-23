@@ -129,12 +129,13 @@
         "bodyFormat": "json",
         "headers": {
           "Proxy-Status": "PostgREST; error=PGRST205",
-          "Content-Length": "129"
+          "Content-Length": "131"
         }
       },
       "bodyMatch": "exact",
       "transforms": [
-        "expected body: schema \"test.\" rewritten to \"public.\" (the DSQL fixtures load upstream's test schema into public)"
+        "expected body: schema \"test.\" rewritten to \"public.\" (the DSQL fixtures load upstream's test schema into public)",
+        "expected Content-Length: 129 -> 131 (1 schema rename(s), 2 byte(s) each)"
       ],
       "skip": false,
       "skipReason": null,
@@ -273,12 +274,13 @@
         "bodyFormat": "json",
         "headers": {
           "Proxy-Status": "PostgREST; error=PGRST205",
-          "Content-Length": "160"
+          "Content-Length": "164"
         }
       },
       "bodyMatch": "exact",
       "transforms": [
-        "expected body: schema \"test.\" rewritten to \"public.\" (the DSQL fixtures load upstream's test schema into public)"
+        "expected body: schema \"test.\" rewritten to \"public.\" (the DSQL fixtures load upstream's test schema into public)",
+        "expected Content-Length: 160 -> 164 (2 schema rename(s), 2 byte(s) each)"
       ],
       "skip": false,
       "skipReason": null,
@@ -310,12 +312,13 @@
         "bodyFormat": "json",
         "headers": {
           "Proxy-Status": "PostgREST; error=PGRST205",
-          "Content-Length": "160"
+          "Content-Length": "164"
         }
       },
       "bodyMatch": "exact",
       "transforms": [
-        "expected body: schema \"test.\" rewritten to \"public.\" (the DSQL fixtures load upstream's test schema into public)"
+        "expected body: schema \"test.\" rewritten to \"public.\" (the DSQL fixtures load upstream's test schema into public)",
+        "expected Content-Length: 160 -> 164 (2 schema rename(s), 2 byte(s) each)"
       ],
       "skip": false,
       "skipReason": null,
@@ -347,12 +350,13 @@
         "bodyFormat": "json",
         "headers": {
           "Proxy-Status": "PostgREST; error=PGRST205",
-          "Content-Length": "119"
+          "Content-Length": "121"
         }
       },
       "bodyMatch": "exact",
       "transforms": [
-        "expected body: schema \"test.\" rewritten to \"public.\" (the DSQL fixtures load upstream's test schema into public)"
+        "expected body: schema \"test.\" rewritten to \"public.\" (the DSQL fixtures load upstream's test schema into public)",
+        "expected Content-Length: 119 -> 121 (1 schema rename(s), 2 byte(s) each)"
       ],
       "skip": false,
       "skipReason": null,

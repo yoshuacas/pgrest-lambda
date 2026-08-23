@@ -83,12 +83,13 @@
         },
         "bodyFormat": "json",
         "headers": {
-          "Content-Length": "120"
+          "Content-Length": "122"
         }
       },
       "bodyMatch": "exact",
       "transforms": [
-        "expected body: schema \"test.\" rewritten to \"public.\" (the DSQL fixtures load upstream's test schema into public)"
+        "expected body: schema \"test.\" rewritten to \"public.\" (the DSQL fixtures load upstream's test schema into public)",
+        "expected Content-Length: 120 -> 122 (1 schema rename(s), 2 byte(s) each)"
       ],
       "skip": false,
       "skipReason": null,
