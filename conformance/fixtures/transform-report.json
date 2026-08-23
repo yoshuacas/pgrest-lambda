@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-21T08:58:40.849Z",
+  "generatedAt": "2026-08-23T05:46:04.907Z",
   "upstream": "/home/ec2-user/postgrest-upstream/test/spec/fixtures",
   "stages": [
     {
@@ -41,8 +41,8 @@
     {
       "file": "07-data.sql",
       "source": "data.sql",
-      "kept": 572,
-      "removed": 50
+      "kept": 573,
+      "removed": 49
     }
   ],
   "relationships": 115,
@@ -64,7 +64,7 @@
     "view": 1,
     "procedure": 1,
     "cast": 15,
-    "data": 44
+    "data": 43
   },
   "dropped": [
     {
@@ -3105,14 +3105,6 @@
       ]
     },
     {
-      "object": "insert into contract select 'tournament_' || generate_series, tsrange(",
-      "kind": "data",
-      "reason": "public.contract lost columns and this INSERT ... SELECT cannot be rewritten mechanically",
-      "affectsCategories": [
-        "select"
-      ]
-    },
-    {
       "object": "truncate table ltree_sample cascade;",
       "kind": "data",
       "reason": "target public.ltree_sample was dropped",
@@ -4001,6 +3993,11 @@
       "object": "public.contract",
       "kind": "table",
       "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+    },
+    {
+      "object": "public.contract",
+      "kind": "data",
+      "change": "dropped 1 expression(s) from an INSERT ... SELECT list for removed columns"
     },
     {
       "object": "public.isn_sample",

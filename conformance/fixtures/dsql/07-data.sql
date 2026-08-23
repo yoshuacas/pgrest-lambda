@@ -629,6 +629,8 @@ FROM generate_series(1, 12);
 
 DELETE FROM contract;
 
+INSERT INTO contract ("tournament", "purchase_price", "id", "first_name", "last_name", "birth_date") SELECT 'tournament_' || generate_series, 10*generate_series, generate_series, 'first_name_' || generate_series, 'last_name_' || generate_series, '2018-10-11' from generate_series(1, 6);
+
 DELETE FROM isn_sample;
 
 INSERT INTO isn_sample ("name") VALUES ('Mathematics: From the Birth of Numbers');

@@ -1636,6 +1636,23 @@ function transformStatement(sql) {
 // INSERT rewriting (drop values for columns that no longer exist)
 // ---------------------------------------------------------------------------
 
+/**
+ * Offset of the first bare `word` at paren depth zero, or -1.
+ *
+ * Used to find where a SELECT list ends: a `from` inside `tsrange(now(), ...)`
+ * or a subquery is not the one that ends it.
+ */
+function topLevelWord(sql, word) {
+  let depth = 0;
+  for (const t of tokenize(sql)) {
+    if (t.kind === 'punct' && t.v === '(') depth++;
+    else if (t.kind === 'punct' && t.v === ')') depth--;
+    else if (depth === 0 && t.kind === 'word'
+      && t.v.toLowerCase() === word) return t.start;
+  }
+  return -1;
+}
+
 function handleInsert(sql) {
   const n = norm(sql);
   const clean = stripComments(sql).trim();
@@ -1689,12 +1706,65 @@ function handleInsert(sql) {
 
   const after = clean.slice(listClose + 1);
   const vm = /^\s*values\s*/i.exec(after);
-  if (!vm) {
+  const sm = vm ? null : /^\s*select\s+/i.exec(after);
+  if (!vm && !sm) {
     drop(n.slice(0, 70), 'data',
-      `${qname} lost columns and this INSERT ... SELECT cannot be rewritten mechanically`);
+      `${qname} lost columns and this INSERT is neither VALUES nor a flat SELECT`);
     return { action: 'drop' };
   }
-  let rest = after.slice(vm[0].length);
+  let rest = after.slice((vm || sm)[0].length);
+
+  // `INSERT ... SELECT <expr>, <expr> ... FROM ...`: the select list is
+  // positional exactly like a VALUES tuple, so the expression for a column
+  // that no longer exists comes out the same way. Only a flat list is handled
+  // — `select *` names no columns to line up, and a set operation or a CTE
+  // has more than one list. Upstream has one statement of this shape,
+  // `insert into contract select ... tsrange(...) ...`, and dropping it left
+  // the table empty and four embed assertions unpassable for want of rows.
+  if (sm) {
+    const head0 = listOpen === -1
+      ? `INSERT INTO ${nm.raw} `
+      : clean.slice(0, listOpen);
+    const body = rest.replace(/;\s*$/, '');
+    const cut = topLevelWord(body, 'from');
+    const listSql = cut === -1 ? body : body.slice(0, cut);
+    const tail = cut === -1 ? '' : body.slice(cut).trim();
+    const items = splitCommas(listSql).map((s) => s.trim()).filter(Boolean);
+    if (items.some((s) => s === '*' || s.endsWith('.*'))) {
+      drop(n.slice(0, 70), 'data',
+        `${qname} lost columns and this INSERT ... SELECT selects *`);
+      return { action: 'drop' };
+    }
+    let selCols = cols;
+    if (positional && items.length < cols.length) {
+      selCols = cols.slice(0, items.length);
+    }
+    if (items.length !== selCols.length) {
+      drop(n.slice(0, 70), 'data',
+        `${qname} lost columns; INSERT ... SELECT list arity mismatch`);
+      return { action: 'drop' };
+    }
+    const keep = [];
+    selCols.forEach((c, k) => {
+      if (!gone.has(identValue(tokenize(c)[0]).toLowerCase())) keep.push(k);
+    });
+    if (keep.length === selCols.length) return { action: 'keep', sql: withClear(clean) };
+    if (!keep.length) {
+      drop(n.slice(0, 70), 'data', `all inserted columns of ${qname} were dropped`);
+      return { action: 'drop' };
+    }
+    rewrite(qname, 'data',
+      `dropped ${selCols.length - keep.length} expression(s) from an `
+      + 'INSERT ... SELECT list for removed columns');
+    const newCols = keep.map((k) => selCols[k]).join(', ');
+    const newList = keep.map((k) => items[k]).join(', ');
+    return {
+      action: 'keep',
+      sql: withClear(
+        `${head0}(${newCols}) SELECT ${newList}${tail ? ` ${tail}` : ''};`),
+    };
+  }
+
   const tuples = [];
   let trailing = '';
   let i = 0;
