@@ -49,6 +49,7 @@ continuously.
 | `CREATE INDEX ... USING gin` | `USING not supported for CREATE INDEX` | No GIN; FTS and array queries have no index support. |
 | Partitioned tables | `PARTITION BY clause not supported` | |
 | Text search configs other than `simple` | `text search configuration "english" does not exist` | Only one row in `pg_ts_config`. FTS tests that name a language config cannot pass as written. |
+| Creating a text search config or dictionary | `unsupported statement: Define` for both `CREATE TEXT SEARCH DICTIONARY` and `CREATE TEXT SEARCH CONFIGURATION`; `unsupported statement: AlterTSConfiguration` for `ALTER TEXT SEARCH CONFIGURATION ... ALTER MAPPING`. `pg_ts_template` holds `simple`, `synonym`, `ispell`, `thesaurus` — no `snowball`. | The missing `english` config cannot be substituted, which is why it is a ceiling and not a fixture problem. Without English stop words, `plainto_tsquery('simple','The Fat Rats')` keeps `the` and matches nothing, so the `plfts`/`wfts`/`phfts` assertions come back empty rather than erroring; without a stemmer there is no `rats`→`rat`. |
 
 ## Implications
 
@@ -67,12 +68,15 @@ Five DSQL gaps are load-bearing for this project, in descending order:
    GUC-driven response headers and claim-passing mechanism have no equivalent.
    Because DSQL parses function bodies at `CREATE` time, the `SET` form also
    fails at `CREATE FUNCTION`, dropping 6 more fixture functions.
-5. **No `SAVEPOINT`, no per-request rollback.** Upstream's test harness sets
-   `configDbTxRollbackAll = True`, so every upstream test runs against pristine
-   fixtures. We cannot roll back per request, so the conformance runner reloads
-   fixtures once per spec file (`--reload-per-spec`) as the closest available
-   equivalent. Without it, mutation specs pollute later read specs and the
-   measured score is wrong in both directions.
+5. **No `SAVEPOINT`.** Nested rollback is out, but a single level is not:
+   explicit `BEGIN` / `ROLLBACK` works, which is what upstream's harness needs.
+   Upstream sets `configDbTxRollbackAll = True`, so every one of its tests runs
+   against pristine fixtures, and the engine now offers the same option
+   (`db-tx-end`, `PGREST_DB_TX_END`) — the runner sets
+   `rollback-allow-override`, upstream's own value, so a mutating case undoes
+   itself the way it does upstream. `--reload-per-spec` still reloads fixtures
+   once per spec file, for the state a request cannot undo: a `Prefer: tx=commit`
+   case, and the fixture drift the loader itself leaves behind.
 
 A type-level restriction worth stating separately, because it is easy to
 misread: arrays and range types work fine in **expressions and function
