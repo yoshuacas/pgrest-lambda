@@ -100,6 +100,11 @@ const FK_SQL = `
       ON a.attrelid = c.oid AND a.attnum = k.col
     JOIN pg_catalog.pg_attribute fa
       ON fa.attrelid = fc.oid AND fa.attnum = k.fcol
+   -- No convalidated filter, deliberately: on DSQL a key added to an existing
+   -- table has to be ALTER TABLE ... ADD CONSTRAINT ... NOT VALID (plain ADD
+   -- CONSTRAINT returns 0A000), which leaves convalidated = false while still
+   -- enforcing every later write. Upstream PostgREST's relationship query
+   -- filters on contype alone too, so an unvalidated key embeds there as well.
    WHERE con.contype = 'f'
      AND n.nspname NOT IN ('pg_catalog', 'information_schema')
      AND fn.nspname NOT IN ('pg_catalog', 'information_schema')
@@ -415,11 +420,12 @@ function inferConventionRelationships(tables) {
 
 // --- Declared relationships (external manifest) ---
 //
-// Aurora DSQL rejects FOREIGN KEY, so pg_constraint has no contype='f'
-// rows and embedding has nothing to derive from. A manifest supplies the
-// same facts out of band. On a database that does have foreign keys the
-// catalog is still read first and the manifest only adds what the catalog
-// did not report, so the PostgreSQL path is unchanged.
+// A manifest names foreign keys out of band, for a database whose catalog
+// cannot report them. Aurora DSQL is no longer one of those: it took foreign
+// keys on 2026-08-27 and populates pg_constraint contype='f' (see
+// src/rest/db/dsql.mjs). The catalog is always read first and the manifest only
+// adds what the catalog did not report, so it stays useful for relationships no
+// constraint can express and for engines that still reject FOREIGN KEY.
 
 function relKey(rel) {
   return [

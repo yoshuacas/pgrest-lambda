@@ -10,18 +10,30 @@
 // one DDL statement per transaction ("multiple ddl statements not supported in
 // a transaction"). A failing statement is recorded and the load continues.
 //
-// Writes conformance/fixtures/load-report.json (CONTRACTS.md section 2) and
-// conformance/fixtures/load-failures.json (every failure, for iteration).
+// Writes conformance/fixtures/load-report.json (CONTRACTS.md section 2),
+// conformance/fixtures/load-failures.json (every failure, for iteration) and
+// conformance/fixtures/relationships-residual.json (the foreign keys the
+// catalog would not take).
 
 import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 
-import { splitStatements, norm } from './sqlsplit.mjs';
+import {
+  splitStatements, norm, tokenize, parseQualifiedName, identValue,
+} from './sqlsplit.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SQL_DIR = join(HERE, 'dsql');
+
+// 08-foreign-keys.sql re-adds the keys the transformer stripped from the CREATE
+// TABLE statements, one `ALTER TABLE ... ADD CONSTRAINT ... NOT VALID` each —
+// the only form DSQL accepts on a table that already exists
+// (docs/plans/dsql-foreign-keys.md). readdirSync().sort() below puts it last, so
+// it runs after 07-data.sql, and NOT VALID does not check the rows that are
+// already there.
+const FK_FILE = '08-foreign-keys.sql';
 
 const ENDPOINT = process.env.DSQL_ENDPOINT
   || '6juamhyj5nkoeatkzc3ieaerc4.dsql.us-east-1.on.aws';
@@ -207,6 +219,75 @@ function firstLine(sql) {
 /** Errors worth a second attempt once every object exists. */
 const RETRYABLE = /does not exist|has no field|could not determine|is not unique/i;
 
+/**
+ * The table and constraint name an `ALTER TABLE ... ADD CONSTRAINT` statement
+ * declares, so a failed statement can be matched back to the relationship it
+ * came from. Constraint names repeat across tables upstream — `user` and
+ * `parent` each appear on two — so the name alone is not a key.
+ *
+ * @returns {{schema:string|null, table:string, constraint:string}|null}
+ */
+function addedConstraint(sql) {
+  const toks = tokenize(sql || '').filter((t) => t.kind !== 'comment');
+  const word = (i) => (toks[i]?.v || '').toLowerCase();
+  if (word(0) !== 'alter' || word(1) !== 'table') return null;
+  let i = 2;
+  if (word(i) === 'only') i += 1;
+  if (word(i) === 'if' && word(i + 1) === 'exists') i += 2;
+  const q = parseQualifiedName(toks, i);
+  if (!q.name) return null;
+  i = q.next;
+  if (word(i) !== 'add' || word(i + 1) !== 'constraint') return null;
+  const constraint = identValue(toks[i + 2]);
+  if (!constraint) return null;
+  return { schema: q.schema, table: q.name, constraint };
+}
+
+/**
+ * The relationships whose `ALTER TABLE` failed, in the shape relationships.json
+ * uses so the file can be handed to PGREST_RELATIONSHIPS_PATH unchanged. The
+ * residual file exists so a key the catalog could not take is still declared to
+ * the engine — and only that key.
+ *
+ * `declarable` says whether declaring it would achieve anything: a key whose own
+ * table or whose referenced table the transformer had to drop describes a
+ * relationship between relations the cluster does not have, so the manifest
+ * cannot recover it either. Measured: the single residual key,
+ * public.car_racers -> public.car_models, is of exactly that kind — car_models
+ * is partitioned, which DSQL rejects, and car_racers went with it.
+ *
+ * @param {object[]} fkFailures failures from 08-foreign-keys.sql, still holding
+ *   their `text`.
+ * @param {object[]} dropped the transformer's drop list.
+ */
+function residualRelationships(fkFailures, dropped) {
+  const path = join(HERE, 'relationships.json');
+  const all = existsSync(path)
+    ? JSON.parse(readFileSync(path, 'utf8')).relationships || []
+    : [];
+  const goneTables = new Set(dropped
+    .filter((d) => d.kind === 'table' || d.kind === 'partitioned-table')
+    .map((d) => d.object));
+  const out = [];
+  for (const f of fkFailures) {
+    const ref = addedConstraint(f.text);
+    if (!ref) continue;
+    const rel = all.find((r) => ref.constraint === r.constraint
+      && ref.table === r.table
+      && (ref.schema === null || ref.schema === r.schema));
+    if (!rel) continue;
+    const missing = [`${rel.schema}.${rel.table}`,
+      `${rel.foreignSchema}.${rel.foreignTable}`].filter((t) => goneTables.has(t));
+    out.push({
+      ...rel,
+      error: f.error,
+      declarable: missing.length === 0,
+      ...(missing.length ? { droppedTables: missing } : {}),
+    });
+  }
+  return out;
+}
+
 function quoteIdent(name) { return `"${name.replace(/"/g, '""')}"`; }
 
 /** The statement's own search_path with every fixture schema appended. */
@@ -235,10 +316,20 @@ async function main() {
   }
   const resetFailures = failures.length;
 
+  // The foreign keys are counted on their own: a rejected key is not a missing
+  // object, it is a relationship the catalog does not hold, and the run has to
+  // declare that one by hand.
+  let fkTotal = 0;
+  let triedForeignKeys = false;
+
   for (const file of sqlFiles()) {
     const src = readFileSync(join(SQL_DIR, file), 'utf8');
     // norm() strips comments: a comment-only chunk is not a statement.
     const statements = splitStatements(src).filter((s) => s.kind === 'sql' && norm(s.text));
+    if (file === FK_FILE) {
+      triedForeignKeys = true;
+      fkTotal += statements.length;
+    }
     let ok = 0;
     for (const st of statements) {
       total++;
@@ -294,6 +385,15 @@ async function main() {
       + `${fixed}/${retryable.length} recovered\n`);
     if (!fixed && pass === 1) continue; // still try the widened pass
   }
+  // Read the residual keys off the failures while they still carry their
+  // statement text: `f.statement` has been through norm(), which lowercases, and
+  // a quoted mixed-case identifier does not survive that.
+  const fkFailures = failures.filter((f) => f.file === FK_FILE);
+  const transformPath = join(HERE, 'transform-report.json');
+  const dropped = existsSync(transformPath)
+    ? JSON.parse(readFileSync(transformPath, 'utf8')).dropped
+    : [];
+  const residual = residualRelationships(fkFailures, dropped);
   for (const f of failures) { delete f.text; delete f.searchPath; }
 
   let objects = { tables: 0, views: 0, functions: 0, domains: 0 };
@@ -304,11 +404,6 @@ async function main() {
   }
   await session.end();
 
-  const transformPath = join(HERE, 'transform-report.json');
-  const dropped = existsSync(transformPath)
-    ? JSON.parse(readFileSync(transformPath, 'utf8')).dropped
-    : [];
-
   // statementsTotal/Applied/Failed count the generated fixture files only; the
   // dynamic public-schema cleanup is reported in load-failures.json.
   const fileFailures = failures.filter((f) => f.file !== '(reset)');
@@ -316,12 +411,42 @@ async function main() {
     statementsTotal: total,
     statementsApplied: total - fileFailures.length,
     statementsFailed: fileFailures.length,
+    // 08-foreign-keys.sql on its own. A failed key is a relationship the engine
+    // cannot read from pg_constraint, so it has to be declared by hand:
+    // relationships-residual.json holds those and nothing else.
+    foreignKeysApplied: fkTotal - fkFailures.length,
+    foreignKeysFailed: fkFailures.length,
     objects,
     dropped,
   };
   if (!noReport) {
     writeFileSync(join(HERE, 'load-report.json'),
       `${JSON.stringify(report, null, 2)}\n`);
+  }
+
+  // Written even when it is empty — an empty array is a result, a missing file
+  // is ambiguous. A load that never applied 08-foreign-keys.sql has measured
+  // nothing about the keys and leaves the file alone: the conformance runner
+  // reloads 07-data.sql with `--only` between specs and must not blank a
+  // manifest the run is reading.
+  if (triedForeignKeys) {
+    writeFileSync(join(HERE, 'relationships-residual.json'),
+      `${JSON.stringify({ relationships: residual }, null, 2)}\n`);
+    if (residual.length) {
+      const declarable = residual.filter((r) => r.declarable).length;
+      process.stderr.write(`${FK_FILE}: ${residual.length} key(s) rejected `
+        + `(${declarable} worth declaring), written to `
+        + 'relationships-residual.json: '
+        + `${residual.map((r) => `${r.schema}.${r.table}.${r.constraint}`
+          + (r.declarable ? '' : ' [table dropped]')).join(', ')}\n`);
+    }
+    // A rejected key with no entry in relationships.json cannot be declared at
+    // all; say so rather than let the shorter list read as fewer failures.
+    if (fkFailures.length !== residual.length) {
+      process.stderr.write(`${FK_FILE}: ${fkFailures.length} statement(s) `
+        + `failed but ${residual.length} matched a relationship in `
+        + 'relationships.json; see load-failures.json\n');
+    }
   }
 
   const byError = {};
@@ -350,6 +475,8 @@ async function main() {
     statementsTotal: total,
     statementsApplied: total - fileFailures.length,
     statementsFailed: fileFailures.length,
+    foreignKeysApplied: fkTotal - fkFailures.length,
+    foreignKeysFailed: fkFailures.length,
     objects,
     elapsedMs: Date.now() - t0,
     topErrors: Object.entries(byError).sort((a, b) => b[1] - a[1]).slice(0, 12),

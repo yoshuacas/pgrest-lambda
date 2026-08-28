@@ -43,7 +43,7 @@ your `.gitignore` too.
 | `DSQL_ENDPOINT` | Enables Aurora DSQL mode with IAM auth. |
 | `PG_PASSWORD_SSM_PARAM` | Name of an SSM SecureString parameter holding the Postgres password. Resolved with decryption at connect time instead of reading `PG_PASSWORD`. Lets a managed (e.g. RDS) password stay encrypted at rest without a plaintext env var. |
 | `POLICIES_PATH` | Cedar policy source. Accepts a filesystem path (`./policies`), `file:///absolute/path`, or `s3://<bucket>/<prefix>/`. See below. |
-| `PGREST_RELATIONSHIPS_PATH` | Path to a declared-relationship manifest. Adds foreign keys the catalog cannot report, so resource embedding works on databases that reject `FOREIGN KEY`. See below. |
+| `PGREST_RELATIONSHIPS_PATH` | Path to a declared-relationship manifest. Adds relationships `pg_constraint` cannot report — a view's column provenance, a computed relationship. Not needed for foreign keys on either PostgreSQL or Aurora DSQL. See below. |
 | `PGREST_DEFAULT_TS_CONFIG` | Text search configuration for `fts`/`plfts`/`phfts` filters that name none. See below. |
 | `PGREST_DETERMINISTIC_ORDER` | `false` drops the primary-key tiebreak the engine appends to every `ORDER BY`. See below. |
 | `PGREST_DB_SCHEMAS`, `PGREST_DB_EXTRA_SEARCH_PATH`, `PGREST_DB_MAX_ROWS`, `PGREST_DB_PRE_REQUEST`, `PGREST_DB_AGGREGATES_ENABLED`, `PGREST_DB_PLAN_ENABLED`, `PGREST_DB_BULK_MUTATION_GUARD`, `PGREST_DB_TX_END`, `PGREST_SERVER_CORS_ALLOWED_ORIGINS`, `PGREST_SERVER_TIMING_ENABLED`, `PGREST_SERVER_TRACE_HEADER`, `PGREST_OPENAPI_MODE`, `PGREST_CLIENT_ERROR_VERBOSITY`, `PGREST_DB_ROOT_SPEC`, `PGREST_DB_PRE_CONFIG`, `PGREST_DB_PREPARED_STATEMENTS`, `PGREST_URL_USE_LEGACY_TARGET_NAMES`, `PGREST_APP_SETTINGS`, `PGREST_JWT_*` | PostgREST engine options. See below. |
@@ -192,12 +192,26 @@ of the two guarantees above.
 
 ## Declared relationships
 
-Resource embedding (`/projects?select=*,clients(*)`) is derived from
-foreign keys read out of `pg_constraint`. Aurora DSQL parses
-`FOREIGN KEY` but stores nothing, so `pg_constraint` returns no rows for
-`contype = 'f'` and every embed would fail with `PGRST200`.
+Resource embedding (`/projects?select=*,clients(*)`) is derived from foreign keys
+read out of `pg_constraint`. That works on Aurora DSQL as well as on standard
+PostgreSQL: DSQL added foreign key constraints on
+[2026-08-27](https://aws.amazon.com/about-aws/whats-new/2026/08/amazon-aurora-dsql-foreign-key-constraints/),
+and the engine reads them from the catalog on both. **You do not need this
+variable to get embedding on DSQL.**
 
-`PGREST_RELATIONSHIPS_PATH` points at a JSON file listing those keys:
+One DSQL detail is worth knowing when you write the schema: a key can be added
+to a table that already exists only as
+`ALTER TABLE ... ADD CONSTRAINT ... FOREIGN KEY ... NOT VALID` — plain
+`ADD CONSTRAINT` and `VALIDATE CONSTRAINT` both answer `0A000`. Such a key sits
+in `pg_constraint` with `convalidated = false` and is enforced for every write
+after it is added; the engine does not filter on `convalidated`, so embedding
+sees it. Inline `REFERENCES` in `CREATE TABLE` is accepted normally, but only if
+the referenced table already exists (`42P01` otherwise).
+
+What is left for `PGREST_RELATIONSHIPS_PATH` is a relationship that is not a
+foreign key at all — a view's column provenance, a computed relationship, or a
+key a particular database refuses to store. It points at a JSON file listing
+those keys:
 
 ```json
 {

@@ -156,9 +156,28 @@ Rules:
 `conformance/fixtures/dsql/NN-<name>.sql` — DDL/DML that loads cleanly into
 DSQL, applied in filename order.
 
-`conformance/fixtures/relationships.json` — the foreign keys DSQL cannot
-store, recovered from the upstream fixtures so the engine can resolve
-embedding without `pg_constraint`:
+`conformance/fixtures/dsql/08-foreign-keys.sql` — one
+`ALTER TABLE ... ADD CONSTRAINT ... FOREIGN KEY ... NOT VALID` per key. It sorts
+last on purpose: DSQL rejects `REFERENCES` to a table that does not exist yet
+(`42P01`) and rejects `ADD CONSTRAINT` without `NOT VALID` (`0A000`), so the keys
+have to be re-declared once the tables and their data are in place. `NOT VALID`
+does not check the rows already there and enforces every write after it.
+
+`conformance/fixtures/relationships.json` — the same graph as a manifest, for an
+engine that cannot read `pg_constraint`. It is no longer how the measurement
+resolves embedding: since 2026-08-27 DSQL stores the keys and the engine reads
+them from the catalog, which is what it does in production. The file stays
+because the transformer needs the graph to order the deletes in `07-data.sql`,
+and because `PGREST_RELATIONSHIPS_PATH` is still the answer for a relationship
+that was never a constraint.
+
+`conformance/fixtures/relationships-residual.json` — the keys whose `ALTER`
+the cluster rejected, in the same shape, written on every full load even when
+empty. Each entry carries the `error` and a `declarable` flag: `false` means the
+key's own table or its referenced table was dropped at load, so declaring it
+would name relations the cluster does not have. Currently 1 entry,
+`public.car_racers` → `public.car_models`, `declarable: false` — `car_models` is
+partitioned, which DSQL rejects, and `car_racers` went with it.
 
 ```json
 {
@@ -183,6 +202,8 @@ embedding without `pg_constraint`:
   "statementsTotal": 0,
   "statementsApplied": 0,
   "statementsFailed": 0,
+  "foreignKeysApplied": 0,
+  "foreignKeysFailed": 0,
   "objects": { "tables": 0, "views": 0, "functions": 0, "domains": 0 },
   "dropped": [
     { "object": "public.get_items", "kind": "function",

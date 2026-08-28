@@ -1,11 +1,14 @@
 // Standard-Postgres embedding, resolved from real foreign keys.
 //
-// The conformance target (Aurora DSQL) cannot store foreign keys, so every
-// conformance measurement feeds the engine a declared-relationship manifest
-// (PGREST_RELATIONSHIPS_PATH). That leaves the catalog path — pg_constraint
-// with contype='f' — measured by nothing. This file measures it: no manifest
-// is configured anywhere below, so every embed here can only work if
-// FK_SQL introspection and relationship resolution are intact.
+// This file measures the catalog path — pg_constraint with contype='f' — against
+// a real PostgreSQL: no manifest is configured anywhere below, so every embed
+// here can only work if FK_SQL introspection and relationship resolution are
+// intact. It was written when the conformance target (Aurora DSQL) could not
+// store a foreign key and every conformance measurement therefore fed the engine
+// a declared-relationship manifest, leaving this path measured by nothing. DSQL
+// added the constraints on 2026-08-27 and the conformance run reads them from
+// the catalog too, so the two measurements now cover the same path — which is
+// the point, and no reason to drop this one.
 import { describe, it, before, after, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 

@@ -110,9 +110,12 @@ const USAGE = `conformance runner
                             instead of re-applying all of 07-data.sql. Same
                             intent as --reset-mutations (upstream rolls back
                             every request) at a fraction of the cost: 2-4
-                            statements instead of 562. Falls back to a full
-                            reload when the touched set cannot be derived.
-                            Needs --concurrency 1.
+                            statements instead of 562. The set is expanded
+                            through the foreign-key graph read from
+                            pg_constraint, because a table cannot be cleared
+                            while another still references it. Falls back to a
+                            full reload when the touched set or its order cannot
+                            be derived. Needs --concurrency 1.
   --no-per-case-config      do not boot per-case engine configurations; leave
                             every 'requires non-default PostgREST config' case
                             reported as needs-config. On by default: a case
@@ -1399,6 +1402,57 @@ const FN_SRC_SQL = `
     JOIN pg_namespace n ON n.oid = p.pronamespace
    WHERE n.nspname NOT IN ('pg_catalog','information_schema')`;
 
+// The foreign-key graph, for the targeted restore. Aurora DSQL enforces foreign
+// keys as of 2026-08-27 (docs/plans/dsql-foreign-keys.md), so `DELETE FROM t`
+// for one table now fails 23503 while another table still holds rows that
+// reference it, and a refill has to insert a parent before its children.
+// `convalidated` is deliberately not filtered: on DSQL a key added to a table
+// that already exists can only be NOT VALID, and it is enforced for every write
+// after that all the same.
+// $1 is the schema list, so nothing here is hardcoded to public.
+const FK_GRAPH_SQL = `
+  SELECT cs.nspname AS child_schema, c.relname AS child_table,
+         ps.nspname AS parent_schema, p.relname AS parent_table
+    FROM pg_constraint k
+    JOIN pg_class c ON c.oid = k.conrelid
+    JOIN pg_namespace cs ON cs.oid = c.relnamespace
+    JOIN pg_class p ON p.oid = k.confrelid
+    JOIN pg_namespace ps ON ps.oid = p.relnamespace
+   WHERE k.contype = 'f'
+     AND cs.nspname = ANY($1)
+     AND ps.nspname = ANY($1)`;
+
+/**
+ * Read the foreign-key graph over `schemas`, keyed `schema.table`.
+ *
+ * @returns {Promise<{parents: Map<string, Set<string>>,
+ *   children: Map<string, Set<string>>, edges: number, selfEdges: number}>}
+ *   `parents` maps a child to the tables it references, `children` the reverse.
+ *   A self-reference is counted and then dropped: emptying or refilling a whole
+ *   table satisfies a key it holds on itself, and keeping it would make every
+ *   such table look like a cycle.
+ */
+export async function readForeignKeyGraph(pool, schemas) {
+  const parents = new Map();
+  const children = new Map();
+  let edges = 0;
+  let selfEdges = 0;
+  const res = await queryRetrying(pool, FK_GRAPH_SQL, [schemas]);
+  for (const row of res.rows) {
+    const child = `${row.child_schema}.${row.child_table}`;
+    const parent = `${row.parent_schema}.${row.parent_table}`;
+    if (child === parent) { selfEdges += 1; continue; }
+    const p = parents.get(child) || new Set();
+    if (!p.has(parent)) edges += 1;
+    p.add(parent);
+    parents.set(child, p);
+    const c = children.get(parent) || new Set();
+    c.add(child);
+    children.set(parent, c);
+  }
+  return { parents, children, edges, selfEdges };
+}
+
 // `insert into x`, `update x.y`, `delete from x` — quoted or bare, one or two
 // parts. Matches the identifier characters sqlsplit's WORD_RE accepts, so a
 // unicode table name is found too.
@@ -1859,16 +1913,26 @@ export function engineConfigFor(testCase) {
 //
 // --reset-mutations restores by re-applying all 562 statements of 07-data.sql
 // (~8 s), which is too slow to run after every mutating case on the full suite.
-// A mutating case writes to the tables it addresses and nothing else — there
-// are no foreign keys on DSQL and no triggers survived the fixture load — so
-// restoring just those tables is equivalent and costs 2-4 statements.
+// A mutating case writes to the tables it addresses and nothing else — no
+// trigger survived the fixture load — so restoring those tables and the tables
+// whose foreign keys point at them is equivalent, and costs a few statements
+// instead of 562. DSQL enforces foreign keys as of 2026-08-27
+// (docs/plans/dsql-foreign-keys.md), so the touched set has to be expanded and
+// ordered through the graph: see expandRestoreSet().
 //
-// 07-data.sql is DELETE-then-INSERT per table with `SET search_path` blocks
-// deciding what an unqualified name means, so the groups have to be parsed with
-// the same search_path bookkeeping the loader applies.
+// 07-data.sql empties every table it writes to in one leading block and then
+// INSERTs per table, with `SET search_path` blocks deciding what an unqualified
+// name means, so the groups have to be parsed with the same search_path
+// bookkeeping the loader applies.
 
 /**
  * Group 07-data.sql by the table each statement restores.
+ *
+ * A group's statements are not guaranteed to start with its DELETE: the
+ * transformer emits one `UPDATE ... SET <fk col> = NULL` ahead of the delete
+ * block to break the single cycle in the key graph, and it lands in that
+ * table's group. restoreTables() splits a group by statement kind rather than
+ * by position, so this only matters to a reader.
  *
  * @returns {{groups: Map<string, {schema: string, table: string,
  *   statements: string[]}>, order: string[]}} groups keyed `schema.table`,
@@ -2036,30 +2100,75 @@ function fixtureEmptyTables() {
  * tables that actually hold rows are deleted from — normally none, so the sweep
  * costs one query per reload.
  *
- * @returns {Promise<{checked: number, cleared: string[], rows: number}>}
+ * With foreign keys enforced the deletes have to run children first, so `graph`
+ * (readForeignKeyGraph()'s result) orders them. A delete that fails anyway —
+ * because a table outside this set references one inside it and still holds rows
+ * — is retried once after the others and then reported rather than thrown: a
+ * sweep is a reset, and killing an hour-long measurement over one leftover row
+ * loses more information than it protects.
+ *
+ * @returns {Promise<{checked: number, cleared: string[], rows: number,
+ *   failed: {table: string, error: string}[]}>}
  */
-export async function clearUnpopulatedTables(pool, catalog, keys) {
+export async function clearUnpopulatedTables(pool, catalog, keys, graph = null) {
   const wanted = (keys || fixtureEmptyTables())
     .filter(k => catalog?.tables?.has(k));
-  const out = { checked: wanted.length, cleared: [], rows: 0 };
+  const out = { checked: wanted.length, cleared: [], rows: 0, failed: [] };
   if (!wanted.length) return out;
   // Identifiers cannot be bound. These come from the fixture SQL and are
   // checked against pg_catalog above, never from a request, and are quoted.
-  const qualified = wanted.map((key) => {
+  const qualify = (key) => {
     const dot = key.indexOf('.');
     return `${quoteIdent(key.slice(0, dot))}.${quoteIdent(key.slice(dot + 1))}`;
-  });
-  const probe = qualified
-    .map((t, i) => `(select count(*) from ${t}) as c${i}`).join(', ');
+  };
+  const probe = wanted
+    .map((t, i) => `(select count(*) from ${qualify(t)}) as c${i}`).join(', ');
   const counts = await queryRetrying(pool, `select ${probe}`);
   const row = counts.rows[0] || {};
-  for (let i = 0; i < wanted.length; i += 1) {
+  const rows = new Map();
+  wanted.forEach((key, i) => {
     const n = Number(row[`c${i}`] || 0);
-    if (!n) continue;
-    // eslint-disable-next-line no-await-in-loop
-    await queryRetrying(pool, `DELETE FROM ${qualified[i]}`);
-    out.cleared.push(wanted[i]);
-    out.rows += n;
+    if (n) rows.set(key, n);
+  });
+  if (!rows.size) return out;
+
+  // Children before parents, over the keys that actually hold rows. Ordering the
+  // whole set would be wasted work: the sweep normally finds nothing.
+  const dirty = [...rows.keys()];
+  const plan = graph
+    ? expandRestoreSet(new Set(dirty), graph, null)
+    : null;
+  // expandRestoreSet clears children first, which is the order wanted here. It
+  // pulls in referencing tables that are not dirty; those are skipped below. A
+  // cycle among them makes it null, and the unordered pass plus the retry is
+  // then the best available.
+  const order = plan
+    ? plan.clear.filter((k) => rows.has(k))
+    : dirty;
+
+  const retry = [];
+  for (const key of order) {
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      await queryRetrying(pool, `DELETE FROM ${qualify(key)}`);
+      out.cleared.push(key);
+      out.rows += rows.get(key);
+    } catch (err) {
+      retry.push({ key, error: err });
+    }
+  }
+  for (const { key, error } of retry) {
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      await queryRetrying(pool, `DELETE FROM ${qualify(key)}`);
+      out.cleared.push(key);
+      out.rows += rows.get(key);
+    } catch {
+      out.failed.push({
+        table: key,
+        error: String(error.message || error).replace(/\s+/g, ' ').slice(0, 200),
+      });
+    }
   }
   return out;
 }
@@ -2118,6 +2227,52 @@ export function touchedTables(testCase, ctx, groups) {
   return keys;
 }
 
+/**
+ * Expand a touched set through the foreign-key graph and put it in an order the
+ * graph allows: every table that references a touched one is restored with it,
+ * cleared before it and refilled after it.
+ *
+ * @param {Set<string>} keys the tables the case wrote to.
+ * @param {object} graph readForeignKeyGraph()'s result.
+ * @param {Set<string>} tables every table the live catalog has.
+ * @returns {{clear: string[], refill: string[]}|null} null when no order can be
+ *   derived — a cycle (upstream's fixtures have one: public.departments and
+ *   public.agents reference each other), or a table the catalog does not cover,
+ *   whose dependents are therefore unknown. The caller then reloads everything
+ *   instead of guessing.
+ */
+export function expandRestoreSet(keys, graph, tables) {
+  if (!keys || keys.size === 0) return { clear: [], refill: [] };
+  if (!graph) return null;
+  const set = new Set();
+  const stack = [...keys];
+  while (stack.length) {
+    const key = stack.pop();
+    if (set.has(key)) continue;
+    if (tables && !tables.has(key)) return null;
+    set.add(key);
+    for (const child of graph.children.get(key) || []) stack.push(child);
+  }
+  // Kahn's algorithm over `child references parent`, parents first. The node
+  // list is sorted so two runs issue the same statements in the same order.
+  const nodes = [...set].sort();
+  const pending = new Map(nodes.map((n) => [n,
+    new Set([...(graph.parents.get(n) || [])].filter((p) => set.has(p)))]));
+  const refill = [];
+  while (pending.size) {
+    const ready = nodes.filter((n) => pending.has(n) && !pending.get(n).size);
+    if (!ready.length) return null; // a cycle
+    for (const n of ready) {
+      refill.push(n);
+      pending.delete(n);
+    }
+    for (const deps of pending.values()) {
+      for (const n of ready) deps.delete(n);
+    }
+  }
+  return { clear: [...refill].reverse(), refill };
+}
+
 // A restore statement races whatever the engine's pool is still committing, and
 // Aurora DSQL answers a write conflict with OC000 / 40001 rather than blocking
 // (DSQL-CAPABILITIES.md). AWS documents both as retryable; without a retry a
@@ -2147,9 +2302,24 @@ async function queryRetrying(target, sql, values) {
  * Restore `keys` to the state the fixture load left them in: re-apply the
  * 07-data.sql statements for a table the file populates, in file order, and
  * empty a table it does not.
+ *
+ * `plan` is expandRestoreSet()'s output. With foreign keys enforced a table has
+ * to be emptied before the tables it references and refilled after them, so a
+ * fixture block is split: its DELETE runs in the clearing pass and its INSERTs
+ * in the filling pass. Without a plan every statement runs in file order, which
+ * is what a database with no enforced keys allows.
  */
-export async function restoreTables(pool, keys, groups) {
+export async function restoreTables(pool, keys, groups, plan = null) {
   if (!keys || keys.size === 0) return 0;
+  const isDelete = (sql) => /^delete\s+from\b/.test(norm(sql));
+  // Clearing: a table the file populates is cleared by its own DELETE, a table
+  // it does not by emptying it. Filling: only the tables the file populates.
+  const clearKeys = plan
+    ? plan.clear
+    : [...keys].filter((k) => !groups.groups.has(k));
+  const refillKeys = plan
+    ? plan.refill.filter((k) => groups.groups.has(k))
+    : groups.order.filter((k) => keys.has(k));
   const client = typeof pool.connect === 'function'
     ? await pool.connect() : null;
   const target = client || pool;
@@ -2169,9 +2339,26 @@ export async function restoreTables(pool, keys, groups) {
     await queryRetrying(target, 'select set_config($1, $2, false)',
       ['search_path', value]);
   };
+  // Run a fixture block's statements under the same search_path the file's block
+  // ran with: they are unqualified. set_config is a plain statement, so it works
+  // on DSQL, which rejects `SET search_path` outside a session.
+  const runGroup = async (key, statements) => {
+    if (!statements.length) return;
+    await pinPath(`${quoteIdent(groups.groups.get(key).schema)}, pg_catalog`);
+    for (const sql of statements) {
+      // eslint-disable-next-line no-await-in-loop
+      await queryRetrying(target, sql);
+      applied += 1;
+    }
+  };
   try {
-    for (const key of keys) {
-      if (groups.groups.has(key)) continue;
+    for (const key of clearKeys) {
+      const group = groups.groups.get(key);
+      if (group) {
+        // eslint-disable-next-line no-await-in-loop
+        await runGroup(key, group.statements.filter(isDelete));
+        continue;
+      }
       const dot = key.indexOf('.');
       // Identifiers cannot be bound; they come from pg_catalog, not from a
       // request, and are quoted.
@@ -2181,19 +2368,11 @@ export async function restoreTables(pool, keys, groups) {
         + `.${quoteIdent(key.slice(dot + 1))}`);
       applied += 1;
     }
-    for (const key of groups.order) {
-      if (!keys.has(key)) continue;
-      const group = groups.groups.get(key);
-      // Restore under the same search_path the file's block ran with: the
-      // statements are unqualified. set_config is a plain statement, so it
-      // works on DSQL, which rejects `SET search_path` outside a session.
+    for (const key of refillKeys) {
+      const statements = groups.groups.get(key).statements;
       // eslint-disable-next-line no-await-in-loop
-      await pinPath(`${quoteIdent(group.schema)}, pg_catalog`);
-      for (const sql of group.statements) {
-        // eslint-disable-next-line no-await-in-loop
-        await queryRetrying(target, sql);
-        applied += 1;
-      }
+      await runGroup(key, plan ? statements.filter((s) => !isDelete(s))
+        : statements);
     }
   } finally {
     if (entryPath !== null) {
@@ -2557,9 +2736,10 @@ async function main() {
   // rejects CREATE CAST, so the 15 casts upstream's schema.sql defines are
   // dropped at load time (load-report.json, kind `cast`) and pg_cast reports
   // none, while every cast function loads fine. representations.json declares
-  // them the way relationships.json declares the foreign keys DSQL cannot store;
-  // without it every representation path in the engine is a no-op. Same rule as
-  // the manifest: an explicit env var still wins.
+  // them out of band, the way relationships.json declared the foreign keys
+  // before DSQL took them (2026-08-27) and 08-foreign-keys.sql started putting
+  // them in pg_constraint; without it every representation path in the engine is
+  // a no-op. Same rule as that manifest: an explicit env var still wins.
   if (opts.target === 'dsql' && !process.env.PGREST_REPRESENTATIONS_PATH) {
     process.env.PGREST_REPRESENTATIONS_PATH =
       join(REPO, 'conformance', 'fixtures', 'representations.json');
@@ -2642,10 +2822,18 @@ async function main() {
   try {
     const pool = await pgrest._db.getPool();
     const catalog = await readCatalog(pool);
+    // The schemas the catalog read above found tables in — every schema the
+    // fixtures expose, and no hardcoded 'public'. A key in any of them can block
+    // a DELETE the targeted restore issues.
+    const fkSchemas = [...new Set([...catalog.tables]
+      .map((key) => key.slice(0, key.indexOf('.'))))];
+    const fkGraph = await readForeignKeyGraph(pool, fkSchemas);
     const ctx = { catalog, dropIndex: loadDropIndex() };
     process.stderr.write(
       `[runner] catalog: ${catalog.relations.size} relation name(s), `
-      + `${catalog.functions.size} function name(s)\n`);
+      + `${catalog.functions.size} function name(s), `
+      + `${fkGraph.edges} foreign-key edge(s) over ${fkSchemas.length} schema(s)`
+      + ` (+${fkGraph.selfEdges} self-reference(s))\n`);
 
     // Every reset path has to leave the tables 07-data.sql never populates
     // empty: that is the state a fixture load leaves them in, and the state
@@ -2656,11 +2844,12 @@ async function main() {
       || opts.resetMutations || opts.resetTouched;
     let sweeps = 0;
     let sweptRows = 0;
+    const sweepFailures = [];
     const sweepUnpopulated = async (label) => {
       // Ask the provider for the pool every time: the DSQL provider replaces it
       // when the IAM token it was built with nears expiry.
       const swept = await clearUnpopulatedTables(
-        await pgrest._db.getPool(), catalog);
+        await pgrest._db.getPool(), catalog, null, fkGraph);
       sweeps += 1;
       sweptRows += swept.rows;
       if (swept.cleared.length) {
@@ -2668,6 +2857,15 @@ async function main() {
           `[runner] cleared ${swept.rows} leftover row(s) from `
           + `${swept.cleared.join(', ')}`
           + `${label ? ` before ${label}` : ''}\n`);
+      }
+      // A table the sweep could not empty is fixture drift the rest of the run
+      // reads as a case failure. Say so where it happens rather than letting it
+      // surface as an unexplained 23505 twenty cases later.
+      if (swept.failed.length) {
+        sweepFailures.push(...swept.failed.map(f => ({ ...f, before: label })));
+        process.stderr.write(
+          `[runner] could NOT empty ${swept.failed.map(f => f.table).join(', ')}`
+          + `${label ? ` before ${label}` : ''}: ${swept.failed[0].error}\n`);
       }
       return swept;
     };
@@ -2728,10 +2926,16 @@ async function main() {
           dirty = false;
         }
         if (opts.resetTouched && !testCase.skip && dirty && !carryOver()) {
-          if (touched === null) {
+          // Enforced foreign keys mean a table cannot be restored on its own:
+          // the plan adds every table that references it and orders the clearing
+          // and filling halves.
+          const plan = touched
+            && expandRestoreSet(touched, fkGraph, catalog.tables);
+          if (!plan) {
             // The previous case's writes cannot be attributed to tables (a
-            // write through a view, or an RPC whose body is not on record).
-            // Restore everything rather than guess.
+            // write through a view, or an RPC whose body is not on record), or
+            // the foreign-key graph gives no order for them. Restore everything
+            // rather than guess.
             await reloadFixtures(`${testCase.id} (full reset ${resets + 1})`);
             resets += 1;
             fallbacks += 1;
@@ -2741,7 +2945,7 @@ async function main() {
             // built with is close to expiring, so a pool captured at startup
             // is dead about 50 minutes into a full run.
             restored += await restoreTables(
-              await pgrest._db.getPool(), touched, groups);
+              await pgrest._db.getPool(), touched, groups, plan);
             resets += 1;
           }
           dirty = false;
@@ -2792,7 +2996,12 @@ async function main() {
       process.stderr.write(
         `[runner] unpopulated-table sweeps: ${sweeps} over `
         + `${fixtureEmptyTables().length} table(s) the fixtures never `
-        + `populate, ${sweptRows} leftover row(s) cleared\n`);
+        + `populate, ${sweptRows} leftover row(s) cleared`
+        + `${sweepFailures.length
+          ? `, ${sweepFailures.length} delete(s) failed` : ''}\n`);
+      for (const f of sweepFailures) {
+        process.stderr.write(`[runner]   ${f.table}: ${f.error}\n`);
+      }
     }
     results = buildResults({ target: opts.target, cases, outcomes, occ: ctx });
   } finally {

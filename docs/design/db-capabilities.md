@@ -1,5 +1,12 @@
 # Database Capabilities Interface
 
+> Historical design record. One value in it has since changed: DSQL's
+> `supportsForeignKeys` is `true` as of 2026-08-28, after AWS shipped foreign key
+> constraints on 2026-08-27. The examples below still show it as `false`. Read
+> `src/rest/db/dsql.mjs` for the current table — the point of this document is
+> the mechanism, and the mechanism is unchanged: a frozen per-provider object,
+> declared from measurements, not probed at run time.
+
 ## Overview
 
 Add a `capabilities()` method to the database provider

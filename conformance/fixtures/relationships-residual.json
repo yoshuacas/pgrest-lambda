@@ -1,0 +1,26 @@
+{
+  "relationships": [
+    {
+      "constraint": "car_racers_car_model_name_car_model_year_fkey",
+      "schema": "public",
+      "table": "car_racers",
+      "columns": [
+        "car_model_name",
+        "car_model_year"
+      ],
+      "foreignSchema": "public",
+      "foreignTable": "car_models",
+      "foreignColumns": [
+        "name",
+        "year"
+      ],
+      "options": "",
+      "error": "relation \"public.car_racers\" does not exist",
+      "declarable": false,
+      "droppedTables": [
+        "public.car_racers",
+        "public.car_models"
+      ]
+    }
+  ]
+}

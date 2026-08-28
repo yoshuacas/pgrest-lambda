@@ -168,10 +168,9 @@ const OUT_OF_SCOPE_FAILURES = new Set(['row-order-unspecified']);
 // workarounds, and are left out of the "permanent" table rather than inflating
 // it. Every family, permanent or not, still appears in the DSQL section below.
 const PERMANENT_ON_DSQL = {
-  'FOREIGN KEY constraints': {
-    why: 'DSQL rejects FOREIGN KEY and ALTER TABLE ADD CONSTRAINT, and pg_constraint returns no rows for contype=\'f\'.',
-    substitute: 'A declared-relationship manifest (<code>PGREST_RELATIONSHIPS_PATH</code>) replaces the catalog for embedding. Measured, and the reason the embedding category runs at all.'
-  },
+  // 'FOREIGN KEY constraints' was the first entry here. DSQL shipped foreign
+  // keys on 2026-08-27 and the fixtures now carry all 115, so it was never
+  // permanent — see docs/plans/dsql-foreign-keys.md.
   'plpgsql functions': {
     why: 'CREATE FUNCTION ... LANGUAGE plpgsql is rejected. LANGUAGE sql works, including RETURNS SETOF and RETURNS TABLE.',
     substitute: 'None for a body that needs procedural code. The dependent cases are blocked, never scored.'
@@ -480,7 +479,11 @@ function firstLine(reason) {
 function dropFamily(reason) {
   const r = String(reason || 'unknown');
   const rules = [
-    [/^FOREIGN KEY constraint not supported/i, 'FOREIGN KEY constraints', 'recovered in relationships.json'],
+    // `FOREIGN KEY constraint not supported` was a family here until DSQL
+    // shipped the constraints on 2026-08-27. The transformer no longer drops a
+    // foreign key — it re-declares all 115 in 08-foreign-keys.sql — so no drop
+    // reason matches, and the rule and its PERMANENT_ON_DSQL entry are gone
+    // rather than left to read as a limitation that no longer exists.
     [/language plpgsql not supported/i, 'plpgsql functions', null],
     [/CREATE TRIGGER not supported/i, 'triggers', 'trigger bodies need plpgsql'],
     [/^column type (.+) not supported/i, 'column types DSQL rejects', null],

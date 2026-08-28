@@ -8,6 +8,29 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
 
 ## Unreleased
 
+### Changed
+
+- **Aurora DSQL foreign keys are read from the catalog.** AWS added foreign key
+  constraints to Aurora DSQL on
+  [2026-08-27](https://aws.amazon.com/about-aws/whats-new/2026/08/amazon-aurora-dsql-foreign-key-constraints/).
+  `DSQL_CAPABILITIES.supportsForeignKeys` is now `true`, so `schema-cache.mjs`
+  runs its `pg_constraint` introspection on DSQL and resource embedding resolves
+  the same way it does on standard PostgreSQL. `PGREST_RELATIONSHIPS_PATH` is no
+  longer needed for foreign keys on DSQL; it remains the way to declare a
+  relationship that is not a constraint. Measured on a live cluster: a key can be
+  added to an existing table only as `ALTER TABLE ... ADD CONSTRAINT ...
+  NOT VALID` (plain `ADD CONSTRAINT` and `VALIDATE CONSTRAINT` answer `0A000`),
+  which leaves `convalidated = false` and is enforced for every later write. The
+  engine deliberately does not filter on `convalidated`, matching upstream
+  PostgREST. See `conformance/DSQL-CAPABILITIES.md` and
+  `docs/plans/dsql-foreign-keys.md`.
+- The conformance fixtures declare all 115 upstream foreign keys in a new
+  `conformance/fixtures/dsql/08-foreign-keys.sql`, applied after the data. 114 of
+  the 115 land; the one that does not is a key on a table DSQL could not create
+  in the first place. With the keys enforced, `07-data.sql` empties its 149
+  tables in one leading block in reverse topological order and the runner's
+  targeted restore expands a touched table through the graph.
+
 ### Fixed
 
 - Fix bind-parameter mismatch in Cedar policy-to-SQL

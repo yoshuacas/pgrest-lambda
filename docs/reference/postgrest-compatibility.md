@@ -291,7 +291,11 @@ The one capability gap this measurement surfaced and cannot close is column-leve
 
 ## Standard PostgreSQL
 
-This page measures Aurora DSQL only. There is no conformance number for standard PostgreSQL yet, and most of the section above does not apply to it: foreign keys, plpgsql, triggers, enums, extensions, `SET ROLE`, RLS, array and range columns and every text search configuration work normally there. The engine probes the database at startup and adapts (`supportsForeignKeys`, `supportsFullTextSearch`, `supportsRangeTypes`, `supportsRowLevelSecurity`, `supportsGinIndex`, …), so on PostgreSQL it reads relationships from `pg_constraint` and needs no manifest. Do not read 90.9% as pgrest-lambda's compatibility on PostgreSQL; read it as the compatibility measured on DSQL, which is the harder target.
+This page measures Aurora DSQL only. There is no conformance number for standard PostgreSQL yet, and most of the section above does not apply to it: plpgsql, triggers, enums, extensions, `SET ROLE`, RLS, array and range columns and every text search configuration work normally there.
+
+The engine does not probe for those. Each provider carries a fixed capability table — `DSQL_CAPABILITIES` in `src/rest/db/dsql.mjs`, `POSTGRES_CAPABILITIES` in `src/rest/db/postgres.mjs` — and the connection mode picks one: `DSQL_ENDPOINT` selects DSQL, `DATABASE_URL` or `PG_HOST` selects standard PostgreSQL. The tables are written from measurements, not read from the server, so a capability that changes on the server side changes here only when someone re-measures and edits the file. `supportsForeignKeys` went `false` → `true` that way on 2026-08-28, after DSQL shipped the constraints.
+
+Do not read 90.9% as pgrest-lambda's compatibility on PostgreSQL; read it as the compatibility measured on DSQL, which is the harder target.
 
 ## Reproducing the measurement
 

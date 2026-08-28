@@ -1,7 +1,9 @@
 {
-  "statementsTotal": 1135,
-  "statementsApplied": 1135,
-  "statementsFailed": 0,
+  "statementsTotal": 1251,
+  "statementsApplied": 1250,
+  "statementsFailed": 1,
+  "foreignKeysApplied": 114,
+  "foreignKeysFailed": 1,
   "objects": {
     "tables": 215,
     "views": 80,
@@ -185,14 +187,6 @@
       ]
     },
     {
-      "object": "public.public_orders_consumer_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
       "object": "public.login",
       "kind": "function",
       "reason": "returns public.jwt_token, which DSQL cannot produce (datatype jwt_token not supported)",
@@ -315,115 +309,11 @@
       ]
     },
     {
-      "object": "public.client",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.competitors_sponsor_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
       "object": "test_null_pk_competitors_sponsors",
       "kind": "rule",
       "reason": "CREATE RULE not supported by DSQL (unsupported statement: Rule)",
       "affectsCategories": [
         "insert"
-      ]
-    },
-    {
-      "object": "public.users_projects_user_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.users_projects_project_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.project",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.users_tasks_user_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.users_tasks_task_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.user",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.comments_task_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.fk_users_tasks",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.fk_upload",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "private.article",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "private.user",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
       ]
     },
     {
@@ -444,14 +334,6 @@
         "insert",
         "update",
         "delete"
-      ]
-    },
-    {
-      "object": "public.ghostBusters_escapeId_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
       ]
     },
     {
@@ -482,38 +364,6 @@
         "insert",
         "update",
         "rpc"
-      ]
-    },
-    {
-      "object": "public.has_fk_fk_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.has_fk_simple_fk_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.billing",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.shipping",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
       ]
     },
     {
@@ -644,22 +494,6 @@
       ]
     },
     {
-      "object": "public.child_entities_parent_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.grandchild_entities_parent_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
       "object": "public.ranges.range",
       "kind": "column",
       "reason": "column type numrange not supported by DSQL",
@@ -673,30 +507,6 @@
       "reason": "depends on relation public.tsearch, which DSQL could not create",
       "affectsCategories": [
         "rpc"
-      ]
-    },
-    {
-      "object": "public.descendant_being_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.being_part_being_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.being_part_part_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
       ]
     },
     {
@@ -796,78 +606,6 @@
       ]
     },
     {
-      "object": "public.pptr",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.organizations_referee_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.organizations_auditor_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.manager",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "private.books_author_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "private.books_first_publisher_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.message_sender_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.message_recipient_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.zone_space_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
       "object": "file_fdw",
       "kind": "extension",
       "reason": "CREATE EXTENSION not supported by DSQL",
@@ -893,14 +631,6 @@
       "kind": "statement",
       "reason": "COMMENT on this object kind is rejected by DSQL (unsupported COMMENT statement)",
       "affectsCategories": []
-    },
-    {
-      "object": "public.bar_fooId_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
     },
     {
       "object": "public.materialized_projects",
@@ -1021,14 +751,6 @@
       "reason": "column type tsrange not supported by DSQL",
       "affectsCategories": [
         "filters"
-      ]
-    },
-    {
-      "object": "public.contract_last_name_id_first_name_birth_date_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
       ]
     },
     {
@@ -1201,118 +923,6 @@
       ]
     },
     {
-      "object": "public.web_content_p_web_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "private.referrals_link_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.main_project",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.jobs_site_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.jobs_big_project_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.whatev_jobs_site_id_1_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.whatev_jobs_project_id_1_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.whatev_jobs_site_id_2_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.whatev_jobs_project_id_2_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.departments_head_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.agents_department_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.schedule",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.fst_shift",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.snd_shift",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
       "object": "public.custom_headers",
       "kind": "function",
       "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
@@ -1357,22 +967,6 @@
       ]
     },
     {
-      "object": "v1.parent",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "v2.parent",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
       "object": "drop aggregate if exists v2.special_agg(v2.another_table);",
       "kind": "statement",
       "reason": "DROP of this object kind is rejected by DSQL (unsupported object in DROP statement)",
@@ -1401,54 +995,6 @@
       ]
     },
     {
-      "object": "private.label_screen_label_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "private.label_screen_screen_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "private.personnages_film_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "private.personnages_role_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "private.junction_end_1_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "private.junction_end_2_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
       "object": "public.rollen",
       "kind": "table",
       "reason": "every column uses a type DSQL does not support",
@@ -1458,22 +1004,6 @@
         "insert",
         "update",
         "delete"
-      ]
-    },
-    {
-      "object": "private.rollen_film_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "private.rollen_rolle_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
       ]
     },
     {
@@ -1549,14 +1079,6 @@
       ]
     },
     {
-      "object": "public.car_racers_car_model_name_car_model_year_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
       "object": "public.car_racers",
       "kind": "table",
       "reason": "depends on relation public.car_models, which DSQL could not create",
@@ -1628,54 +1150,6 @@
       "reason": "returns \"text/xml\", which DSQL cannot produce (datatype text/xml not supported)",
       "affectsCategories": [
         "select"
-      ]
-    },
-    {
-      "object": "public.products_suppliers_product_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.products_suppliers_supplier_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.suppliers_trade_unions_supplier_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.suppliers_trade_unions_trade_union_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.contact_clientid_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.clientinfo_clientid_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
       ]
     },
     {
@@ -1756,46 +1230,6 @@
       ]
     },
     {
-      "object": "public.well_parent_well_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.well_plate_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.plate_plan_step_from_well_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.plate_plan_step_to_plate_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.plate_plan_step_to_well_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
       "object": "public.return_scalar_xml",
       "kind": "function",
       "reason": "returns \"text/xml\", which DSQL cannot produce (datatype text/xml not supported)",
@@ -1871,30 +1305,6 @@
       ]
     },
     {
-      "object": "private.parent_fk",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.adaptation_notifications_series_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.parent_test",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
       "object": "postgis",
       "kind": "extension",
       "reason": "CREATE EXTENSION not supported by DSQL",
@@ -1928,22 +1338,6 @@
       ]
     },
     {
-      "object": "public.shop_bles_shop_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "SPECIAL \"@/\\#~_-.names_language_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
       "object": "public.load_safeupdate",
       "kind": "function",
       "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
@@ -1958,94 +1352,6 @@
       "affectsCategories": [
         "media-types",
         "rpc"
-      ]
-    },
-    {
-      "object": "public.videogames_designer_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.students_info_code_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.capital_country_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.first_second_id_1_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.first_second_id_2_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.first_1_second_id_1_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.first_1_second_id_2_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.janedoe_baz_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.johnsmith_fee_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.johnsmith_baz_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.b_c1_c2_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
       ]
     },
     {
@@ -2064,86 +1370,6 @@
         "insert",
         "update",
         "rpc"
-      ]
-    },
-    {
-      "object": "public.i2459_simple_t2_t1_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.i2459_composite_t2_t1_a_t1_b_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.i2459_self_t_parent_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.tb_b1_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.tb_b1_b2_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.trash_details_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.group_yard_group_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.group_yard_yard_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.subscriptions_subscriber_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.subscriptions_subscribed_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
       ]
     },
     {
@@ -2273,46 +1499,6 @@
       ]
     },
     {
-      "object": "public.datarep_next_two_todos_first_item_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.datarep_next_two_todos_second_item_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.user_friend_user1_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.user_friend_user2_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.tournaments_status_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
       "object": "public.bitchar_with_length.bit",
       "kind": "column",
       "reason": "column type bit(5) not supported by DSQL",
@@ -2408,14 +1594,6 @@
       "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
       "affectsCategories": [
         "rpc"
-      ]
-    },
-    {
-      "object": "public.table_b_table_a_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
       ]
     },
     {
@@ -2635,22 +1813,6 @@
       ]
     },
     {
-      "object": "public.project_invoices_project_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.budget_expenses_budget_category_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
       "object": "public.ret_some_mt",
       "kind": "function",
       "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
@@ -2735,46 +1897,6 @@
       ]
     },
     {
-      "object": "public.processes_factory_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.processes_category_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.process_costs_process_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.process_supervisor_process_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.process_supervisor_supervisor_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
       "object": "public.tsvector_not_null",
       "kind": "domain",
       "reason": "base type tsvector not supported by DSQL",
@@ -2807,38 +1929,6 @@
       ]
     },
     {
-      "object": "public.fk_artist",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.process_operator_process_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.process_operator_operator_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.factory_buildings_factory_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
       "object": "update pg_proc set oid = 'test.collision_test_table'::regclass::oid wh",
       "kind": "statement",
       "reason": "writing to pg_catalog is not permitted on DSQL",
@@ -2860,14 +1950,6 @@
       "reason": "column type visit_type not supported by DSQL",
       "affectsCategories": [
         "select"
-      ]
-    },
-    {
-      "object": "public.visits_place_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
       ]
     },
     {

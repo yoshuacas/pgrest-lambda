@@ -106,7 +106,6 @@ Every table rule keys on `context.table`, never on `resource == PgrestLambda::Ta
 ```bash
 export DSQL_ENDPOINT=<your-cluster>.dsql.us-east-1.on.aws
 export REGION_NAME=us-east-1                     # never AWS_REGION
-export PGREST_RELATIONSHIPS_PATH=conformance/fixtures/relationships.json
 
 # 1. Load the fixtures. These are the PostgREST measurement's own fixtures,
 #    unchanged, so a cluster already loaded for that measurement needs nothing.

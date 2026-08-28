@@ -6,7 +6,10 @@
 //
 // Outputs (see conformance/CONTRACTS.md section 2):
 //   conformance/fixtures/dsql/NN-<name>.sql   loadable SQL, applied in order
-//   conformance/fixtures/relationships.json   foreign keys DSQL cannot store
+//   conformance/fixtures/dsql/08-foreign-keys.sql  the foreign keys, re-declared
+//     as ALTER TABLE ... ADD CONSTRAINT ... NOT VALID after the data is loaded
+//   conformance/fixtures/relationships.json   the same foreign-key graph, as the
+//     manifest an engine that cannot read pg_constraint falls back to
 //   conformance/fixtures/transform-report.json  drops + rewrites (input to load.mjs)
 //
 // load.mjs merges the drop list into load-report.json after applying the SQL.
@@ -318,6 +321,14 @@ let pendingPk = new Map();
  * map once every statement has been parsed — see resolveImpliedForeignColumns().
  */
 const tablePrimaryKeys = new Map();
+/**
+ * qualified table -> Set of column names that cannot hold NULL.
+ *
+ * A column declared `NOT NULL` or part of the primary key. Used only to decide
+ * whether the cycle-breaking `UPDATE ... SET <col> = NULL` the data stage needs
+ * is legal — see cycleBreakingUpdates().
+ */
+const notNullColumns = new Map();
 
 let searchPath = ['public'];
 
@@ -341,9 +352,26 @@ let searchPath = ['public'];
  */
 let clearedRelations = new Set();
 
+/**
+ * Tables the data stage has to empty, in the order the file first empties them.
+ *
+ * They are emitted as one leading block instead of in place, because the
+ * foreign keys 08-foreign-keys.sql adds are enforced: deleting a parent while a
+ * child still holds rows fails 23503. The block is ordered by
+ * reverseTopologicalDeletes() so every child is emptied before its parent.
+ */
+let dataDeletes = [];
+
 function currentSchema() { return searchPath[0] || 'public'; }
 
 function qual(schema, name) { return `${schema || currentSchema()}.${name}`; }
+
+/** Record a table the data stage empties; the DELETE is emitted in the leading block. */
+function deferDelete(schema, table) {
+  const key = qual(schema, table);
+  if (dataDeletes.some((d) => d.key === key)) return;
+  dataDeletes.push({ key, schema: schema || currentSchema(), table });
+}
 
 function drop(object, kind, reason, extraCats) {
   dropped.push({
@@ -675,9 +703,17 @@ const REF_ACTIONS = new Set(['no', 'action', 'restrict', 'cascade', 'set', 'null
 
 /**
  * Parse a REFERENCES clause whose `references` keyword is token `i`.
- * @returns {{fSchema:string|null, fTable:string, fColumns:string[], end:number}}
+ *
+ * `src` is the text `toks` was tokenized from; it is used to return the
+ * MATCH / ON DELETE / ON UPDATE / DEFERRABLE clauses verbatim, because
+ * 08-foreign-keys.sql re-declares the key and has to declare it the way
+ * upstream did (upstream uses `on delete cascade`, `on update cascade` and
+ * `not deferrable`).
+ *
+ * @returns {{fSchema:string|null, fTable:string, fColumns:string[],
+ *   options:string, end:number}}
  */
-function parseReferences(toks, i) {
+function parseReferences(toks, i, src) {
   let j = i + 1;
   const { schema, name, next } = readName(toks, j);
   j = next;
@@ -692,6 +728,7 @@ function parseReferences(toks, i) {
       fColumns.push(identValue(t));
     }
   }
+  const optFirst = j;
   // MATCH FULL | MATCH PARTIAL | MATCH SIMPLE
   if (toks[j] && toks[j].v.toLowerCase() === 'match') j += 2;
   // ON DELETE / ON UPDATE <action>
@@ -714,7 +751,13 @@ function parseReferences(toks, i) {
     if (v === 'initially') { j += 2; continue; }
     break;
   }
-  return { fSchema: schema, fTable: name, fColumns, end: j };
+  // The slice runs to the end of the last option token, not to the start of the
+  // next one: what follows may be a comma, a closing paren or the semicolon.
+  const optLast = Math.min(j, toks.length) - 1;
+  const options = (src && optLast >= optFirst)
+    ? src.slice(toks[optFirst].start, toks[optLast].end).replace(/\s+/g, ' ').trim()
+    : '';
+  return { fSchema: schema, fTable: name, fColumns, options, end: j };
 }
 
 function defaultFkName(table, columns) {
@@ -757,7 +800,9 @@ function resolveImpliedForeignColumns() {
   relationships.push(...kept);
 }
 
-function recordRelationship({ name, schema, table, columns, fSchema, fTable, fColumns }) {
+function recordRelationship({
+  name, schema, table, columns, fSchema, fTable, fColumns, options,
+}) {
   const constraint = name || defaultFkName(table, columns);
   relationships.push({
     constraint,
@@ -773,9 +818,17 @@ function recordRelationship({ name, schema, table, columns, fSchema, fTable, fCo
     // with mismatched column counts — a shape no Postgres FK can have, which
     // the engine's normaliser then correctly discarded.
     foreignColumns: fColumns.length ? fColumns : [],
+    // MATCH / ON DELETE / ON UPDATE / DEFERRABLE as upstream declared them, so
+    // 08-foreign-keys.sql can re-declare the key with the same behaviour. New
+    // key: every reader of the manifest ignores what it does not know
+    // (src/rest/schema-cache.mjs normalizeDeclaredRelationships).
+    options: options || '',
   });
-  drop(`${schema || currentSchema()}.${constraint}`, 'foreign-key',
-    'FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json');
+  rewrite(`${schema || currentSchema()}.${constraint}`, 'foreign-key',
+    'REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in '
+    + 'and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID '
+    + '(DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without '
+    + 'NOT VALID with 0A000); also kept in relationships.json');
   return constraint;
 }
 
@@ -914,6 +967,12 @@ function handleCreateTable(sql) {
         }
       }
       if (/\bprimary\s+key\b/i.test(rest)) pkCols.push(p.colName);
+      // `DEFAULT NULL` and `CHECK (x IS NOT NULL)` both hold the words, so the
+      // test is anchored on the column constraint itself.
+      if (/(^|[\s,)])not\s+null\b/i.test(rest)) {
+        if (!notNullColumns.has(qname)) notNullColumns.set(qname, new Set());
+        notNullColumns.get(qname).add(p.colName);
+      }
       keptCols.push(p.colName.toLowerCase());
       outItems.push(`${p.toks[0].v} ${type}${rest ? ' ' + rest.trim() : ''}`);
       continue;
@@ -947,6 +1006,11 @@ function handleCreateTable(sql) {
   // Remember the primary key so a bare `REFERENCES <this table>` elsewhere can
   // be resolved to it instead of being guessed as ("id").
   if (pkCols.length) tablePrimaryKeys.set(qname, pkCols.slice());
+  // A primary key column is NOT NULL whether or not it says so.
+  if (pkCols.length) {
+    if (!notNullColumns.has(qname)) notNullColumns.set(qname, new Set());
+    for (const c of pkCols) notNullColumns.get(qname).add(c);
+  }
 
   let cleanTail = stripComments(tail).replace(/\bwith\s*\([^)]*\)/i, '').trim();
   cleanTail = cleanTail.replace(/\btablespace\s+\S+/i, '').replace(/;\s*$/, '').trim();
@@ -962,7 +1026,7 @@ function stripInlineReferences(rest, ctx) {
     const toks = tokenize(out);
     const idx = toks.findIndex((t) => t.kind === 'word' && t.v.toLowerCase() === 'references');
     if (idx === -1) break;
-    const ref = parseReferences(toks, idx);
+    const ref = parseReferences(toks, idx, out);
     // `col int CONSTRAINT c REFERENCES t(id)` — the name belongs to the FK, so
     // the CONSTRAINT prefix has to go with it or we leave dangling syntax.
     let named = null;
@@ -982,6 +1046,7 @@ function stripInlineReferences(rest, ctx) {
       fSchema: ref.fSchema,
       fTable: ref.fTable,
       fColumns: ref.fColumns,
+      options: ref.options,
     });
     out = (out.slice(0, from) + ' ' + out.slice(to)).replace(/\s+/g, ' ');
   }
@@ -1027,10 +1092,11 @@ function handleTableConstraint(p, ctx) {
     }
     const refIdx = toks.findIndex((t, k) => k >= j && t.kind === 'word' && t.v.toLowerCase() === 'references');
     if (refIdx !== -1) {
-      const ref = parseReferences(toks, refIdx);
+      const ref = parseReferences(toks, refIdx, p.item);
       recordRelationship({
         name: cname, schema: ctx.schema, table: ctx.table, columns,
         fSchema: ref.fSchema, fTable: ref.fTable, fColumns: ref.fColumns,
+        options: ref.options,
       });
     }
     return null;
@@ -1430,9 +1496,12 @@ function transformStatement(sql) {
       drop(n.slice(0, 60), 'statement', `target ${qname} was dropped`);
       return { action: 'drop' };
     }
-    // RENAME CONSTRAINT on a foreign key: the constraint only exists in
-    // relationships.json now, so rename it there. PostgREST embedding hints
-    // use these names (`?select=client!client(*)`), so losing them costs tests.
+    // RENAME CONSTRAINT on a foreign key: the key is not declared where
+    // upstream declared it, so the rename cannot run against the catalog —
+    // apply it to the recorded relationship instead, which is what both
+    // 08-foreign-keys.sql and relationships.json are generated from. PostgREST
+    // embedding hints use these names (`?select=client!client(*)`), so losing
+    // them costs tests.
     if (/\brename\s+constraint\b/.test(n)) {
       const ri = toks.findIndex((t, k) => t.v.toLowerCase() === 'constraint'
         && toks[k - 1] && toks[k - 1].v.toLowerCase() === 'rename');
@@ -1442,15 +1511,16 @@ function transformStatement(sql) {
         && r.table === nm.name && r.schema === (nm.schema || currentSchema()));
       if (rel) {
         rel.constraint = to;
-        for (const d of dropped) {
-          if (d.kind === 'foreign-key' && d.object.endsWith(`.${from}`)) {
-            d.object = `${d.object.slice(0, -from.length)}${to}`;
+        for (const rw of rewrites) {
+          if (rw.kind === 'foreign-key' && rw.object.endsWith(`.${from}`)) {
+            rw.object = `${rw.object.slice(0, -from.length)}${to}`;
           }
         }
-        rewrite(`${qname}.${from}`, 'foreign-key', `renamed to ${to} in relationships.json`);
+        rewrite(`${qname}.${from}`, 'foreign-key',
+          `renamed to ${to} before the key is emitted in 08-foreign-keys.sql`);
       } else {
         drop(n.slice(0, 70), 'statement',
-          'RENAME CONSTRAINT target not found in the recovered relationship manifest');
+          'RENAME CONSTRAINT target not found in the recorded relationship graph');
       }
       return { action: 'drop' };
     }
@@ -1483,11 +1553,12 @@ function transformStatement(sql) {
           const refIdx = toks.findIndex((t, k) => k >= j && t.kind === 'word'
             && t.v.toLowerCase() === 'references');
           const ref = refIdx === -1
-            ? { fSchema: null, fTable: '', fColumns: [] }
-            : parseReferences(toks, refIdx);
+            ? { fSchema: null, fTable: '', fColumns: [], options: '' }
+            : parseReferences(toks, refIdx, sql);
           recordRelationship({
             name: cname, schema: nm.schema || currentSchema(), table: nm.name, columns,
             fSchema: ref.fSchema, fTable: ref.fTable, fColumns: ref.fColumns,
+            options: ref.options,
           });
           prev = fkIdx;
         }
@@ -1603,9 +1674,13 @@ function transformStatement(sql) {
       drop(n.slice(0, 60), 'data', `target ${qname} was dropped`);
       return { action: 'drop' };
     }
-    rewrite(qname, 'table', 'TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)');
+    rewrite(qname, 'table',
+      'TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not '
+      + 'supported by DSQL; the block is ordered children-first because the '
+      + 'foreign keys in 08-foreign-keys.sql are enforced)');
     clearedRelations.add(qname);
-    return { action: 'keep', sql: `DELETE FROM ${nm.raw};` };
+    deferDelete(nm.schema, nm.name);
+    return { action: 'defer-delete' };
   }
 
   // ---- INSERT -----------------------------------------------------------
@@ -1619,7 +1694,9 @@ function transformStatement(sql) {
       return { action: 'drop' };
     }
     // An unconditional DELETE already empties the table; count it as a clear so
-    // no redundant DELETE is prepended to the INSERTs that follow.
+    // no redundant DELETE goes into the leading delete block. Such a statement
+    // stays where it is: upstream data.sql has none (only TRUNCATE), and moving
+    // one that follows an INSERT into the same table would change what loads.
     if (/^delete\s+from\b/.test(n) && !/\bwhere\b/.test(n)) {
       const dtoks = tokenize(stripComments(sql).trim())
         .filter((t) => t.kind !== 'comment');
@@ -1671,11 +1748,12 @@ function handleInsert(sql) {
   const withClear = (out) => {
     if (!needsClear) return out;
     clearedRelations.add(qname);
+    deferDelete(nm.schema, nm.name);
     rewrite(qname, 'data',
-      'prepended DELETE FROM before the first INSERT: upstream relies on the '
+      'added a DELETE FROM to the leading delete block: upstream relies on the '
       + 'schema being recreated before data.sql runs, so the file was not '
       + "re-runnable (needed by the runner's --reload-data)");
-    return `DELETE FROM ${nm.raw};\n${out}`;
+    return out;
   };
 
   const gone = droppedColumns.get(qname);
@@ -1924,6 +2002,153 @@ function rewindStatements(dataSql, schemaSql) {
 }
 
 // ---------------------------------------------------------------------------
+// delete order for the data stage, and the foreign-key stage itself
+// ---------------------------------------------------------------------------
+
+/**
+ * Foreign-key edges dropped to break a cycle in the delete graph. Reported, so
+ * a 23503 on reload can be traced to the edge whose order was given up.
+ */
+const brokenCycleEdges = [];
+
+/**
+ * Order the data stage's DELETEs so a table is emptied before every table it
+ * references.
+ *
+ * Upstream inserts parents first, so its TRUNCATEs come out parents first too.
+ * That order fails 23503 once 08-foreign-keys.sql is applied, because a parent
+ * still has children when it is emptied. Self-references are left out of the
+ * graph: deleting every row of a self-referencing table in one statement is
+ * accepted (measured, docs/plans/dsql-foreign-keys.md). So is an edge to or
+ * from a table nothing empties — 07-data.sql never fills it, so it holds no row
+ * that could block a delete.
+ *
+ * @param {{key:string, schema:string, table:string}[]} deletes
+ * @param {object[]} rels the recorded relationship graph
+ * @returns {{key:string, schema:string, table:string}[]} children first
+ */
+function reverseTopologicalDeletes(deletes, rels) {
+  const nodes = new Map(deletes.map((d) => [d.key, d]));
+  const edges = new Map();
+  for (const rel of rels) {
+    const child = `${rel.schema}.${rel.table}`;
+    const parent = `${rel.foreignSchema}.${rel.foreignTable}`;
+    if (child === parent) continue;
+    if (!nodes.has(child) || !nodes.has(parent)) continue;
+    // NUL joins the two halves of the edge key, written as an escape so the
+    // file stays text: an upstream table name holds spaces and punctuation
+    // (`SPECIAL "@/\#~_-`), but no PostgreSQL identifier holds a NUL.
+    const k = `${child}\u0000${parent}`;
+    if (!edges.has(k)) {
+      edges.set(k, {
+        child, parent, constraint: rel.constraint, k,
+        schema: rel.schema, table: rel.table, columns: rel.columns,
+      });
+    }
+  }
+
+  const parentsOf = new Map();
+  const indeg = new Map([...nodes.keys()].map((k) => [k, 0]));
+  for (const e of edges.values()) {
+    indeg.set(e.parent, indeg.get(e.parent) + 1);
+    if (!parentsOf.has(e.child)) parentsOf.set(e.child, []);
+    parentsOf.get(e.child).push(e.parent);
+  }
+
+  const order = [];
+  const remaining = new Set(nodes.keys());
+  const cut = new Set();
+  while (remaining.size) {
+    const ready = [...remaining].filter((k) => indeg.get(k) === 0).sort();
+    if (!ready.length) {
+      // A cycle: no table left can be emptied first. Give up one edge — sorted,
+      // so the same edge goes every run — and record it. The current fixtures
+      // have exactly one cycle, public.departments <-> public.agents.
+      const candidates = [...edges.values()]
+        .filter((e) => !cut.has(e.k) && remaining.has(e.child) && remaining.has(e.parent))
+        .sort((a, b) => `${a.child}|${a.parent}|${a.constraint}`
+          .localeCompare(`${b.child}|${b.parent}|${b.constraint}`));
+      if (!candidates.length) {
+        // Unreachable with a graph built from edges between remaining nodes;
+        // emit the rest in a fixed order rather than looping forever.
+        order.push(...[...remaining].sort().map((k) => nodes.get(k)));
+        break;
+      }
+      const e = candidates[0];
+      cut.add(e.k);
+      indeg.set(e.parent, indeg.get(e.parent) - 1);
+      brokenCycleEdges.push({
+        table: e.child, referencedTable: e.parent, constraint: e.constraint,
+        schema: e.schema, tableName: e.table, columns: e.columns,
+        effect: `${e.child} is not guaranteed to be emptied before ${e.parent}; `
+          + 'a 23503 on reload starts here unless the reference is cleared first',
+      });
+      continue;
+    }
+    for (const k of ready) {
+      order.push(nodes.get(k));
+      remaining.delete(k);
+      for (const p of parentsOf.get(k) || []) indeg.set(p, indeg.get(p) - 1);
+    }
+  }
+  return order;
+}
+
+/**
+ * `UPDATE <child> SET <fk columns> = NULL` for every edge a cycle broke.
+ *
+ * Ordering alone cannot empty a cycle: with both keys enforced, whichever table
+ * goes first still has the other pointing at it. The fixtures have one cycle,
+ * `public.departments.head_id -> public.agents` against
+ * `public.agents.department_id -> public.departments`, and upstream fills both
+ * directions (data.sql inserts `departments (id, name, head_id)` and then runs
+ * `UPDATE agents SET department_id = ...`). Clearing the cut edge's columns
+ * first breaks the cycle without touching a row the file is about to delete
+ * anyway.
+ *
+ * Only legal where the columns can hold NULL. Where they cannot, no statement is
+ * emitted and the edge keeps its recorded warning: a reload will fail there, and
+ * the report says which edge and why rather than the fixture silently loading
+ * rows that cannot be replaced.
+ *
+ * @param {object[]} edges brokenCycleEdges
+ * @returns {{statements:string[], skipped:object[]}}
+ */
+function cycleBreakingUpdates(edges) {
+  const statements = [];
+  const skipped = [];
+  for (const e of edges) {
+    const qname = qual(e.schema, e.tableName);
+    const nn = notNullColumns.get(qname) || new Set();
+    const blocked = (e.columns || []).filter((c) => nn.has(c));
+    if (!e.columns || !e.columns.length || blocked.length) {
+      e.cleared = false;
+      e.notNullColumns = blocked;
+      skipped.push(e);
+      continue;
+    }
+    e.cleared = true;
+    statements.push(`UPDATE ${ident(e.schema)}.${ident(e.tableName)} SET `
+      + `${e.columns.map((c) => `${ident(c)} = NULL`).join(', ')};`);
+  }
+  return { statements, skipped };
+}
+
+/** One `ALTER TABLE ... ADD CONSTRAINT ... NOT VALID` per recorded key. */
+function foreignKeyStatements(rels) {
+  return rels.map((rel) => {
+    const cols = rel.columns.map(ident).join(', ');
+    const fCols = rel.foreignColumns.map(ident).join(', ');
+    const opts = rel.options ? ` ${rel.options}` : '';
+    return `ALTER TABLE ${ident(rel.schema)}.${ident(rel.table)} `
+      + `ADD CONSTRAINT ${ident(rel.constraint)}\n`
+      + `  FOREIGN KEY (${cols}) REFERENCES `
+      + `${ident(rel.foreignSchema)}.${ident(rel.foreignTable)} (${fCols})`
+      + `${opts} NOT VALID;`;
+  });
+}
+
+// ---------------------------------------------------------------------------
 // pre-pass: collect ALTER TABLE ADD CONSTRAINT PRIMARY KEY to fold
 // ---------------------------------------------------------------------------
 
@@ -2005,6 +2230,8 @@ function main() {
   // The schema stage's own output, kept so the data stage can see which columns
   // draw from a sequence.
   let schemaOut = null;
+  // The data stage, held back until the foreign-key graph is final.
+  let dataStage = null;
 
   for (const stage of STAGES) {
     let src = readFileSync(join(UPSTREAM, stage.file), 'utf8');
@@ -2023,6 +2250,7 @@ function main() {
     pendingPk = collectPkFolds(statements.filter((s) => s.kind === 'sql'));
     searchPath = ['public'];
     clearedRelations = new Set();
+    dataDeletes = [];
 
     const out = [
       `-- ${stage.out} — generated from ${stage.file} by conformance/fixtures/transform.mjs`,
@@ -2049,6 +2277,8 @@ function main() {
       }
       if (r.action === 'skip') continue;
       if (r.action === 'drop') { removed++; continue; }
+      // Emitted in the leading delete block instead of here; counted there.
+      if (r.action === 'defer-delete') continue;
       const text = (r.sql || st.text).trim().replace(/;*\s*$/, '');
       out.push(`${text};`);
       out.push('');
@@ -2059,30 +2289,98 @@ function main() {
     // the sequence rewinds. They go first: the fixture rows that take their id
     // from a sequence are inserted further down this same file, and they have to
     // land on the ids a fresh load gives them.
+    let deleteAt = -1;
     if (stage.out === DATA_STAGE && schemaOut) {
       const rewinds = rewindStatements(out.join('\n'), schemaOut);
-      out.splice(3, 0,
+      const head = [
         '-- Sequence state a data-only reload has to restore: CREATE SEQUENCE /',
         '-- GENERATED AS IDENTITY leaves "last value 1, not yet called", and this',
         '-- file is re-applied without 03-schema.sql. The four setvals data.sql',
         '-- carries itself are further down and are not repeated here.',
         ...rewinds.map((s) => `${s};`),
-        '');
+        '',
+      ];
+      out.splice(3, 0, ...head);
       kept += rewinds.length;
+      deleteAt = 3 + head.length;
     }
 
+    const stats = { file: stage.out, source: stage.file, kept, removed };
+    stageStats.push(stats);
+    if (stage.out === DATA_STAGE) {
+      // The delete order needs the whole foreign-key graph, and the graph is
+      // only final once every stage has been parsed. Written below.
+      dataStage = { out, stats, deleteAt };
+      continue;
+    }
     const stageText = `${out.join('\n')}\n`;
     if (stage.out === SCHEMA_STAGE) schemaOut = stageText;
     writeFileSync(join(OUT_DIR, stage.out), stageText);
-    stageStats.push({ file: stage.out, source: stage.file, kept, removed });
   }
 
   // Every statement has been parsed, so every primary key is known: resolve
   // the bare `REFERENCES <table>` targets before the manifest is written.
   resolveImpliedForeignColumns();
 
+  // relationships.json still carries the whole graph. It is what the delete
+  // order and 08-foreign-keys.sql are generated from, and it is still the
+  // fallback for an engine that cannot read the keys out of pg_constraint.
   writeFileSync(join(HERE, 'relationships.json'),
     `${JSON.stringify({ relationships }, null, 2)}\n`);
+
+  const fkStatements = foreignKeyStatements(relationships);
+  const fkOut = [
+    '-- 08-foreign-keys.sql — generated from the recorded foreign-key graph by',
+    '-- conformance/fixtures/transform.mjs. Do not edit: re-run the transformer.',
+    '--',
+    '-- The keys are added here instead of in CREATE TABLE because DSQL rejects a',
+    '-- REFERENCES to a table that does not exist yet with 42P01, and upstream',
+    '-- declares keys in both directions. ADD CONSTRAINT has to say NOT VALID',
+    '-- (0A000 without it), and NOT VALID does not check the rows already in the',
+    '-- table, so applying this file after 07-data.sql is both order-independent',
+    '-- and immune to the fixture rows the transformer had to thin out. One',
+    '-- statement per key: DSQL takes one DDL statement per transaction.',
+    '--',
+    '-- Every key therefore lands with convalidated = false and stays there —',
+    '-- DSQL has no ALTER TABLE ... VALIDATE CONSTRAINT (0A000) — while still',
+    '-- being enforced on every write after it is added. Measured 2026-08-28,',
+    '-- see docs/plans/dsql-foreign-keys.md.',
+    '',
+    ...fkStatements.flatMap((s) => [s, '']),
+  ];
+  writeFileSync(join(OUT_DIR, '08-foreign-keys.sql'), `${fkOut.join('\n')}\n`);
+  stageStats.push({
+    file: '08-foreign-keys.sql',
+    source: 'recorded foreign-key graph',
+    kept: fkStatements.length,
+    removed: 0,
+  });
+
+  // The data stage last: its leading DELETE block is ordered by the same graph.
+  const deletes = reverseTopologicalDeletes(dataDeletes, relationships);
+  const cycleBreak = cycleBreakingUpdates(brokenCycleEdges);
+  const deleteBlock = [
+    ...(cycleBreak.statements.length
+      ? ['-- One cycle in the key graph cannot be ordered: whichever table is',
+        '-- emptied first, the other still points at it. Clear the reference the',
+        '-- ordering had to give up on, ahead of the deletes. See',
+        '-- brokenCycleEdges in transform-report.json.',
+        ...cycleBreak.statements,
+        '']
+      : []),
+    '-- Every table this file writes to is emptied here, in one block, so the',
+    '-- file can be re-applied on its own. The order is reverse topological over',
+    '-- the foreign keys 08-foreign-keys.sql adds: a table is emptied before any',
+    '-- table it references, because a parent that still has children answers',
+    '-- 23503. Fully qualified, since the SET search_path blocks below do not',
+    '-- reach up here.',
+    ...deletes.map((d) => `DELETE FROM ${ident(d.schema)}.${ident(d.table)};`),
+    '',
+  ];
+  dataStage.out.splice(dataStage.deleteAt === -1 ? 3 : dataStage.deleteAt, 0,
+    ...deleteBlock);
+  dataStage.stats.kept += deletes.length + cycleBreak.statements.length;
+  writeFileSync(join(OUT_DIR, DATA_STAGE), `${dataStage.out.join('\n')}\n`);
 
   const byKind = {};
   for (const d of dropped) byKind[d.kind] = (byKind[d.kind] || 0) + 1;
@@ -2092,6 +2390,9 @@ function main() {
     upstream: UPSTREAM,
     stages: stageStats,
     relationships: relationships.length,
+    foreignKeyStatements: fkStatements.length,
+    dataDeletes: deletes.length,
+    brokenCycleEdges,
     droppedByKind: byKind,
     dropped,
     rewrites,
@@ -2099,6 +2400,8 @@ function main() {
 
   process.stdout.write(`${JSON.stringify({
     stages: stageStats, relationships: relationships.length,
+    foreignKeyStatements: fkStatements.length, dataDeletes: deletes.length,
+    brokenCycleEdges: brokenCycleEdges.length,
     dropped: dropped.length, droppedByKind: byKind, rewrites: rewrites.length,
   }, null, 2)}\n`);
 }

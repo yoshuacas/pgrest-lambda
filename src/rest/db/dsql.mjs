@@ -9,9 +9,19 @@ const TOKEN_LIFETIME_MS = 10 * 60 * 1000; // 10 minutes
 // DSQL capability research — verified against
 // docs.aws.amazon.com/aurora-dsql/ (2025-05):
 //
-// supportsForeignKeys: false
-//   DSQL drops FK constraints for distributed consistency.
-//   pg_constraint has no contype='f' rows.
+// supportsForeignKeys: true
+//   DSQL added foreign key constraints on 2026-08-27
+//   (docs.aws.amazon.com/aurora-dsql/latest/userguide/working-with-foreign-key-constraints.html).
+//   Measured on a cluster 2026-08-28: inline REFERENCES in CREATE TABLE is
+//   accepted in every shape (column list, bare, table-level, composite,
+//   self-reference, cross-schema, all five referential actions, MATCH FULL,
+//   DEFERRABLE). A key can be added to an existing table only as
+//   ALTER TABLE ... ADD CONSTRAINT ... NOT VALID; plain ADD CONSTRAINT and
+//   VALIDATE CONSTRAINT both return 0A000. NOT VALID skips the check of
+//   existing rows but enforces every later write. pg_constraint contype='f'
+//   is fully populated (conkey, confkey, confupdtype, confdeltype,
+//   confmatchtype, condeferrable, convalidated), so the engine reads
+//   relationships from the catalog on DSQL as it does on PostgreSQL.
 //
 // supportsFullTextSearch: false
 //   tsvector/tsquery not in supported data types list.
@@ -41,7 +51,7 @@ const TOKEN_LIFETIME_MS = 10 * 60 * 1000; // 10 minutes
 // supportsGinIndex: false
 //   B-tree only; GIN/GiST/HASH/BRIN not supported.
 const DSQL_CAPABILITIES = Object.freeze({
-  supportsForeignKeys: false,
+  supportsForeignKeys: true,
   supportsFullTextSearch: false,
   supportsRangeTypes: false,
   supportsArrayContainment: true,

@@ -194,15 +194,22 @@ re-run the suite:
 
 ```bash
 # fixtures must be loaded first; load-report.json is written by that step
-PGREST_RELATIONSHIPS_PATH=$PWD/conformance/fixtures/relationships.json \
-  node conformance/runner/run.mjs --target dsql --concurrency 1 --reload-per-spec
+node conformance/runner/run.mjs --target dsql --concurrency 1 --reload-per-spec
 node conformance/report/build-report.mjs \
   --results conformance/results/run-<timestamp>.json \
   --label "$(git rev-parse --short HEAD) <timestamp>" \
   --tree "$(git rev-parse --short HEAD)" \
-  --flags "--target dsql --concurrency 1 --reload-per-spec, PGREST_RELATIONSHIPS_PATH set" \
+  --flags "--target dsql --concurrency 1 --reload-per-spec" \
   --note "what this wave changed, and anything about the run the flags do not say"
 ```
+
+The flag string changed on 2026-08-28. `PGREST_RELATIONSHIPS_PATH` is gone from
+it, because DSQL now stores the foreign keys and the engine reads them from
+`pg_constraint`. Runs before that date carry
+`, PGREST_RELATIONSHIPS_PATH set` in their own flag string and the generator
+therefore does not compare the two groups — which is correct: they measured
+different mechanisms. Comparisons across the change have to be stated in prose,
+with both numbers, rather than dropped into the trend as one series.
 
 The compatibility page in `docs/reference/` also carries a table grouped by
 request feature rather than by upstream spec file — whether you can rely on
@@ -228,15 +235,19 @@ hand-maintained row drifts, and the first version of this table reported
 `Prefer: tx=rollback` at 14 of 15 when no extracted case sends that header at all
 (the number belonged to `tx=commit`).
 
-`PGREST_RELATIONSHIPS_PATH` matters more than any other setting here. DSQL
-cannot store foreign keys, so `pg_constraint` reports none and the engine has
-nothing to resolve embedding with unless it is handed the declared-relationship
-manifest the fixture transform reconstructs. Measured on the same commit and the
-same first 60 embedding cases: 3 of 58 passed without the variable, 22 of 58
-with it. A run that leaves it unset is measuring an unconfigured engine.
+`PGREST_RELATIONSHIPS_PATH` used to matter more than any other setting here, and
+no longer does. Until 2026-08-27 DSQL could not store a foreign key, so
+`pg_constraint` reported none and the engine had nothing to resolve embedding
+with unless it was handed the declared-relationship manifest the fixture
+transform reconstructs — measured on the same commit and the same first 60
+embedding cases, 3 of 58 passed without the variable and 22 of 58 with it. DSQL
+then shipped the constraints, the fixtures re-declare all 115 in
+`conformance/fixtures/dsql/08-foreign-keys.sql`, and the run reads them from the
+catalog. Every published number from 2026-08-28 on is measured with the variable
+unset, which is the mechanism the product actually ships.
 
-`PGREST_REPRESENTATIONS_PATH` is the same kind of substitute for a second
-thing DSQL cannot store. PostgREST reads data representations from `pg_cast` —
+`PGREST_REPRESENTATIONS_PATH` is the same kind of substitute for a thing DSQL
+still cannot store, and is now the only one the measurement leans on. PostgREST reads data representations from `pg_cast` —
 an implicit, function-backed cast between a domain and `json`/`text` — and DSQL
 rejects `CREATE CAST`, so all 15 casts upstream's `schema.sql` defines are
 dropped at load time while every cast function loads. `conformance/fixtures/`

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-23T05:46:04.907Z",
+  "generatedAt": "2026-08-28T19:36:18.327Z",
   "upstream": "/home/ec2-user/postgrest-upstream/test/spec/fixtures",
   "stages": [
     {
@@ -41,11 +41,33 @@
     {
       "file": "07-data.sql",
       "source": "data.sql",
-      "kept": 573,
+      "kept": 578,
       "removed": 49
+    },
+    {
+      "file": "08-foreign-keys.sql",
+      "source": "recorded foreign-key graph",
+      "kept": 115,
+      "removed": 0
     }
   ],
   "relationships": 115,
+  "foreignKeyStatements": 115,
+  "dataDeletes": 149,
+  "brokenCycleEdges": [
+    {
+      "table": "public.agents",
+      "referencedTable": "public.departments",
+      "constraint": "agents_department_id_fkey",
+      "schema": "public",
+      "tableName": "agents",
+      "columns": [
+        "department_id"
+      ],
+      "effect": "public.agents is not guaranteed to be emptied before public.departments; a 23503 on reload starts here unless the reference is cleared first",
+      "cleared": true
+    }
+  ],
   "droppedByKind": {
     "extension": 7,
     "statement": 45,
@@ -53,7 +75,6 @@
     "type": 8,
     "function": 79,
     "domain": 5,
-    "foreign-key": 115,
     "column": 35,
     "table": 9,
     "materialized-view": 2,
@@ -243,14 +264,6 @@
       ]
     },
     {
-      "object": "public.public_orders_consumer_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
       "object": "public.login",
       "kind": "function",
       "reason": "returns public.jwt_token, which DSQL cannot produce (datatype jwt_token not supported)",
@@ -373,115 +386,11 @@
       ]
     },
     {
-      "object": "public.client",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.competitors_sponsor_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
       "object": "test_null_pk_competitors_sponsors",
       "kind": "rule",
       "reason": "CREATE RULE not supported by DSQL (unsupported statement: Rule)",
       "affectsCategories": [
         "insert"
-      ]
-    },
-    {
-      "object": "public.users_projects_user_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.users_projects_project_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.project",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.users_tasks_user_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.users_tasks_task_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.user",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.comments_task_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.fk_users_tasks",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.fk_upload",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "private.article",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "private.user",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
       ]
     },
     {
@@ -502,14 +411,6 @@
         "insert",
         "update",
         "delete"
-      ]
-    },
-    {
-      "object": "public.ghostBusters_escapeId_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
       ]
     },
     {
@@ -540,38 +441,6 @@
         "insert",
         "update",
         "rpc"
-      ]
-    },
-    {
-      "object": "public.has_fk_fk_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.has_fk_simple_fk_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.billing",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.shipping",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
       ]
     },
     {
@@ -702,22 +571,6 @@
       ]
     },
     {
-      "object": "public.child_entities_parent_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.grandchild_entities_parent_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
       "object": "public.ranges.range",
       "kind": "column",
       "reason": "column type numrange not supported by DSQL",
@@ -731,30 +584,6 @@
       "reason": "depends on relation public.tsearch, which DSQL could not create",
       "affectsCategories": [
         "rpc"
-      ]
-    },
-    {
-      "object": "public.descendant_being_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.being_part_being_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.being_part_part_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
       ]
     },
     {
@@ -854,78 +683,6 @@
       ]
     },
     {
-      "object": "public.pptr",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.organizations_referee_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.organizations_auditor_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.manager",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "private.books_author_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "private.books_first_publisher_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.message_sender_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.message_recipient_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.zone_space_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
       "object": "file_fdw",
       "kind": "extension",
       "reason": "CREATE EXTENSION not supported by DSQL",
@@ -951,14 +708,6 @@
       "kind": "statement",
       "reason": "COMMENT on this object kind is rejected by DSQL (unsupported COMMENT statement)",
       "affectsCategories": []
-    },
-    {
-      "object": "public.bar_fooId_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
     },
     {
       "object": "public.materialized_projects",
@@ -1079,14 +828,6 @@
       "reason": "column type tsrange not supported by DSQL",
       "affectsCategories": [
         "filters"
-      ]
-    },
-    {
-      "object": "public.contract_last_name_id_first_name_birth_date_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
       ]
     },
     {
@@ -1259,118 +1000,6 @@
       ]
     },
     {
-      "object": "public.web_content_p_web_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "private.referrals_link_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.main_project",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.jobs_site_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.jobs_big_project_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.whatev_jobs_site_id_1_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.whatev_jobs_project_id_1_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.whatev_jobs_site_id_2_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.whatev_jobs_project_id_2_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.departments_head_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.agents_department_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.schedule",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.fst_shift",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.snd_shift",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
       "object": "public.custom_headers",
       "kind": "function",
       "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
@@ -1415,22 +1044,6 @@
       ]
     },
     {
-      "object": "v1.parent",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "v2.parent",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
       "object": "drop aggregate if exists v2.special_agg(v2.another_table);",
       "kind": "statement",
       "reason": "DROP of this object kind is rejected by DSQL (unsupported object in DROP statement)",
@@ -1459,54 +1072,6 @@
       ]
     },
     {
-      "object": "private.label_screen_label_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "private.label_screen_screen_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "private.personnages_film_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "private.personnages_role_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "private.junction_end_1_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "private.junction_end_2_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
       "object": "public.rollen",
       "kind": "table",
       "reason": "every column uses a type DSQL does not support",
@@ -1516,22 +1081,6 @@
         "insert",
         "update",
         "delete"
-      ]
-    },
-    {
-      "object": "private.rollen_film_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "private.rollen_rolle_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
       ]
     },
     {
@@ -1607,14 +1156,6 @@
       ]
     },
     {
-      "object": "public.car_racers_car_model_name_car_model_year_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
       "object": "public.car_racers",
       "kind": "table",
       "reason": "depends on relation public.car_models, which DSQL could not create",
@@ -1686,54 +1227,6 @@
       "reason": "returns \"text/xml\", which DSQL cannot produce (datatype text/xml not supported)",
       "affectsCategories": [
         "select"
-      ]
-    },
-    {
-      "object": "public.products_suppliers_product_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.products_suppliers_supplier_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.suppliers_trade_unions_supplier_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.suppliers_trade_unions_trade_union_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.contact_clientid_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.clientinfo_clientid_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
       ]
     },
     {
@@ -1814,46 +1307,6 @@
       ]
     },
     {
-      "object": "public.well_parent_well_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.well_plate_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.plate_plan_step_from_well_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.plate_plan_step_to_plate_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.plate_plan_step_to_well_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
       "object": "public.return_scalar_xml",
       "kind": "function",
       "reason": "returns \"text/xml\", which DSQL cannot produce (datatype text/xml not supported)",
@@ -1929,30 +1382,6 @@
       ]
     },
     {
-      "object": "private.parent_fk",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.adaptation_notifications_series_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.parent_test",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
       "object": "postgis",
       "kind": "extension",
       "reason": "CREATE EXTENSION not supported by DSQL",
@@ -1986,22 +1415,6 @@
       ]
     },
     {
-      "object": "public.shop_bles_shop_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "SPECIAL \"@/\\#~_-.names_language_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
       "object": "public.load_safeupdate",
       "kind": "function",
       "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
@@ -2016,94 +1429,6 @@
       "affectsCategories": [
         "media-types",
         "rpc"
-      ]
-    },
-    {
-      "object": "public.videogames_designer_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.students_info_code_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.capital_country_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.first_second_id_1_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.first_second_id_2_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.first_1_second_id_1_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.first_1_second_id_2_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.janedoe_baz_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.johnsmith_fee_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.johnsmith_baz_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.b_c1_c2_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
       ]
     },
     {
@@ -2122,86 +1447,6 @@
         "insert",
         "update",
         "rpc"
-      ]
-    },
-    {
-      "object": "public.i2459_simple_t2_t1_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.i2459_composite_t2_t1_a_t1_b_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.i2459_self_t_parent_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.tb_b1_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.tb_b1_b2_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.trash_details_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.group_yard_group_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.group_yard_yard_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.subscriptions_subscriber_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.subscriptions_subscribed_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
       ]
     },
     {
@@ -2331,46 +1576,6 @@
       ]
     },
     {
-      "object": "public.datarep_next_two_todos_first_item_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.datarep_next_two_todos_second_item_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.user_friend_user1_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.user_friend_user2_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.tournaments_status_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
       "object": "public.bitchar_with_length.bit",
       "kind": "column",
       "reason": "column type bit(5) not supported by DSQL",
@@ -2466,14 +1671,6 @@
       "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
       "affectsCategories": [
         "rpc"
-      ]
-    },
-    {
-      "object": "public.table_b_table_a_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
       ]
     },
     {
@@ -2693,22 +1890,6 @@
       ]
     },
     {
-      "object": "public.project_invoices_project_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.budget_expenses_budget_category_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
       "object": "public.ret_some_mt",
       "kind": "function",
       "reason": "CREATE FUNCTION with language plpgsql not supported by DSQL",
@@ -2793,46 +1974,6 @@
       ]
     },
     {
-      "object": "public.processes_factory_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.processes_category_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.process_costs_process_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.process_supervisor_process_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.process_supervisor_supervisor_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
       "object": "public.tsvector_not_null",
       "kind": "domain",
       "reason": "base type tsvector not supported by DSQL",
@@ -2865,38 +2006,6 @@
       ]
     },
     {
-      "object": "public.fk_artist",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.process_operator_process_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.process_operator_operator_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
-      "object": "public.factory_buildings_factory_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
-      ]
-    },
-    {
       "object": "update pg_proc set oid = 'test.collision_test_table'::regclass::oid wh",
       "kind": "statement",
       "reason": "writing to pg_catalog is not permitted on DSQL",
@@ -2918,14 +2027,6 @@
       "reason": "column type visit_type not supported by DSQL",
       "affectsCategories": [
         "select"
-      ]
-    },
-    {
-      "object": "public.visits_place_id_fkey",
-      "kind": "foreign-key",
-      "reason": "FOREIGN KEY constraint not supported by DSQL; recovered in relationships.json",
-      "affectsCategories": [
-        "embedding"
       ]
     },
     {
@@ -3425,6 +2526,11 @@
       "change": "serial -> bigint identity (CACHE 1)"
     },
     {
+      "object": "public.public_orders_consumer_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
       "object": "public.callcounter_count",
       "kind": "sequence",
       "change": "added CACHE 1 (DSQL requires an explicit cache)"
@@ -3460,24 +2566,139 @@
       "change": "folded menagerie_pkey PRIMARY KEY in from ALTER TABLE ADD CONSTRAINT"
     },
     {
+      "object": "public.client",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
       "object": "public.projects.projects_client_id_fkey",
       "kind": "foreign-key",
-      "change": "renamed to client in relationships.json"
+      "change": "renamed to client before the key is emitted in 08-foreign-keys.sql"
+    },
+    {
+      "object": "public.competitors_sponsor_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.users_projects_user_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.users_projects_project_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.project",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
     },
     {
       "object": "public.tasks.tasks_project_id_fkey",
       "kind": "foreign-key",
-      "change": "renamed to project in relationships.json"
+      "change": "renamed to project before the key is emitted in 08-foreign-keys.sql"
+    },
+    {
+      "object": "public.users_tasks_user_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.users_tasks_task_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.user",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.comments_task_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.fk_users_tasks",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.fk_upload",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "private.article",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "private.user",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.ghostBusters_escapeId_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.has_fk_fk_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.has_fk_simple_fk_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.billing",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.shipping",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
     },
     {
       "object": "public.orders.orders_billing_address_id_fkey",
       "kind": "foreign-key",
-      "change": "renamed to billing in relationships.json"
+      "change": "renamed to billing before the key is emitted in 08-foreign-keys.sql"
     },
     {
       "object": "public.orders.orders_shipping_address_id_fkey",
       "kind": "foreign-key",
-      "change": "renamed to shipping in relationships.json"
+      "change": "renamed to shipping before the key is emitted in 08-foreign-keys.sql"
+    },
+    {
+      "object": "public.child_entities_parent_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.grandchild_entities_parent_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.descendant_being_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.being_part_being_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.being_part_part_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
     },
     {
       "object": "public.leak.id",
@@ -3485,9 +2706,74 @@
       "change": "serial -> bigint identity (CACHE 1)"
     },
     {
+      "object": "public.pptr",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.organizations_referee_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.organizations_auditor_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.manager",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
       "object": "public.organizations.organizations_manager_id_fkey",
       "kind": "foreign-key",
-      "change": "renamed to manager in relationships.json"
+      "change": "renamed to manager before the key is emitted in 08-foreign-keys.sql"
+    },
+    {
+      "object": "private.books_author_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "private.books_first_publisher_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.message_sender_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.message_recipient_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.zone_space_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.bar_fooId_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.contract_last_name_id_first_name_birth_date_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.web_content_p_web_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "private.referrals_link_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
     },
     {
       "object": "public.big_projects.big_project_id",
@@ -3500,9 +2786,24 @@
       "change": "serial -> bigint identity (CACHE 1)"
     },
     {
+      "object": "public.main_project",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
       "object": "public.sites.sites_main_project_id_fkey",
       "kind": "foreign-key",
-      "change": "renamed to main_project in relationships.json"
+      "change": "renamed to main_project before the key is emitted in 08-foreign-keys.sql"
+    },
+    {
+      "object": "public.jobs_site_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.jobs_big_project_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
     },
     {
       "object": "public.whatev_projects.id",
@@ -3515,6 +2816,61 @@
       "change": "serial -> bigint identity (CACHE 1)"
     },
     {
+      "object": "public.whatev_jobs_site_id_1_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.whatev_jobs_project_id_1_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.whatev_jobs_site_id_2_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.whatev_jobs_project_id_2_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.departments_head_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.agents_department_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.schedule",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.fst_shift",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.snd_shift",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "v1.parent",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "v2.parent",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
       "object": "private.screens.id",
       "kind": "column",
       "change": "serial -> bigint identity (CACHE 1)"
@@ -3525,9 +2881,84 @@
       "change": "serial -> bigint identity (CACHE 1)"
     },
     {
+      "object": "private.label_screen_label_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "private.label_screen_screen_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "private.personnages_film_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "private.personnages_role_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "private.junction_end_1_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "private.junction_end_2_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "private.rollen_film_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "private.rollen_rolle_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.car_racers_car_model_name_car_model_year_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.products_suppliers_product_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.products_suppliers_supplier_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.suppliers_trade_unions_supplier_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.suppliers_trade_unions_trade_union_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.contact_clientid_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
       "object": "public.clientinfo.id",
       "kind": "column",
       "change": "serial -> bigint identity (CACHE 1)"
+    },
+    {
+      "object": "public.clientinfo_clientid_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
     },
     {
       "object": "public.deferrable_unique_constraint.col",
@@ -3535,9 +2966,164 @@
       "change": "stripped DEFERRABLE/INITIALLY (not supported by DSQL)"
     },
     {
+      "object": "public.well_parent_well_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.well_plate_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.plate_plan_step_from_well_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.plate_plan_step_to_plate_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.plate_plan_step_to_well_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "private.parent_fk",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.adaptation_notifications_series_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.parent_test",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.shop_bles_shop_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "SPECIAL \"@/\\#~_-.names_language_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
       "object": "drop domain if exists public.titlecasetext cascade;",
       "kind": "domain",
       "change": "DROP DOMAIN ... CASCADE -> DROP DOMAIN (CASCADE unsupported on DSQL)"
+    },
+    {
+      "object": "public.videogames_designer_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.students_info_code_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.capital_country_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.first_second_id_1_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.first_second_id_2_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.first_1_second_id_1_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.first_1_second_id_2_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.janedoe_baz_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.johnsmith_fee_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.johnsmith_baz_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.b_c1_c2_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.i2459_simple_t2_t1_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.i2459_composite_t2_t1_a_t1_b_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.i2459_self_t_parent_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.tb_b1_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.tb_b1_b2_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.trash_details_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.group_yard_group_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.group_yard_yard_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.subscriptions_subscriber_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.subscriptions_subscribed_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
     },
     {
       "object": "drop domain if exists public.color cascade;",
@@ -3565,6 +3151,16 @@
       "change": "DROP DOMAIN ... CASCADE -> DROP DOMAIN (CASCADE unsupported on DSQL)"
     },
     {
+      "object": "public.datarep_next_two_todos_first_item_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.datarep_next_two_todos_second_item_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
       "object": "public.channels.id",
       "kind": "column",
       "change": "added identity CACHE 1 (DSQL requires an explicit cache size)"
@@ -3578,6 +3174,61 @@
       "object": "create index bets_data_jsonb on bets ((data_jsonb ->>'contra",
       "kind": "index",
       "change": "CREATE INDEX -> CREATE INDEX ASYNC"
+    },
+    {
+      "object": "public.user_friend_user1_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.user_friend_user2_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.tournaments_status_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.table_b_table_a_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.project_invoices_project_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.budget_expenses_budget_category_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.processes_factory_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.processes_category_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.process_costs_process_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.process_supervisor_process_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.process_supervisor_supervisor_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
     },
     {
       "object": "public.surr_serial_upsert.id",
@@ -3605,6 +3256,26 @@
       "change": "added identity CACHE 1 (DSQL requires an explicit cache size)"
     },
     {
+      "object": "public.fk_artist",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.process_operator_process_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.process_operator_operator_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
+      "object": "public.factory_buildings_factory_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
+    },
+    {
       "object": "public.places.id",
       "kind": "column",
       "change": "identity column int -> bigint (DSQL: identity column type must be bigint)"
@@ -3623,6 +3294,11 @@
       "object": "public.visits.id",
       "kind": "column",
       "change": "added identity CACHE 1 (DSQL requires an explicit cache size)"
+    },
+    {
+      "object": "public.visits_place_id_fkey",
+      "kind": "foreign-key",
+      "change": "REFERENCES stripped from the CREATE TABLE / ALTER TABLE it was declared in and re-emitted in 08-foreign-keys.sql as ADD CONSTRAINT ... NOT VALID (DSQL rejects a forward REFERENCES with 42P01 and ADD CONSTRAINT without NOT VALID with 0A000); also kept in relationships.json"
     },
     {
       "object": "grant usage on schema \"extra \"\"@/\\#~_-\" , \"special \"\"@/\\#~_-",
@@ -3632,72 +3308,72 @@
     {
       "object": "postgrest.auth",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "private.articles",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.users",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "private.article_stars",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.authors_only",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.auto_incrementing_pk",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.clients",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.projects",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.tasks",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.users_tasks",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.comments",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.files",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.touched_files",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.complex_items",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.complex_items",
@@ -3717,97 +3393,97 @@
     {
       "object": "public.compound_pk",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.simple_pk",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.has_fk",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.items",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.items2",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.json_table",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.menagerie",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.no_pk",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.nullable_integer",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.users_projects",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.Escap3e;",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.ghostBusters",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.withUnique",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.addresses",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.orders",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.images",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.w_or_wo_comma_names",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.items_with_different_col_types",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.entities",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.entities",
@@ -3832,17 +3508,17 @@
     {
       "object": "public.child_entities",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.grandchild_entities",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.ranges",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.ranges",
@@ -3872,27 +3548,27 @@
     {
       "object": "public.being",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.descendant",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.part",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.being_part",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.employees",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.employees",
@@ -3902,97 +3578,97 @@
     {
       "object": "public.tiobe_pls",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.single_unique",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.compound_unique",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.only_pk",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.family_tree",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.managers",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.organizations",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "private.authors",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "private.publishers",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "private.books",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.person",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.message",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.space",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.zone",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.UnitTest",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.json_arr",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.jsonb_test",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "private.player",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.contract",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.contract",
@@ -4002,7 +3678,7 @@
     {
       "object": "public.isn_sample",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.isn_sample",
@@ -4012,187 +3688,187 @@
     {
       "object": "public.Server Today",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.pgrst_reserved_chars",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.web_content",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.app_users",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "private.pages",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "private.referrals",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.big_projects",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.sites",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.jobs",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.departments",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.agents",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.schedules",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.activities",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.unit_workdays",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "v1.parents",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "v1.children",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "v2.parents",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "v2.children",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "v2.another_table",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "private.stuff",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "private.screens",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "private.labels",
       "kind": "data",
-      "change": "prepended DELETE FROM before the first INSERT: upstream relies on the schema being recreated before data.sql runs, so the file was not re-runnable (needed by the runner's --reload-data)"
+      "change": "added a DELETE FROM to the leading delete block: upstream relies on the schema being recreated before data.sql runs, so the file was not re-runnable (needed by the runner's --reload-data)"
     },
     {
       "object": "private.label_screen",
       "kind": "data",
-      "change": "prepended DELETE FROM before the first INSERT: upstream relies on the schema being recreated before data.sql runs, so the file was not re-runnable (needed by the runner's --reload-data)"
+      "change": "added a DELETE FROM to the leading delete block: upstream relies on the schema being recreated before data.sql runs, so the file was not re-runnable (needed by the runner's --reload-data)"
     },
     {
       "object": "private.actors",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "private.films",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "private.personnages",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.car_brands",
       "kind": "data",
-      "change": "prepended DELETE FROM before the first INSERT: upstream relies on the schema being recreated before data.sql runs, so the file was not re-runnable (needed by the runner's --reload-data)"
+      "change": "added a DELETE FROM to the leading delete block: upstream relies on the schema being recreated before data.sql runs, so the file was not re-runnable (needed by the runner's --reload-data)"
     },
     {
       "object": "public.products",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.suppliers",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.products_suppliers",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.trade_unions",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.suppliers_trade_unions",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.client",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.contact",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.clientinfo",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.chores",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.fav_numbers",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.fav_numbers",
@@ -4202,7 +3878,7 @@
     {
       "object": "public.arrays",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.arrays",
@@ -4212,7 +3888,7 @@
     {
       "object": "public.oid_test",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.oid_test",
@@ -4222,17 +3898,17 @@
     {
       "object": "private.internal_job",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.test",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.shops",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.shops",
@@ -4252,7 +3928,7 @@
     {
       "object": "public.shop_bles",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.shop_bles",
@@ -4267,102 +3943,102 @@
     {
       "object": "SPECIAL \"@/\\#~_-.languages",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "SPECIAL \"@/\\#~_-.names",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.do$llar$s",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.safe_update_items",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.safe_delete_items",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.unsafe_update_items",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.unsafe_delete_items",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.designers",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.videogames",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.students",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.students_info",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.country",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.capital",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.trash",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.trash_details",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.posters",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.subscriptions",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.datarep_todos",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.datarep_next_two_todos",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.bitchar_with_length",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.bitchar_with_length",
@@ -4377,17 +4053,17 @@
     {
       "object": "public.table_a",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.table_b",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.lines",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.lines",
@@ -4397,107 +4073,107 @@
     {
       "object": "public.timestamps",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.project_invoices",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.budget_categories",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.budget_expenses",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.factories",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.process_categories",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.processes",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.process_costs",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.supervisors",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.process_supervisor",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.operators",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.process_operator",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.factory_buildings",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.surr_serial_upsert",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.surr_gen_default_upsert",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.Surr_Gen_Default_Upsert",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.tsearch_to_tsvector",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.artists",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.albums",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.places",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.visits",
       "kind": "table",
-      "change": "TRUNCATE -> DELETE FROM (TRUNCATE not supported by DSQL)"
+      "change": "TRUNCATE -> DELETE FROM in the leading delete block (TRUNCATE not supported by DSQL; the block is ordered children-first because the foreign keys in 08-foreign-keys.sql are enforced)"
     },
     {
       "object": "public.visits",
@@ -4507,7 +4183,7 @@
     {
       "object": "public.bets",
       "kind": "data",
-      "change": "prepended DELETE FROM before the first INSERT: upstream relies on the schema being recreated before data.sql runs, so the file was not re-runnable (needed by the runner's --reload-data)"
+      "change": "added a DELETE FROM to the leading delete block: upstream relies on the schema being recreated before data.sql runs, so the file was not re-runnable (needed by the runner's --reload-data)"
     },
     {
       "object": "public.contract_last_name_id_first_name_birth_date_fkey",

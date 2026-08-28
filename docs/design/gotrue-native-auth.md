@@ -275,8 +275,11 @@ factory.
 
 The schema uses an `auth` namespace to stay invisible to
 REST introspection (which targets `public` only). All DDL
-follows DSQL constraints: no foreign keys, no SERIAL, no
-multi-statement transactions, no enums.
+follows DSQL constraints: no SERIAL, no multi-statement
+transactions, no enums. It also declares no foreign keys,
+which was a DSQL constraint when this was written and is no
+longer one (DSQL added them on 2026-08-27); the schema has
+not been revisited to add them.
 
 ```sql
 CREATE SCHEMA IF NOT EXISTS auth;

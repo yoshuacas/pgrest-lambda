@@ -143,7 +143,8 @@ describe('clearUnpopulatedTables', () => {
       const pool = fakePool([0, 3, 0]);
       const out = await clearUnpopulatedTables(pool, catalog,
         ['public.simple_pk2', 'public.leak', 'private.junction']);
-      assert.deepEqual(out, { checked: 3, cleared: ['public.leak'], rows: 3 });
+      assert.deepEqual(out,
+        { checked: 3, cleared: ['public.leak'], rows: 3, failed: [] });
       assert.equal(pool.calls.length, 2);
       assert.match(pool.calls[0].text,
         /^select \(select count\(\*\) from "public"\."simple_pk2"\) as c0/);
@@ -173,9 +174,57 @@ describe('clearUnpopulatedTables', () => {
   it('does nothing at all when nothing is in scope', async () => {
     const pool = fakePool([]);
     const out = await clearUnpopulatedTables(pool, catalog, []);
-    assert.deepEqual(out, { checked: 0, cleared: [], rows: 0 });
+    assert.deepEqual(out, { checked: 0, cleared: [], rows: 0, failed: [] });
     assert.equal(pool.calls.length, 0);
   });
+
+  // With foreign keys enforced (DSQL, 2026-08-27) a parent cannot be emptied
+  // while a child still holds rows, so the sweep orders its deletes.
+  it('deletes children before parents when given the key graph', async () => {
+    const graph = {
+      parents: new Map([['public.leak', new Set(['private.junction'])]]),
+      children: new Map([['private.junction', new Set(['public.leak'])]]),
+      edges: 1,
+      selfEdges: 0,
+    };
+    // Probe order is the argument order: junction (the parent) comes first.
+    const pool = fakePool([0, 2, 5]);
+    const out = await clearUnpopulatedTables(pool, catalog,
+      ['public.simple_pk2', 'private.junction', 'public.leak'], graph);
+    assert.deepEqual(out.cleared, ['public.leak', 'private.junction'],
+      'child first');
+    assert.equal(out.rows, 7);
+    assert.deepEqual(pool.calls.slice(1).map(c => c.text), [
+      'DELETE FROM "public"."leak"',
+      'DELETE FROM "private"."junction"',
+    ]);
+  });
+
+  it('retries a failed delete once and reports what still would not go',
+    async () => {
+      // A table outside the swept set references one inside it, so the first
+      // delete answers 23503 however the set is ordered.
+      const pool = fakePool([4]);
+      let attempts = 0;
+      const inner = pool.query.bind(pool);
+      pool.query = (text, values) => {
+        if (/^DELETE/.test(text)) {
+          attempts += 1;
+          pool.calls.push({ text, values });
+          return Promise.reject(Object.assign(
+            new Error('update or delete on table "leak" violates foreign key '
+              + 'constraint "x" on table "elsewhere"'), { code: '23503' }));
+        }
+        return inner(text, values);
+      };
+      const out = await clearUnpopulatedTables(pool, catalog, ['public.leak']);
+      assert.equal(attempts, 2, 'tried, then retried');
+      assert.deepEqual(out.cleared, []);
+      assert.equal(out.rows, 0);
+      assert.equal(out.failed.length, 1);
+      assert.equal(out.failed[0].table, 'public.leak');
+      assert.match(out.failed[0].error, /violates foreign key constraint/);
+    });
 
   it('quotes identifiers rather than interpolating them raw', async () => {
     const pool = fakePool([1]);
