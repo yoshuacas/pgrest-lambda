@@ -30,6 +30,16 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
   in the first place. With the keys enforced, `07-data.sql` empties its 149
   tables in one leading block in reverse topological order and the runner's
   targeted restore expands a touched table through the graph.
+- The fixture loader runs `ANALYZE` on each table it creates. A freshly created
+  DSQL table has no statistics, so `Prefer: count=planned` read a round default
+  instead of a row count; two runs of one tree differed by 6 cases for that
+  reason alone. DSQL accepts `ANALYZE` for one relation at a time and rejects
+  both the bare and the `VACUUM ANALYZE` forms with `0A000`.
+- Published conformance measurement: **1,179 of 1,294 in-scope cases (91.1%)** on
+  tree `4cebc95`, up from 1,176 of 1,294 — 1,179 of the older 1,358 denominator
+  (86.8%) like for like. Retiring the relationship manifest changed no case's
+  outcome; the 3 cases that moved are a planner estimate and a row order. See
+  `docs/reference/postgrest-compatibility.md`.
 
 ### Fixed
 

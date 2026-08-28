@@ -146,3 +146,49 @@ directions; do not net them out.
 4. Update `conformance/DSQL-CAPABILITIES.md`,
    `docs/reference/postgrest-compatibility.md`, `compatreport/README.md`,
    `docs/configuration.md`, `CHANGELOG.md`.
+
+## Outcome, measured
+
+All four steps ran. What they produced:
+
+1. Fixtures loaded on the conformance cluster
+   (`6juamhyj5nkoeatkzc3ieaerc4`, `us-east-1`): 1,250 of 1,251 statements
+   applied, `foreignKeysApplied: 114`, `foreignKeysFailed: 1`. The one that fails
+   is `public.car_racers → public.car_models`; `car_models` is partitioned, so
+   DSQL creates neither table and no manifest could have expressed the
+   relationship either. `pg_constraint` reports all 114 with
+   `convalidated = false`, which is what `NOT VALID` leaves behind, and
+   enforcement is live for every write after it.
+2. Four full runs, all with `--target dsql --concurrency 1 --reload-per-spec`
+   and no `PGREST_RELATIONSHIPS_PATH`. Tree `aafedf0` scored 1,173 and 1,179 of
+   1,294; tree `4cebc95` scored 1,179 twice, agreeing case for case, and the
+   second is published (91.1%). The 6-case spread on `aafedf0` was not the keys —
+   every case in it reads DSQL's planner estimate through
+   `Prefer: count=planned`, and a freshly created DSQL table has no statistics,
+   so the planner answered a round default. `4cebc95` adds an `ANALYZE` pass to
+   the fixture loader, one relation at a time because DSQL rejects the bare and
+   `VACUUM ANALYZE` forms with `0A000`, and the spread closed.
+3. `npm test` 1,946 pass — 1,694 engine and deploy tests plus the 252
+   conformance harness tests the same glob picks up — then
+   `npm run test:integration` 68 pass and `npm run test:e2e` 14 pass.
+4. Docs updated as listed, plus `AGENTS.md`,
+   `schema-examples/dsql-compatible.sql`, `docs/reference/cedar-equivalence.md`
+   and `docs/reference/index.md`.
+
+Two results worth stating as null results. Retiring the manifest changed no
+case's outcome: the 3 cases that moved between 1,176 and 1,179 are the two
+planner estimates and one row-order case, none of them a relationship. And the
+Cedar equivalence measurement, re-run on `4cebc95`, still holds 28 of 30 with
+the same two divergences — the relationships an authorization decision travels
+through changed underneath it and nothing moved.
+
+The movement section C predicted was wrong in both directions. All six cases it
+named as direct gains — `EmbedDisambiguationSpec:217`, `:408`, `:411`, `:507`,
+`:518` and `QuerySpec:798` — still fail under `no-foreign-keys`, because none of
+them needs a constraint the catalog was missing: what is left in that gap is a
+view's column provenance, which upstream reads from `pg_rewrite`, and
+disambiguation between two relationships joining the same pair of relations.
+Neither is something a foreign key expresses, so real keys could not close them.
+Nothing moved the other way either: no pass became a failure because keys are now
+enforced, in a run where every in-run `07-data.sql` reload applied 578 of 578
+statements with 0 failures and a full reset dropped 493 objects with 0 failures.

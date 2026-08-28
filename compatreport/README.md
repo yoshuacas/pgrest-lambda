@@ -38,29 +38,32 @@ Writes `compatreport/index.html` and prints the headline numbers, so a
 regeneration is verifiable from the terminal:
 
 ```
-history conformance/results/history.json: 23 run(s), baseline baseline 135/1153
-wrote /home/ec2-user/pgrest-lambda/compatreport/index.html (227,799 bytes)
-pass rate 1176/1294 = 90.9%  [extracted 1539, needs-config 2, skipped 35, blocked 191, out-of-scope 17]
-39 gap slugs, 26 DSQL drop families
-12 order-dependent failures kept as failures
+history conformance/results/history.json: 27 run(s), baseline baseline 135/1153
+wrote /home/ec2-user/pgrest-lambda/compatreport/index.html (227,200 bytes)
+pass rate 1179/1294 = 91.1%  [extracted 1539, needs-config 2, skipped 35, blocked 191, out-of-scope 17]
+38 gap slugs, 25 DSQL drop families
+11 order-dependent failures kept as failures
 cedar equivalence (separate measurement, never added): 28/30 hold, 24 with no fair equivalent, 54 upstream cases covered of which 44 pass above, 0 read differently by the two harnesses
-same tree, 2 runs with these flags: 1176, 1176 of 1294 — published 1176
-vs baseline baseline: +1,041 passed, −900 failed, denominator +141
-id-matched vs baseline: +1042 pass, -1 regress (1539 shared ids)
-id-matched vs c718ab4 2026-08-23T06:25:20Z (same flags): +3 pass, -0 regress
-noise vs 8bed54e 2026-08-23T06:57:07Z (same tree, same flags): 0 cases differ
+same tree, 2 runs with these flags: 1179, 1179 of 1294 — published 1179
+vs baseline baseline: +1,044 passed, −903 failed, denominator +141
+id-matched vs baseline: +1045 pass, -1 regress (1539 shared ids)
+id-matched vs aafedf0 2026-08-28T20:33:04Z (same flags): +0 pass, -0 regress
+noise vs 4cebc95 2026-08-28T20:56:05Z (same tree, same flags): 0 cases differ
 ```
 
-That 1,176 of 1,294 is the current published measurement, on tree `8bed54e`; the
-previous published measurement was 1,074 of 1,358 on tree `2488109`. Both runs of
-the `8bed54e` tree scored 1,176 and agree case for case, which is the narrowest
-spread this suite has shown — the four runs of `2488109` spanned 1,068 to 1,080.
+That 1,179 of 1,294 is the current published measurement, on tree `4cebc95`; the
+previous published measurement was 1,176 of 1,294 on tree `8bed54e`, and the one
+before it 1,074 of 1,358 on tree `2488109`. Both runs of the `4cebc95` tree scored
+1,179 and agree case for case. The `--flags` string changed on 2026-08-28 —
+`PGREST_RELATIONSHIPS_PATH` is gone from it, because DSQL now has foreign keys and
+the engine reads the catalog — so the generator compares this run only with the
+other runs that carry the new string, and the comparison against 1,176 is
+id-matched by hand and labelled that way wherever it appears.
 The rule the published number follows is worth stating: when several runs of one
 tree disagree, publish one that was not measured by the pass that wrote the code,
 and prefer the middle of the range to the top of it. With a 0-case spread there is
-nothing to choose, so the published run is the one that measured the tree exactly
-as it is committed; the other run's tree differed by an unused declaration removed
-while it was in flight, which its trend note records. Every run stays in the trend
+nothing to choose, so the published run is the second of the two, which measured
+the tree exactly as it is committed. Every run stays in the trend
 file with its own row, so the spread is visible instead of being read as progress,
 and the generator prints it: the `same tree` and `noise` lines above are computed
 from the trend, not written by hand.
@@ -70,10 +73,21 @@ one column, of type `json`, which PostgreSQL will not order by, so the
 deterministic-order tiebreak cannot reach it and `JsonOperatorSpec:248` can still
 move on its own.
 
+A second noise source was found and closed on 2026-08-28, on the tree that took
+DSQL's foreign keys: two runs of it scored 1,173 and 1,179 of 1,294, and all six
+cases in the difference ask for `Prefer: count=planned` or `count=estimated`.
+They read the planner's row estimate, a freshly created DSQL table has no
+statistics for the planner to use, and the default estimate it falls back to is a
+round number — `0-14/1000000` where upstream asserts `0-14/15`. `ANALYZE` runs
+per table at fixture load now, which is what autovacuum does for upstream, so a
+measurement on a fresh cluster is not competing with DSQL's own statistics
+collection. Any run whose `Content-Range` totals are round numbers was measured
+before that pass existed or on fixtures loaded without it.
+
 The denominator moved in this wave and the report says so in both directions:
-1,176 of 1,294 published, 1,176 of the older 1,358 with all 64 cases that left the
+1,179 of 1,294 published, 1,179 of the older 1,358 with all 64 cases that left the
 denominator added back as failures. Quote one pairing or the other, never
-90.9% against 79.1%.
+91.1% against 79.1%.
 
 `--tree` is what makes that line possible. A results file records the commit the
 runner saw, which is not always the commit that ends up containing the code: a
@@ -486,12 +500,16 @@ rather than being hidden, so nothing disappears silently.
 - Two full runs of the same commit differ by a handful of cases. Measured: 547
   and 550 on one tree, 943, 945 and 948 on another, 1,066, 1,069, 1,073 and 1,073
   on a third, 1,068, 1,068, 1,074 and 1,080 on a fourth, 1,174 and 1,173 on a
-  fifth, and 1,176 and 1,176 on a sixth — a spread of 7 cases in the third tree,
-  12 in the fourth, 1 in the fifth and 0 in the sixth. The two runs of the sixth
-  agree case for case, the first time that has happened, and it is one pair of
-  runs rather than evidence the mechanism went away: the tiebreak that removed
-  most of the movement cannot reach `json_table`, whose only column PostgreSQL
-  will not order by. The cause is DSQL
+  fifth, 1,176 and 1,176 on a sixth, 1,173 and 1,179 on a seventh, and 1,179 and
+  1,179 on an eighth — a spread of 7 cases in the third tree, 12 in the fourth,
+  1 in the fifth, 0 in the sixth, 6 in the seventh and 0 in the eighth. The sixth
+  and eighth agree case for case, and that is a pair of runs each rather than
+  evidence the mechanism went away: the tiebreak that removed most of the movement
+  cannot reach `json_table`, whose only column PostgreSQL will not order by. The
+  6-case spread in the seventh tree was a second mechanism, found and closed —
+  DSQL's planner had no statistics for a freshly loaded table, so `count=planned`
+  answered a round default; the loader now runs `ANALYZE` per table. The cause of
+  the rest is DSQL
   optimistic-concurrency conflicts during the fixture reload, the order the
   storage layer returns unordered rows in, and identity-sequence state a data-only
   reload cannot restore. Do not present a difference of that size as progress —
@@ -517,18 +535,25 @@ rather than being hidden, so nothing disappears silently.
   the spread is wide enough to swallow the difference from the previous
   publication, say so in the page rather than letting the reader infer progress:
   every case that changed verdict between 1,069 and 1,074 is order-only. The
-  `8bed54e` run is the one case where the two rules cannot both be satisfied: both
+  `8bed54e` run is the first case where the two rules cannot both be satisfied: both
   of its runs were measured by the pass that wrote the code, and they scored the
   same case for case. That is published with the first rule stated as unmet, in
   the report and on the compatibility page, and the number to trust is the
-  id-matched delta (+3, −0), which does not depend on who ran it.
+  id-matched delta (+3, −0), which does not depend on who ran it. The `4cebc95`
+  run is the same situation: two runs by the pass that wrote the code, both 1,179,
+  agreeing case for case, published with the rule stated as unmet and the
+  id-matched deltas given — 0 cases differ against the same-flags run of the tree
+  before it, and +3, −0 against the 1,176 publication, matched by hand because the
+  `--flags` string changed between them.
 - Report what left the denominator. A case moved from `fail` to `blocked` or
   `out-of-scope` between two runs raises the rate without any engine work, so the
   report counts those moves and recomputes the rate with them added back as
   failures (945/1285 = 73.5% published, 945/1294 = 73.0% with all nine). The
-  published 1,176/1,294 run moved 64 cases out of the denominator that the
-  1,074/1,358 run counted as failures and moved none in, so it is quoted both
-  ways: 90.9% on its own denominator and 1,176/1,358 = 86.6% on the older one,
+  1,176/1,294 run moved 64 cases out of the denominator that the
+  1,074/1,358 run counted as failures and moved none in, and the published
+  1,179/1,294 run moves nothing in either direction against that — same 191
+  blocked, 17 out of scope, 35 skipped, 2 needs-config — so it is quoted both
+  ways: 91.1% on its own denominator and 1,179/1,358 = 86.8% on the older one,
   which is the like-for-like figure against 79.1%. All 64 are requests naming a
   column DSQL will not store, answered with PostgreSQL's own `42703` — the same
   answer upstream gives — so no engine change can make them pass either way. The

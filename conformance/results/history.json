@@ -6019,6 +6019,1054 @@
           "errored": 0
         }
       }
+    },
+    {
+      "label": "aafedf0 2026-08-28T20:15:28Z",
+      "generatedAt": "2026-08-28T20:15:28Z",
+      "commit": "aafedf0",
+      "tree": "aafedf0",
+      "target": "dsql",
+      "results": "conformance/results/run-2026-08-28T20-15-28-961Z.json",
+      "flags": "--target dsql --concurrency 1 --reload-per-spec",
+      "note": "First run reading DSQL's foreign keys from pg_constraint, with no relationship manifest set. The --flags string changed here — PGREST_RELATIONSHIPS_PATH is gone — so no run before this one is comparable with it. Five count=planned/count=estimated cases failed on a default planner estimate (Content-Range 0-14/1000000 where upstream asserts 0-14/15) because the fixtures had just been loaded and DSQL had not collected statistics yet.",
+      "totals": {
+        "total": 1539,
+        "passed": 1173,
+        "failed": 121,
+        "skipped": 35,
+        "needsConfig": 2,
+        "blocked": 191,
+        "outOfScope": 17,
+        "errored": 0
+      },
+      "byCategory": {
+        "aggregates": {
+          "total": 50,
+          "passed": 48,
+          "failed": 2,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 0,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "filters": {
+          "total": 240,
+          "passed": 131,
+          "failed": 42,
+          "skipped": 1,
+          "needsConfig": 0,
+          "blocked": 66,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "embedding": {
+          "total": 299,
+          "passed": 280,
+          "failed": 8,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 11,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "delete": {
+          "total": 18,
+          "passed": 17,
+          "failed": 1,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 0,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "auth": {
+          "total": 56,
+          "passed": 48,
+          "failed": 4,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 3,
+          "outOfScope": 1,
+          "errored": 0
+        },
+        "select": {
+          "total": 72,
+          "passed": 65,
+          "failed": 2,
+          "skipped": 1,
+          "needsConfig": 0,
+          "blocked": 4,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "cors": {
+          "total": 9,
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 0,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "media-types": {
+          "total": 75,
+          "passed": 38,
+          "failed": 24,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 13,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "openapi": {
+          "total": 8,
+          "passed": 5,
+          "failed": 0,
+          "skipped": 1,
+          "needsConfig": 2,
+          "blocked": 0,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "errors": {
+          "total": 21,
+          "passed": 17,
+          "failed": 2,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 2,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "multiple-schemas": {
+          "total": 36,
+          "passed": 26,
+          "failed": 2,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 8,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "preferences": {
+          "total": 29,
+          "passed": 29,
+          "failed": 0,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 0,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "http-headers": {
+          "total": 2,
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 1,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "insert": {
+          "total": 85,
+          "passed": 57,
+          "failed": 13,
+          "skipped": 4,
+          "needsConfig": 0,
+          "blocked": 11,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "json-operators": {
+          "total": 65,
+          "passed": 46,
+          "failed": 1,
+          "skipped": 2,
+          "needsConfig": 0,
+          "blocked": 16,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "observability": {
+          "total": 13,
+          "passed": 12,
+          "failed": 0,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 1,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "options": {
+          "total": 1,
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 0,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "update": {
+          "total": 70,
+          "passed": 60,
+          "failed": 8,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 2,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "plan": {
+          "total": 3,
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 0,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "range": {
+          "total": 57,
+          "passed": 54,
+          "failed": 3,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 0,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "rollback": {
+          "total": 26,
+          "passed": 1,
+          "failed": 1,
+          "skipped": 24,
+          "needsConfig": 0,
+          "blocked": 0,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "rpc": {
+          "total": 205,
+          "passed": 137,
+          "failed": 7,
+          "skipped": 2,
+          "needsConfig": 0,
+          "blocked": 43,
+          "outOfScope": 16,
+          "errored": 0
+        },
+        "singular": {
+          "total": 36,
+          "passed": 36,
+          "failed": 0,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 0,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "upsert": {
+          "total": 63,
+          "passed": 52,
+          "failed": 1,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 10,
+          "outOfScope": 0,
+          "errored": 0
+        }
+      }
+    },
+    {
+      "label": "aafedf0 2026-08-28T20:33:04Z",
+      "generatedAt": "2026-08-28T20:33:04Z",
+      "commit": "aafedf0",
+      "tree": "aafedf0",
+      "target": "dsql",
+      "results": "conformance/results/run-2026-08-28T20-33-04-446Z.json",
+      "flags": "--target dsql --concurrency 1 --reload-per-spec",
+      "note": "The same tree again 18 minutes later with nothing changed: 1179 against 1173. All six cases in the difference read the planner's row estimate (five count=planned/count=estimated) or row order (JsonOperatorSpec:248), and the cause was DSQL collecting statistics in between. This spread is what the ANALYZE pass at fixture load exists to remove.",
+      "totals": {
+        "total": 1539,
+        "passed": 1179,
+        "failed": 115,
+        "skipped": 35,
+        "needsConfig": 2,
+        "blocked": 191,
+        "outOfScope": 17,
+        "errored": 0
+      },
+      "byCategory": {
+        "aggregates": {
+          "total": 50,
+          "passed": 48,
+          "failed": 2,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 0,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "filters": {
+          "total": 240,
+          "passed": 131,
+          "failed": 42,
+          "skipped": 1,
+          "needsConfig": 0,
+          "blocked": 66,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "embedding": {
+          "total": 299,
+          "passed": 282,
+          "failed": 6,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 11,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "delete": {
+          "total": 18,
+          "passed": 17,
+          "failed": 1,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 0,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "auth": {
+          "total": 56,
+          "passed": 48,
+          "failed": 4,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 3,
+          "outOfScope": 1,
+          "errored": 0
+        },
+        "select": {
+          "total": 72,
+          "passed": 65,
+          "failed": 2,
+          "skipped": 1,
+          "needsConfig": 0,
+          "blocked": 4,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "cors": {
+          "total": 9,
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 0,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "media-types": {
+          "total": 75,
+          "passed": 38,
+          "failed": 24,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 13,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "openapi": {
+          "total": 8,
+          "passed": 5,
+          "failed": 0,
+          "skipped": 1,
+          "needsConfig": 2,
+          "blocked": 0,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "errors": {
+          "total": 21,
+          "passed": 17,
+          "failed": 2,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 2,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "multiple-schemas": {
+          "total": 36,
+          "passed": 26,
+          "failed": 2,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 8,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "preferences": {
+          "total": 29,
+          "passed": 29,
+          "failed": 0,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 0,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "http-headers": {
+          "total": 2,
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 1,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "insert": {
+          "total": 85,
+          "passed": 57,
+          "failed": 13,
+          "skipped": 4,
+          "needsConfig": 0,
+          "blocked": 11,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "json-operators": {
+          "total": 65,
+          "passed": 47,
+          "failed": 0,
+          "skipped": 2,
+          "needsConfig": 0,
+          "blocked": 16,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "observability": {
+          "total": 13,
+          "passed": 12,
+          "failed": 0,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 1,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "options": {
+          "total": 1,
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 0,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "update": {
+          "total": 70,
+          "passed": 60,
+          "failed": 8,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 2,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "plan": {
+          "total": 3,
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 0,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "range": {
+          "total": 57,
+          "passed": 57,
+          "failed": 0,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 0,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "rollback": {
+          "total": 26,
+          "passed": 1,
+          "failed": 1,
+          "skipped": 24,
+          "needsConfig": 0,
+          "blocked": 0,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "rpc": {
+          "total": 205,
+          "passed": 137,
+          "failed": 7,
+          "skipped": 2,
+          "needsConfig": 0,
+          "blocked": 43,
+          "outOfScope": 16,
+          "errored": 0
+        },
+        "singular": {
+          "total": 36,
+          "passed": 36,
+          "failed": 0,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 0,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "upsert": {
+          "total": 63,
+          "passed": 52,
+          "failed": 1,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 10,
+          "outOfScope": 0,
+          "errored": 0
+        }
+      }
+    },
+    {
+      "label": "4cebc95 2026-08-28T20:56:05Z",
+      "generatedAt": "2026-08-28T20:56:04Z",
+      "commit": "4cebc95",
+      "tree": "4cebc95",
+      "target": "dsql",
+      "results": "conformance/results/run-2026-08-28T20-56-05-000Z.json",
+      "flags": "--target dsql --concurrency 1 --reload-per-spec",
+      "note": "First run with the loader collecting statistics — ANALYZE on each of 215 tables — measured immediately after a full fixture reload. Scores 1179 and agrees case for case with the warm run of the previous tree, so a cold cluster no longer measures lower.",
+      "totals": {
+        "total": 1539,
+        "passed": 1179,
+        "failed": 115,
+        "skipped": 35,
+        "needsConfig": 2,
+        "blocked": 191,
+        "outOfScope": 17,
+        "errored": 0
+      },
+      "byCategory": {
+        "aggregates": {
+          "total": 50,
+          "passed": 48,
+          "failed": 2,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 0,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "filters": {
+          "total": 240,
+          "passed": 131,
+          "failed": 42,
+          "skipped": 1,
+          "needsConfig": 0,
+          "blocked": 66,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "embedding": {
+          "total": 299,
+          "passed": 282,
+          "failed": 6,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 11,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "delete": {
+          "total": 18,
+          "passed": 17,
+          "failed": 1,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 0,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "auth": {
+          "total": 56,
+          "passed": 48,
+          "failed": 4,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 3,
+          "outOfScope": 1,
+          "errored": 0
+        },
+        "select": {
+          "total": 72,
+          "passed": 65,
+          "failed": 2,
+          "skipped": 1,
+          "needsConfig": 0,
+          "blocked": 4,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "cors": {
+          "total": 9,
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 0,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "media-types": {
+          "total": 75,
+          "passed": 38,
+          "failed": 24,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 13,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "openapi": {
+          "total": 8,
+          "passed": 5,
+          "failed": 0,
+          "skipped": 1,
+          "needsConfig": 2,
+          "blocked": 0,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "errors": {
+          "total": 21,
+          "passed": 17,
+          "failed": 2,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 2,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "multiple-schemas": {
+          "total": 36,
+          "passed": 26,
+          "failed": 2,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 8,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "preferences": {
+          "total": 29,
+          "passed": 29,
+          "failed": 0,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 0,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "http-headers": {
+          "total": 2,
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 1,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "insert": {
+          "total": 85,
+          "passed": 57,
+          "failed": 13,
+          "skipped": 4,
+          "needsConfig": 0,
+          "blocked": 11,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "json-operators": {
+          "total": 65,
+          "passed": 47,
+          "failed": 0,
+          "skipped": 2,
+          "needsConfig": 0,
+          "blocked": 16,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "observability": {
+          "total": 13,
+          "passed": 12,
+          "failed": 0,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 1,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "options": {
+          "total": 1,
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 0,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "update": {
+          "total": 70,
+          "passed": 60,
+          "failed": 8,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 2,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "plan": {
+          "total": 3,
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 0,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "range": {
+          "total": 57,
+          "passed": 57,
+          "failed": 0,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 0,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "rollback": {
+          "total": 26,
+          "passed": 1,
+          "failed": 1,
+          "skipped": 24,
+          "needsConfig": 0,
+          "blocked": 0,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "rpc": {
+          "total": 205,
+          "passed": 137,
+          "failed": 7,
+          "skipped": 2,
+          "needsConfig": 0,
+          "blocked": 43,
+          "outOfScope": 16,
+          "errored": 0
+        },
+        "singular": {
+          "total": 36,
+          "passed": 36,
+          "failed": 0,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 0,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "upsert": {
+          "total": 63,
+          "passed": 52,
+          "failed": 1,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 10,
+          "outOfScope": 0,
+          "errored": 0
+        }
+      }
+    },
+    {
+      "label": "4cebc95 2026-08-28T21:13:10Z",
+      "generatedAt": "2026-08-28T21:13:10Z",
+      "commit": "4cebc95",
+      "tree": "4cebc95",
+      "target": "dsql",
+      "results": "conformance/results/run-2026-08-28T21-13-10-464Z.json",
+      "flags": "--target dsql --concurrency 1 --reload-per-spec",
+      "note": "Published. DSQL added foreign key constraints on 2026-08-27, so the fixtures declare all 115 of upstream's keys (114 land; the one that does not points at a partitioned table DSQL will not create) and the engine reads its relationships from pg_constraint instead of PGREST_RELATIONSHIPS_PATH. The manifest is no longer set, which changed the --flags string, so nothing before 2026-08-28 is comparable with this run. Second run of this tree; it and the 20:56:05Z run agree case for case.",
+      "totals": {
+        "total": 1539,
+        "passed": 1179,
+        "failed": 115,
+        "skipped": 35,
+        "needsConfig": 2,
+        "blocked": 191,
+        "outOfScope": 17,
+        "errored": 0
+      },
+      "byCategory": {
+        "aggregates": {
+          "total": 50,
+          "passed": 48,
+          "failed": 2,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 0,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "filters": {
+          "total": 240,
+          "passed": 131,
+          "failed": 42,
+          "skipped": 1,
+          "needsConfig": 0,
+          "blocked": 66,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "embedding": {
+          "total": 299,
+          "passed": 282,
+          "failed": 6,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 11,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "delete": {
+          "total": 18,
+          "passed": 17,
+          "failed": 1,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 0,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "auth": {
+          "total": 56,
+          "passed": 48,
+          "failed": 4,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 3,
+          "outOfScope": 1,
+          "errored": 0
+        },
+        "select": {
+          "total": 72,
+          "passed": 65,
+          "failed": 2,
+          "skipped": 1,
+          "needsConfig": 0,
+          "blocked": 4,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "cors": {
+          "total": 9,
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 0,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "media-types": {
+          "total": 75,
+          "passed": 38,
+          "failed": 24,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 13,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "openapi": {
+          "total": 8,
+          "passed": 5,
+          "failed": 0,
+          "skipped": 1,
+          "needsConfig": 2,
+          "blocked": 0,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "errors": {
+          "total": 21,
+          "passed": 17,
+          "failed": 2,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 2,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "multiple-schemas": {
+          "total": 36,
+          "passed": 26,
+          "failed": 2,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 8,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "preferences": {
+          "total": 29,
+          "passed": 29,
+          "failed": 0,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 0,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "http-headers": {
+          "total": 2,
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 1,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "insert": {
+          "total": 85,
+          "passed": 57,
+          "failed": 13,
+          "skipped": 4,
+          "needsConfig": 0,
+          "blocked": 11,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "json-operators": {
+          "total": 65,
+          "passed": 47,
+          "failed": 0,
+          "skipped": 2,
+          "needsConfig": 0,
+          "blocked": 16,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "observability": {
+          "total": 13,
+          "passed": 12,
+          "failed": 0,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 1,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "options": {
+          "total": 1,
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 0,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "update": {
+          "total": 70,
+          "passed": 60,
+          "failed": 8,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 2,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "plan": {
+          "total": 3,
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 0,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "range": {
+          "total": 57,
+          "passed": 57,
+          "failed": 0,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 0,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "rollback": {
+          "total": 26,
+          "passed": 1,
+          "failed": 1,
+          "skipped": 24,
+          "needsConfig": 0,
+          "blocked": 0,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "rpc": {
+          "total": 205,
+          "passed": 137,
+          "failed": 7,
+          "skipped": 2,
+          "needsConfig": 0,
+          "blocked": 43,
+          "outOfScope": 16,
+          "errored": 0
+        },
+        "singular": {
+          "total": 36,
+          "passed": 36,
+          "failed": 0,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 0,
+          "outOfScope": 0,
+          "errored": 0
+        },
+        "upsert": {
+          "total": 63,
+          "passed": 52,
+          "failed": 1,
+          "skipped": 0,
+          "needsConfig": 0,
+          "blocked": 10,
+          "outOfScope": 0,
+          "errored": 0
+        }
+      }
     }
   ]
 }

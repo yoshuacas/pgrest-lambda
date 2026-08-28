@@ -7,24 +7,28 @@ description: What pgrest-lambda passes of the upstream PostgREST test suite, mea
 
 pgrest-lambda aims to be wire-compatible with PostgREST. This page reports how close it is, measured rather than claimed.
 
-The measurement extracts every `shouldRespondWith` assertion in PostgREST's own Haskell test suite into 1,539 portable cases, then replays each one against the Lambda handler in-process, against a live Aurora DSQL cluster. **The engine passes 1,176 of the 1,294 cases that ran and are in scope — one thousand one hundred and seventy-six of one thousand two hundred and ninety-four, 90.9%.** The other 245 extracted cases are held outside that denominator and itemised below. None of them counts as a pass.
+The measurement extracts every `shouldRespondWith` assertion in PostgREST's own Haskell test suite into 1,539 portable cases, then replays each one against the Lambda handler in-process, against a live Aurora DSQL cluster. **The engine passes 1,179 of the 1,294 cases that ran and are in scope — one thousand one hundred and seventy-nine of one thousand two hundred and ninety-four, 91.1%.** The other 245 extracted cases are held outside that denominator and itemised below. None of them counts as a pass.
 
-Read that number next to the one this page used to carry, 1,074 of 1,358 (79.1%), and read the denominator as well as the rate: 64 of those 1,358 cases went back to `blocked` this wave because they address a column Aurora DSQL will not store, so they cannot run either way. On the older, wider denominator the engine now passes **1,176 of 1,358 — 86.6%**, and that is the like-for-like figure. Both are below.
+Read that number next to the one this page used to carry, 1,074 of 1,358 (79.1%), and read the denominator as well as the rate: 64 of those 1,358 cases went back to `blocked` this wave because they address a column Aurora DSQL will not store, so they cannot run either way. On the older, wider denominator the engine now passes **1,179 of 1,358 — 86.8%**, and that is the like-for-like figure. Both are below.
 
-Every number on this page comes from `conformance/results/run-2026-08-23T07-16-38-954Z.json` (run `2026-08-23T07:16:38Z`, tree `8bed54e`) and `conformance/fixtures/load-report.json`, except where another run file is named on the line that uses it. `conformance/results/latest.json` is a copy of that file, so the reproduction instructions and the rest of the repository read the published run rather than the last one that happened to finish. The results file records commit `c718ab4` in its own metadata because the run measured the working tree before the commit that carries the change in it existed; `tree` in `conformance/results/history.json` records which tree it was.
+Every number on this page comes from `conformance/results/run-2026-08-28T21-13-10-464Z.json` (run `2026-08-28T21:13:10Z`, tree `4cebc95`) and `conformance/fixtures/load-report.json`, except where another run file is named on the line that uses it. `conformance/results/latest.json` is a copy of that file, so the reproduction instructions and the rest of the repository read the published run rather than the last one that happened to finish. This run measured the tree exactly as `4cebc95` committed it, so the commit in the results file's own metadata and the `tree` field in `conformance/results/history.json` are the same string; earlier runs on this page do not all have that property, and `tree` is the field to read.
 
 ### Which run this is, and why
 
-Two full runs of this tree exist, same flags, same cluster, and they scored the same:
+Four full runs happened on 2026-08-28, all on the conformance cluster `6juamhyj…` (`conformance/CONTRACTS.md`) with the same flags — two on the tree that moved the engine off the relationship manifest, two on the tree that added the fixture loader's `ANALYZE` pass:
 
-| Run | Passed / ran | Cluster |
-|---|---|---|
-| `2026-08-23T06:57:07Z` | 1,176 / 1,294 | `lzt7fuha…` |
-| **`2026-08-23T07:16:38Z`** | **1,176 / 1,294** | `lzt7fuha…` — **published** |
+| Run | Tree | Passed / ran | What it was |
+|---|---|---|---|
+| `2026-08-28T20:15:28Z` | `aafedf0` | 1,173 / 1,294 | First run reading DSQL's foreign keys from `pg_constraint`, no manifest. |
+| `2026-08-28T20:33:04Z` | `aafedf0` | 1,179 / 1,294 | The same tree 18 minutes later, nothing changed. |
+| `2026-08-28T20:56:05Z` | `4cebc95` | 1,179 / 1,294 | First run with the loader collecting statistics, measured straight after a full fixture reload. |
+| **`2026-08-28T21:13:10Z`** | **`4cebc95`** | **1,179 / 1,294** | **published** |
 
-They agree case by case: no case passed in one and failed in the other. There is nothing to choose between them, so the published one is the second, which ran against the tree exactly as it is committed. A 0-case spread is the narrowest this suite has shown — the four runs of tree `2488109` spanned 1,068 to 1,080 — and it should not be read as the noise band having closed. `json_table` still has no column PostgreSQL can order by, so `JsonOperatorSpec:248` can move again.
+The two runs of `4cebc95` agree case by case: no case passed in one and failed in the other. The 6-case spread between the two runs of `aafedf0` is not the engine and not the foreign keys — every case in it reads DSQL's planner estimate, and the cause is [statistics DSQL had not collected yet](#countplanned-measures-the-planner-and-the-planner-needs-statistics). The loader's `ANALYZE` pass removes that cause, which is why the first run of `4cebc95` reached 1,179 immediately after a fresh load instead of half an hour later. A 0-case spread is still not a closed noise band: `json_table` has no column PostgreSQL can order by, so `JsonOperatorSpec:248` can move on its own.
 
-Both runs were measured by the same pass that wrote the code in them, so the rule in `compatreport/README.md` about publishing a run measured by a pass with no code in the result is not satisfied here. The number to trust is the id-matched comparison below, which does not depend on who ran it.
+These four runs carry a different `--flags` string from every run before them — `PGREST_RELATIONSHIPS_PATH` is gone from it — so the report generator does not compare them with the earlier runs, and the comparisons in the next section are matched by case id by hand and labelled as such.
+
+All four runs were measured by the same pass that wrote the code in them, so the rule in `compatreport/README.md` about publishing a run measured by a pass with no code in the result is not satisfied here. The number to trust is the id-matched comparison below, which does not depend on who ran it.
 
 The generated report at `compatreport/index.html` carries the same data with per-case detail and a section on how to read the number. `conformance/results/history.json` keeps every measured run.
 
@@ -34,26 +38,28 @@ Of the 1,539 extracted cases:
 
 | Group | Cases | What it means |
 |---|---|---|
-| Passed | 1,176 | Status, body and asserted headers all match upstream. |
-| Failed | 118 | Ran and did not match. In the pass rate. |
+| Passed | 1,179 | Status, body and asserted headers all match upstream. |
+| Failed | 115 | Ran and did not match. In the pass rate. |
 | Blocked | 191 | The table, view, function or column the case needs cannot be created on Aurora DSQL, so the assertion cannot run either way. |
 | Needs engine config | 2 | The assertion only holds when the PostgREST process runs with a setting pgrest-lambda has no switch for. |
 | Skipped at extraction | 35 | The Haskell assertion could not be converted without guessing — a header built by a helper, a body read from a file, a path taken from an earlier response. |
 | Out of scope | 17 | Asserts namespaced run-time parameters (`response.headers`, `request.*`), which DSQL rejects outright. |
 
-The pass rate is `passed / (passed + failed)` = 1,176 / 1,294. It is not 1,176 / 1,539, and it never counts an excluded case as a pass. Closing a harness skip or adding a missing setting moves cases *into* the denominator, where they usually fail first, so the rate can drop while the engine improves.
+The pass rate is `passed / (passed + failed)` = 1,179 / 1,294. It is not 1,179 / 1,539, and it never counts an excluded case as a pass. Closing a harness skip or adding a missing setting moves cases *into* the denominator, where they usually fail first, so the rate can drop while the engine improves.
 
 The 191 blocked cases break down by what DSQL refused to create: 63 `fixture-missing` (a named object the load report records as dropped), 34 array columns, 33 other column types, 32 plpgsql functions, 14 partitioned tables, 6 text search configurations or `tsvector` columns, 6 enum or composite types, 2 extensions and 1 materialized view.
 
 ### What changed since the last publication
 
-**Against the previous report publication** — 1,173 of the same 1,294 on the same tree, `conformance/results/run-2026-08-23T06-25-20-085Z.json` — id-matched: **3 cases went from failing to passing and none went the other way.** The three are `QueryLimitedSpec:97`, `QueryLimitedSpec:108` and `UpdateSpec:444`, and they are one fix: a mutation with `Prefer: return=representation` and an `?order=` returned its rows unordered, because the representation came from the statement's own `RETURNING` list, which has no `ORDER BY` to put the order in. The engine now plans an ordered or embedding mutation's representation as a read over the source CTE, which is what upstream does (`Plan.hs` `mutateReadPlan`, and the `addRels` root case that re-points it at `pgrst_source`). All three were filed under `row-order-unspecified`, so that gap was reporting an engine defect as a property of DSQL.
+**Against the previous report publication** — 1,176 of the same 1,294 on tree `8bed54e`, `conformance/results/run-2026-08-23T07-16-38-954Z.json` — id-matched: **3 cases went from failing to passing and none went the other way.** None of the three is a new feature. Two are `RelatedQueriesSpec:313` and `:347`, which assert a `Content-Range` total from `Prefer: count=planned` and `count=estimated`: the estimate is now exact because the fixture loader collects statistics, described below. The third is `JsonOperatorSpec:248`, a read of `json_table`, whose rows came back in upstream's order this time and can stop doing so at any run.
 
-**Against the last run published to this page** — 1,074 of 1,358 on tree `2488109`, `conformance/results/run-2026-08-21T13-03-49-026Z.json` — id-matched: **110 cases went from not passing to passing and 8 went the other way.** All 8 losses are `row-order-unspecified`: `QuerySpec:318`, `:324`, `:338`, `:345`, `:382`, `:389`, `RpcSpec:985` and `:997`, all reads of `tsearch_to_tsvector`, a table with no primary key. They came back in upstream's order by luck in that run and are now sorted deterministically, the wrong way. That is the trade the order tiebreak makes, and it is described below.
+**Retiring the relationship manifest changed no case's outcome.** That was the point of the change and it is worth stating as a null result: the published run derives every relationship from `pg_constraint` where the previous publication was fed a declared manifest, the rate went from 1,176 to 1,179, and all 3 of the cases in the difference are the planner and row-order cases above. No case gained or lost because the keys became real. What the change bought is that the last relationship substitute on DSQL is gone, so `embedding` is now measured through the same path it uses on PostgreSQL.
 
-**The denominator moved, and only in one direction.** 64 cases left it, all from `fail` to an excluded status: 33 to `blocked` on an array column, 22 to `blocked` on another column type DSQL will not store, 6 to `blocked` on text search, 2 to `out-of-scope` on namespaced GUCs and 1 to `blocked` on an extension. Nothing entered the denominator. Those 64 are cases whose request names a column that does not exist on this database — the engine answers PostgreSQL's own `42703`, which is upstream's answer too, and no engine change can make them pass. Add all 64 back as failures and the rate reads **1,176 of 1,358, 86.6%**, against 1,074 of 1,358 in the run this page used to report. Quote 90.9% with its denominator or quote 86.6% against the old one; do not quote 90.9% against 79.1%.
+**Against the last run published to this page** — 1,074 of 1,358 on tree `2488109`, `conformance/results/run-2026-08-21T13-03-49-026Z.json` — id-matched: **113 cases went from not passing to passing and 8 went the other way.** All 8 losses are `row-order-unspecified`: `QuerySpec:318`, `:324`, `:338`, `:345`, `:382`, `:389`, `RpcSpec:985` and `:997`, all reads of `tsearch_to_tsvector`, a table with no primary key. They came back in upstream's order by luck in that run and are now sorted deterministically, the wrong way. That is the trade the order tiebreak makes, and it is described below.
 
-### Where the 110 gains came from
+**The denominator moved, and only in one direction.** 64 cases left it, all from `fail` to an excluded status: 33 to `blocked` on an array column, 22 to `blocked` on another column type DSQL will not store, 6 to `blocked` on text search, 2 to `out-of-scope` on namespaced GUCs and 1 to `blocked` on an extension. Nothing entered the denominator. Those 64 are cases whose request names a column that does not exist on this database — the engine answers PostgreSQL's own `42703`, which is upstream's answer too, and no engine change can make them pass. Add all 64 back as failures and the rate reads **1,179 of 1,358, 86.8%**, against 1,074 of 1,358 in the run this page used to report. Quote 91.1% with its denominator or quote 86.8% against the old one; do not quote 91.1% against 79.1%.
+
+### Where the 113 gains came from
 
 The report's audit section attributes the largest blocks, each with what was run to check it:
 
@@ -62,9 +68,10 @@ The report's audit section attributes the largest blocks, each with what was run
 - **27 came from the privilege substitute** when it was measured on its own: upstream's `test/spec/fixtures/privileges.sql` ported to a Cedar policy set, with an untokened request resolving to `anon` the way upstream's `db-anon-role` does. Measured on the same flags, that run took the suite from 1,074 / 1,358 to 1,101 / 1,356.
 - **9 are an extractor fix, not an engine fix.** The fixtures load upstream's `test` schema into `public` and the extractor rewrites `test.` to `public.` inside an expected error body, but it left the `Content-Length` assertion at upstream's byte count, so a byte-exact engine failed on the length of a schema name. The count is adjusted by the two bytes each rewrite adds, and each affected case records the adjustment. `QuerySpec:629` also asserts a `Content-Length`, is 10 bytes short on a body the rename never touched, and stays a failure.
 - **4 are a fixture the transform used to drop whole.** `public.contract` is filled by upstream's only `INSERT ... SELECT`, one of whose columns is a `tsrange`; the transform could cut a dropped column out of a `VALUES` tuple but not out of a select list, so the table stayed empty and four embed assertions had no rows to read.
-- **3 are the mutation-ordering fix** described above.
+- **3 are the mutation-ordering fix**: a mutation with `Prefer: return=representation` and an `?order=` returned its rows unordered, because the representation came from the statement's own `RETURNING` list, which has no `ORDER BY` to put the order in. The engine now plans an ordered or embedding mutation's representation as a read over the source CTE, which is what upstream does (`Plan.hs` `mutateReadPlan`, and the `addRels` root case that re-points it at `pgrst_source`). `QueryLimitedSpec:97`, `:108` and `UpdateSpec:444`, all three filed under `row-order-unspecified`, so that gap was reporting an engine defect as a property of DSQL.
+- **3 are not engine changes at all**: `RelatedQueriesSpec:313` and `:347` pass because the planner now has statistics to estimate from, and `JsonOperatorSpec:248` passes because `json_table`'s rows happened to come back in upstream's order. Read them as measurement conditions, not as features.
 
-Those were measured at different points in the wave, against different denominators, so they do not add to 110 exactly. `conformance/cases/` was not edited to make anything pass: both case-file changes in this wave came from fixing the extractor and are checkable against the upstream source.
+Those were measured at different points in the wave, against different denominators, so they do not add to 113 exactly. `conformance/cases/` was not edited to make anything pass: both case-file changes in this wave came from fixing the extractor and are checkable against the upstream source.
 
 ## What works
 
@@ -73,6 +80,7 @@ By category, passed of the cases that ran:
 | Category | Passed / ran | Rate | Blocked | Needs config | Other excluded | Extracted |
 |---|---|---|---|---|---|---|
 | `range` | 57 / 57 | 100% | 0 | 0 | 0 | 57 |
+| `json-operators` | 47 / 47 | 100% | 16 | 0 | 2 | 65 |
 | `singular` | 36 / 36 | 100% | 0 | 0 | 0 | 36 |
 | `preferences` | 29 / 29 | 100% | 0 | 0 | 0 | 29 |
 | `observability` | 12 / 12 | 100% | 1 | 0 | 0 | 13 |
@@ -82,8 +90,7 @@ By category, passed of the cases that ran:
 | `http-headers` | 1 / 1 | 100% | 1 | 0 | 0 | 2 |
 | `options` | 1 / 1 | 100% | 0 | 0 | 0 | 1 |
 | `upsert` | 52 / 53 | 98% | 10 | 0 | 0 | 63 |
-| `json-operators` | 46 / 47 | 98% | 16 | 0 | 2 | 65 |
-| `embedding` | 280 / 288 | 97% | 11 | 0 | 0 | 299 |
+| `embedding` | 282 / 288 | 98% | 11 | 0 | 0 | 299 |
 | `select` | 65 / 67 | 97% | 4 | 0 | 1 | 72 |
 | `aggregates` | 48 / 50 | 96% | 0 | 0 | 0 | 50 |
 | `rpc` | 137 / 144 | 95% | 43 | 0 | 18 | 205 |
@@ -121,33 +128,33 @@ Grouping the same cases by the request feature they use gives a sharper picture.
 | `text/csv` | 12 / 12 | 100% | 3 |
 | `Vary` asserted on the response | 1 / 1 | 100% | 1 |
 | Embed nested three or more levels deep | 17 / 17 | 100% | 0 |
+| JSON path (`->`, `->>`) in the query string | 52 / 52 | 100% | 18 |
 | Spread embed (`...table(col)`) | 86 / 86 | 100% | 0 |
 | Unsatisfiable range → 416 | 6 / 6 | 100% | 0 |
+| `order=` | 141 / 143 | 99% | 17 |
 | Filter on an embedded resource | 111 / 112 | 99% | 2 |
 | `order` on an embedded resource | 53 / 54 | 98% | 1 |
-| `order=` | 140 / 143 | 98% | 17 |
 | Embed nested two or more levels deep | 124 / 127 | 98% | 6 |
-| JSON path (`->`, `->>`) in the query string | 51 / 52 | 98% | 18 |
+| `is` operator | 37 / 38 | 97% | 0 |
 | `limit` / `offset` | 58 / 60 | 97% | 2 |
 | Aggregate in a select list | 34 / 35 | 97% | 0 |
 | Disambiguating embed hint (`!fk`) | 35 / 36 | 97% | 1 |
+| `Content-Range` asserted on the response | 155 / 162 | 96% | 2 |
 | `PUT` | 23 / 24 | 96% | 5 |
 | Cast in a select list (`col::type`) | 26 / 27 | 96% | 1 |
 | `DELETE` | 37 / 39 | 95% | 2 |
 | RPC via `POST /rpc/...` | 83 / 87 | 95% | 32 |
-| `Content-Range` asserted on the response | 153 / 162 | 94% | 2 |
 | RPC via `GET /rpc/...` | 99 / 106 | 93% | 41 |
 | `and=(...)` / `or=(...)` grouping | 36 / 39 | 92% | 11 |
-| `is` operator | 35 / 38 | 92% | 0 |
 | `Accept-Profile` / `Content-Profile` | 21 / 23 | 91% | 0 |
 | `Preference-Applied` asserted on the response | 80 / 89 | 90% | 10 |
 | `PATCH` | 78 / 88 | 89% | 3 |
 | JWT in `Authorization` | 51 / 57 | 89% | 4 |
 | `in` operator | 62 / 72 | 86% | 7 |
 | `Prefer: return=representation` | 141 / 165 | 85% | 14 |
+| `not.` negation | 33 / 44 | 75% | 6 |
 | `columns=` | 25 / 34 | 74% | 1 |
 | `Prefer: missing=default` | 11 / 15 | 73% | 1 |
-| `not.` negation | 31 / 44 | 70% | 6 |
 | `fts` / `plfts` / `phfts` / `wfts` | 6 / 43 | 14% | 28 |
 | `cs`, `cd`, `ov`, `sl`, `sr`, `adj` | 0 / 0 | — | 16 |
 | `Prefer: tx=rollback` | 0 / 0 | — | 0 |
@@ -157,47 +164,52 @@ Five rows need reading carefully.
 
 The containment and range operators now read `0 / 0` rather than `0 / 14`: every upstream case for them uses an array or a range column, DSQL stores neither, and all 16 are counted as blocked. They are implemented in the engine and unit-tested; this suite cannot confirm them on DSQL, and it no longer claims to have measured them either way.
 
-Full-text search passes 6 of 43. Of the 37 failures, 17 name a text search configuration DSQL does not have, 12 return `[]` because the one configuration it does have (`simple`) has no stop words or stemming, and 8 are order-dependent reads of a keyless table. That row read 14 of 47 in the previous publication; the difference is DSQL's storage order and the reclassification of 4 blocked cases, not text search behaviour. See [Text search beyond `simple`](#text-search-beyond-the-simple-configuration).
+Full-text search passes 6 of 43. Of the 37 failures, 17 name a text search configuration DSQL does not have, 12 return `[]` because the one configuration it does have (`simple`) has no stop words or stemming, and 8 are order-dependent reads of a keyless table. That row read 14 of 47 in the 1,074 / 1,358 publication; the difference is DSQL's storage order and the reclassification of 4 blocked cases, not text search behaviour. See [Text search beyond `simple`](#text-search-beyond-the-simple-configuration).
 
 `Prefer: tx=rollback` has no measurement because all of its cases are among the 24 `RollbackSpec` assertions the extractor skipped: their request headers come from a Haskell helper (`reqHeaders`), which the extractor will not guess. That is a harness limit, not a DSQL one — the engine implements `Prefer: tx=rollback`, and `Prefer: tx=commit` passes 15 of 15.
 
 `Server-Timing` also reads `0 / 0`, for a different reason: the engine sends the header, and no extracted case asserts it. Both rows stay in the table because "not measured" and "measured and failing" are different findings.
 
-Requests carrying a JWT pass 51 of 57, where the previous publication had 6 of 59. Two things changed at once: the engine verifies the token instead of trusting a payload the harness decoded, and the privilege model behind the token has a substitute. Read the row as "the JWT path is now measured", not as a path that got faster to fix.
+Requests carrying a JWT pass 51 of 57, where the 1,074 / 1,358 publication had 6 of 59. Two things changed at once: the engine verifies the token instead of trusting a payload the harness decoded, and the privilege model behind the token has a substitute. Read the row as "the JWT path is now measured", not as a path that got faster to fix.
 
 ## What does not work yet
 
-118 cases fail. The report classifies them: **86 are engine work that nothing in DSQL prevents, 20 need a substitute for something DSQL does not have, and 12 are the order-dependent assertions described below.** By failing cases:
+115 cases fail. The report classifies them: **84 are engine work that nothing in DSQL prevents, 20 need a substitute for something DSQL does not have, and 11 are the order-dependent assertions described below.** By failing cases:
 
 | Failing cases | Gap | What is missing |
 |---|---|---|
 | 22 | `unimplemented-feature-media-types` | Custom media types upstream registers with `CREATE AGGREGATE` over a domain named after the media type. DSQL rejects `CREATE AGGREGATE`, and the engine has no aggregate-backed media handler either, so it answers `PGRST107`. 11 are `PostGISSpec`, which also needs an extension. |
 | 20 | `missing-operator-fts` | Text search configurations DSQL does not ship, and `tsvector` columns it will not store. Permanent — see below. |
 | 14 | `body-mismatch-filters` | Right status, wrong body. 12 are full-text filters returning no rows on DSQL's `simple` configuration; 2 are `not.in` with `limit=3` on a keyless table, where the order tiebreak changes which three rows come back. |
-| 12 | `row-order-unspecified` | The same rows in a different order. Kept as failures — see below. |
-| 6 | `no-foreign-keys` | Relationships the manifest cannot express: a view's column provenance, and disambiguating two relationships that join the same pair of relations. |
+| 11 | `row-order-unspecified` | The same rows in a different order. Kept as failures — see below. |
+| 6 | `no-foreign-keys` | Relationships a foreign key does not express, now that DSQL has foreign keys: a view's column provenance, which upstream reads from `pg_rewrite`, and disambiguating two relationships that join the same pair of relations. |
 | 6 | `body-mismatch-insert` | Right status, wrong body from an insert. |
 | 6 | `body-mismatch-update` | Right status, wrong body from an update. |
 | 4 | `no-set-role` | What is left of upstream's `SET ROLE` + `GRANT` + RLS model after the Cedar substitute — see below. |
 | 3 | `body-mismatch-auth` | Right status, wrong body on an auth assertion. |
 | 3 | `unimplemented-feature-insert` | Insert bodies the engine turns into a database error (`22P02`) instead of a PostgREST one. |
 | 2 | `engine-error` | A 500. Both are `INSERT` into a view DSQL will not let anything insert into (`55000 cannot insert into view`). |
-| 2 | `missing-status-206-partial-content` | A partial-content status the engine does not send on a related-resource read. |
 | 2 | `unimplemented-feature-multiple-schemas` | Cross-schema behaviour the engine does not implement yet. |
 | 2 | `unimplemented-feature-update` | Same as the insert group, on `PATCH`. |
 | 14 | 14 gaps with one case each | `body-mismatch-aggregates`, `body-mismatch-media-types`, `body-mismatch-rollback`, `body-mismatch-select`, `body-mismatch-upsert`, `header-mismatch-content-length`, `header-mismatch-location`, `missing-validation-auth`, `missing-validation-errors`, `missing-validation-filters`, `status-mismatch-media-types`, `status-mismatch-rpc`, `unimplemented-feature-aggregates`, `unimplemented-feature-rpc`. |
 
-The `auth` category, which passed 10 of 53 in the previous publication, now passes 48 of 52. Its 4 failures are `AuthSpec:16`, `:209`, `:218` (right status, wrong body) and `:227` (a validation the engine does not perform).
+The `auth` category, which passed 10 of 53 in the 1,074 / 1,358 publication, now passes 48 of 52. Its 4 failures are `AuthSpec:16`, `:209`, `:218` (right status, wrong body) and `:227` (a validation the engine does not perform).
 
 ### The order-dependent failures stay failures
 
-12 cases fail only because the rows came back in a different order: `JsonOperatorSpec:248`, `QuerySpec:318`, `:324`, `:338`, `:345`, `:382`, `:389`, `:571`, `:1305`, `:1313`, `RpcSpec:985` and `:997`. Upstream's assertion lists rows in the order a PostgreSQL heap scan returns them after a fresh insert. Aurora DSQL does not preserve insertion order, so a query with no `order=` can legitimately return the same rows in any sequence.
+11 cases fail only because the rows came back in a different order: `QuerySpec:318`, `:324`, `:338`, `:345`, `:382`, `:389`, `:571`, `:1305`, `:1313`, `RpcSpec:985` and `:997`. Upstream's assertion lists rows in the order a PostgreSQL heap scan returns them after a fresh insert. Aurora DSQL does not preserve insertion order, so a query with no `order=` can legitimately return the same rows in any sequence.
 
-The engine appends the relation's primary key to every `ORDER BY` (`PGREST_DETERMINISTIC_ORDER`, on by default), and for a relation with no primary key it appends every column PostgreSQL can order by. That did not shrink this gap — it stopped the rest of the suite moving. The widest spread between runs of one tree was 12 cases before it and has been 1 case and then 0 since. Read the tiebreak as buying repeatability, not passes: 8 of these 12 passed in the last run before it and fail in every run with it, because they came back in upstream's order by luck then and are sorted the wrong way consistently now — a stable wrong answer over an unstable right one.
+The engine appends the relation's primary key to every `ORDER BY` (`PGREST_DETERMINISTIC_ORDER`, on by default), and for a relation with no primary key it appends every column PostgreSQL can order by. That did not shrink this gap — it stopped the rest of the suite moving. The widest spread between runs of one tree was 12 cases before it, then 1 and 0, and 6 once more on the tree that took the foreign keys — that one was the planner's row estimates, not row order, and is dealt with below. Read the tiebreak as buying repeatability, not passes: 8 of these 11 passed in the last run before it and fail in every run with it, because they came back in upstream's order by luck then and are sorted the wrong way consistently now — a stable wrong answer over an unstable right one.
 
-Every one of the 12 is a relation with no primary key whose rows were inserted in an order no column sorts into: `tsearch_to_tsvector` (`text_search text`, `jsonb_search jsonb`) 8, six read directly and two through `/rpc/get_tsearch_to_tsvector`; `w_or_wo_comma_names` (`name text`) 2; `no_pk` (`a`, `b`) 1; and `json_table` 1. `json_table` is the one the tiebreak cannot reach at all: its only column is `data json`, a type PostgreSQL will not order by, so nothing is appended and the rows carrying no `foo` key stay tied. That is why `JsonOperatorSpec:248` passed in one earlier run of a tree whose other runs failed it, and why this count can still move by one. The one mechanism that would reproduce physical order — `ctid` — DSQL refuses: `SELECT ctid FROM w_or_wo_comma_names` answers `cannot retrieve a system column in this context`, probed on the conformance cluster.
+Every one of the 11 is a relation with no primary key whose rows were inserted in an order no column sorts into: `tsearch_to_tsvector` (`text_search text`, `jsonb_search jsonb`) 8, six read directly and two through `/rpc/get_tsearch_to_tsvector`; `w_or_wo_comma_names` (`name text`) 2; and `no_pk` (`a`, `b`) 1. A twelfth relation belongs in this list and is missing from it only by luck: `json_table` is the one the tiebreak cannot reach at all, because its only column is `data json`, a type PostgreSQL will not order by, so nothing is appended and the rows carrying no `foo` key stay tied. `JsonOperatorSpec:248` reads it, failed in the previous publication, passes in this one, and can go either way in the next — so read this count as 11 or 12. The one mechanism that would reproduce physical order — `ctid` — DSQL refuses: `SELECT ctid FROM w_or_wo_comma_names` answers `cannot retrieve a system column in this context`, probed on the conformance cluster.
 
-Three cases left this gap this wave, and they were never DSQL's order: `QueryLimitedSpec:97`, `:108` and `UpdateSpec:444` asked a mutation to order the representation it returns, and the engine dropped the order. The gap was hiding an engine defect as a database trait. All 12 that remain are counted as failures.
+Three cases left this gap on tree `8bed54e`, and they were never DSQL's order: `QueryLimitedSpec:97`, `:108` and `UpdateSpec:444` asked a mutation to order the representation it returns, and the engine dropped the order. The gap was hiding an engine defect as a database trait. All 11 that remain are counted as failures.
+
+### `count=planned` measures the planner, and the planner needs statistics
+
+Seven cases ask for `Prefer: count=planned` or `count=estimated` and assert a `Content-Range` total. Upstream's assertions hold the exact row count, because on PostgreSQL autovacuum has already analyzed those tables by the time the suite runs. A table Aurora DSQL has just created carries no statistics, and the planner then answers with a default: two runs of the same tree came back 1,173 and 1,179 of 1,294, and every case in the difference was in this family. `HEAD /items` with `count=planned` reported `0-14/1000000` fifteen minutes after a fresh fixture load and `0-14/15` half an hour later, with nothing changed in between but DSQL collecting statistics.
+
+The fixture loader now runs `ANALYZE` on each of the 215 tables it created, which is what PostgreSQL would have done on its own. DSQL takes one relation at a time and nothing wider: bare `ANALYZE` answers `unsupported ANALYZE statement: exactly one relation can be analyzed at a time` and `VACUUM ANALYZE` answers `unsupported VACUUM statement`, both `0A000`, measured on the conformance cluster on 2026-08-28. Two of those seven cases pass only because the estimate is now exact, so read them as "the planner has statistics", not as an engine feature. A run on a cluster whose fixtures were loaded without that pass will report a lower rate, and the reason will be the round numbers in `Content-Range`.
 
 ## Permanently unavailable on Aurora DSQL
 
@@ -278,11 +290,11 @@ An adversarial audit of the published runs looks for passes that do not mean wha
 
 This section is not part of the PostgREST pass rate above. It is a second, separate measurement, and it is never averaged into the first one.
 
-It asks a narrower question than the conformance suite: for an upstream case that is really about an authorization decision, does a Cedar `permit`/`forbid` produce the same wire response as upstream's `GRANT`? **Result: 28 of 30 equivalences hold. 24 of the 54 upstream cases the set is derived from have no fair equivalent at all.** From `conformance/cedar/results/latest.json` (generated `2026-08-23T07:23:34Z`, tree `8bed54e`, the same tree as the published PostgREST run). The 2 divergences are 1 `body` — the engine names the policy set where PostgREST forwards SQLSTATE `42501` — and 1 `identity-mapping`, where the two mechanisms resolve the caller to different identities and each returns the correct status for the identity it saw. The 24 with no fair equivalent are 16 `jwt-verification`, 5 `session-identity-guc` and 3 `column-level-privilege`. Full method and case list: [Cedar equivalence](./cedar-equivalence).
+It asks a narrower question than the conformance suite: for an upstream case that is really about an authorization decision, does a Cedar `permit`/`forbid` produce the same wire response as upstream's `GRANT`? **Result: 28 of 30 equivalences hold. 24 of the 54 upstream cases the set is derived from have no fair equivalent at all.** From `conformance/cedar/results/latest.json` (generated `2026-08-28T21:21:02Z`, tree `4cebc95`, the same tree as the published PostgREST run, re-measured on it after DSQL's foreign keys landed). The 2 divergences are 1 `body` — the engine names the policy set where PostgREST forwards SQLSTATE `42501` — and 1 `identity-mapping`, where the two mechanisms resolve the caller to different identities and each returns the correct status for the identity it saw. The 24 with no fair equivalent are 16 `jwt-verification`, 5 `session-identity-guc` and 3 `column-level-privilege`. Full method and case list: [Cedar equivalence](./cedar-equivalence).
 
 What a reader should **not** read into it:
 
-- It is not a PostgREST pass rate and is never added to one. It also no longer stands in for failures: the conformance runner loads its own port of the same `GRANT`s, so **44 of those 54 upstream cases now pass in the 1,176 / 1,294 above** and are counted there once. 8 fail there and 2 are out of scope. When this section was first written all 54 failed; that is no longer true, and the equivalence measurement is now a cross-check rather than a stand-in.
+- It is not a PostgREST pass rate and is never added to one. It also no longer stands in for failures: the conformance runner loads its own port of the same `GRANT`s, so **44 of those 54 upstream cases now pass in the 1,179 / 1,294 above** and are counted there once. 8 fail there and 2 are out of scope. When this section was first written all 54 failed; that is no longer true, and the equivalence measurement is now a cross-check rather than a stand-in.
 - A holding equivalence means a Cedar `permit` standing in for a `GRANT` produced the same status, body and asserted headers. It does not mean row-level security was exercised: the table behind most of them is empty in the fixtures.
 - The denominator is the 30 derived cases, not the 54 upstream cases they cover. The 24 with no fair equivalent are in neither the numerator nor the denominator.
 - It has no external referee. This project chose which cases are about authorization, wrote the policy set and wrote the runner. The PostgREST rate above has upstream's own assertions as the referee; this number does not.
@@ -295,7 +307,7 @@ This page measures Aurora DSQL only. There is no conformance number for standard
 
 The engine does not probe for those. Each provider carries a fixed capability table — `DSQL_CAPABILITIES` in `src/rest/db/dsql.mjs`, `POSTGRES_CAPABILITIES` in `src/rest/db/postgres.mjs` — and the connection mode picks one: `DSQL_ENDPOINT` selects DSQL, `DATABASE_URL` or `PG_HOST` selects standard PostgreSQL. The tables are written from measurements, not read from the server, so a capability that changes on the server side changes here only when someone re-measures and edits the file. `supportsForeignKeys` went `false` → `true` that way on 2026-08-28, after DSQL shipped the constraints.
 
-Do not read 90.9% as pgrest-lambda's compatibility on PostgreSQL; read it as the compatibility measured on DSQL, which is the harder target.
+Do not read 91.1% as pgrest-lambda's compatibility on PostgreSQL; read it as the compatibility measured on DSQL, which is the harder target.
 
 ## Reproducing the measurement
 

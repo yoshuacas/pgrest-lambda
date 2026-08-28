@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-08-28T21:13:10Z",
+  "generatedAt": "2026-08-28T20:15:28Z",
   "target": "dsql",
-  "commit": "4cebc95",
+  "commit": "aafedf0",
   "totals": {
     "total": 1539,
-    "passed": 1179,
-    "failed": 115,
+    "passed": 1173,
+    "failed": 121,
     "skipped": 35,
     "needsConfig": 2,
     "blocked": 191,
@@ -37,8 +37,8 @@
     },
     "embedding": {
       "total": 299,
-      "passed": 282,
-      "failed": 6,
+      "passed": 280,
+      "failed": 8,
       "skipped": 0,
       "needsConfig": 0,
       "blocked": 11,
@@ -157,8 +157,8 @@
     },
     "json-operators": {
       "total": 65,
-      "passed": 47,
-      "failed": 0,
+      "passed": 46,
+      "failed": 1,
       "skipped": 2,
       "needsConfig": 0,
       "blocked": 16,
@@ -207,8 +207,8 @@
     },
     "range": {
       "total": 57,
-      "passed": 57,
-      "failed": 0,
+      "passed": 54,
+      "failed": 3,
       "skipped": 0,
       "needsConfig": 0,
       "blocked": 0,
@@ -267,7 +267,7 @@
     "no-custom-gucs": 17,
     "no-partitioned-tables": 14,
     "body-mismatch-filters": 14,
-    "row-order-unspecified": 11,
+    "row-order-unspecified": 12,
     "no-foreign-keys": 6,
     "body-mismatch-insert": 6,
     "no-custom-types": 6,
@@ -278,6 +278,8 @@
     "no-extensions": 2,
     "engine-error": 2,
     "unimplemented-feature-multiple-schemas": 2,
+    "header-mismatch-content-range": 2,
+    "status-mismatch-embedding": 2,
     "needs-engine-config": 2,
     "unimplemented-feature-update": 2,
     "unimplemented-feature-aggregates": 1,
@@ -290,6 +292,7 @@
     "body-mismatch-select": 1,
     "header-mismatch-content-length": 1,
     "no-materialized-views": 1,
+    "status-mismatch-range": 1,
     "body-mismatch-rollback": 1,
     "unimplemented-feature-rpc": 1,
     "header-mismatch-location": 1,
@@ -9975,7 +9978,7 @@
       "id": "InsertSpec:716",
       "category": "insert",
       "status": "fail",
-      "reason": "status: expected 401, actual 201\nbody (exact) mismatch:\n  expected: {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}\n  actual:   [{\"article_id\":2,\"user_id\":2,\"created_at\":\"2026-08-28T21:04:10.685541\"}]\n  at $: expected object {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}, actual array [{\"article_id\":2,\"user_id\":2,\"created_at\":\"2026-08-28T21:04:10.685541\"}]",
+      "reason": "status: expected 401, actual 201\nbody (exact) mismatch:\n  expected: {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}\n  actual:   [{\"article_id\":2,\"user_id\":2,\"created_at\":\"2026-08-28T20:06:39.59945\"}]\n  at $: expected object {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}, actual array [{\"article_id\":2,\"user_id\":2,\"created_at\":\"2026-08-28T20:06:39.59945\"}]",
       "gap": "no-set-role",
       "actual": {
         "status": 201,
@@ -9983,7 +9986,7 @@
           {
             "article_id": 2,
             "user_id": 2,
-            "created_at": "2026-08-28T21:04:10.685541"
+            "created_at": "2026-08-28T20:06:39.59945"
           }
         ]
       }
@@ -9992,7 +9995,7 @@
       "id": "InsertSpec:724",
       "category": "insert",
       "status": "fail",
-      "reason": "status: expected 401, actual 201\nbody (exact) mismatch:\n  expected: {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}\n  actual:   [{\"article_id\":3,\"user_id\":1,\"created_at\":\"2026-08-28T21:04:10.700722\"}]\n  at $: expected object {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}, actual array [{\"article_id\":3,\"user_id\":1,\"created_at\":\"2026-08-28T21:04:10.700722\"}]",
+      "reason": "status: expected 401, actual 201\nbody (exact) mismatch:\n  expected: {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}\n  actual:   [{\"article_id\":3,\"user_id\":1,\"created_at\":\"2026-08-28T20:06:39.616066\"}]\n  at $: expected object {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}, actual array [{\"article_id\":3,\"user_id\":1,\"created_at\":\"2026-08-28T20:06:39.616066\"}]",
       "gap": "no-set-role",
       "actual": {
         "status": 201,
@@ -10000,7 +10003,7 @@
           {
             "article_id": 3,
             "user_id": 1,
-            "created_at": "2026-08-28T21:04:10.700722"
+            "created_at": "2026-08-28T20:06:39.616066"
           }
         ]
       }
@@ -11121,20 +11124,20 @@
     {
       "id": "JsonOperatorSpec:248",
       "category": "json-operators",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "the same rows came back in a different order; DSQL does not guarantee the physical order this assertion depends on\nbody (exact) mismatch — same rows, different order:\n  expected: [{\"data\":{\"id\":3}},{\"data\":{\"id\":0}},{\"data\":{\"id\":1,\"foo\":{\"bar\":\"baz\"}}}]\n  actual:   [{\"data\":{\"id\":0}},{\"data\":{\"id\":3}},{\"data\":{\"foo\":{\"bar\":\"baz\"},\"id\":1}}]\n  at $[0].data.id: expected 3, actual 0\n  at $[1].data.id: expected 0, actual 3",
+      "gap": "row-order-unspecified",
       "actual": {
         "status": 200,
         "body": [
           {
             "data": {
-              "id": 3
+              "id": 0
             }
           },
           {
             "data": {
-              "id": 0
+              "id": 3
             }
           },
           {
@@ -20426,9 +20429,9 @@
     {
       "id": "RangeSpec:311",
       "category": "range",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "header Content-Range: expected \"0-6/8\", actual \"0-6/500000\"",
+      "gap": "header-mismatch-content-range",
       "actual": {
         "status": 206,
         "body": [
@@ -20498,11 +20501,11 @@
     {
       "id": "RangeSpec:339",
       "category": "range",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "status: expected 200, actual 206\nheader Content-Range: expected \"0-14/15\", actual \"0-14/1000000\"",
+      "gap": "status-mismatch-range",
       "actual": {
-        "status": 200,
+        "status": 206,
         "body": null
       }
     },
@@ -20531,9 +20534,9 @@
     {
       "id": "RangeSpec:370",
       "category": "range",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "header Content-Range: expected \"3-4/15\", actual \"3-4/1000000\"",
+      "gap": "header-mismatch-content-range",
       "actual": {
         "status": 206,
         "body": null
@@ -21563,11 +21566,11 @@
     {
       "id": "RelatedQueriesSpec:334",
       "category": "embedding",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "status: expected 200, actual 206\nheader Content-Range: expected \"0-1/2\", actual \"0-1/750000\"",
+      "gap": "status-mismatch-embedding",
       "actual": {
-        "status": 200,
+        "status": 206,
         "body": [
           {
             "id": 1,
@@ -21634,11 +21637,11 @@
     {
       "id": "RelatedQueriesSpec:368",
       "category": "embedding",
-      "status": "pass",
-      "reason": null,
-      "gap": null,
+      "status": "fail",
+      "reason": "status: expected 200, actual 206\nheader Content-Range: expected \"0-1/2\", actual \"0-1/750000\"",
+      "gap": "status-mismatch-embedding",
       "actual": {
-        "status": 200,
+        "status": 206,
         "body": [
           {
             "id": 1,

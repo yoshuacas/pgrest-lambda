@@ -4,6 +4,8 @@
   "statementsFailed": 1,
   "foreignKeysApplied": 114,
   "foreignKeysFailed": 1,
+  "tablesAnalyzed": 215,
+  "analyzeFailures": [],
   "objects": {
     "tables": 215,
     "views": 80,

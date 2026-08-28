@@ -13,7 +13,7 @@ Reference pages are austere and neutral — they document what exists, not how t
 - **[Configuration](./configuration)** — every config key and environment variable accepted by `createPgrest(config)` and the CLI. The existing [configuration guide](../configuration.md) has the same material with more narrative.
 - **[HTTP API](./http-api)** — path, method, and header contract for `/rest/v1/*` and `/auth/v1/*`.
 - **[Authorization](./authorization)** — Cedar principal/action/resource model, the translatable subset, error codes, and worked policy examples.
-- **[PostgREST compatibility](./postgrest-compatibility)** — how much of the upstream PostgREST test suite the engine passes on Aurora DSQL (1,176 of 1,294 in the published run), with the denominator itemised and the features DSQL makes permanently unavailable.
+- **[PostgREST compatibility](./postgrest-compatibility)** — how much of the upstream PostgREST test suite the engine passes on Aurora DSQL (1,179 of 1,294 in the published run), with the denominator itemised and the features DSQL makes permanently unavailable.
 - **[Cedar equivalence](./cedar-equivalence)** — a second, separate measurement: for the upstream PostgREST cases whose outcome depends on `SET ROLE` and RLS, does the Cedar policy layer produce the same client-visible outcome? Never added to the PostgREST pass rate.
 - **[Error codes](./errors)** — Every `PGRST*` code, PostgreSQL error mapping, and auth error code with HTTP status, message, and handling guidance.
 - **[Lint rules](./lint-rules)** — Every rule checked by `pgrest-lambda lint-policies`, with example, fix, and suppression for each.

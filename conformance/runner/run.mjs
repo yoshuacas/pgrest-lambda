@@ -1153,7 +1153,10 @@ function triageInner({ testCase, actual, comparison, thrown, logs, ctx }) {
     };
   }
 
-  // 4. Embedding without foreign keys in the catalog.
+  // 4. An embed the engine could not resolve to a relationship. Since DSQL took
+  //    foreign keys the catalog does report them, so what lands here is what a
+  //    key does not express: a view's column provenance, or two relationships
+  //    joining the same pair of relations with no hint to choose between them.
   if (code === 'PGRST200' || code === 'PGRST201') {
     return { status: 'fail', gap: 'no-foreign-keys', reason: reason(message) };
   }

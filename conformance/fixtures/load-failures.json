@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-08-28T19:45:28.685Z",
+  "generatedAt": "2026-08-28T20:40:02.192Z",
   "endpoint": "6juamhyj5nkoeatkzc3ieaerc4.dsql.us-east-1.on.aws",
-  "elapsedMs": 99285,
+  "elapsedMs": 82354,
   "statementsTotal": 1251,
   "statementsFailed": 1,
   "resetApplied": 493,
