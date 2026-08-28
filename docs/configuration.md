@@ -195,7 +195,7 @@ of the two guarantees above.
 Resource embedding (`/projects?select=*,clients(*)`) is derived from foreign keys
 read out of `pg_constraint`. That works on Aurora DSQL as well as on standard
 PostgreSQL: DSQL added foreign key constraints on
-[2026-08-27](https://aws.amazon.com/about-aws/whats-new/2026/08/amazon-aurora-dsql-foreign-key-constraints/),
+[2026-08-27](https://aws.amazon.com/about-aws/whats-new/2026/08/aurora-dsql-foreign-key-constraints/),
 and the engine reads them from the catalog on both. **You do not need this
 variable to get embedding on DSQL.**
 

@@ -64,7 +64,7 @@ no `ctid`, no extensions, and a 3,000-row transaction limit.
 ## Foreign keys
 
 Measured 2026-08-28 on a cluster created for the purpose, after the
-[2026-08-27 announcement](https://aws.amazon.com/about-aws/whats-new/2026/08/amazon-aurora-dsql-foreign-key-constraints/)
+[2026-08-27 announcement](https://aws.amazon.com/about-aws/whats-new/2026/08/aurora-dsql-foreign-key-constraints/)
 and against the
 [user guide](https://docs.aws.amazon.com/aurora-dsql/latest/userguide/working-with-foreign-key-constraints.html).
 This replaces the "no foreign keys" finding of 2026-08-19.

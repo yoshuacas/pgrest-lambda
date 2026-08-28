@@ -12,7 +12,7 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
 
 - **Aurora DSQL foreign keys are read from the catalog.** AWS added foreign key
   constraints to Aurora DSQL on
-  [2026-08-27](https://aws.amazon.com/about-aws/whats-new/2026/08/amazon-aurora-dsql-foreign-key-constraints/).
+  [2026-08-27](https://aws.amazon.com/about-aws/whats-new/2026/08/aurora-dsql-foreign-key-constraints/).
   `DSQL_CAPABILITIES.supportsForeignKeys` is now `true`, so `schema-cache.mjs`
   runs its `pg_constraint` introspection on DSQL and resource embedding resolves
   the same way it does on standard PostgreSQL. `PGREST_RELATIONSHIPS_PATH` is no

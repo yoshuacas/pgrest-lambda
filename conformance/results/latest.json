@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-08-23T07:16:38Z",
+  "generatedAt": "2026-08-28T20:33:04Z",
   "target": "dsql",
-  "commit": "c718ab4",
+  "commit": "aafedf0",
   "totals": {
     "total": 1539,
-    "passed": 1176,
-    "failed": 118,
+    "passed": 1179,
+    "failed": 115,
     "skipped": 35,
     "needsConfig": 2,
     "blocked": 191,
@@ -37,8 +37,8 @@
     },
     "embedding": {
       "total": 299,
-      "passed": 280,
-      "failed": 8,
+      "passed": 282,
+      "failed": 6,
       "skipped": 0,
       "needsConfig": 0,
       "blocked": 11,
@@ -157,8 +157,8 @@
     },
     "json-operators": {
       "total": 65,
-      "passed": 46,
-      "failed": 1,
+      "passed": 47,
+      "failed": 0,
       "skipped": 2,
       "needsConfig": 0,
       "blocked": 16,
@@ -267,7 +267,7 @@
     "no-custom-gucs": 17,
     "no-partitioned-tables": 14,
     "body-mismatch-filters": 14,
-    "row-order-unspecified": 12,
+    "row-order-unspecified": 11,
     "no-foreign-keys": 6,
     "body-mismatch-insert": 6,
     "no-custom-types": 6,
@@ -278,7 +278,6 @@
     "no-extensions": 2,
     "engine-error": 2,
     "unimplemented-feature-multiple-schemas": 2,
-    "missing-status-206-partial-content": 2,
     "needs-engine-config": 2,
     "unimplemented-feature-update": 2,
     "unimplemented-feature-aggregates": 1,
@@ -9976,7 +9975,7 @@
       "id": "InsertSpec:716",
       "category": "insert",
       "status": "fail",
-      "reason": "status: expected 401, actual 201\nbody (exact) mismatch:\n  expected: {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}\n  actual:   [{\"article_id\":2,\"user_id\":2,\"created_at\":\"2026-08-23T07:08:47.171561\"}]\n  at $: expected object {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}, actual array [{\"article_id\":2,\"user_id\":2,\"created_at\":\"2026-08-23T07:08:47.171561\"}]",
+      "reason": "status: expected 401, actual 201\nbody (exact) mismatch:\n  expected: {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}\n  actual:   [{\"article_id\":2,\"user_id\":2,\"created_at\":\"2026-08-28T20:24:17.180972\"}]\n  at $: expected object {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}, actual array [{\"article_id\":2,\"user_id\":2,\"created_at\":\"2026-08-28T20:24:17.180972\"}]",
       "gap": "no-set-role",
       "actual": {
         "status": 201,
@@ -9984,7 +9983,7 @@
           {
             "article_id": 2,
             "user_id": 2,
-            "created_at": "2026-08-23T07:08:47.171561"
+            "created_at": "2026-08-28T20:24:17.180972"
           }
         ]
       }
@@ -9993,7 +9992,7 @@
       "id": "InsertSpec:724",
       "category": "insert",
       "status": "fail",
-      "reason": "status: expected 401, actual 201\nbody (exact) mismatch:\n  expected: {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}\n  actual:   [{\"article_id\":3,\"user_id\":1,\"created_at\":\"2026-08-23T07:08:47.1869\"}]\n  at $: expected object {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}, actual array [{\"article_id\":3,\"user_id\":1,\"created_at\":\"2026-08-23T07:08:47.1869\"}]",
+      "reason": "status: expected 401, actual 201\nbody (exact) mismatch:\n  expected: {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}\n  actual:   [{\"article_id\":3,\"user_id\":1,\"created_at\":\"2026-08-28T20:24:17.198422\"}]\n  at $: expected object {\"hint\":null,\"details\":null,\"code\":\"42501\",\"message\":\"permission denied for view limited_article_stars\"}, actual array [{\"article_id\":3,\"user_id\":1,\"created_at\":\"2026-08-28T20:24:17.198422\"}]",
       "gap": "no-set-role",
       "actual": {
         "status": 201,
@@ -10001,7 +10000,7 @@
           {
             "article_id": 3,
             "user_id": 1,
-            "created_at": "2026-08-23T07:08:47.1869"
+            "created_at": "2026-08-28T20:24:17.198422"
           }
         ]
       }
@@ -11122,20 +11121,20 @@
     {
       "id": "JsonOperatorSpec:248",
       "category": "json-operators",
-      "status": "fail",
-      "reason": "the same rows came back in a different order; DSQL does not guarantee the physical order this assertion depends on\nbody (exact) mismatch — same rows, different order:\n  expected: [{\"data\":{\"id\":3}},{\"data\":{\"id\":0}},{\"data\":{\"id\":1,\"foo\":{\"bar\":\"baz\"}}}]\n  actual:   [{\"data\":{\"id\":0}},{\"data\":{\"id\":3}},{\"data\":{\"foo\":{\"bar\":\"baz\"},\"id\":1}}]\n  at $[0].data.id: expected 3, actual 0\n  at $[1].data.id: expected 0, actual 3",
-      "gap": "row-order-unspecified",
+      "status": "pass",
+      "reason": null,
+      "gap": null,
       "actual": {
         "status": 200,
         "body": [
           {
             "data": {
-              "id": 0
+              "id": 3
             }
           },
           {
             "data": {
-              "id": 3
+              "id": 0
             }
           },
           {
@@ -21513,11 +21512,11 @@
     {
       "id": "RelatedQueriesSpec:313",
       "category": "embedding",
-      "status": "fail",
-      "reason": "status: expected 206, actual 200\nheader Content-Range: expected \"0-3/5\", actual \"0-3/4\"",
-      "gap": "missing-status-206-partial-content",
+      "status": "pass",
+      "reason": null,
+      "gap": null,
       "actual": {
-        "status": 200,
+        "status": 206,
         "body": [
           {
             "name": "Windows 7",
@@ -21584,11 +21583,11 @@
     {
       "id": "RelatedQueriesSpec:347",
       "category": "embedding",
-      "status": "fail",
-      "reason": "status: expected 206, actual 200\nheader Content-Range: expected \"0-3/5\", actual \"0-3/4\"",
-      "gap": "missing-status-206-partial-content",
+      "status": "pass",
+      "reason": null,
+      "gap": null,
       "actual": {
-        "status": 200,
+        "status": 206,
         "body": [
           {
             "name": "Windows 7",

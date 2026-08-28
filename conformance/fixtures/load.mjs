@@ -212,6 +212,48 @@ async function countObjects(session) {
   return { tables, views, functions, domains };
 }
 
+/**
+ * Collect statistics for every fixture table, one table at a time.
+ *
+ * `count=planned` and `count=estimated` ask the engine for the planner's row
+ * estimate, and upstream's assertions hold the exact row count because on
+ * PostgreSQL autovacuum has already analyzed these tables. A table DSQL has
+ * just created carries no statistics, so the planner answers with a default —
+ * measured on the conformance cluster, `HEAD /items` with `Prefer:
+ * count=planned` reported `0-14/1000000` right after a load and `0-14/15` once
+ * statistics existed. That is a 6-case swing between two runs of the same tree,
+ * so the load collects the statistics rather than leaving the family to chance.
+ *
+ * DSQL takes `ANALYZE <table>` and nothing wider: bare `ANALYZE` answers
+ * "unsupported ANALYZE statement: exactly one relation can be analyzed at a
+ * time" and `VACUUM ANALYZE` answers "unsupported VACUUM statement"
+ * (0A000, both measured 2026-08-28).
+ *
+ * @returns {Promise<{analyzed:number, failed:object[]}>}
+ */
+async function analyzeTables(session) {
+  const client = await session.ensure();
+  const rows = (await client.query(`SELECT quote_ident(n.nspname) AS s,
+      quote_ident(c.relname) AS t
+    FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE c.relkind = 'r' AND n.nspname = ANY($1)
+    ORDER BY 1, 2`, [FIXTURE_SCHEMAS])).rows;
+  let analyzed = 0;
+  const failed = [];
+  for (const r of rows) {
+    try {
+      await session.run(`ANALYZE ${r.s}.${r.t}`);
+      analyzed++;
+    } catch (err) {
+      failed.push({
+        table: `${r.s}.${r.t}`,
+        error: String(err.message || err).replace(/\s+/g, ' ').slice(0, 200),
+      });
+    }
+  }
+  return { analyzed, failed };
+}
+
 function firstLine(sql) {
   return norm(sql).slice(0, 160);
 }
@@ -385,6 +427,23 @@ async function main() {
       + `${fixed}/${retryable.length} recovered\n`);
     if (!fixed && pass === 1) continue; // still try the widened pass
   }
+  // Statistics last: every table exists and holds its rows by now, and a
+  // partial reload (`--only`, which the runner uses between specs) restores the
+  // same rows, so it does not need to repeat this.
+  let stats = { analyzed: 0, failed: [] };
+  if (!only) {
+    try {
+      stats = await analyzeTables(session);
+      process.stderr.write(`ANALYZE: ${stats.analyzed} table(s)`
+        + `${stats.failed.length ? `, ${stats.failed.length} failed` : ''}\n`);
+      for (const f of stats.failed) {
+        process.stderr.write(`  ${f.table}: ${f.error}\n`);
+      }
+    } catch (err) {
+      process.stderr.write(`ANALYZE pass failed: ${err.message}\n`);
+    }
+  }
+
   // Read the residual keys off the failures while they still carry their
   // statement text: `f.statement` has been through norm(), which lowercases, and
   // a quoted mixed-case identifier does not survive that.
@@ -416,6 +475,9 @@ async function main() {
     // relationships-residual.json holds those and nothing else.
     foreignKeysApplied: fkTotal - fkFailures.length,
     foreignKeysFailed: fkFailures.length,
+    // Statistics the planner needs before `count=planned` measures anything.
+    tablesAnalyzed: stats.analyzed,
+    analyzeFailures: stats.failed,
     objects,
     dropped,
   };
@@ -477,6 +539,7 @@ async function main() {
     statementsFailed: fileFailures.length,
     foreignKeysApplied: fkTotal - fkFailures.length,
     foreignKeysFailed: fkFailures.length,
+    tablesAnalyzed: stats.analyzed,
     objects,
     elapsedMs: Date.now() - t0,
     topErrors: Object.entries(byError).sort((a, b) => b[1] - a[1]).slice(0, 12),

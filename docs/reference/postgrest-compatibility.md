@@ -201,17 +201,17 @@ Three cases left this gap this wave, and they were never DSQL's order: `QueryLim
 
 ## Permanently unavailable on Aurora DSQL
 
-Aurora DSQL is not a drop-in PostgreSQL. The fixtures are upstream's, mechanically transformed until they load: 1,135 of 1,135 statements apply, producing 215 tables, 80 views, 153 functions and 23 domains — and 409 constructs are dropped, each with a recorded reason in `conformance/fixtures/load-report.json`. Of those 409, 314 are constructs DSQL will never accept. The measured capability probe is in `conformance/DSQL-CAPABILITIES.md`.
+Aurora DSQL is not a drop-in PostgreSQL. The fixtures are upstream's, mechanically transformed until they load: 1,250 of 1,251 statements apply, producing 215 tables, 80 views, 153 functions, 23 domains and 114 foreign keys — and 294 constructs are dropped, each with a recorded reason in `conformance/fixtures/load-report.json`. Of those 294, DSQL rejects 227 outright and the other 67 go with something it rejected. The one statement that fails is the 115th foreign key: it points at `public.car_models`, which is partitioned, so neither it nor `public.car_racers` exists to hold the key. The measured capabilities are in `conformance/DSQL-CAPABILITIES.md`.
 
 228 cases sit on the wrong side of that line: 191 blocked, 17 out of scope, and 20 failures that need a substitute rather than a fix. The features below cannot work on DSQL as PostgREST implements them. This is a property of the database, not a backlog.
 
-### Foreign keys, and therefore FK-derived embedding
+### Foreign keys left this list on 2026-08-27
 
-DSQL rejects `FOREIGN KEY` and `ALTER TABLE ... ADD CONSTRAINT`, and `pg_constraint` returns zero rows for `contype='f'`. PostgREST derives resource embedding entirely from that catalog, so on DSQL there is nothing to derive from: 115 foreign keys are dropped at fixture load.
+Until then this section said DSQL rejects `FOREIGN KEY`, `pg_constraint` reports nothing for `contype='f'`, and embedding therefore has nothing to derive from — which is why every earlier measurement fed the engine a declared-relationship manifest instead. [DSQL added foreign key constraints](https://docs.aws.amazon.com/aurora-dsql/latest/userguide/working-with-foreign-key-constraints.html) that day, so the keys in these fixtures are real, the catalog reports them, and the run above sets no manifest.
 
-The substitute is a declared-relationship manifest. Point `PGREST_RELATIONSHIPS_PATH` at a JSON file listing the keys the catalog cannot report and embedding works — the `embedding` category runs at 280 of 288 with it. Measured on commit `3fbf941` with everything else held constant, the `no-foreign-keys` gap was 189 failures without the manifest and 28 with it. Both runs are in `conformance/results/history.json`.
+Two limits remain, both measured on the conformance cluster on 2026-08-28. A key can be added to a table that already exists only as `ALTER TABLE ... ADD CONSTRAINT ... NOT VALID`; plain `ADD CONSTRAINT` and `VALIDATE CONSTRAINT` both answer `0A000`. `NOT VALID` skips the check of rows already there and enforces every write after it, and the engine does not filter on `convalidated` — neither does upstream PostgREST. The second limit is inherited: a key cannot point at a table DSQL would not create, which costs the one key on `public.car_racers` described above.
 
-What the manifest cannot express is a relationship that was never a foreign key: a view's column provenance, which upstream reads from `pg_rewrite`, and the disambiguation between two relationships joining the same pair of relations. Those 6 remaining failures need engine support, not data.
+What was never a foreign key is unaffected and still fails: a view's column provenance, which upstream reads from `pg_rewrite`, and the disambiguation between two relationships joining the same pair of relations. Those are engine work, counted under `no-foreign-keys` in the table above.
 
 ### `SET ROLE`, `GRANT`-based access control and row-level security
 
@@ -255,7 +255,7 @@ Upstream's own isolation is reachable, but only per request. `SpecHelper.hs` set
 
 | Setting | Effect |
 |---|---|
-| `PGREST_RELATIONSHIPS_PATH` | Declared relationships for a database with no foreign keys. Required on DSQL; without it, embedding degrades silently. |
+| `PGREST_RELATIONSHIPS_PATH` | Declared relationships for a database whose catalog cannot report them. No longer set for DSQL: since 2026-08-27 the keys are real and `pg_constraint` reports them, so the published run reads the catalog. The `--flags` string changed when it was dropped, which is why runs before and after are not compared against each other. |
 | `PGREST_DEFAULT_TS_CONFIG` | Text search configuration. Must be `simple` on DSQL. |
 | `PGREST_REPRESENTATIONS_PATH` | Declared data representations for a database that rejects `CREATE CAST`. The runner defaults it to `conformance/fixtures/representations.json` for `--target dsql`; without it the `datarep_*` cases are measured against the untransformed column value. |
 | `PGREST_DB_BULK_MUTATION_GUARD` | The harness runs with `off`. The engine's default is `on`, which refuses a filterless `PATCH`/`DELETE`; upstream has no such guard unless the `pg_safeupdate` extension is loaded, so measuring upstream's behaviour means matching upstream's state. `PgSafeUpdateSpec` is measured separately with `safeupdate`. |
@@ -271,7 +271,7 @@ The harness also boots the engine with upstream's own non-default configuration 
 An adversarial audit of the published runs looks for passes that do not mean what they appear to mean. It has found no inflation in the rate, and three things about how some passes are reached. All three are recorded in `compatreport/index.html` with what was run to check them:
 
 - `PreparedStatementsSpec:17`, `:25` and `:29` pass with `db-prepared-statements` set both true and false, because nothing in `src/rest/` reads the setting: it is parsed in `src/index.mjs` and put on the request context, and no query path consults it. `PreparedStatementsSpec:25` asserts a bare `200`, so it cannot tell the two values apart even in principle. Read those three as "the switch is accepted", not "prepared statements behave as upstream". `docs/configuration.md` documents the setting as inert.
-- 23 passes ride on the data-representations manifest. DSQL rejects `CREATE CAST`, so all 15 casts in upstream's `schema.sql` are dropped at fixture load and `pg_cast` has nothing for the engine to read; `conformance/fixtures/representations.json` declares the 15 pairs and the runner points `PGREST_REPRESENTATIONS_PATH` at it by default for `--target dsql`. It is a substitute for a catalog DSQL cannot populate, exactly like the relationship manifest, and it is not tuned to pass everything. On a database with `pg_cast`, the engine reads the same information from the catalog.
+- 23 passes ride on the data-representations manifest. DSQL rejects `CREATE CAST`, so all 15 casts in upstream's `schema.sql` are dropped at fixture load and `pg_cast` has nothing for the engine to read; `conformance/fixtures/representations.json` declares the 15 pairs and the runner points `PGREST_REPRESENTATIONS_PATH` at it by default for `--target dsql`. It is a substitute for a catalog DSQL cannot populate — the last one, now that the relationship manifest is retired there — and it is not tuned to pass everything. On a database with `pg_cast`, the engine reads the same information from the catalog.
 - The 41 isolation gains and the 18 JWT-path gains described above are both "this is now measured the way upstream measures it" rather than new query features. The 9 `Content-Length` gains are an extractor fix. None of them is a claim about a request feature working better than it did.
 
 ## A separate measurement: Cedar equivalence
@@ -301,13 +301,12 @@ Do not read 90.9% as pgrest-lambda's compatibility on PostgreSQL; read it as the
 
 ```bash
 # fixtures must already be loaded; see conformance/CONTRACTS.md for the cluster
-PGREST_RELATIONSHIPS_PATH=$PWD/conformance/fixtures/relationships.json \
-  node conformance/runner/run.mjs --target dsql --concurrency 1 --reload-per-spec
+node conformance/runner/run.mjs --target dsql --concurrency 1 --reload-per-spec
 node conformance/report/build-report.mjs \
   --results conformance/results/run-<timestamp>.json \
   --label "$(git rev-parse --short HEAD) <timestamp>" \
   --tree "$(git rev-parse --short HEAD)" \
-  --flags "--target dsql --concurrency 1 --reload-per-spec, PGREST_RELATIONSHIPS_PATH set" \
+  --flags "--target dsql --concurrency 1 --reload-per-spec" \
   --note "what this run changed"
 node conformance/report/feature-table.mjs --results conformance/results/latest.json --markdown
 ```

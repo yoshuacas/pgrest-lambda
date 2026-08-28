@@ -1,7 +1,7 @@
 # Plan: use Aurora DSQL foreign keys
 
 Aurora DSQL added foreign key constraints on 2026-08-27
-([What's New](https://aws.amazon.com/about-aws/whats-new/2026/08/amazon-aurora-dsql-foreign-key-constraints/),
+([What's New](https://aws.amazon.com/about-aws/whats-new/2026/08/aurora-dsql-foreign-key-constraints/),
 [user guide](https://docs.aws.amazon.com/aurora-dsql/latest/userguide/working-with-foreign-key-constraints.html)).
 The engine and the conformance fixtures both carry workarounds for their
 absence. This plan removes them.
