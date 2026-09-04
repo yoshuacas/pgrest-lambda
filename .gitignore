@@ -9,3 +9,35 @@ coverage/
 .local/
 docs/.vitepress/dist/
 docs/.vitepress/cache/
+
+# Conformance run results: keep only the runs history.json references. Every
+# path in that file's `results` fields needs an exception here, or the report
+# silently loses the case-level delta against a run it still names.
+conformance/results/run-*.json
+!conformance/results/run-2026-08-19T10-44-42-130Z.json
+!conformance/results/run-2026-08-19T16-04-15-181Z.json
+!conformance/results/run-2026-08-19T16-16-37-979Z.json
+!conformance/results/run-2026-08-19T16-31-25-475Z.json
+!conformance/results/run-2026-08-19T16-34-46-825Z-noflag.json
+!conformance/results/run-2026-08-19T21-28-21-959Z.json
+!conformance/results/run-2026-08-19T21-55-10-992Z.json
+!conformance/results/run-2026-08-19T22-42-21-458Z.json
+!conformance/results/run-2026-08-21T05-38-33-805Z.json
+!conformance/results/run-2026-08-21T09-52-43-792Z.json
+!conformance/results/run-2026-08-21T10-46-24-975Z.json
+!conformance/results/run-2026-08-21T10-54-57-386Z.json
+!conformance/results/run-2026-08-21T11-09-15-581Z.json
+!conformance/results/run-2026-08-21T11-54-33-109Z.json
+!conformance/results/run-2026-08-21T12-40-37-112Z.json
+!conformance/results/run-2026-08-21T12-41-58-656Z.json
+!conformance/results/run-2026-08-21T13-03-49-026Z.json
+!conformance/results/run-2026-08-21T13-04-11-349Z.json
+!conformance/results/run-2026-08-23T04-28-26-200Z.json
+!conformance/results/run-2026-08-23T06-04-35-646Z.json
+!conformance/results/run-2026-08-23T06-25-20-085Z.json
+!conformance/results/run-2026-08-23T06-57-07-068Z.json
+!conformance/results/run-2026-08-23T07-16-38-954Z.json
+!conformance/results/run-2026-08-28T20-15-28-961Z.json
+!conformance/results/run-2026-08-28T20-33-04-446Z.json
+!conformance/results/run-2026-08-28T20-56-05-000Z.json
+!conformance/results/run-2026-08-28T21-13-10-464Z.json

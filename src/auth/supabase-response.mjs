@@ -1,10 +1,10 @@
-import { CORS_HEADERS } from '../shared/cors.mjs';
+import { CORS_HEADERS, JSON_CONTENT_TYPE } from '../shared/cors.mjs';
 import { SESSION_EXPIRY_SECONDS } from './constants.mjs';
 
 export function sessionResponse(accessToken, refreshToken, user, corsH) {
   return {
     statusCode: 200,
-    headers: resolveCors(corsH),
+    headers: jsonHeaders(corsH),
     body: JSON.stringify({
       access_token: accessToken,
       token_type: 'bearer',
@@ -19,7 +19,7 @@ export function sessionResponse(accessToken, refreshToken, user, corsH) {
 export function userResponse(user, corsH) {
   return {
     statusCode: 200,
-    headers: resolveCors(corsH),
+    headers: jsonHeaders(corsH),
     body: JSON.stringify(formatUser(user)),
   };
 }
@@ -31,7 +31,7 @@ export function logoutResponse(corsH) {
 export function errorResponse(statusCode, error, description, extra, corsH) {
   return {
     statusCode,
-    headers: resolveCors(corsH),
+    headers: jsonHeaders(corsH),
     body: JSON.stringify({
       error,
       error_description: description,
@@ -57,4 +57,11 @@ function formatUser(user) {
 
 function resolveCors(corsH) {
   return corsH ? { ...corsH } : { ...CORS_HEADERS };
+}
+
+// Headers for a response that carries a JSON body. The CORS blocks no longer
+// include Content-Type (see src/shared/cors.mjs), so the builders that
+// serialize bytes add it and the bodyless ones (logoutResponse, 204) do not.
+function jsonHeaders(corsH) {
+  return { ...resolveCors(corsH), 'Content-Type': JSON_CONTENT_TYPE };
 }

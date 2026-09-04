@@ -106,7 +106,15 @@ describe('sql-builder', () => {
         'SQL should include OFFSET');
     });
 
-    it('throws PGRST204 for unknown column in filter', () => {
+    // Upstream does not check a filter field against its schema cache: it
+    // renders every one of them qualified (`pgFmtField` -> `pgFmtColumn`) and
+    // lets PostgreSQL answer, which is both how a filter on a computed column
+    // works (`always_true(items)` is `"items"."always_true"`, UpdateSpec.hs:144
+    // and :156) and how an unknown one reports itself — 42703 -> 400 `column
+    // todos.nonexistent does not exist`, the message QuerySpec.hs:1557 asserts.
+    // The PGRST204 this test used to expect is upstream's `?columns=` /
+    // payload-key error, not a read error, so the old expectation was wrong.
+    it('qualifies an unknown column in a filter instead of rejecting it', () => {
       const parsed = {
         select: [{ type: 'column', name: '*' }],
         filters: [{ column: 'nonexistent', operator: 'eq', value: 'x', negate: false }],
@@ -115,11 +123,8 @@ describe('sql-builder', () => {
         offset: 0,
         onConflict: null,
       };
-      assert.throws(
-        () => buildSelect('todos', parsed, schema),
-        (err) => err.code === 'PGRST204',
-        'should throw PGRST204 for unknown column'
-      );
+      const { text } = buildSelect('todos', parsed, schema);
+      assert.match(text, /"todos"\."nonexistent" = \$\d+/);
     });
 
     it('appends authzConditions to WHERE clause', () => {
@@ -218,6 +223,8 @@ describe('sql-builder', () => {
   });
 
   describe('buildInsert (upsert)', () => {
+    const mergeDup = { resolution: 'merge-duplicates' };
+
     it('generates ON CONFLICT ... DO UPDATE SET for upsert', () => {
       const body = { id: 'abc', title: 'Updated' };
       const parsed = {
@@ -228,7 +235,7 @@ describe('sql-builder', () => {
         offset: 0,
         onConflict: 'id',
       };
-      const { text } = buildInsert('todos', body, schema, parsed);
+      const { text } = buildInsert('todos', body, schema, parsed, mergeDup);
       assert.ok(text.includes('ON CONFLICT'),
         'SQL should contain ON CONFLICT');
       assert.ok(text.includes('"id"'),
@@ -236,9 +243,53 @@ describe('sql-builder', () => {
       assert.ok(text.includes('DO UPDATE SET'),
         'SQL should contain DO UPDATE SET');
     });
+
+    // Plan.hs `mutatePlan`: the ON CONFLICT clause comes from
+    // `(,) <$> preferResolution <*> Just confCols`, so with no resolution
+    // preference there is no clause at all and a duplicate is a 409.
+    it('emits no ON CONFLICT without a resolution preference', () => {
+      const parsed = {
+        select: [{ type: 'column', name: '*' }],
+        filters: [], order: [], limit: null, offset: 0, onConflict: 'id',
+      };
+      const { text } = buildInsert(
+        'todos', { id: 'abc', title: 'x' }, schema, parsed);
+      assert.ok(!text.includes('ON CONFLICT'),
+        'no resolution preference means no ON CONFLICT clause');
+    });
+
+    // confCols = fromMaybe pkCols qsOnConflict — without ?on_conflict= the
+    // target is the primary key, which is what `Prefer: resolution=` alone
+    // means (UpsertSpec.hs:19 "INSERTs and UPDATEs rows on pk conflict").
+    it('falls back to the primary key as the conflict target', () => {
+      const parsed = {
+        select: [{ type: 'column', name: '*' }],
+        filters: [], order: [], limit: null, offset: 0, onConflict: null,
+      };
+      const { text } = buildInsert(
+        'todos', { id: 'abc', title: 'x' }, schema, parsed, mergeDup);
+      assert.ok(text.includes('ON CONFLICT ("id") DO UPDATE SET'),
+        `expected a PK conflict target, got: ${text}`);
+    });
+
+    it('ignore-duplicates produces DO NOTHING', () => {
+      const parsed = {
+        select: [{ type: 'column', name: '*' }],
+        filters: [], order: [], limit: null, offset: 0, onConflict: null,
+      };
+      const { text } = buildInsert(
+        'todos', { id: 'abc', title: 'x' }, schema, parsed,
+        { resolution: 'ignore-duplicates' });
+      assert.ok(text.includes('ON CONFLICT ("id") DO NOTHING'),
+        `expected DO NOTHING, got: ${text}`);
+      assert.ok(!text.includes('DO UPDATE'),
+        'ignore-duplicates must not update');
+    });
   });
 
   describe('buildInsert (on_conflict validation)', () => {
+    const mergeDup = { resolution: 'merge-duplicates' };
+
     it('validates single on_conflict column against schema', () => {
       const body = { id: 'abc', title: 'Hello' };
       const parsed = {
@@ -249,7 +300,7 @@ describe('sql-builder', () => {
         offset: 0,
         onConflict: 'id',
       };
-      const { text } = buildInsert('todos', body, schema, parsed);
+      const { text } = buildInsert('todos', body, schema, parsed, mergeDup);
       assert.ok(text.includes('ON CONFLICT ("id")'),
         'should produce ON CONFLICT with validated column');
     });
@@ -264,7 +315,7 @@ describe('sql-builder', () => {
         offset: 0,
         onConflict: 'id,user_id',
       };
-      const { text } = buildInsert('todos', body, schema, parsed);
+      const { text } = buildInsert('todos', body, schema, parsed, mergeDup);
       assert.ok(text.includes('ON CONFLICT ("id", "user_id")'),
         'should produce ON CONFLICT with both validated columns');
     });
@@ -280,7 +331,7 @@ describe('sql-builder', () => {
         onConflict: 'does_not_exist',
       };
       assert.throws(
-        () => buildInsert('todos', body, schema, parsed),
+        () => buildInsert('todos', body, schema, parsed, mergeDup),
         (err) => err.code === 'PGRST204',
         'should throw PGRST204 for unknown on_conflict column',
       );
@@ -297,7 +348,7 @@ describe('sql-builder', () => {
         onConflict: 'id"; DROP TABLE x; --',
       };
       assert.throws(
-        () => buildInsert('todos', body, schema, parsed),
+        () => buildInsert('todos', body, schema, parsed, mergeDup),
         (err) => err.code === 'PGRST204',
         'should throw PGRST204 for injection payload',
       );
@@ -313,14 +364,22 @@ describe('sql-builder', () => {
         offset: 0,
         onConflict: ' id , user_id ',
       };
-      const { text } = buildInsert('todos', body, schema, parsed);
+      const { text } = buildInsert('todos', body, schema, parsed, mergeDup);
       assert.ok(text.includes('ON CONFLICT ("id", "user_id")'),
         'should trim and validate columns with surrounding whitespace');
     });
   });
 
   describe('buildInsert (upsert edge cases)', () => {
-    it('produces DO NOTHING when all columns are in on_conflict', () => {
+    const mergeDup = { resolution: 'merge-duplicates' };
+
+    // Upstream sets every inserted column from EXCLUDED, the conflict target
+    // included: `DO UPDATE SET <iCols> = EXCLUDED.<iCols>` with no exception
+    // for the primary key (QueryBuilder.hs:137). Skipping the PK made a
+    // payload of nothing but key columns fall to DO NOTHING, so the
+    // conflicting rows dropped out of RETURNING and the response lost them
+    // (UpsertSpec.hs:146 "succeeds if the table has only PK cols").
+    it('sets the conflict target itself from EXCLUDED', () => {
       const body = { id: 'abc' };
       const parsed = {
         select: [{ type: 'column', name: '*' }],
@@ -330,11 +389,25 @@ describe('sql-builder', () => {
         offset: 0,
         onConflict: 'id',
       };
-      const { text } = buildInsert('todos', body, schema, parsed);
-      assert.ok(text.includes('ON CONFLICT'),
-        'SQL should contain ON CONFLICT');
+      const { text } = buildInsert('todos', body, schema, parsed, mergeDup);
+      assert.ok(
+        text.includes('ON CONFLICT ("id") DO UPDATE SET "id" = EXCLUDED."id"'),
+        `expected the PK to be set from EXCLUDED, got: ${text}`);
+    });
+
+    // `if null iCols then DO NOTHING` — the only case upstream degrades.
+    it('falls back to DO NOTHING when there is no column to set', () => {
+      const parsed = {
+        select: [{ type: 'column', name: '*' }],
+        filters: [],
+        order: [],
+        limit: null,
+        offset: 0,
+        onConflict: 'id',
+      };
+      const { text } = buildInsert('todos', {}, schema, parsed, mergeDup);
       assert.ok(text.includes('DO NOTHING'),
-        'SQL should fall back to DO NOTHING when SET would be empty');
+        `an all-defaults payload has nothing to set, got: ${text}`);
       assert.ok(!text.includes('DO UPDATE SET'),
         'SQL should NOT contain DO UPDATE SET');
     });
@@ -654,7 +727,7 @@ describe('sql-builder', () => {
         `SELECT "orders"."id", `
         + `(SELECT json_build_object('name', "customers"."name") `
         + `FROM "customers" WHERE "customers"."id" = "orders"."customer_id") `
-        + `AS "customers" FROM "orders"`
+        + `AS "customers" FROM "orders" ORDER BY "orders"."id" ASC`
       );
       assert.equal(norm(text), expected);
     });
@@ -672,12 +745,19 @@ describe('sql-builder', () => {
         },
       ]);
       const { text } = buildSelect('customers', parsed, embedSchema);
+      // The embed's own primary-key tiebreak is an order, so the array is
+      // built through the derived table `json_agg` needs to be told an order
+      // explicitly (see `tiebreakTerms` and `buildEmbedSubquery`).
       const expected = norm(
         `SELECT "customers"."id", `
-        + `COALESCE((SELECT json_agg(json_build_object(`
-        + `'id', "orders"."id", 'amount', "orders"."amount")) `
-        + `FROM "orders" WHERE "orders"."customer_id" = "customers"."id"), `
-        + `'[]'::json) AS "orders" FROM "customers"`
+        + `COALESCE((SELECT json_agg("pgrst_agg" ORDER BY "pgrst_o1" ASC) `
+        + `FROM (SELECT json_build_object(`
+        + `'id', "orders"."id", 'amount', "orders"."amount") AS "pgrst_agg", `
+        + `"orders"."id" AS "pgrst_o1" `
+        + `FROM "orders" WHERE "orders"."customer_id" = "customers"."id" `
+        + `ORDER BY "orders"."id" ASC) AS "pgrst_grouped"), `
+        + `'[]'::json) AS "orders" FROM "customers" `
+        + `ORDER BY "customers"."id" ASC`
       );
       assert.equal(norm(text), expected);
     });
@@ -742,7 +822,10 @@ describe('sql-builder', () => {
       );
     });
 
-    it('adds IS NOT NULL to parent WHERE for many-to-one inner join', () => {
+    // Upstream's `!inner` is an INNER JOIN LATERAL: the parent row survives
+    // only if the child query returns a row. A non-null foreign key is not
+    // enough, so this is an EXISTS in the many-to-one direction too.
+    it('adds EXISTS to parent WHERE for many-to-one inner join', () => {
       const parsed = baseParsed([
         { type: 'column', name: 'id' },
         {
@@ -754,8 +837,9 @@ describe('sql-builder', () => {
       const { text } = buildSelect('orders', parsed, embedSchema);
       const n = norm(text);
       assert.ok(
-        n.includes('"orders"."customer_id" IS NOT NULL'),
-        'should have IS NOT NULL in WHERE for many-to-one inner',
+        n.includes('EXISTS (SELECT 1 FROM "customers" WHERE '
+          + '"customers"."id" = "orders"."customer_id")'),
+        'should have EXISTS in WHERE for many-to-one inner',
       );
     });
 
@@ -826,7 +910,7 @@ describe('sql-builder', () => {
       const { text } = buildSelect('orders', parsed, embedSchema);
       const n = norm(text);
       // Should use unqualified column names (no table prefix)
-      assert.equal(n, norm('SELECT "id", "amount" FROM "orders"'));
+      assert.equal(n, norm('SELECT "id", "amount" FROM "orders" ORDER BY "orders"."id" ASC'));
     });
 
     it('filters work alongside embed subqueries', () => {
@@ -1153,7 +1237,7 @@ describe('sql-builder', () => {
       ]);
       const { text } = buildSelect('people', parsed, schema);
       const expected = norm(
-        'SELECT "id", "first_name" AS "firstName" FROM "people"');
+        'SELECT "id", "first_name" AS "firstName" FROM "people" ORDER BY "people"."id" ASC');
       assert.equal(norm(text), expected);
     });
 
@@ -1164,7 +1248,7 @@ describe('sql-builder', () => {
       ]);
       const { text } = buildSelect('todos', parsed, schema);
       assert.equal(norm(text),
-        norm('SELECT "id", "title" FROM "todos"'));
+        norm('SELECT "id", "title" FROM "todos" ORDER BY "todos"."id" ASC'));
     });
 
     it('generates AS in embed path for aliased column', () => {
@@ -1321,7 +1405,7 @@ describe('sql-builder', () => {
       const n = norm(text);
       assert.equal(n, norm(
         'SELECT "id", CAST("status" AS text),'
-        + ' "title" AS "t" FROM "todos"'));
+        + ' "title" AS "t" FROM "todos" ORDER BY "todos"."id" ASC'));
     });
 
     it('no casts produces unchanged SQL (regression)', () => {
@@ -1331,7 +1415,7 @@ describe('sql-builder', () => {
       ]);
       const { text } = buildSelect('todos', parsed, schema);
       assert.equal(norm(text),
-        norm('SELECT "id", "title" FROM "todos"'));
+        norm('SELECT "id", "title" FROM "todos" ORDER BY "todos"."id" ASC'));
     });
 
     it('emits CAST in embed path for column alongside embed', () => {

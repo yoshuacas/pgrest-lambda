@@ -1,6 +1,7 @@
 // dsql.mjs — Aurora DSQL provider (IAM token auth)
 
 import pg from 'pg';
+import { restPoolTypes } from '../pg-types.mjs';
 
 const { Pool } = pg;
 const TOKEN_LIFETIME_MS = 10 * 60 * 1000; // 10 minutes
@@ -8,9 +9,19 @@ const TOKEN_LIFETIME_MS = 10 * 60 * 1000; // 10 minutes
 // DSQL capability research — verified against
 // docs.aws.amazon.com/aurora-dsql/ (2025-05):
 //
-// supportsForeignKeys: false
-//   DSQL drops FK constraints for distributed consistency.
-//   pg_constraint has no contype='f' rows.
+// supportsForeignKeys: true
+//   DSQL added foreign key constraints on 2026-08-27
+//   (docs.aws.amazon.com/aurora-dsql/latest/userguide/working-with-foreign-key-constraints.html).
+//   Measured on a cluster 2026-08-28: inline REFERENCES in CREATE TABLE is
+//   accepted in every shape (column list, bare, table-level, composite,
+//   self-reference, cross-schema, all five referential actions, MATCH FULL,
+//   DEFERRABLE). A key can be added to an existing table only as
+//   ALTER TABLE ... ADD CONSTRAINT ... NOT VALID; plain ADD CONSTRAINT and
+//   VALIDATE CONSTRAINT both return 0A000. NOT VALID skips the check of
+//   existing rows but enforces every later write. pg_constraint contype='f'
+//   is fully populated (conkey, confkey, confupdtype, confdeltype,
+//   confmatchtype, condeferrable, convalidated), so the engine reads
+//   relationships from the catalog on DSQL as it does on PostgreSQL.
 //
 // supportsFullTextSearch: false
 //   tsvector/tsquery not in supported data types list.
@@ -21,8 +32,12 @@ const TOKEN_LIFETIME_MS = 10 * 60 * 1000; // 10 minutes
 // supportsArrayContainment: true
 //   Array types supported; @>, <@, && expected to work.
 //
-// supportsPlannedCount: false
-//   pg_class.reltuples accuracy undocumented on DSQL.
+// supportsPlannedCount: true
+//   `count=planned`/`count=estimated` do not read pg_class.reltuples: upstream
+//   EXPLAINs the filtered read and takes `[0].Plan."Plan Rows"`
+//   (Query/MainTx.hs `decodeExplain`), which is what handler.mjs does.
+//   EXPLAIN (FORMAT JSON) works on DSQL; verified against the conformance
+//   fixtures (RangeSpec:311/320/329/359/390, QueryLimitedSpec:50/71 pass).
 //
 // supportsRegex: true
 //   LIKE/ILIKE confirmed; POSIX ~ assumed (text type supported).
@@ -36,11 +51,11 @@ const TOKEN_LIFETIME_MS = 10 * 60 * 1000; // 10 minutes
 // supportsGinIndex: false
 //   B-tree only; GIN/GiST/HASH/BRIN not supported.
 const DSQL_CAPABILITIES = Object.freeze({
-  supportsForeignKeys: false,
+  supportsForeignKeys: true,
   supportsFullTextSearch: false,
   supportsRangeTypes: false,
   supportsArrayContainment: true,
-  supportsPlannedCount: false,
+  supportsPlannedCount: true,
   supportsRegex: true,
   supportsRowLevelSecurity: false,
   supportsRpc: true,
@@ -84,6 +99,8 @@ export function createDsqlProvider(config) {
       ssl: { rejectUnauthorized: true },
       max: 5,
       idleTimeoutMillis: 60000,
+      // REST results only; the auth pool keeps the global registry.
+      types: restPoolTypes,
     });
 
     tokenRefreshedAt = now;

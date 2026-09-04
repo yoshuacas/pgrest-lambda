@@ -2,13 +2,20 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   buildCorsHeaders, assertCorsConfig, CORS_HEADERS,
-  ALLOW_HEADERS, EXPOSE_HEADERS,
+  ALLOW_HEADERS, EXPOSE_HEADERS, preflightHeaders,
 } from '../cors.mjs';
 
 const EXPECTED_ALLOW_HEADERS = ALLOW_HEADERS;
+// Both literals are PostgREST's own, byte for byte: `corsMethods` after
+// wai-cors folds in the simple methods (which is where HEAD comes from), and
+// `corsExposedHeaders` (src/library/PostgREST/Cors.hs). They are pinned here
+// rather than read off the module so a change to either has to be a deliberate
+// edit in two places — the wire contract browsers see is the whole point.
 const EXPECTED_ALLOW_METHODS =
-  'GET,POST,PUT,PATCH,DELETE,OPTIONS';
-const EXPECTED_EXPOSE_HEADERS = EXPOSE_HEADERS;
+  'GET, POST, PATCH, PUT, DELETE, OPTIONS, HEAD';
+const EXPECTED_EXPOSE_HEADERS =
+  'Content-Encoding, Content-Location, Content-Range, Content-Type, '
+  + 'Date, Location, Server, Transfer-Encoding, Range-Unit';
 
 // Pin the specific headers the @supabase/* SDK family sends so a
 // future trim of ALLOW_HEADERS can't silently re-break CORS preflight
@@ -20,8 +27,17 @@ const REQUIRED_ALLOW_HEADERS = [
   'X-Metadata', 'X-Region', 'X-Retry-Count',
   'X-Supabase-Api-Version', 'X-Upsert',
 ];
+// The response headers the SDK actually reads cross-origin. `Content-Range` is
+// how postgrest-js reports counts, `Location`/`Content-Location` identify a
+// created row.
+//
+// `X-Total-Count` and `X-Relay-Error` used to be on this list. Neither is ever
+// emitted by this engine (nothing outside cors.mjs mentions them) and neither
+// is emitted by PostgREST, which the browser build of supabase-js is written
+// against — exposing them named headers that never arrive. The list is now
+// PostgREST's `corsExposedHeaders` verbatim; see EXPECTED_EXPOSE_HEADERS.
 const REQUIRED_EXPOSE_HEADERS = [
-  'Content-Range', 'X-Relay-Error', 'X-Total-Count',
+  'Content-Range', 'Content-Location', 'Location', 'Content-Type',
 ];
 
 function assertStaticHeaders(headers) {
@@ -288,6 +304,43 @@ describe('buildCorsHeaders', () => {
       );
       assertStaticHeaders(headers);
     });
+  });
+});
+
+describe('preflightHeaders', () => {
+  it('echoes the requested headers behind Authorization', () => {
+    const h = preflightHeaders('Foo,Bar');
+    assert.equal(
+      h['Access-Control-Allow-Headers'],
+      'Authorization, Foo, Bar, Accept, Accept-Language, Content-Language',
+      'preflight allow-list is Authorization, the asked-for headers, then the '
+      + 'simple request headers — PostgREST\'s wai-cors policy',
+    );
+  });
+
+  it('trims the spelling the browser sent', () => {
+    const h = preflightHeaders(' apikey , X-Client-Info ');
+    assert.equal(
+      h['Access-Control-Allow-Headers'],
+      'Authorization, apikey, X-Client-Info, Accept, Accept-Language, '
+      + 'Content-Language',
+      'each entry is trimmed, none dropped',
+    );
+  });
+
+  it('falls back to the static allow-list with nothing to echo', () => {
+    const h = preflightHeaders(undefined);
+    assert.equal(
+      h['Access-Control-Allow-Headers'], ALLOW_HEADERS,
+      'a preflight that asks about no headers gets the static superset',
+    );
+  });
+
+  it('caches the answer for a day', () => {
+    assert.equal(
+      preflightHeaders('Content-Type')['Access-Control-Max-Age'], '86400',
+      'Max-Age is 60*60*24, as PostgREST sets it',
+    );
   });
 });
 

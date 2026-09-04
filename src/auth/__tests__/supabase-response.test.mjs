@@ -9,12 +9,6 @@ import {
 import { SESSION_EXPIRY_SECONDS } from '../constants.mjs';
 import { createJwt } from '../jwt.mjs';
 
-const EXPECTED_CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
-  'Content-Type': 'application/json',
-};
-
 function assertCorsHeaders(headers) {
   assert.equal(
     headers['Access-Control-Allow-Origin'],
@@ -29,6 +23,13 @@ function assertCorsHeaders(headers) {
     headers['Access-Control-Allow-Methods'].includes('PATCH'),
     'Allow-Methods should include PATCH'
   );
+}
+
+// Content-Type is a payload header, not a CORS header, so it is asserted
+// separately: the builders that serialize a JSON body must send it, and the
+// bodyless 204 from logoutResponse must not (a Content-Type on a 204 tells the
+// client to expect bytes that are not coming).
+function assertJsonContentType(headers) {
   assert.equal(
     headers['Content-Type'],
     'application/json',
@@ -185,6 +186,7 @@ describe('supabase-response.mjs', () => {
       };
       const res = sessionResponse('at', 'rt', user);
       assertCorsHeaders(res.headers);
+      assertJsonContentType(res.headers);
     });
 
     it('userResponse includes CORS headers', () => {
@@ -195,16 +197,23 @@ describe('supabase-response.mjs', () => {
       };
       const res = userResponse(user);
       assertCorsHeaders(res.headers);
+      assertJsonContentType(res.headers);
     });
 
-    it('logoutResponse includes CORS headers', () => {
+    it('logoutResponse includes CORS headers and no Content-Type', () => {
       const res = logoutResponse();
       assertCorsHeaders(res.headers);
+      assert.equal(
+        res.headers['Content-Type'],
+        undefined,
+        'a bodyless 204 must not carry Content-Type'
+      );
     });
 
     it('errorResponse includes CORS headers', () => {
       const res = errorResponse(400, 'err', 'desc');
       assertCorsHeaders(res.headers);
+      assertJsonContentType(res.headers);
     });
   });
 

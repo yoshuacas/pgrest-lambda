@@ -8,6 +8,71 @@ Format: each release lists what was added, changed, or fixed. Unreleased work si
 
 ## Unreleased
 
+### Changed
+
+- **Aurora DSQL foreign keys are read from the catalog.** AWS added foreign key
+  constraints to Aurora DSQL on
+  [2026-08-27](https://aws.amazon.com/about-aws/whats-new/2026/08/aurora-dsql-foreign-key-constraints/).
+  `DSQL_CAPABILITIES.supportsForeignKeys` is now `true`, so `schema-cache.mjs`
+  runs its `pg_constraint` introspection on DSQL and resource embedding resolves
+  the same way it does on standard PostgreSQL. `PGREST_RELATIONSHIPS_PATH` is no
+  longer needed for foreign keys on DSQL; it remains the way to declare a
+  relationship that is not a constraint. Measured on a live cluster: a key can be
+  added to an existing table only as `ALTER TABLE ... ADD CONSTRAINT ...
+  NOT VALID` (plain `ADD CONSTRAINT` and `VALIDATE CONSTRAINT` answer `0A000`),
+  which leaves `convalidated = false` and is enforced for every later write. The
+  engine deliberately does not filter on `convalidated`, matching upstream
+  PostgREST. See `conformance/DSQL-CAPABILITIES.md` and
+  `docs/plans/dsql-foreign-keys.md`.
+- The conformance fixtures declare all 115 upstream foreign keys in a new
+  `conformance/fixtures/dsql/08-foreign-keys.sql`, applied after the data. 114 of
+  the 115 land; the one that does not is a key on a table DSQL could not create
+  in the first place. With the keys enforced, `07-data.sql` empties its 149
+  tables in one leading block in reverse topological order and the runner's
+  targeted restore expands a touched table through the graph.
+- The fixture loader runs `ANALYZE` on each table it creates. A freshly created
+  DSQL table has no statistics, so `Prefer: count=planned` read a round default
+  instead of a row count; two runs of one tree differed by 6 cases for that
+  reason alone. DSQL accepts `ANALYZE` for one relation at a time and rejects
+  both the bare and the `VACUUM ANALYZE` forms with `0A000`.
+- Published conformance measurement: **1,179 of 1,294 in-scope cases (91.1%)** on
+  tree `4cebc95`, up from 1,176 of 1,294 — 1,179 of the older 1,358 denominator
+  (86.8%) like for like. Retiring the relationship manifest changed no case's
+  outcome; the 3 cases that moved are a planner estimate and a row order. See
+  `docs/reference/postgrest-compatibility.md`.
+
+### Documentation
+
+- **New `docs/reference/embedding.md`.** Resource embedding had no reference
+  page: the six sources relationships come from, the full embed `select` syntax
+  (alias, `!inner`, `!left`, hints, spreads, nesting), the per-embed modifiers,
+  and the error each mistake raises.
+- **Corrected the RPC guide.** `docs/rpc.md` claimed Aurora DSQL cannot serve
+  RPC. It can, and `supportsRpc` is `true` on both providers — what DSQL
+  constrains is the function body (`LANGUAGE sql`, no PL/pgSQL, no custom types).
+  137 of the 144 in-scope upstream `RpcSpec` assertions pass on a live DSQL
+  cluster. Same correction in `README.md` and
+  `docs/reference/authorization.md`'s `PGRST501` row.
+- **Rewrote `docs/reference/errors.md` against the engine.** It documented 18 of
+  the 35 codes the engine constructs and several messages had drifted as the
+  wording moved to upstream PostgREST's. Added sections for PGRST102, 103, 105,
+  107, 108, 114, 115, 118, 122–128, 300, 302 and 303, and corrected the PGRST100
+  parse-error table, PGRST101, 106, 116, 123, 204, 205 and 301.
+- **New `npm run docs:check-errors`** (`scripts/check-error-docs.mjs`) so that
+  drift is caught rather than rediscovered: it fails when a message documented in
+  the error reference no longer appears in `src/`, or when a `PGRST*` code the
+  engine constructs has no section on the page. Exits non-zero, so it can run in
+  CI.
+- **`AGENTS.md`**: replaced the foreign-key and embedding limitations, which
+  listed many-to-many, computed relationships, and embed filtering as
+  unsupported when all three ship.
+- Historical banner on `docs/design/postgrest-compatible-api.md`, whose "foreign
+  keys are not introspected" and "resource embedding is deferred" are both now
+  false.
+- Added the error-code, compatibility, Cedar-equivalence, and embedding pages to
+  the documentation site's Reference sidebar — the first three were published but
+  unlinked.
+
 ### Fixed
 
 - Fix bind-parameter mismatch in Cedar policy-to-SQL
@@ -176,7 +241,7 @@ lineage.)
   dev server to reload its schema cache and Cedar
   policies without restarting.
 - New library exports for composition (used by the CLI
-  and usable directly by consumers like BOA):
+  and usable directly by any embedding application):
   `startDevServer`, `generateApikey`,
   `startBundledPostgres`, `stopBundledPostgres`,
   `resetBundledPostgres`.

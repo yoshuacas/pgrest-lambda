@@ -4,27 +4,271 @@ import { PostgRESTError, mapPgError } from './errors.mjs';
 import { parseQuery } from './query-parser.mjs';
 import {
   buildSelect, buildInsert, buildUpdate, buildDelete, buildCount,
-  buildRpcCall,
+  buildConflictCount, buildMutationRead, buildRpcCall, RPC_SCALAR,
+  mutationNeedsReadPlan,
 } from './sql-builder.mjs';
 import { getFunction } from './schema-cache.mjs';
-import { success, error } from './response.mjs';
+import {
+  findRoutine, parseContentMediaType,
+  MT_JSON, MT_TEXT, MT_XML, MT_OCTET, MT_URLENCODED, MT_CSV,
+} from './routines.mjs';
+import {
+  success, error, negotiateMedia, mediaProducible, mediaUnavailable,
+  acceptsOpenApi, rawMediaFor,
+  MEDIA_OPENAPI, MEDIA_SINGULAR,
+} from './response.mjs';
+import { installPgTypeParsers } from './pg-types.mjs';
 import { route } from './router.mjs';
 import { generateSpec } from './openapi.mjs';
-import { buildCorsHeaders } from '../shared/cors.mjs';
+import { buildCorsHeaders, preflightHeaders } from '../shared/cors.mjs';
 import { assertBodySize } from '../shared/body-size.mjs';
-import { randomBytes } from 'node:crypto';
+import {
+  randomBytes, createHmac, createVerify, createPublicKey, timingSafeEqual,
+} from 'node:crypto';
 
-function parsePrefer(raw) {
-  const prefer = {};
+// --- Prefer / Preference-Applied -------------------------------------------
+//
+// Ported from upstream `PostgREST.ApiRequest.Preferences`. The vocabulary is
+// closed: a token that is neither one of these `key=value` pairs nor a
+// `timezone=`/`max-affected=` prefix is an *invalid* preference, which
+// `handling=strict` turns into PGRST122. A preference given twice keeps the
+// first occurrence.
+
+const PREF_ENUM = {
+  resolution: ['merge-duplicates', 'ignore-duplicates'],
+  return: ['representation', 'minimal', 'headers-only'],
+  count: ['exact', 'planned', 'estimated'],
+  tx: ['commit', 'rollback'],
+  missing: ['default', 'null'],
+  handling: ['strict', 'lenient'],
+};
+
+export function parsePrefer(raw) {
+  const prefer = { invalid: [] };
   if (!raw) return prefer;
-  for (const part of raw.split(',')) {
-    const trimmed = part.trim();
-    const eqIdx = trimmed.indexOf('=');
-    if (eqIdx !== -1) {
-      prefer[trimmed.slice(0, eqIdx)] = trimmed.slice(eqIdx + 1);
+
+  for (const part of String(raw).split(',')) {
+    const token = part.trim();
+    if (token === '') continue;
+
+    const eqIdx = token.indexOf('=');
+    const key = eqIdx === -1 ? null : token.slice(0, eqIdx);
+    const value = eqIdx === -1 ? null : token.slice(eqIdx + 1);
+
+    if (key !== null && PREF_ENUM[key]?.includes(value)) {
+      if (prefer[key] === undefined) prefer[key] = value;
+      continue;
     }
+    // `timezone=`/`max-affected=` take free-form values, so an unparseable
+    // one is still an accepted preference — it just has no effect.
+    if (key === 'timezone') {
+      if (prefer.timezone === undefined) prefer.timezone = value;
+      continue;
+    }
+    if (key === 'max-affected') {
+      if (prefer.maxAffectedRaw === undefined) {
+        prefer.maxAffectedRaw = value;
+        if (/^-?\d+$/.test(value)) prefer.maxAffected = parseInt(value, 10);
+      }
+      continue;
+    }
+    prefer.invalid.push(token);
   }
   return prefer;
+}
+
+export function assertValidPrefer(prefer) {
+  if (prefer.handling === 'strict' && prefer.invalid.length > 0) {
+    throw new PostgRESTError(400, 'PGRST122',
+      'Invalid preferences given with handling=strict',
+      `Invalid preferences: ${prefer.invalid.join(', ')}`);
+  }
+}
+
+/**
+ * Does this request want a total in Content-Range?
+ *
+ * Upstream has three strategies (`PreferCount`): `exact` runs a COUNT over the
+ * filtered read, `planned` reads the query planner's row estimate and runs no
+ * count at all, `estimated` runs both and takes the larger of the two once the
+ * exact count has passed `db-max-rows`. All three put a total in Content-Range;
+ * which query produces it is what `shouldExactCount`/`shouldExplainCount`
+ * decide below.
+ */
+export function shouldCount(prefer) {
+  return prefer.count === 'exact'
+    || prefer.count === 'planned'
+    || prefer.count === 'estimated';
+}
+
+/** Upstream `shouldCount`: which strategies run the real COUNT. */
+export function shouldExactCount(prefer) {
+  return prefer.count === 'exact' || prefer.count === 'estimated';
+}
+
+/** Upstream `shouldExplainCount`: which strategies ask the planner. */
+export function shouldExplainCount(prefer) {
+  return prefer.count === 'planned' || prefer.count === 'estimated';
+}
+
+/**
+ * The row-producing form of a count query, which is what can be EXPLAINed for
+ * an estimate.
+ *
+ * Upstream EXPLAINs `readPlanToCountQuery`, a `SELECT 1 FROM <filtered read>`,
+ * and reads the estimate off the *top* node of the plan
+ * (`[0].Plan."Plan Rows"`, MainTx.hs `decodeExplain`). An aggregate has to be
+ * kept out of it: EXPLAIN of `SELECT COUNT(*) ...` reports one row at the top,
+ * because that is how many rows the aggregate returns.
+ *
+ * The input is this engine's own generated count SQL, never anything a client
+ * sent — filter values travel as `$n` parameters and stay untouched here.
+ *
+ * @param {string} countSql text from buildCount()
+ * @returns {string|null} the EXPLAIN target, or null when the SQL is not in the
+ *          shape this rewrite understands (the caller then falls back to the
+ *          exact count rather than reporting a wrong total)
+ */
+export function explainCountSql(countSql) {
+  const text = String(countSql || '');
+  const prefix = /^SELECT COUNT\(\*\)(?: AS count)? FROM /i;
+  return prefix.test(text) ? text.replace(prefix, 'SELECT 1 FROM ') : null;
+}
+
+/**
+ * The planner's row estimate out of an `EXPLAIN (FORMAT JSON)` result.
+ *
+ * The driver hands the plan back either as parsed JSON or as the text
+ * PostgreSQL printed, depending on how the type is registered, so both are
+ * accepted. Only the top node's estimate is read — for a `SELECT 1` plan that
+ * is the whole result set's estimate, including under a Gather.
+ *
+ * @param {*} value the single `QUERY PLAN` column
+ * @returns {number|null}
+ */
+export function planRowsFromExplain(value) {
+  let plan = value;
+  if (typeof plan === 'string') {
+    try {
+      plan = JSON.parse(plan);
+    } catch {
+      return null;
+    }
+  }
+  const top = Array.isArray(plan) ? plan[0]?.Plan : plan?.Plan;
+  const rows = top?.['Plan Rows'];
+  return Number.isFinite(Number(rows)) ? Number(rows) : null;
+}
+
+const MUTATION_PLANS = new Set(['create', 'update', 'delete', 'upsert']);
+
+/**
+ * Build the Preference-Applied value for one plan, in upstream's order
+ * (`prefAppliedHeader`): resolution, missing, return, count, tx, handling,
+ * timezone, max-affected. Which of them are in scope depends on the plan
+ * (upstream `responsePreferences`): `return` only on mutations, `missing`
+ * only on insert/update, `resolution` only on inserts that have something
+ * to resolve against, `max-affected` only with handling=strict.
+ *
+ * @param {Object} prefer  from parsePrefer()
+ * @param {'read'|'create'|'update'|'delete'|'upsert'|'rpc'} plan
+ * @param {{resolutionApplies?: boolean}} [opts]
+ * @returns {string|null}
+ */
+export function preferenceApplied(prefer, plan, opts = {}) {
+  const vals = [];
+
+  if (plan === 'create' && prefer.resolution && opts.resolutionApplies) {
+    vals.push(`resolution=${prefer.resolution}`);
+  }
+  if ((plan === 'create' || plan === 'update') && prefer.missing) {
+    vals.push(`missing=${prefer.missing}`);
+  }
+  if (MUTATION_PLANS.has(plan) && prefer.return) {
+    vals.push(`return=${prefer.return}`);
+  }
+  if (prefer.count) vals.push(`count=${prefer.count}`);
+  // Whichever ending the request asked for, and only when it was accepted:
+  // the handler clears `tx` when `db-tx-end` does not allow the override, so
+  // anything still here was applied.
+  if (prefer.tx) vals.push(`tx=${prefer.tx}`);
+  if (prefer.handling) vals.push(`handling=${prefer.handling}`);
+  if (prefer.timezone !== undefined) {
+    vals.push(`timezone=${prefer.timezone}`);
+  }
+  if (prefer.handling === 'strict' && prefer.maxAffected !== undefined
+      && (plan === 'update' || plan === 'delete' || plan === 'rpc')) {
+    vals.push(`max-affected=${prefer.maxAffected}`);
+  }
+
+  return vals.length > 0 ? vals.join(', ') : null;
+}
+
+/**
+ * Refuse a path that names no resource this API has.
+ *
+ * Upstream's `getResource` (ApiRequest.hs) recognises exactly three shapes —
+ * nothing (the root spec), one segment (a relation), and `rpc/<name>` — and
+ * answers anything else with 404 PGRST125. There is no nesting: `/items/1` is
+ * not "row 1 of items", it is a path that does not exist, and saying so is what
+ * keeps a mistyped URL from being served as a different relation's rows.
+ *
+ * Engine-specific single-segment paths (`_refresh`, `_docs`) are relation-shaped
+ * and pass here; the router decides what they mean.
+ *
+ * @param {string} path the request path, with or without the /rest/v1 prefix
+ * @throws {PostgRESTError} 404 PGRST125
+ */
+export function assertValidPath(path) {
+  const remaining = String(path ?? '').replace(/^\/rest\/v1/, '');
+  // A trailing slash names the same resource as the path without it, and the
+  // router already reads it that way. Upstream's WAI `pathInfo` keeps the empty
+  // segment and so refuses `/items/`; that difference is a proxy-normalisation
+  // detail with no test behind it either way, and this engine's leniency here
+  // predates this check.
+  const trimmed = remaining.replace(/^\//, '').replace(/\/+$/, '');
+  if (trimmed === '') return;
+  const segments = trimmed.split('/');
+  if (segments.length === 1) return;
+  if (segments.length === 2 && segments[0] === 'rpc') return;
+  throw new PostgRESTError(404, 'PGRST125',
+    'Invalid path specified in request URL');
+}
+
+// What every response varies on (upstream App.hs `varyHeader`). Accept picks
+// the media type, Prefer the shape and the counting, Range the window — three
+// request headers that change the bytes without changing the URL, so a cache
+// that ignores them serves the wrong body.
+const VARY_VALUE = 'Accept, Prefer, Range';
+
+// The phases `Server-Timing` reports, in upstream's order
+// (Response/Performance.hs). A phase that did not happen — there is no plan or
+// transaction behind an OPTIONS — is left out.
+const TIMING_PHASES = ['jwt', 'parse', 'plan', 'transaction', 'response'];
+
+/**
+ * Render `Server-Timing` from the phase durations one request collected.
+ *
+ * Durations are milliseconds with one decimal, which is the unit the header is
+ * defined in. `response` is not measured by the phases: it is whatever is left
+ * of the request once the last measured phase ended, i.e. the time spent
+ * turning rows into bytes.
+ *
+ * @param {Object} timings  phase → milliseconds
+ * @param {bigint} startedAt process.hrtime.bigint() at the top of the request
+ * @returns {string|null}
+ */
+function serverTimingHeader(timings, startedAt) {
+  const total = Number(process.hrtime.bigint() - startedAt) / 1e6;
+  const measured = TIMING_PHASES
+    .filter(p => p !== 'response')
+    .reduce((sum, p) => sum + (timings[p] || 0), 0);
+  const all = { ...timings, response: Math.max(0, total - measured) };
+
+  const parts = TIMING_PHASES
+    .filter(p => all[p] != null)
+    .map(p => `${p};dur=${all[p].toFixed(1)}`);
+  return parts.length > 0 ? parts.join(', ') : null;
 }
 
 function lowercaseHeaders(raw) {
@@ -37,15 +281,274 @@ function lowercaseHeaders(raw) {
   return headers;
 }
 
-function contentRange(rowCount, totalCount) {
-  if (totalCount != null) {
-    return rowCount > 0
-      ? `0-${rowCount - 1}/${totalCount}`
-      : `*/${totalCount}`;
+// --- Range / Content-Range -------------------------------------------------
+//
+// Ported from upstream `PostgREST.RangeQuery`. `contentRangeH` is used for
+// every plan; the lower bound is the requested *offset*, not zero, and it is
+// hard-coded per mutation (`1 0` for insert/delete, `0 (n-1)` for update) so
+// that the header reads `*/N` or `0-(n-1)/N`.
+
+export function contentRangeH(lower, upper, total) {
+  const rangeString = total !== 0 && lower <= upper
+    ? `${lower}-${upper}`
+    : '*';
+  return `${rangeString}/${total == null ? '*' : total}`;
+}
+
+export function rangeStatus(lower, upper, total) {
+  if (total == null) return 200;
+  if (lower > total) return 416;
+  if ((1 + upper - lower) < total) return 206;
+  return 200;
+}
+
+/**
+ * Parse a `Range` request header into `{lower, upper}` (upstream
+ * `rangeParse`, whose regex is `^([0-9]+)-([0-9]*)$`). An unparseable header
+ * means "no range", exactly as upstream.
+ *
+ * The optional `<unit>=` prefix is an extension: upstream's own test helper
+ * sends a bare `0-1`, but real clients (and the extracted conformance cases)
+ * send `items=0-1`/`bytes=0-1`, and RFC 9110 requires a unit. Accepting both
+ * is a superset of PostgREST's behaviour.
+ */
+export function parseRangeHeader(raw) {
+  if (raw == null) return null;
+  const m = /^(?:[A-Za-z]+\s*=\s*)?(\d+)-(\d*)$/.exec(String(raw).trim());
+  if (!m) return null;
+  return {
+    lower: parseInt(m[1], 10),
+    upper: m[2] === '' ? null : parseInt(m[2], 10),
+  };
+}
+
+/**
+ * Intersect the `Range` header with the `limit`/`offset` query parameters the
+ * way upstream `getRanges` does, and return the effective window plus the
+ * bounds the response headers are built from.
+ *
+ * @param {{limit: number|null, offset: number}} parsed
+ * @param {{lower: number, upper: number|null}|null} headerRange
+ *        already suppressed by the caller for non-GET methods
+ * @returns {{limit: number|null, offset: number, lower: number}}
+ */
+export function effectiveRange(parsed, headerRange) {
+  // `limit=0` bypasses every range validation and wins outright
+  // (upstream `convertToLimitZeroRange`).
+  if (parsed.limit === 0) {
+    return { limit: 0, offset: 0, lower: 0 };
   }
-  return rowCount > 0
-    ? `0-${rowCount - 1}/*`
-    : `*/*`;
+
+  let lower = parsed.offset || 0;
+  let upper = parsed.limit != null ? lower + parsed.limit - 1 : null;
+
+  // The window the query string asks for is intersected with `allRange` — 0 to
+  // infinity — before anything else (upstream `getRanges` intersects with a
+  // `headerRange` that defaults to `allRange`, and `allRange = rangeGeq 0`).
+  // So a negative `offset` is a no-op on the lower bound while the upper bound
+  // it implied stays where it was: `offset=-4` alone reads from row 0, and
+  // `offset=-4&limit=3` keeps its upper bound of -2, which is an empty range.
+  lower = Math.max(lower, 0);
+
+  if (headerRange) {
+    lower = Math.max(lower, headerRange.lower);
+    if (headerRange.upper != null) {
+      upper = upper == null
+        ? headerRange.upper
+        : Math.min(upper, headerRange.upper);
+    }
+  }
+
+  if (upper != null && upper < lower) {
+    const headerEmpty = headerRange && headerRange.upper != null
+      && headerRange.upper < headerRange.lower;
+    throw rangeError(
+      headerEmpty
+        ? 'The lower boundary must be lower than or equal to the upper '
+          + 'boundary in the Range header.'
+        : 'Limit should be greater than or equal to zero.',
+    );
+  }
+
+  return {
+    limit: upper == null ? null : upper - lower + 1,
+    offset: lower,
+    lower,
+  };
+}
+
+function rangeError(details, extraHeaders) {
+  const err = new PostgRESTError(416, 'PGRST103',
+    'Requested range not satisfiable', details);
+  if (extraHeaders) err.responseHeaders = extraHeaders;
+  return err;
+}
+
+// --- PUT (single-row upsert) ----------------------------------------------
+
+/**
+ * A PUT must address exactly one row: no and()/or(), every filter a plain
+ * `eq` (no `not.`, no quantifier), and the filtered columns exactly the
+ * primary key. Anything else is upstream's PGRST105, a 405.
+ */
+export function assertPutFilters(filters, pk) {
+  const cols = new Set();
+  let ok = pk.length > 0;
+
+  for (const f of filters) {
+    if (f.type !== 'filter' || f.operator !== 'eq'
+        || f.negate || f.quantifier) {
+      ok = false;
+      break;
+    }
+    cols.add(f.column);
+  }
+
+  if (ok) {
+    ok = cols.size === pk.length && pk.every(c => cols.has(c));
+  }
+
+  if (!ok) {
+    throw new PostgRESTError(405, 'PGRST105',
+      "Filters must include all and only primary key columns "
+      + "with 'eq' operators");
+  }
+}
+
+/**
+ * Pick the payload row the URL points at. Upstream guards the INSERT with a
+ * WHERE that keeps only the rows whose primary key matches the URL, then
+ * fails the request unless exactly one row survived (PGRST115).
+ */
+export function pickPutRow(filters, pk, body) {
+  const urlValues = new Map(filters.map(f => [f.column, f.value]));
+  const payload = Array.isArray(body) ? body : (body == null ? [] : [body]);
+
+  const matching = payload.filter(row => row && typeof row === 'object'
+    && pk.every(col => row[col] !== undefined
+      && String(row[col]) === String(urlValues.get(col))));
+
+  if (matching.length !== 1) {
+    throw new PostgRESTError(400, 'PGRST115',
+      'Payload values do not match URL in primary key column(s)');
+  }
+  return matching[0];
+}
+
+// --- Location ---------------------------------------------------------------
+
+/** RFC 3986 percent-encoding of one query-string key or value. */
+function urlEncodePart(text) {
+  return encodeURIComponent(text)
+    .replace(/[!'()*]/g, ch => '%' + ch.charCodeAt(0).toString(16).toUpperCase());
+}
+
+/**
+ * The canonical spelling of a request's query string: every parameter, sorted
+ * by name, percent-encoded (upstream `qsCanonical`, built by
+ * `urlEncodeVars . sortOn fst` over the parsed query).
+ *
+ * Two details of `Network.HTTP.Base.urlEncodeVars` are load-bearing and are
+ * reproduced here: a parameter that appears more than once is written once with
+ * its values joined by commas, in the order they were sent, and a parameter
+ * with no value keeps its `=`. Nothing is dropped or rewritten — this is the
+ * request as it would have to be re-sent to get the same rows, which is exactly
+ * what makes it usable as a `Content-Location`.
+ *
+ * @param {Object} params            queryStringParameters
+ * @param {Object} [multiValueParams] multiValueQueryStringParameters
+ * @returns {string} `a=1&b=2`, or '' when there were no parameters
+ */
+export function canonicalQuery(params, multiValueParams) {
+  const single = params || {};
+  const multi = multiValueParams || null;
+  const keys = [...new Set([
+    ...Object.keys(single),
+    ...(multi ? Object.keys(multi) : []),
+  ])].sort();
+
+  return keys.map((key) => {
+    const values = multi && Array.isArray(multi[key])
+      ? multi[key]
+      : [single[key]];
+    const joined = values
+      .map(v => (v == null ? '' : urlEncodePart(v)))
+      .join(',');
+    return `${urlEncodePart(key)}=${joined}`;
+  }).join('&');
+}
+
+/** A row value as `row_to_json` + `json_each_text` would spell it. */
+function pkText(value) {
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === 'object') return JSON.stringify(value);
+  return String(value);
+}
+
+/**
+ * The `Location` of a created row: `/<table>?<pk>=eq.<value>`, with `is.null`
+ * for a null key (upstream `locationF` + `locationH`).
+ *
+ * Upstream builds it from `row_to_json` of the *first* row the INSERT
+ * returned, keeping the keys that are primary-key columns — so the header is
+ * there even when `?select=` left the primary key out — and emits it only when
+ * the insert produced exactly one row and `Prefer: return=headers-only` asked
+ * for it. A relation with no primary key gets no header at all.
+ */
+export function locationHeader(table, pkCols, rows) {
+  if (!Array.isArray(rows) || rows.length !== 1) return null;
+  if (!pkCols || pkCols.length === 0) return null;
+  const row = rows[0];
+  if (!row || typeof row !== 'object') return null;
+  const wanted = new Set(pkCols);
+  const parts = [];
+  // Column order comes from the row, the way json_each_text walks the object.
+  for (const [key, value] of Object.entries(row)) {
+    if (!wanted.has(key)) continue;
+    parts.push(`${urlEncodePart(key)}=${value === null || value === undefined
+      ? 'is.null'
+      : urlEncodePart(`eq.${pkText(value)}`)}`);
+  }
+  if (parts.length !== pkCols.length) return null;
+  return `/${table}?${parts.join('&')}`;
+}
+
+/**
+ * The `Allow` value for an OPTIONS request, following upstream's `allowH`
+ * (Response.hs): a relation always allows OPTIONS, GET and HEAD, and each
+ * writing method only when the relation accepts it — `pg_relation_is_updatable`
+ * is what makes a view answer PATCH and a plain table answer everything. PUT
+ * additionally needs a primary key, because a single-row upsert has nothing to
+ * address the row by without one.
+ *
+ * A function allows OPTIONS and POST; a stable or immutable one also allows the
+ * read methods, which is the same rule that decides whether it can be called
+ * with GET at all.
+ *
+ * @param {{type: string, table?: string, functionName?: string}} routeInfo
+ * @param {Object} schema the schema cache for this request's profile
+ */
+export function allowHeaderFor(routeInfo, schema) {
+  if (routeInfo.type === 'rpc') {
+    const candidates = schema?.routines?.[routeInfo.functionName] || [];
+    const volatile = candidates.length === 0
+      || candidates.some(c => c.volatility === 'v');
+    return volatile ? 'OPTIONS,POST' : 'OPTIONS,GET,HEAD,POST';
+  }
+
+  if (routeInfo.type !== 'table') {
+    // The root spec, the docs page and the cache refresh are not relations.
+    return routeInfo.type === 'refresh' ? 'OPTIONS,POST' : 'OPTIONS,GET,HEAD';
+  }
+
+  const rel = schema?.tables?.[routeInfo.table] || {};
+  const hasPk = (rel.primaryKey || []).length > 0;
+  const methods = ['OPTIONS,GET,HEAD'];
+  if (rel.insertable) methods.push('POST');
+  if (rel.insertable && rel.updatable && hasPk) methods.push('PUT');
+  if (rel.updatable) methods.push('PATCH');
+  if (rel.deletable) methods.push('DELETE');
+  return methods.join(',');
 }
 
 function docsHtml(specUrl) {
@@ -103,6 +606,16 @@ function resolveApiUrl(ctx, headers) {
   return `${proto}://${host}/rest/v1`;
 }
 
+/**
+ * NOT on the request path any more.
+ *
+ * Argument checking is upstream's `findProc` now (src/rest/routines.mjs): the
+ * supplied argument *names* pick the overload, and a name that fits no overload
+ * is a 404 PGRST202, not a 400. Types are cast in SQL (`$1::integer`) so a bad
+ * value is the database's 22P02, not a hand-rolled PGRST208. These three are
+ * kept only because the tests that pin them are outside this change's scope;
+ * they should go with those tests.
+ */
 export function validateRpcArgs(fnName, args, fnSchema) {
   const required = fnSchema.args.length - fnSchema.numDefaults;
   for (let i = 0; i < required; i++) {
@@ -162,6 +675,30 @@ export function coerceRpcArgs(fnName, args, fnSchema) {
   return args;
 }
 
+/**
+ * Total row count for a set-returning function call, for `Prefer: count=`.
+ *
+ * Upstream counts in the same statement as the call; a second statement is
+ * only safe when PostgreSQL itself guarantees the function has no side
+ * effects, so a VOLATILE function reports no total rather than running twice.
+ */
+async function countRpcRows({ fnName, call, routine, parsed, schema, pool }) {
+  if (routine.volatility !== 'i' && routine.volatility !== 's') {
+    return null;
+  }
+  const q = buildRpcCall(fnName, call, routine, {
+    ...parsed, limit: null, offset: 0, order: [],
+  }, schema);
+  if (q.resultMode !== 'set' && q.resultMode !== 'setofScalar') return null;
+
+  // q.text is engine-generated SQL; every user value is still a placeholder.
+  const r = await pool.query(
+    `SELECT COUNT(*) AS count FROM (${q.text}) AS _pgrst_count`,
+    q.values,
+  );
+  return parseInt(r.rows[0].count, 10);
+}
+
 const RPC_RESERVED = new Set([
   'select', 'order', 'limit', 'offset',
   'on_conflict', 'columns',
@@ -174,30 +711,1060 @@ export function classifyRpcParam(key, val) {
   return 'arg';
 }
 
+// --- RPC arguments ----------------------------------------------------------
+//
+// Where the arguments come from depends on the method and the Content-Type,
+// and the *names* are needed before a routine can be resolved at all. So each
+// source produces the same pair: the sorted key set that picks the overload,
+// and the call payload that fills it in.
+
+function sortedKeys(keys) {
+  return [...new Set(keys)].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+}
+
+/** First line of a CSV body → its field names (upstream reads the header). */
+function csvHeaderKeys(raw) {
+  const line = String(raw || '').split(/\r?\n/)[0] || '';
+  if (line === '') return [];
+  return line.split(',').map(f => f.trim().replace(/^"|"$/g, ''));
+}
+
+function formPairs(raw) {
+  const pairs = [];
+  for (const [k, v] of new URLSearchParams(String(raw || ''))) {
+    pairs.push([k, v]);
+  }
+  return pairs;
+}
+
+/**
+ * `?columns=` restricts which body keys are arguments at all — the rest are
+ * ignored rather than rejected (upstream `payloadColumns`).
+ */
+function restrictColumns(keys, columns) {
+  if (!columns || columns.length === 0) return keys;
+  const wanted = new Set(columns);
+  return keys.filter(k => wanted.has(k));
+}
+
+// --- Mutation request bodies ------------------------------------------------
+//
+// A relation mutation writes a list of rows, and which parse turns the request
+// body into that list is the Content-Type's business (upstream
+// `ApiRequest/Payload.hs` `getPayload` for `ActRelationMut`). Every failure in
+// here is the same wire error: 400 PGRST102.
+
+function invalidBody(message) {
+  return new PostgRESTError(400, 'PGRST102', message);
+}
+
+/**
+ * CSV records per RFC 4180, which is what upstream's cassava reader accepts:
+ * a quoted field may hold commas, newlines and `""` escapes.
+ */
+export function parseCsvRecords(text) {
+  const src = text == null ? '' : String(text);
+  const records = [];
+  let record = [];
+  let field = '';
+  let quoted = false;
+  let i = 0;
+  const endRecord = () => {
+    record.push(field);
+    field = '';
+    records.push(record);
+    record = [];
+  };
+  while (i < src.length) {
+    const ch = src[i];
+    if (quoted) {
+      if (ch === '"') {
+        if (src[i + 1] === '"') { field += '"'; i += 2; continue; }
+        quoted = false; i += 1; continue;
+      }
+      field += ch; i += 1; continue;
+    }
+    if (ch === '"' && field === '') { quoted = true; i += 1; continue; }
+    if (ch === ',') { record.push(field); field = ''; i += 1; continue; }
+    if (ch === '\n' || ch === '\r') {
+      endRecord();
+      i += (ch === '\r' && src[i + 1] === '\n') ? 2 : 1;
+      continue;
+    }
+    field += ch; i += 1;
+  }
+  // A trailing line terminator ends the last record rather than starting an
+  // empty one.
+  if (field !== '' || record.length > 0) endRecord();
+  return records;
+}
+
+/**
+ * A `text/csv` body → the rows it describes (upstream `csvToJson`): the first
+ * line names the columns, a field spelled exactly `NULL` is JSON null, and
+ * every other field stays a string for PostgreSQL to coerce.
+ *
+ * Upstream zips the header with each line, so a short line simply carries
+ * fewer keys — and the key-uniformity check then rejects the whole payload
+ * with "All lines must have same number of fields".
+ */
+function csvBodyToRows(raw) {
+  const records = parseCsvRecords(raw);
+  if (records.length === 0) return [];
+  const header = records[0];
+  const canonical = header.join('\u0000');
+  return records.slice(1).map((rec) => {
+    const row = {};
+    const n = Math.min(header.length, rec.length);
+    for (let k = 0; k < n; k += 1) {
+      row[header[k]] = rec[k] === 'NULL' ? null : rec[k];
+    }
+    if (Object.keys(row).join('\u0000') !== canonical) {
+      throw invalidBody('All lines must have same number of fields');
+    }
+    return row;
+  });
+}
+
+/**
+ * The rows a relation mutation writes.
+ *
+ * @param {object} args
+ * @param {string} args.contentType  from parseContentMediaType()
+ * @param {*} args.rawBody           the body before any parsing
+ * @param {boolean} args.hasColumns  `?columns=` was given — that parameter *is*
+ *        the column list, so upstream hands the JSON body through untouched
+ *        (`RawJSON`) and never checks its keys.
+ */
+export function parseMutationBody({ contentType, rawBody, hasColumns }) {
+  const text = rawBody == null ? '' : String(rawBody);
+
+  if (contentType === MT_CSV) return csvBodyToRows(text);
+
+  if (contentType === MT_URLENCODED) {
+    // Every form field is a string value of one row.
+    const row = {};
+    for (const [k, v] of formPairs(text)) row[k] = v;
+    return row;
+  }
+
+  if (contentType !== MT_JSON) {
+    throw invalidBody(`Content-Type not acceptable: ${contentType}`);
+  }
+
+  let value;
+  try {
+    value = JSON.parse(text);
+  } catch {
+    // Upstream drops the parser's own message on purpose (issue #2344).
+    throw invalidBody('Empty or invalid json');
+  }
+  if (hasColumns) return value;
+  if (Array.isArray(value)) return value;
+  if (value !== null && typeof value === 'object') return value;
+  // Anything else is truncated to an empty array (`payloadAttributes`'
+  // catch-all), so the mutation touches no row.
+  return [];
+}
+
+/**
+ * Arguments of a POST: the JSON body's keys, the form fields, the CSV header,
+ * or — for a raw body — no names at all.
+ */
+function rpcPostArgs({ contentType, body, rawBody, columns }) {
+  if (contentType === MT_URLENCODED) {
+    const pairs = formPairs(rawBody);
+    return {
+      pairs,
+      argKeys: sortedKeys(restrictColumns(pairs.map(([k]) => k), columns)),
+    };
+  }
+  if (contentType === MT_TEXT || contentType === MT_XML) {
+    return { raw: rawBody == null ? '' : String(rawBody), argKeys: [] };
+  }
+  if (contentType === MT_OCTET) {
+    return { raw: rawBody, argKeys: [] };
+  }
+  if (contentType === MT_CSV) {
+    return {
+      raw: rawBody,
+      argKeys: sortedKeys(restrictColumns(csvHeaderKeys(rawBody), columns)),
+    };
+  }
+  // JSON (the default) — an array payload calls the function once, with the
+  // first object (upstream takes the head of the recordset).
+  const first = Array.isArray(body) ? body[0] : body;
+  const obj = (first !== null && typeof first === 'object'
+    && !Array.isArray(first)) ? first : {};
+  return {
+    json: obj,
+    raw: rawBody == null ? '' : String(rawBody),
+    argKeys: sortedKeys(restrictColumns(Object.keys(obj), columns)),
+  };
+}
+
+/**
+ * Query-string / form arguments → one value per parameter.
+ *
+ * A variadic parameter collects every repetition in query order; any other
+ * parameter repeated keeps the last value (upstream `toRpcParams`).
+ */
+function mergeDirectArgs(routine, pairs) {
+  const named = {};
+  const variadic = new Set(
+    routine.args.filter(a => a.variadic).map(a => a.name));
+  for (const [key, value] of pairs) {
+    if (variadic.has(key)) {
+      if (!named[key]) named[key] = [];
+      named[key].push(value);
+    } else {
+      named[key] = value;
+    }
+  }
+  return named;
+}
+
+/**
+ * Run one statement in a read-only transaction.
+ *
+ * `BEGIN READ ONLY` rather than `SET TRANSACTION READ ONLY` because the latter
+ * is not accepted on Aurora DSQL, and a plain `SET` would leak onto a pooled
+ * connection anyway. A pool hands out a dedicated connection for the duration;
+ * an already-checked-out client (a session-scoped request) is used as it is,
+ * and a bare `{query}` test double falls back to no transaction at all.
+ */
+async function queryReadOnly(pool, q) {
+  const checkout = typeof pool.connect === 'function'
+    && typeof pool.release !== 'function';
+  const client = checkout ? await pool.connect() : pool;
+  if (typeof client.query !== 'function') {
+    throw new Error('pool has no query()');
+  }
+  try {
+    await client.query('BEGIN READ ONLY');
+    try {
+      const result = await client.query(q.text, q.values);
+      await client.query('COMMIT');
+      return result;
+    } catch (err) {
+      try {
+        await client.query('ROLLBACK');
+      } catch {
+        // The transaction is already gone; the original error is what matters.
+      }
+      throw err;
+    }
+  } finally {
+    if (checkout) client.release();
+  }
+}
+
+/**
+ * `db-tx-end` as the two flags upstream keeps it as: whether every transaction
+ * ends with ROLLBACK (`configDbTxRollbackAll`) and whether the request may say
+ * otherwise with `Prefer: tx=` (`configDbTxAllowOverride`).
+ *
+ * @param {string} [dbTxEnd]
+ * @returns {{rollbackAll: boolean, allowOverride: boolean}}
+ */
+export function txEndPolicy(dbTxEnd) {
+  const mode = String(dbTxEnd || 'commit');
+  return {
+    rollbackAll: mode.startsWith('rollback'),
+    allowOverride: mode.endsWith('-allow-override'),
+  };
+}
+
+/**
+ * Does this request's transaction end with ROLLBACK? Upstream's
+ * `shouldRollback`: the configured ending decides, and the accepted
+ * `Prefer: tx=` inverts it. `preferTx` must already be `undefined` when the
+ * configuration does not allow the override — that is where upstream drops it
+ * (`Preferences.fromHeaders` never parses it), so an unacceptable preference is
+ * not echoed either.
+ *
+ * @param {{rollbackAll: boolean}} policy from txEndPolicy()
+ * @param {'commit'|'rollback'|undefined} preferTx
+ */
+export function shouldRollback(policy, preferTx) {
+  return policy.rollbackAll ? preferTx !== 'commit' : preferTx === 'rollback';
+}
+
+const maxAffectedError = (affected) => new PostgRESTError(
+  400, 'PGRST124',
+  'Query result exceeds max-affected preference constraint',
+  `The query affects ${affected} rows`);
+
+/**
+ * Run one write statement under the request's transaction policy.
+ *
+ * Two things can make a write need a transaction of its own:
+ *
+ * `rollback` is `db-tx-end`. The statement runs and is then thrown away, so the
+ * response describes rows that no longer exist — which is exactly what
+ * PostgREST does when it is configured this way, and how its own test suite
+ * runs every mutating request (SpecHelper.hs `baseCfg`).
+ *
+ * `max` is `Prefer: max-affected` on a function call. A function is a black
+ * box — the rows it writes cannot be counted before it runs, the way a DELETE's
+ * can — so upstream runs it, counts the rows it returned and aborts the
+ * request's transaction when there are too many (`failMaxAffected`, checked
+ * inside `MainTx.hs`'s transaction). The refusal leaves the table exactly as it
+ * was, which is the whole point of asking.
+ *
+ * When the request already holds a transaction (`session.inTx`) the statement
+ * joins it: a nested BEGIN is a no-op that PostgreSQL warns about, and the
+ * COMMIT that followed it would end the request's transaction early. The ending
+ * is left to the session instead, and `session.condemn()` is upstream's
+ * `SQL.condemn` — the transaction will roll back whatever else happens.
+ *
+ * @param {{pool: Object, inTx?: boolean, condemn?: () => void}} session
+ * @param {{text: string, values: any[]}} q
+ * @param {{max?: number|null, rollback?: boolean}} [opts]
+ * @throws {PostgRESTError} 400 PGRST124 when the count is over `max`
+ */
+async function queryWrite(session, q, opts = {}) {
+  const { max = null, rollback = false } = opts;
+  const pool = session.pool;
+
+  if (session.inTx) {
+    const result = await pool.query(q.text, q.values);
+    const affected = Array.isArray(result.rows) ? result.rows.length : 0;
+    if (max != null && affected > max) {
+      session.condemn();
+      throw maxAffectedError(affected);
+    }
+    if (rollback) session.condemn();
+    return result;
+  }
+
+  // Nothing to decide: one statement is atomic on its own.
+  if (max == null && !rollback) return pool.query(q.text, q.values);
+
+  const checkout = typeof pool.connect === 'function'
+    && typeof pool.release !== 'function';
+  const client = checkout ? await pool.connect() : pool;
+  if (typeof client.query !== 'function') {
+    throw new Error('pool has no query()');
+  }
+  const undo = async () => {
+    try {
+      await client.query('ROLLBACK');
+    } catch {
+      // Already gone; whatever is being thrown is what matters.
+    }
+  };
+  try {
+    await client.query('BEGIN');
+    let result;
+    try {
+      result = await client.query(q.text, q.values);
+    } catch (err) {
+      await undo();
+      throw err;
+    }
+    const affected = Array.isArray(result.rows) ? result.rows.length : 0;
+    if (max != null && affected > max) {
+      await undo();
+      throw maxAffectedError(affected);
+    }
+    if (rollback) await undo();
+    else await client.query('COMMIT');
+    return result;
+  } finally {
+    if (checkout) client.release();
+  }
+}
+
+/** A raw octet-stream body → a value `$1::bytea` accepts. */
+function byteaLiteral(raw) {
+  if (raw == null) return '\\x';
+  const buf = Buffer.isBuffer(raw) ? raw : Buffer.from(String(raw), 'utf-8');
+  return `\\x${buf.toString('hex')}`;
+}
+
+/**
+ * The call payload for a resolved routine.
+ *
+ * A routine whose single parameter is unnamed takes the body verbatim; anything
+ * else takes named arguments, and only the ones it declares (`?columns=` and
+ * upstream both let unknown keys through as long as the *names* resolved).
+ */
+function rpcCallFor(routine, source, contentType) {
+  const single = routine.args.length === 1 && routine.args[0].name === '';
+  if (single) {
+    return {
+      mode: 'single',
+      raw: contentType === MT_OCTET ? byteaLiteral(source.raw) : source.raw,
+    };
+  }
+  if (source.pairs) {
+    return { mode: 'direct', named: mergeDirectArgs(routine, source.pairs) };
+  }
+  return { mode: 'json', named: source.json || {} };
+}
+
+// --- Engine configuration surface -------------------------------------------
+//
+// Everything below implements the request-time half of the options resolved in
+// src/index.mjs (`db-schemas`, `db-extra-search-path`, `db-pre-request`,
+// `db-max-rows`, `db-aggregates-enabled`, `db-plan-enabled`, `jwt-secret` /
+// `jwt-aud`). Each one is a no-op at its default value, so a deployment that
+// configures nothing takes exactly the path it took before.
+
+// Upstream ApiRequest.getSchema: these four methods select the schema with
+// `Content-Profile`, everything else (GET, HEAD, OPTIONS) with `Accept-Profile`.
+const CONTENT_PROFILE_METHODS = new Set(['POST', 'PATCH', 'PUT', 'DELETE']);
+
+/**
+ * Pick the schema for this request out of the exposed set (`db-schemas`).
+ *
+ * @returns {{schema: string, negotiated: boolean}} `negotiated` is upstream's
+ *   `iNegotiatedByProfile`: true when a profile header chose the schema, and
+ *   also true when more than one schema is exposed (upstream then assumes the
+ *   default schema was negotiated and echoes `Content-Profile`).
+ */
+export function resolveProfile(exposed, headers, method) {
+  const raw = CONTENT_PROFILE_METHODS.has(method)
+    ? headers['content-profile']
+    : headers['accept-profile'];
+  if (raw !== undefined && raw !== null) {
+    const profile = String(raw);
+    if (!exposed.includes(profile)) {
+      throw new PostgRESTError(
+        406, 'PGRST106', `Invalid schema: ${profile}`, null,
+        `Only the following schemas are exposed: ${exposed.join(', ')}`);
+    }
+    return { schema: profile, negotiated: true };
+  }
+  return { schema: exposed[0], negotiated: exposed.length !== 1 };
+}
+
+/** Double-quote an identifier for use inside a search_path *value*. */
+export function quoteIdent(name) {
+  return `"${String(name).replaceAll('"', '""')}"`;
+}
+
+/**
+ * The `search_path` a request runs with: the selected schema first, then
+ * `db-extra-search-path` (upstream Query.hs `SET search_path TO <schema>,
+ * <extra>`). Names are quoted, so a schema called `SPECIAL "@/\#~_-` resolves.
+ */
+export function searchPathValue(schema, extra = []) {
+  return [schema, ...extra.filter(s => s !== schema)]
+    .map(quoteIdent).join(', ');
+}
+
+/**
+ * `app-settings`: the run-time settings every request runs with, so a function
+ * can read them back with `current_setting('app.settings.<name>')`. Upstream
+ * carries them as an ordered list of pairs (`configAppSettings`) and applies
+ * them in `Query/PreQuery.hs txVarQuery`; accept either shape here — an object
+ * or a list of `[name, value]` pairs — and drop entries with no name.
+ *
+ * @param {Object|Array|null|undefined} settings
+ * @returns {Array<[string, string]>}
+ */
+export function normalizeAppSettings(settings) {
+  if (!settings) return [];
+  const pairs = Array.isArray(settings) ? settings : Object.entries(settings);
+  return pairs
+    .filter(pair => Array.isArray(pair) && pair[0] != null && pair[0] !== ''
+      && pair[1] != null)
+    .map(([name, value]) => [String(name), String(value)]);
+}
+
+/**
+ * One statement setting every app setting, with both the name and the value
+ * bound. Upstream uses `set_config(name, value, true)` for the same reason: the
+ * setting is transaction-local, so PostgreSQL drops it when the request's
+ * transaction ends and the pooled connection cannot leak it into the next
+ * request (`setConfigWithDynamicName`).
+ *
+ * @param {Array<[string, string]>} settings
+ */
+export function appSettingsSql(settings) {
+  const calls = settings.map(
+    (_, i) => `set_config($${i * 2 + 1}, $${i * 2 + 2}, true)`);
+  return `select ${calls.join(', ')}`;
+}
+
+function preRequestSql(preRequest) {
+  const fn = preRequest.schema
+    ? `${quoteIdent(preRequest.schema)}.${quoteIdent(preRequest.name)}`
+    : quoteIdent(preRequest.name);
+  return `select ${fn}()`;
+}
+
+/** Does any select node — at any depth, spread or not — use an aggregate? */
+export function hasAggregate(nodes) {
+  if (!Array.isArray(nodes)) return false;
+  return nodes.some(n => (n.type === 'column' && n.agg)
+    || (n.type === 'embed' && hasAggregate(n.select)));
+}
+
+const PLAN_MEDIA = /^application\/vnd\.pgrst\.plan\b/;
+
+/** True when the client asked for an execution plan (`db-plan-enabled`). */
+export function wantsPlan(accept) {
+  return String(accept || '').split(',')
+    .some(e => PLAN_MEDIA.test(e.trim().toLowerCase()));
+}
+
+/**
+ * Apply `db-max-rows` to a read plan: every node's limit becomes
+ * `min(limit, max-rows)`, top level and embeds alike (upstream Plan.hs
+ * `treeRestrictRange`, which skips mutations).
+ */
+export function clampMaxRows(parsed, maxRows) {
+  if (!maxRows && maxRows !== 0) return parsed;
+  const clampLimit = (limit) =>
+    (limit == null || limit > maxRows) ? maxRows : limit;
+  const clampNode = (node) => {
+    if (node.type !== 'embed') return node;
+    return {
+      ...node,
+      limit: clampLimit(node.limit),
+      select: Array.isArray(node.select) ? node.select.map(clampNode) : node.select,
+    };
+  };
+  return {
+    ...parsed,
+    limit: clampLimit(parsed.limit),
+    select: Array.isArray(parsed.select)
+      ? parsed.select.map(clampNode) : parsed.select,
+  };
+}
+
+// --- In-engine JWT verification --------------------------------------------
+//
+// Off unless `jwt-secret` is configured (see resolveRestJwt in src/index.mjs).
+// The normal deployment verifies in the API Gateway authorizer and hands the
+// engine a role; this path is for standalone deployments, and it is what
+// upstream's auth specs assert against.
+
+const BEARER = /^bearer\s+(.+)$/i;
+
+function invalidToken(code, message, status = 401, details = null) {
+  const err = new PostgRESTError(status, code, message, details);
+  err.responseHeaders = {
+    'WWW-Authenticate':
+      `Bearer error="invalid_token", error_description="${message}"`,
+  };
+  return err;
+}
+
+// Upstream's decode-error vocabulary, verbatim (Error.hs `message (JwtDecodeErr
+// e)`). Each one is a distinct wire body, and the specs assert them by string,
+// so a single "JWT decode error" for all of them is not interchangeable.
+const decodeError = {
+  empty: () =>
+    invalidToken('PGRST301', 'Empty JWT is sent in Authorization header'),
+  parts: (n) =>
+    invalidToken('PGRST301', `Expected 3 parts in JWT; got ${n}`),
+  // jose's KeyError: the structure is a JWS, the signature is not ours.
+  key: () => invalidToken('PGRST301', 'No suitable key or wrong key type', 401,
+    'None of the keys was able to decode the JWT'),
+  badAlgorithm: (details) => invalidToken(
+    'PGRST301', 'Wrong or unsupported encoding algorithm', 401, details),
+  // Three parts that are not a JWS at all.
+  badCrypto: () =>
+    invalidToken('PGRST301', 'JWT cryptographic operation failed'),
+  claims: () => invalidToken('PGRST303', 'Parsing claims failed'),
+};
+
+/**
+ * Upstream `Auth.Jwt.checkForErrors`: validate the registered claims and
+ * return the first error in upstream's own order (exp, nbf, iat, aud), or null.
+ *
+ * Two details that are easy to get wrong and both observable:
+ *
+ *   - a claim that is present but not a number is its own error, distinct from
+ *     an expired one, and the type error wins;
+ *   - there is 30 seconds of allowed clock skew in both directions
+ *     (`allowedSkewSeconds`), so a token that expired one second ago is still
+ *     accepted. Upstream's own specs rely on it.
+ *
+ * `aud` is validated whether or not `jwt-aud` is configured: with no audience
+ * configured every audience matches, but a non-string still fails.
+ */
+export function validateJwtClaims(claims, audMatches, nowSeconds) {
+  const SKEW = 30;
+  const now = nowSeconds ?? Math.floor(Date.now() / 1000);
+  const num = (key) => {
+    const v = claims[key];
+    if (v === undefined || v === null) return null;
+    return typeof v === 'number' ? { value: v } : 'not-a-number';
+  };
+
+  const exp = num('exp');
+  if (exp === 'not-a-number') {
+    return invalidToken('PGRST303', "The JWT 'exp' claim must be a number");
+  }
+  if (exp && now - SKEW > exp.value) {
+    return invalidToken('PGRST303', 'JWT expired');
+  }
+
+  const nbf = num('nbf');
+  if (nbf === 'not-a-number') {
+    return invalidToken('PGRST303', "The JWT 'nbf' claim must be a number");
+  }
+  if (nbf && now + SKEW < nbf.value) {
+    return invalidToken('PGRST303', 'JWT not yet valid');
+  }
+
+  const iat = num('iat');
+  if (iat === 'not-a-number') {
+    return invalidToken('PGRST303', "The JWT 'iat' claim must be a number");
+  }
+  if (iat && now + SKEW < iat.value) {
+    return invalidToken('PGRST303', 'JWT issued at future');
+  }
+
+  const aud = claims.aud;
+  if (aud !== undefined && aud !== null) {
+    const strings = Array.isArray(aud)
+      ? (aud.every((a) => typeof a === 'string') ? aud : null)
+      : (typeof aud === 'string' ? [aud] : null);
+    if (strings === null) {
+      return invalidToken('PGRST303',
+        "The JWT 'aud' claim must be a string or an array of strings");
+    }
+    // `validAud`: an empty array matches anything; a non-empty one needs one
+    // element the configuration accepts.
+    if (strings.length > 0 && !strings.some((a) => audMatches(a))) {
+      return invalidToken('PGRST303', 'JWT not in audience');
+    }
+  }
+  return null;
+}
+
+function jwtKey(cfg) {
+  const secret = cfg.secret;
+  if (secret == null || secret === '') return null;
+  const text = typeof secret === 'string' ? secret : null;
+  const trimmed = text ? text.trim() : '';
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+    // A JWK or JWK Set (upstream `parseSecret`).
+    let doc;
+    try {
+      doc = JSON.parse(trimmed);
+    } catch {
+      return { kind: 'hmac', key: Buffer.from(text, 'utf8') };
+    }
+    const keys = Array.isArray(doc) ? doc
+      : (Array.isArray(doc.keys) ? doc.keys : [doc]);
+    return { kind: 'jwk', keys };
+  }
+  const raw = cfg.secretIsBase64
+    ? Buffer.from(text, 'base64')
+    : Buffer.from(text, 'utf8');
+  return { kind: 'hmac', key: raw };
+}
+
+function decodeSegment(segment) {
+  return JSON.parse(Buffer.from(segment, 'base64url').toString('utf8'));
+}
+
+/**
+ * Verify a bearer token and return the identity the request runs as.
+ *
+ * Upstream error vocabulary (Error.hs): PGRST300 when the server has no secret
+ * at all, PGRST301 for anything that fails to decode or verify, PGRST302 when
+ * anonymous access is disabled, PGRST303 for a claim the server rejects.
+ */
+export function verifyRestJwt(cfg, authorization, verifier) {
+  const raw = authorization ? String(authorization).trim() : '';
+  const anon = () => {
+    if (cfg.anonRole == null) {
+      const err = new PostgRESTError(
+        401, 'PGRST302', 'Anonymous access is disabled');
+      err.responseHeaders = { 'WWW-Authenticate': 'Bearer' };
+      throw err;
+    }
+    return { role: cfg.anonRole, userId: '', email: '' };
+  };
+  if (!raw) return anon();
+  // `Authorization: Bearer` with nothing after it is not an anonymous request:
+  // upstream reaches `parseToken _ ""` and answers PGRST301 (AuthSpec:96). A
+  // header with some other scheme never gets that far and stays anonymous.
+  const m = BEARER.exec(raw);
+  const token = m ? m[1].trim() : '';
+  if (!m) {
+    if (/^bearer\s*$/i.test(raw)) throw decodeError.empty();
+    return anon();
+  }
+  if (!token) throw decodeError.empty();
+
+  const key = jwtKey(cfg);
+  if (!key) {
+    throw new PostgRESTError(500, 'PGRST300', 'Server lacks JWT secret');
+  }
+
+  let claims;
+  try {
+    claims = verifier(token, key);
+  } catch (err) {
+    if (err instanceof PostgRESTError) throw err;
+    throw invalidToken('PGRST301', err.message || 'JWT decode error');
+  }
+
+  // Registered claims, in upstream's order. `jwt-aud` unset means every
+  // audience matches, but the claim's *type* is still checked.
+  const audMatches = cfg.audience
+    ? (aud) => aud === cfg.audience
+    : () => true;
+  const claimsError = validateJwtClaims(claims, audMatches);
+  if (claimsError) throw claimsError;
+
+  const role = typeof claims.role === 'string' && claims.role
+    ? claims.role
+    : cfg.anonRole;
+  if (role == null) {
+    const err = new PostgRESTError(
+      401, 'PGRST302', 'Anonymous access is disabled');
+    err.responseHeaders = { 'WWW-Authenticate': 'Bearer' };
+    throw err;
+  }
+  return {
+    role,
+    userId: claims.sub || claims.id || claims.user_id || '',
+    email: claims.email || '',
+    claims,
+  };
+}
+
+/**
+ * Decide what a filterless UPDATE/DELETE does (`db-bulk-mutation-guard`).
+ *
+ * `on` (default) leaves the refusal to sql-builder, which is where it has
+ * always lived; `safeupdate` refuses with pg-safeupdate's wire error, the one
+ * upstream produces when the extension is loaded; `off` lets it through, which
+ * is upstream's behaviour with no extension loaded.
+ */
+export function applyBulkGuard(mode, method, parsed) {
+  if (mode === 'off') return { ...parsed, allowBulkMutation: true };
+  if (mode === 'safeupdate') {
+    const verb = method === 'DELETE' ? 'DELETE' : 'UPDATE';
+    throw new PostgRESTError(
+      400, '21000', `${verb} requires a WHERE clause`);
+  }
+  return parsed;
+}
+
+// Signature check, split out so verifyRestJwt stays testable without crypto.
+//
+// The failures are told apart the way jose tells them apart for upstream, since
+// each one is a different wire body: a token whose header will not decode is
+// `BadCrypto` (three parts, but not a JWS), `alg: none` is `BadAlgorithm`, and a
+// well-formed JWS this key cannot verify is `KeyError`. Registered claims are
+// not checked here — that is validateJwtClaims, which runs after decoding, so a
+// bad `exp` reports itself as a claim error rather than a decode failure.
+export function defaultVerifier(token, key) {
+  const parts = String(token).split('.');
+  if (parts.length !== 3) throw decodeError.parts(parts.length);
+
+  let header;
+  try {
+    header = decodeSegment(parts[0]);
+  } catch {
+    throw decodeError.badCrypto();
+  }
+  if (!header || typeof header !== 'object') throw decodeError.badCrypto();
+  const signing = `${parts[0]}.${parts[1]}`;
+  const signature = Buffer.from(parts[2], 'base64url');
+  const alg = String(header.alg || '');
+
+  if (alg.toLowerCase() === 'none') {
+    throw decodeError.badAlgorithm(
+      "JWT is unsecured but expected 'alg' was not 'none'");
+  }
+
+  if (key.kind === 'hmac') {
+    if (!/^HS(256|384|512)$/.test(alg)) {
+      throw decodeError.badAlgorithm(`Unsupported alg: ${alg}`);
+    }
+    const expected = createHmac(`sha${alg.slice(2)}`, key.key)
+      .update(signing).digest();
+    if (expected.length !== signature.length
+        || !timingSafeEqual(expected, signature)) {
+      throw decodeError.key();
+    }
+  } else {
+    const candidates = key.keys.filter(
+      k => !header.kid || !k.kid || k.kid === header.kid);
+    const digest = { RS256: 'sha256', RS384: 'sha384', RS512: 'sha512' }[alg];
+    if (!digest) {
+      throw decodeError.badAlgorithm(`Unsupported alg: ${alg}`);
+    }
+    const ok = candidates.some((jwk) => {
+      try {
+        const pub = createPublicKey({ key: jwk, format: 'jwk' });
+        return createVerify(digest).update(signing).verify(pub, signature);
+      } catch {
+        return false;
+      }
+    });
+    if (!ok) throw decodeError.key();
+  }
+
+  let claims;
+  try {
+    claims = decodeSegment(parts[1]);
+  } catch {
+    throw decodeError.claims();
+  }
+  if (!claims || typeof claims !== 'object' || Array.isArray(claims)) {
+    throw decodeError.claims();
+  }
+  return claims;
+}
+
 export function createRestHandler(ctx, contributions = []) {
   const { db, schemaCache, cedar, docs } = ctx;
   const corsConfig = ctx.cors;
+  const exposedSchemas = ctx.dbSchemas?.length ? ctx.dbSchemas : ['public'];
+  const extraSearchPath = ctx.dbExtraSearchPath?.length
+    ? ctx.dbExtraSearchPath : ['public'];
+  const getSchemaFor = ctx.getSchemaFor
+    || ((name, pool) => schemaCache.getSchema(pool));
+  const refreshSchemaFor = ctx.refreshSchemaFor
+    || ((name, pool) => schemaCache.refresh(pool));
+  // Is any request-scoped session setup configured? When nothing is (the
+  // default: `public` alone, no extra search path, no pre-request function) the
+  // engine never checks out a dedicated connection and never issues a
+  // set_config, exactly as before. When something is, *every* request pins a
+  // connection and sets its search_path — a request must never inherit the
+  // path a previous request left on a pooled connection.
+  const sessionScoped = Boolean(ctx.dbPreRequest)
+    || exposedSchemas.some(s => s !== 'public')
+    || !(extraSearchPath.length === 1 && extraSearchPath[0] === 'public');
+  // `db-tx-end`, as the two flags upstream carries it as.
+  const txEnd = txEndPolicy(ctx.dbTxEnd);
+
+  /**
+   * Check out the connection this request will use and put the settings it
+   * asked for on it.
+   *
+   * `Prefer: timezone=` is one of those settings, and it is why a request with
+   * no session-scoped *configuration* can still need a pinned connection: the
+   * setting has to be visible to the statements that follow and invisible to
+   * every other request. It is set with `is_local = true` inside an explicit
+   * transaction, so PostgreSQL itself drops it at the end — nothing has to be
+   * reset, and a connection can never be handed back carrying it.
+   *
+   * Writing is the other reason, and it applies whatever `db-tx-end` says. The
+   * ending has to be decided after the response has been built from the rows
+   * the statement returned: with `db-tx-end=rollback` because the rows are
+   * then thrown away, and on every other setting because a request that fails
+   * after writing must not leave the write behind — upstream commits one
+   * transaction per request and only a successful one. So the transaction is
+   * opened here and ended in `release`. A read opens none: it has nothing to
+   * undo, and leaving GET alone keeps it on the pool.
+   *
+   * @param {Object} basePool
+   * @param {string} schemaName
+   * @param {string} [timezone] the raw `Prefer: timezone=` value; an invalid
+   *        one raises PostgreSQL's own 22023, which is the error upstream
+   *        reports for it
+   * @param {{rollback?: boolean, write?: boolean}} [opts] `rollback`: end with
+   *        ROLLBACK; `write`: the method can write, so it needs a transaction
+   *        even when the ending is COMMIT
+   */
+  async function openSession(basePool, schemaName, timezone, opts = {}) {
+    const appSettings = normalizeAppSettings(ctx.appSettings);
+    const rollback = Boolean(opts.rollback);
+    const wantsTx = timezone != null || appSettings.length > 0 || rollback
+      || Boolean(opts.write);
+    if (!sessionScoped && !wantsTx) {
+      return { pool: basePool, release: null, inTx: false, condemn: () => {} };
+    }
+    // Test doubles inject a bare `{query}`; there is nothing to check out, so
+    // the session settings land on whatever that object talks to.
+    const client = typeof basePool.connect === 'function'
+      ? await basePool.connect()
+      : null;
+    const target = client || basePool;
+    let inTx = false;
+    // Upstream's `SQL.condemn`: the transaction must not commit, whatever the
+    // configured ending is. `db-tx-end=commit` with `Prefer: max-affected`
+    // over the limit is the case that needs it.
+    let condemned = rollback;
+    const session = {
+      pool: target,
+      get inTx() { return inTx; },
+      condemn: () => { condemned = true; },
+    };
+    const release = async () => {
+      if (inTx) {
+        if (condemned) {
+          try { await target.query('ROLLBACK'); } catch { /* gone already */ }
+        } else {
+          try {
+            // A failed statement has already aborted the transaction, and
+            // there COMMIT is PostgreSQL's own spelling of ROLLBACK — no write
+            // from a request that errored can reach the table this way.
+            await target.query('COMMIT');
+          } catch {
+            try { await target.query('ROLLBACK'); } catch { /* gone */ }
+          }
+        }
+      }
+      if (client) client.release();
+    };
+    session.release = release;
+    try {
+      if (sessionScoped) {
+        // Before BEGIN on purpose: a session-scoped setting must survive the
+        // transaction, and `is_local = false` inside one that rolls back would
+        // not.
+        await target.query('select set_config($1, $2, false)',
+          ['search_path', searchPathValue(schemaName, extraSearchPath)]);
+        if (ctx.dbPreRequest) {
+          await target.query(preRequestSql(ctx.dbPreRequest));
+        }
+      }
+      if (wantsTx) {
+        await target.query('BEGIN');
+        inTx = true;
+        if (timezone != null) {
+          await target.query('select set_config($1, $2, true)',
+            ['timezone', timezone]);
+        }
+        if (appSettings.length) {
+          await target.query(appSettingsSql(appSettings), appSettings.flat());
+        }
+      }
+    } catch (err) {
+      await release();
+      throw err;
+    }
+    return session;
+  }
+
+  // int8/numeric must reach the client as JSON numbers, the way PostgREST's
+  // in-database json_agg emits them.
+  installPgTypeParsers();
 
   async function handler(event) {
+    const negotiated = { timings: null };
+    const startedAt = process.hrtime.bigint();
+    // Every phase starts at zero rather than absent: upstream wraps all five
+    // stages in `withTiming` on every path, so the header names all five even
+    // for a request that never opened a transaction (App.hs `NoDbTx`). A phase
+    // this request never entered reports 0.0, which is what it spent there.
+    if (ctx.serverTiming) {
+      negotiated.timings = { jwt: 0, parse: 0, plan: 0, transaction: 0 };
+    }
+    const response = await handleRequest(event, negotiated);
+
+    const headers = { ...response.headers };
+
+    // `Content-Profile` rides on successful responses only, like upstream's
+    // contentTypeHeaders (Response.hs `profileHeader`).
+    if (negotiated.contentProfile
+        && response.statusCode >= 200 && response.statusCode < 300) {
+      headers['Content-Profile'] = negotiated.contentProfile;
+    }
+
+    // Every response says what it varies on, unless something upstream of here
+    // already said (upstream App.hs: `[varyHeader | not $ varyHeaderPresent
+    // hdrs]`). The three headers named are the ones that change the bytes:
+    // Accept picks the media type, Prefer the shape and the counting, Range the
+    // window.
+    if (!Object.keys(headers).some(h => h.toLowerCase() === 'vary')) {
+      headers['Vary'] = VARY_VALUE;
+    }
+
+    if (negotiated.timings) {
+      const timing = serverTimingHeader(negotiated.timings, startedAt);
+      if (timing) headers['Server-Timing'] = timing;
+    }
+
+    return { ...response, headers };
+  }
+
+  async function handleRequest(event, negotiated) {
     const headers = lowercaseHeaders(event.headers);
     const origin = headers['origin'] || '';
     const corsHeaders = buildCorsHeaders(corsConfig, origin);
+    // Read outside the try: the catch below needs it to decide between 401 and
+    // 403 for insufficient_privilege, and a `const` inside the try block is not
+    // in scope there.
+    let role = event.requestContext?.authorizer?.role || 'anon';
+    let releaseSession = null;
+    let condemnSession = null;
+    // `client-error-verbosity`: passed to every error() so `minimal` drops
+    // `details` and `hint` from the payload (upstream Error.hs).
+    const errorOpts = { clientErrorVerbosity: ctx.clientErrorVerbosity };
+
+    const timings = negotiated.timings;
+    const clock = () => process.hrtime.bigint();
+    /** Charge the time since `from` to one Server-Timing phase. */
+    const record = (phase, from) => {
+      if (timings) {
+        timings[phase] = (timings[phase] || 0)
+          + Number(clock() - from) / 1e6;
+      }
+    };
 
     try {
-      if (event.httpMethod === 'OPTIONS') {
-        return { statusCode: 200, headers: corsHeaders };
+      // A CORS preflight is answered before the request reaches a relation:
+      // it asks whether a *later* request would be allowed, so it must not be
+      // routed, authorized or counted. Upstream answers it in the wai-cors
+      // middleware, which recognises it by the method it names in
+      // `Access-Control-Request-Method`.
+      //
+      // An OPTIONS *without* that header is not a preflight — it is a request
+      // for the relation's own capabilities, and it goes down the normal path
+      // so an unknown relation still answers 404.
+      if (event.httpMethod === 'OPTIONS'
+          && headers['access-control-request-method']) {
+        return {
+          statusCode: 200,
+          headers: {
+            ...corsHeaders,
+            ...preflightHeaders(headers['access-control-request-headers']),
+            'Content-Length': '0',
+          },
+          body: '',
+        };
       }
 
-      const method = event.httpMethod;
+      // HEAD is GET with the body dropped at the very end (upstream keeps one
+      // plan for both and only blanks the payload), so everything downstream
+      // sees GET.
+      const rawMethod = event.httpMethod;
+      const headersOnly = rawMethod === 'HEAD';
+      const method = headersOnly ? 'GET' : rawMethod;
       const path = event.path;
       const authorizer = event.requestContext?.authorizer || {};
-      const userId = authorizer.userId || authorizer.claims?.sub || '';
-      const role = authorizer.role || 'anon';
-      const email = authorizer.email || '';
+      let userId = authorizer.userId || authorizer.claims?.sub || '';
+      let email = authorizer.email || '';
 
+      // `jwt-secret` configured: the engine verifies the bearer token itself
+      // and the claims — not the API Gateway authorizer — decide the identity.
+      const jwtStart = clock();
+      if (ctx.restJwt) {
+        const identity = verifyRestJwt(
+          ctx.restJwt, headers['authorization'], defaultVerifier);
+        role = identity.role;
+        userId = identity.userId;
+        email = identity.email;
+      }
+      record('jwt', jwtStart);
+
+      const parseStart = clock();
       let body = null;
+      // The body before JSON parsing. RPC needs it: a `text/plain`, `text/xml`
+      // or `application/octet-stream` body is itself the argument of a function
+      // with a single unnamed parameter, and a form body is a set of arguments.
+      let rawBody = null;
       if (event.body) {
         assertBodySize(event.body);
+        rawBody = event.isBase64Encoded
+          ? Buffer.from(event.body, 'base64')
+          : event.body;
         try {
           body = JSON.parse(event.body);
         } catch {
@@ -209,17 +1776,93 @@ export function createRestHandler(ctx, contributions = []) {
       const multiValueParams =
         event.multiValueQueryStringParameters || null;
       const prefer = parsePrefer(headers['prefer']);
+      assertValidPrefer(prefer);
+      // `Prefer: tx=` only exists when `db-tx-end` allows the override.
+      // Upstream drops it at parse time (`Preferences.fromHeaders` is given
+      // `configDbTxAllowOverride`), which is also why an unacceptable one is
+      // not echoed in Preference-Applied.
+      if (!txEnd.allowOverride) delete prefer.tx;
+      // A read has nothing to roll back, and OPTIONS never reaches the table.
+      const canWrite = rawMethod !== 'GET' && rawMethod !== 'HEAD'
+        && rawMethod !== 'OPTIONS';
+      const txRollback = canWrite && shouldRollback(txEnd, prefer.tx);
       const accept = headers['accept'] || '';
+      // Negotiated for a relation or a routine: `application/openapi+json` is
+      // produced by the root path alone, and the root path below negotiates on
+      // its own.
+      const media = negotiateMedia(accept, { openApi: false });
+      // RFC 9110: the Range header is only meaningful on GET. Upstream tests
+      // the *raw* method (`headerRange = if method == "GET" ...` in
+      // ApiRequest.getRanges), so a HEAD carrying a Range is served as if the
+      // header were not there — only limit/offset shape its Content-Range.
+      const headerRange = rawMethod === 'GET'
+        ? parseRangeHeader(headers['range'])
+        : null;
 
-      const pool = await db.getPool();
-      const schema = await schemaCache.getSchema(pool);
+      // `db-plan-enabled` is off by default, and upstream refuses the plan
+      // media type outright until it is turned on.
+      if (!ctx.dbPlanEnabled && wantsPlan(accept)) {
+        throw new PostgRESTError(406, 'PGRST107',
+          'None of these media types are available: '
+          + String(accept).split(',').map(s => s.trim()).join(', '));
+      }
 
-      const routeInfo = route(path, schema);
+      // `db-schemas`: which schema this request reads and writes.
+      const profile = resolveProfile(exposedSchemas, headers, rawMethod);
+      if (profile.negotiated) negotiated.contentProfile = profile.schema;
+
+      assertValidPath(path);
+      record('parse', parseStart);
+
+      const planStart = clock();
+      const basePool = await db.getPool();
+      const session = await openSession(
+        basePool, profile.schema, prefer.timezone,
+        { rollback: txRollback, write: canWrite });
+      releaseSession = session.release;
+      condemnSession = session.condemn;
+      const pool = session.pool;
+      const schema = await getSchemaFor(profile.schema, pool);
+
+      // The schema name is passed so PGRST205 can name the relation the way
+      // upstream does: "the table 'v1.another_table'", not just the table.
+      // `openapi-mode=disabled` makes the root report no metadata at all
+      // (upstream `Config.OpenAPIMode`), which router.mjs turns into
+      // 404 PGRST126.
+      const routeInfo = route(path, schema, profile.schema,
+        { openApiMode: ctx.openApiMode });
+      record('plan', planStart);
+
+      // OPTIONS on a resource that exists reports what can be done with it and
+      // nothing else: no rows are read, no function is called (upstream's
+      // ActRelationInfo / ActRoutineInfo, answered by `respondInfo`). Routing
+      // has already turned an unknown relation into a 404.
+      if (rawMethod === 'OPTIONS') {
+        return {
+          statusCode: 200,
+          headers: {
+            ...corsHeaders,
+            'Content-Length': '0',
+            Allow: allowHeaderFor(routeInfo, schema),
+          },
+          body: '',
+        };
+      }
 
       if (routeInfo.type === 'openapi') {
+        // The root path produces the OpenAPI spec and nothing else, so an
+        // Accept naming none of `application/openapi+json`, `application/json`
+        // or `*/*` is PGRST107 (upstream `Plan.inspectPlan`).
+        if (!acceptsOpenApi(accept)) throw mediaUnavailable(accept);
         const apiUrl = resolveApiUrl(ctx, headers);
         const resolved = resolveContributions(contributions, apiUrl);
-        return success(200, generateSpec(schema, apiUrl, resolved), { corsHeaders });
+        // Upstream's InspectPlan always answers with the OpenAPI media type,
+        // whatever the client asked for.
+        return success(200, generateSpec(schema, apiUrl, resolved), {
+          corsHeaders,
+          media: { kind: MEDIA_OPENAPI, stripNulls: false },
+          headersOnly,
+        });
       }
 
       if (routeInfo.type === 'docs') {
@@ -241,7 +1884,7 @@ export function createRestHandler(ctx, contributions = []) {
         if (role !== 'service_role') {
           throw new PostgRESTError(401, 'PGRST301', 'Refresh requires service_role');
         }
-        const newSchema = await schemaCache.refresh(pool);
+        const newSchema = await refreshSchemaFor(profile.schema, pool);
         await cedar.refreshPolicies();
         const apiUrl = resolveApiUrl(ctx, headers);
         const resolved = resolveContributions(contributions, apiUrl);
@@ -250,17 +1893,76 @@ export function createRestHandler(ctx, contributions = []) {
 
       if (routeInfo.type === 'rpc') {
         return await handleRpc({
-          fnName: routeInfo.functionName, method, body,
+          fnName: routeInfo.functionName, method, rawMethod, body, rawBody,
+          schemaName: profile.schema,
           params, multiValueParams, accept, prefer, headers,
           schema, pool, cedar, ctx, corsHeaders,
           role, userId, email,
+          media, headersOnly, headerRange,
+          // The request's transaction, so a function that writes ends the way
+          // `db-tx-end` says it must.
+          session, txRollback,
+          // `client-error-verbosity` reaches the RPC 416 the same way it
+          // reaches every other error(): passed in, since handleRpc is not
+          // nested inside handleRequest's scope.
+          errorOpts,
         });
       }
 
       const table = routeInfo.table;
-      const parsed = parseQuery(params, method, multiValueParams);
-      const hasEmbeds = parsed.select.some(
-        n => n.type === 'embed');
+
+      // Content negotiation happens in the plan, before the query is parsed
+      // (upstream `Plan.wrappedReadPlan` calls `negotiateContent` and
+      // CustomMediaSpec:306 expects the 406 to win over a bad `select`). A
+      // relation produces json, csv and the vendored pgrst media types; asking
+      // for anything else is PGRST107.
+      if (!mediaProducible(media)) throw mediaUnavailable(accept);
+
+      // The request body's own media type decides how a mutation payload is
+      // read (JSON, CSV or a form).
+      const contentType = parseContentMediaType(headers['content-type']);
+
+      const parsedRaw = parseQuery(
+        params, method, multiValueParams, ctx.maxEmbedDepth);
+
+      // `db-aggregates-enabled`
+      if (ctx.dbAggregatesEnabled === false && hasAggregate(parsedRaw.select)) {
+        throw new PostgRESTError(400, 'PGRST123',
+          'Use of aggregate functions is not allowed');
+      }
+
+      // PUT addresses exactly one row, so a window over the result set makes
+      // no sense (upstream `PutLimitNotAllowedError`).
+      if (method === 'PUT'
+          && (parsedRaw.limit != null || (parsedRaw.offset || 0) > 0)) {
+        throw new PostgRESTError(400, 'PGRST114',
+          'limit/offset querystring parameters are not allowed for PUT');
+      }
+
+      const range = effectiveRange(parsedRaw, headerRange);
+      // `db-max-rows` caps reads at every level of the tree, and never a
+      // mutation (upstream `treeRestrictRange` skips ActRelationMut).
+      const parsed = method === 'GET'
+        ? clampMaxRows(
+          { ...parsedRaw, limit: range.limit, offset: range.offset },
+          ctx.dbMaxRows)
+        : parsedRaw;
+      // A representation the RETURNING list cannot produce on its own — an
+      // embed, or an `?order=` a RETURNING list has no clause for. It is read
+      // back out of the mutation's source CTE instead (see runMutation).
+      const readPlanMutation = prefer.return === 'representation'
+        && mutationNeedsReadPlan(parsed);
+
+      // Filterless UPDATE/DELETE. Upstream ships no guard of its own — it
+      // relies on the pg-safeupdate extension, which is loaded per session by
+      // a `db-pre-request` function and answers SQLSTATE 21000. This engine
+      // guards by default (`on`); `safeupdate` keeps the guard with upstream's
+      // wire error, `off` allows the mutation through.
+      const mutationParsed =
+        (method === 'PATCH' || method === 'DELETE')
+          && parsed.filters.length === 0
+          ? applyBulkGuard(ctx.bulkMutationGuard, method, parsed)
+          : parsed;
 
       await cedar.loadPolicies();
 
@@ -268,106 +1970,343 @@ export function createRestHandler(ctx, contributions = []) {
 
       let rows;
       let count;
+      let upsertInserted = false;
 
       let parentAuthz = null;
 
+      // One read path for GET and for the re-read a mutation needs when it
+      // has to return embedded or generated columns.
+      async function runSelect(p) {
+        if (p.select.some(n => n.type === 'embed')) {
+          const tables = collectTables(p.select, table);
+          const perTableAuthz = buildPerTableAuthz(
+            tables, cedar, principal, schema);
+          parentAuthz = perTableAuthz[table] || null;
+          const authzFilters = {
+            parent: parentAuthz,
+            embeds: Object.fromEntries(
+              [...tables]
+                .filter(t => t !== table)
+                .map(t => [t, perTableAuthz[t]])
+            ),
+          };
+          const q = buildSelect(table, p, schema, authzFilters);
+          return (await pool.query(q.text, q.values)).rows;
+        }
+        parentAuthz = cedar.buildAuthzFilter({
+          principal, action: 'select',
+          context: { table }, schema,
+          startParam: 1, // renumbered by buildSelect
+        });
+        const q = buildSelect(table, p, schema, parentAuthz);
+        return (await pool.query(q.text, q.values)).rows;
+      }
+
+      async function countRows(p) {
+        const cq = buildCount(table, p, schema, parentAuthz);
+        const cr = await pool.query(cq.text, cq.values);
+        return parseInt(cr.rows[0].count, 10);
+      }
+
+      /**
+       * The query planner's row estimate for the filtered read — upstream's
+       * `count=planned`, which never touches the rows themselves.
+       *
+       * @returns {Promise<number|null>} null when no estimate could be read,
+       *          so the caller can fall back to counting for real rather than
+       *          report a total it made up.
+       */
+      async function plannedCount(p) {
+        const cq = buildCount(table, p, schema, parentAuthz);
+        const target = explainCountSql(cq.text);
+        if (!target) return null;
+        const cr = await pool.query(
+          `EXPLAIN (FORMAT JSON) ${target}`, cq.values);
+        return planRowsFromExplain(cr.rows[0]?.['QUERY PLAN']);
+      }
+
+      /**
+       * The exact count, stopped as soon as it has seen one row more than
+       * `db-max-rows` — enough to know the window was surpassed without
+       * walking a large table (upstream `limitedQuery countQuery (maxRows+1)`).
+       */
+      async function limitedExactCount(p, limit) {
+        const cq = buildCount(table, p, schema, parentAuthz);
+        const target = explainCountSql(cq.text);
+        if (limit == null || !target) return countRows(p);
+        const values = [...cq.values, limit + 1];
+        const cr = await pool.query(
+          `SELECT COUNT(*) FROM (${target} LIMIT $${values.length})`
+          + ' _pgrst_count',
+          values);
+        return parseInt(cr.rows[0].count, 10);
+      }
+
+      /**
+       * The total Content-Range reports, by the strategy the request asked for
+       * (upstream MainTx.hs `actionResult`, WrappedReadPlan branch).
+       *
+       * `estimated` runs both queries: the exact count is authoritative until
+       * it passes `db-max-rows`, at which point it was cut short and the
+       * planner's estimate is the better answer if it is larger. With no
+       * `db-max-rows` configured upstream's comparison is vacuously true, so
+       * the larger of the two always wins.
+       */
+      async function countTotal(p) {
+        const maxRows = Number.isSafeInteger(ctx.dbMaxRows)
+          ? ctx.dbMaxRows : null;
+
+        if (prefer.count === 'planned') {
+          const estimate = await plannedCount(p);
+          return estimate == null ? countRows(p) : estimate;
+        }
+
+        if (prefer.count === 'estimated') {
+          const exact = await limitedExactCount(p, maxRows);
+          if (maxRows != null && exact <= maxRows) return exact;
+          const estimate = await plannedCount(p);
+          return estimate == null ? exact : Math.max(exact, estimate);
+        }
+
+        return countRows(p);
+      }
+
+      // `max-affected` is only enforced with handling=strict. Upstream runs
+      // the mutation and rolls back; without a transaction the equivalent is
+      // to count the rows the filters select before touching them.
+      async function assertMaxAffected() {
+        if (prefer.handling !== 'strict'
+            || prefer.maxAffected === undefined) return;
+        parentAuthz = cedar.buildAuthzFilter({
+          principal, action: 'select',
+          context: { table }, schema,
+          startParam: 1, // renumbered by buildCount
+        });
+        const affected = await countRows(
+          { ...parsed, limit: null, offset: 0 });
+        if (affected > prefer.maxAffected) {
+          throw new PostgRESTError(400, 'PGRST124',
+            'Query result exceeds max-affected preference constraint',
+            `The query affects ${affected} rows`);
+        }
+      }
+
+      // `application/vnd.pgrst.object+json` on a mutation is a claim about the
+      // result, not about how it is rendered: upstream runs the mutation, sees
+      // a row count other than one, answers PGRST116 and rolls the whole
+      // transaction back — so the rows stay untouched even with
+      // `Prefer: tx=commit, return=minimal` (SingularSpec "the rows should not
+      // be updated, either"). This engine has no transaction to roll back, so
+      // it counts the rows the filters select before touching them, the same
+      // way max-affected is enforced, and refuses first.
+      async function assertSingularMutation(action) {
+        if (media.kind !== MEDIA_SINGULAR) return;
+        // Count under the mutation's own authorization filter, not the read
+        // filter: a policy that hides a row from SELECT but allows the UPDATE
+        // must not turn into a spurious PGRST116.
+        const authz = cedar.buildAuthzFilter({
+          principal, action, context: { table }, schema,
+          startParam: 1, // renumbered by buildCount
+        });
+        const cq = buildCount(
+          table, { ...mutationParsed, select: [] }, schema, authz);
+        const cr = await pool.query(cq.text, cq.values);
+        const total = parseInt(cr.rows[0].count, 10);
+        const available = Math.max(0, total - (mutationParsed.offset || 0));
+        const affected = mutationParsed.limit != null
+          ? Math.min(available, mutationParsed.limit)
+          : available;
+        if (affected !== 1) {
+          throw new PostgRESTError(406, 'PGRST116',
+            'Cannot coerce the result to a single JSON object',
+            `The result contains ${affected} rows`);
+        }
+      }
+
+      /**
+       * Run a mutation and return the rows its representation is built from.
+       *
+       * With an embed or an `?order=` in the request the statement carries the
+       * whole read plan with it, over its own source CTE (sql-builder
+       * `buildMutationRead`), because the rows a DELETE returns cannot be read
+       * again afterwards and because a RETURNING list has no ORDER BY.
+       * Otherwise the RETURNING list is the representation, which is one query
+       * level less.
+       */
+      async function runMutation(q) {
+        if (!readPlanMutation) {
+          return (await queryWrite(session, q, { rollback: txRollback })).rows;
+        }
+        const embTables = collectTables(parsed.select, table);
+        const perTableAuthz = buildPerTableAuthz(
+          embTables, cedar, principal, schema);
+        const authzFilters = {
+          parent: perTableAuthz[table] || null,
+          embeds: Object.fromEntries(
+            [...embTables]
+              .filter(t => t !== table)
+              .map(t => [t, perTableAuthz[t]])
+          ),
+        };
+        const read = buildMutationRead(
+          q, table, parsed, schema, authzFilters);
+        return (await queryWrite(
+          session, read, { rollback: txRollback })).rows;
+      }
+
+      const txStart = clock();
+
       switch (method) {
         case 'GET': {
-          if (hasEmbeds) {
-            const tables = collectTables(parsed.select, table);
-            const perTableAuthz = buildPerTableAuthz(
-              tables, cedar, principal, schema);
-            parentAuthz = perTableAuthz[table] || null;
-            const authzFilters = {
-              parent: parentAuthz,
-              embeds: Object.fromEntries(
-                [...tables]
-                  .filter(t => t !== table)
-                  .map(t => [t, perTableAuthz[t]])
-              ),
-            };
-            const q = buildSelect(
-              table, parsed, schema, authzFilters);
-            const result = await pool.query(q.text, q.values);
-            rows = result.rows;
-          } else {
-            parentAuthz = cedar.buildAuthzFilter({
-              principal, action: 'select',
-              context: { table }, schema,
-              startParam: 1, // renumbered by buildSelect
-            });
-            const q = buildSelect(
-              table, parsed, schema, parentAuthz);
-            const result = await pool.query(q.text, q.values);
-            rows = result.rows;
-          }
+          rows = await runSelect(parsed);
 
-          if (prefer.count === 'exact') {
-            const cq = buildCount(
-              table, parsed, schema, parentAuthz);
-            const cr = await pool.query(cq.text, cq.values);
-            count = parseInt(cr.rows[0].count, 10);
+          if (shouldCount(prefer)) {
+            count = await countTotal(parsed);
           }
           break;
         }
 
         case 'POST': {
-          if (!body) {
-            throw new PostgRESTError(
-              400, 'PGRST100',
-              'Missing or invalid request body',
-            );
-          }
+          const payload = parseMutationBody({
+            contentType, rawBody,
+            hasColumns: (parsed.columns || []).length > 0,
+          });
 
-          const insertRows = Array.isArray(body) ? body : [body];
+          const insertRows = Array.isArray(payload) ? payload : [payload];
           cedar.authorizeInsert({
             principal, resource: table, schema,
             rows: insertRows,
           });
 
-          const q =
-            parsed.onConflict
-              && prefer.resolution === 'merge-duplicates'
-              ? buildInsert(table, body, schema, parsed)
-              : buildInsert(table, body, schema,
-                { ...parsed, onConflict: null });
+          // An INSERT's result row count is its payload's length, so the
+          // singular claim can be settled before the write (see
+          // assertSingularMutation). Exactly one row is left to the normal
+          // path: `resolution=ignore-duplicates` can still insert none, and
+          // that count only exists after the statement runs.
+          if (media.kind === MEDIA_SINGULAR) {
+            const n = insertRows.length;
+            if (n !== 1) {
+              throw new PostgRESTError(406, 'PGRST116',
+                'Cannot coerce the result to a single JSON object',
+                `The result contains ${n} rows`);
+            }
+          }
 
-          const result = await pool.query(q.text, q.values);
-          rows = result.rows;
+          // `ON CONFLICT` is the resolution preference's job: upstream emits it
+          // only when `Prefer: resolution=` is present, with `?on_conflict=` —
+          // or the primary key — as the target (Plan.hs `mutatePlan`). Passing
+          // the preference down means `resolution=ignore-duplicates` and a
+          // bare `resolution=merge-duplicates` (no `?on_conflict=`) work too.
+          // With no representation to return, upstream reads the source CTE
+          // back as `SELECT *` — "prevent using any of the column names in
+          // ?select= when no response is returned from the CTE"
+          // (Statements.hs `selectF`) — and the whole row is also where the
+          // Location header's primary-key values come from.
+          const insertParsed = prefer.return === 'representation'
+            ? parsed
+            : { ...parsed, select: [] };
+
+          // `resolution=merge-duplicates` answers 200 when the statement
+          // inserted nothing, so the rows that already exist are counted
+          // first (see buildConflictCount).
+          if (prefer.resolution === 'merge-duplicates') {
+            const target = parsed.onConflict
+              ? parsed.onConflict.split(',').map(c => c.trim())
+              : (schema.tables[table]?.primaryKey || []);
+            const cq = buildConflictCount(
+              table, insertRows, target, schema, parsed.columns);
+            const conflicting = cq
+              ? parseInt((await pool.query(cq.text, cq.values)).rows[0].count,
+                10)
+              : 0;
+            upsertInserted = insertRows.length - conflicting > 0;
+          }
+
+          const q = buildInsert(table, payload, schema, insertParsed, {
+            resolution: prefer.resolution || null,
+            applyDefaults: prefer.missing === 'default',
+            readPlan: readPlanMutation,
+          });
+
+          rows = await runMutation(q);
           break;
         }
 
         case 'PATCH': {
-          if (!body || typeof body !== 'object') {
-            throw new PostgRESTError(
-              400, 'PGRST100',
-              'Missing or invalid request body',
-            );
-          }
-          const preview = buildUpdate(table, body, parsed, schema);
+          const payload = parseMutationBody({
+            contentType, rawBody,
+            hasColumns: (parsed.columns || []).length > 0,
+          });
+          await assertMaxAffected();
+          await assertSingularMutation('update');
+          const updateOpts = {
+            applyDefaults: prefer.missing === 'default',
+            readPlan: readPlanMutation,
+          };
+          const preview = buildUpdate(
+            table, payload, mutationParsed, schema, null, updateOpts);
           const authz = cedar.buildAuthzFilter({
             principal, action: 'update', context: { table }, schema,
             startParam: preview.values.length + 1,
           });
           const q = buildUpdate(
-            table, body, parsed, schema, authz,
+            table, payload, mutationParsed, schema, authz, updateOpts,
           );
-          const result = await pool.query(q.text, q.values);
+          rows = await runMutation(q);
+          break;
+        }
+
+        // Single-row upsert (upstream MutationSingleUpsert): the URL must
+        // pin exactly one row by its whole primary key, the payload must
+        // agree with it, and the row is then INSERTed ON CONFLICT DO UPDATE.
+        case 'PUT': {
+          const pk = schema.tables[table]?.primaryKey || [];
+          assertPutFilters(parsed.filters, pk);
+
+          const payloadRow = pickPutRow(parsed.filters, pk, body);
+
+          cedar.authorize({
+            principal, action: 'insert', resource: table, schema,
+          });
+          cedar.authorize({
+            principal, action: 'update', resource: table, schema,
+          });
+
+          // 201 vs 200 hinges on whether the row already existed; upstream
+          // reads it off the INSERT's row count, which ON CONFLICT hides.
+          parentAuthz = cedar.buildAuthzFilter({
+            principal, action: 'select',
+            context: { table }, schema,
+            startParam: 1, // renumbered by buildCount
+          });
+          upsertInserted = (await countRows(
+            { ...parsed, limit: null, offset: 0 })) === 0;
+
+          // Upstream's MutationSingleUpsert hardcodes the resolution:
+          // `Insert qi cols body (Just (MergeDuplicates, pkCols)) ...`.
+          const q = buildInsert(table, [payloadRow], schema, {
+            ...parsed, onConflict: pk.join(','),
+          }, { resolution: 'merge-duplicates' });
+          const result = await queryWrite(
+            session, q, { rollback: txRollback });
           rows = result.rows;
           break;
         }
 
         case 'DELETE': {
-          const preview = buildDelete(table, parsed, schema);
+          await assertMaxAffected();
+          await assertSingularMutation('delete');
+          const deleteOpts = { readPlan: readPlanMutation };
+          const preview = buildDelete(
+            table, mutationParsed, schema, null, deleteOpts);
           const authz = cedar.buildAuthzFilter({
             principal, action: 'delete', context: { table }, schema,
             startParam: preview.values.length + 1,
           });
           const q = buildDelete(
-            table, parsed, schema, authz,
+            table, mutationParsed, schema, authz, deleteOpts,
           );
-          const result = await pool.query(q.text, q.values);
-          rows = result.rows;
+          rows = await runMutation(q);
           break;
         }
 
@@ -377,70 +2316,132 @@ export function createRestHandler(ctx, contributions = []) {
           );
       }
 
-      const singleObject =
-        accept.includes('application/vnd.pgrst.object+json');
+      record('transaction', txStart);
+
       const returnRep = prefer.return === 'representation';
 
-      // Re-SELECT mutations with embeds for return=representation
-      if (method !== 'GET' && returnRep && hasEmbeds
-          && rows && rows.length > 0) {
-        const pk = schema.tables[table]?.primaryKey;
-        if (pk && pk.length > 0) {
-          const filters = pk.map(col => ({
-            column: col,
-            operator: 'in',
-            value: rows.map(r => String(r[col])),
-            negate: false,
-          }));
-          const reSelectParsed = {
-            ...parsed,
-            filters,
-            order: [],
-            limit: null,
-            offset: 0,
-          };
-          const embTables = collectTables(parsed.select, table);
-          const perTableAuthz = buildPerTableAuthz(
-            embTables, cedar, principal, schema);
-          const authzFilters = {
-            parent: perTableAuthz[table] || null,
-            embeds: Object.fromEntries(
-              [...embTables]
-                .filter(t => t !== table)
-                .map(t => [t, perTableAuthz[t]])
-            ),
-          };
-          const reQ = buildSelect(
-            table, reSelectParsed, schema, authzFilters);
-          const reResult = await pool.query(
-            reQ.text, reQ.values);
-          rows = reResult.rows;
-        }
+      // PUT: RETURNING is empty when ON CONFLICT DO NOTHING fires (a table
+      // whose only columns are its primary key), and generated/embedded
+      // columns are not in it either, so re-read the row the URL pins.
+      if (method === 'PUT' && returnRep) {
+        rows = await runSelect({ ...parsed, limit: null, offset: 0 });
       }
 
+      const total = shouldCount(prefer) ? (count ?? rows.length) : null;
+      const base = { media, headersOnly, corsHeaders };
+
       if (method === 'GET') {
-        return success(200, rows, {
-          contentRange: contentRange(rows.length, count),
-          singleObject,
-          corsHeaders,
+        const lower = range.lower;
+        const upper = lower + rows.length - 1;
+        const cRange = contentRangeH(lower, upper, total);
+        const status = rangeStatus(lower, upper, total);
+        const applied = preferenceApplied(prefer, 'read');
+        // The request that would fetch these rows again, canonically spelled.
+        // Only a relation read gets one: it is the identity of a resource, and
+        // a function call or a mutation is not addressable this way.
+        const canonical = canonicalQuery(params, multiValueParams);
+        const contentLocation =
+          `/${table}${canonical ? `?${canonical}` : ''}`;
+
+        if (status === 416) {
+          return error(
+            new PostgRESTError(416, 'PGRST103',
+              'Requested range not satisfiable',
+              `An offset of ${lower} was requested, but there are only `
+              + `${total} rows.`),
+            corsHeaders,
+            {
+              'Content-Range': cRange,
+              'Content-Location': contentLocation,
+              ...(applied ? { 'Preference-Applied': applied } : null),
+            },
+            errorOpts,
+          );
+        }
+
+        return success(status, rows, {
+          ...base,
+          contentRange: cRange,
+          preferenceApplied: applied,
+          extraHeaders: { 'Content-Location': contentLocation },
         });
       }
 
       if (method === 'POST') {
-        if (returnRep) {
-          return success(201, rows, { singleObject, corsHeaders });
-        }
-        return success(201, null, { corsHeaders });
+        const pkCols = schema.tables[table]?.primaryKey || [];
+        const extra = {
+          // Upstream's MutationCreate branch always appends
+          // `contentLengthHeader`, so a 201 with `return=minimal` still
+          // states a length of zero. The 204 branches do not.
+          ...(returnRep || headersOnly
+            ? null
+            : { 'Content-Length': '0' }),
+          // `Prefer: return=headers-only` is what asks for the Location of the
+          // created row (Statements.hs `locF`).
+          ...(prefer.return === 'headers-only'
+            ? (() => {
+              const loc = locationHeader(table, pkCols, rows);
+              return loc ? { Location: loc } : null;
+            })()
+            : null),
+        };
+        const opts = {
+          ...base,
+          contentRange: contentRangeH(1, 0, total),
+          preferenceApplied: preferenceApplied(prefer, 'create', {
+            resolutionApplies:
+              pkCols.length > 0 || parsed.onConflict != null,
+          }),
+          ...(Object.keys(extra).length > 0 ? { extraHeaders: extra } : null),
+        };
+        // A merge-duplicates upsert that inserted no new row is a 200, not a
+        // 201 (Response.hs `isInsertIfGTZero`); every other insert is a 201.
+        const status = prefer.resolution === 'merge-duplicates'
+          && !upsertInserted ? 200 : 201;
+        return success(status, returnRep ? rows : null, opts);
       }
 
-      if (returnRep) {
-        return success(200, rows, { singleObject, corsHeaders });
+      if (method === 'PUT') {
+        // No Content-Range: a single-row upsert is not a range of anything.
+        const opts = {
+          ...base,
+          preferenceApplied: preferenceApplied(prefer, 'upsert'),
+        };
+        if (!returnRep) return success(204, null, opts);
+        return success(upsertInserted ? 201 : 200, rows, opts);
       }
-      return success(204, null, { corsHeaders });
+
+      if (method === 'PATCH') {
+        const opts = {
+          ...base,
+          contentRange: contentRangeH(0, rows.length - 1, total),
+          preferenceApplied: preferenceApplied(prefer, 'update'),
+        };
+        return success(returnRep ? 200 : 204,
+          returnRep ? rows : null, opts);
+      }
+
+      // DELETE
+      const opts = {
+        ...base,
+        contentRange: contentRangeH(1, 0, total),
+        preferenceApplied: preferenceApplied(prefer, 'delete'),
+      };
+      return success(returnRep ? 200 : 204,
+        returnRep ? rows : null, opts);
 
     } catch (err) {
+      // Nothing a failed request wrote reaches the table. Upstream runs the
+      // whole request in one transaction and commits only a successful one, so
+      // a write followed by an error the *engine* raised — a singular
+      // coercion that found two rows, say — is undone with it. A statement
+      // PostgreSQL rejected has already aborted its transaction, but this one
+      // has not, and it is the case SingularSpec.hs:301 asserts: the failing
+      // request there carries `Prefer: tx=commit` and the row it changed still
+      // has to read back unchanged.
+      if (condemnSession) condemnSession();
       if (err instanceof PostgRESTError) {
-        return error(err, corsHeaders);
+        return error(err, corsHeaders, err.responseHeaders, errorOpts);
       }
       if (err.code && typeof err.code === 'string'
           && /^[0-9A-Z]{5}$/.test(err.code)) {
@@ -454,8 +2455,19 @@ export function createRestHandler(ctx, contributions = []) {
           }));
         }
         return error(
-          mapPgError(err, { verbose: ctx.errorsVerbose }),
+          // `authed` only changes insufficient_privilege (42501): upstream
+          // answers 401 to an anonymous caller so it knows to authenticate,
+          // and 403 to one that already presented an identity.
+          mapPgError(err, {
+            verbose: ctx.errorsVerbose,
+            // Opt-in redaction (V-09). Default false: upstream returns the
+            // server's own message/detail/hint and its tests assert on them.
+            sanitize: ctx.errorsSanitize === true,
+            authed: role !== 'anon',
+          }),
           corsHeaders,
+          null,
+          errorOpts,
         );
       }
       // Catch-all: never echo err.message. It can contain SQL
@@ -475,19 +2487,30 @@ export function createRestHandler(ctx, contributions = []) {
           `Internal server error (errorId: ${errorId})`,
         ),
         corsHeaders,
+        null,
+        errorOpts,
       );
+    } finally {
+      // Hand the pinned connection back. Only set when a session was opened,
+      // i.e. when some session-scoped option is configured or the request
+      // asked for a timezone. Awaited: the transaction that carries a
+      // request-local setting has to be closed before the connection can be
+      // reused.
+      if (releaseSession) await releaseSession();
     }
   }
 
   async function handleRpc({
-      fnName, method, body, params, multiValueParams,
+      fnName, method, rawMethod, body, rawBody, schemaName,
+      params, multiValueParams,
       accept, prefer, headers, schema, pool, cedar,
       ctx, corsHeaders, role, userId, email,
+      media, headersOnly, headerRange, errorOpts,
+      session, txRollback,
   }) {
-    if (method !== 'GET' && method !== 'POST'
-        && method !== 'HEAD' && method !== 'OPTIONS') {
+    if (method !== 'GET' && method !== 'POST' && method !== 'OPTIONS') {
       throw new PostgRESTError(405, 'PGRST101',
-        'Only GET, POST, and HEAD are allowed for RPC');
+        `Cannot use the ${rawMethod} method on RPC`);
     }
 
     if (!ctx.dbCapabilities?.supportsRpc) {
@@ -498,17 +2521,6 @@ export function createRestHandler(ctx, contributions = []) {
         + 'function calls.');
     }
 
-    const fnSchema = getFunction(schema, fnName);
-    if (!fnSchema) {
-      throw new PostgRESTError(404, 'PGRST202',
-        `Could not find the function '${fnName}' in the schema cache`);
-    }
-
-    if (fnSchema.overloaded) {
-      throw new PostgRESTError(300, 'PGRST203',
-        `Could not choose the best candidate function between: ${fnName}`);
-    }
-
     await cedar.loadPolicies();
     const principal = { role, userId, email };
     cedar.authorize({
@@ -516,92 +2528,166 @@ export function createRestHandler(ctx, contributions = []) {
       resourceType: 'Function', schema,
     });
 
-    let args;
+    // GET has no body, so a Content-Type on it means nothing: it must not make
+    // the engine look for a function that takes a body (upstream keys the whole
+    // single-unnamed-parameter fallback off `isInvPost`).
+    const isInvPost = method === 'POST';
+    const contentType = parseContentMediaType(headers['content-type']);
+
     let parsed;
-
-    if (method === 'POST') {
-      args = body || {};
-      parsed = parseQuery(params, method, multiValueParams);
+    let source;
+    if (isInvPost) {
+      parsed = parseQuery(params, method, multiValueParams, ctx.maxEmbedDepth);
+      source = rpcPostArgs({
+        contentType, body, rawBody, columns: parsed.columns,
+      });
     } else {
-      const argParams = {};
-      const restParams = {};
-      for (const [key, val] of Object.entries(params)) {
-        const kind = classifyRpcParam(key, val);
-        if (kind === 'arg') {
-          argParams[key] = val;
-        } else {
-          restParams[key] = val;
-        }
-      }
-      parsed = parseQuery(restParams, method, multiValueParams);
-      args = argParams;
+      // On GET one query parameter can be both an argument and a filter
+      // (`?id=5&id=gt.2`), so the split happens per value, in the parser.
+      parsed = parseQuery(
+        params, method, multiValueParams, ctx.maxEmbedDepth,
+        { rpcRead: true });
+      const pairs = parsed.rpcArgs || [];
+      source = { pairs, argKeys: sortedKeys(pairs.map(([k]) => k)) };
     }
 
-    validateRpcArgs(fnName, args, fnSchema);
+    // Which overload runs is decided by the argument names supplied.
+    const routine = findRoutine({
+      routines: schema.routines,
+      schemaName: schemaName || 'public',
+      fnName,
+      argKeys: source.argKeys,
+      isInvPost,
+      contentType,
+    });
+    const call = rpcCallFor(routine, source, contentType);
 
-    if (method === 'GET' || method === 'HEAD') {
-      coerceRpcArgs(fnName, args, fnSchema);
+    // A function whose return type is a media type domain — `create domain
+    // "text/plain" as text` — produces that media type and serves the scalar
+    // raw. Upstream only looks the function up when the request has no explicit
+    // `select` (`hasDefaultSelect` in Plan/Negotiate.hs), and never for a
+    // set-returning function: its rows go through an aggregate instead.
+    const rawMedia = routine.returnsSet || params.select != null
+      ? null
+      : rawMediaFor(accept, routine.returnType);
+    if (rawMedia) media = rawMedia;
+    else if (!mediaProducible(media)) throw mediaUnavailable(accept);
+
+    // A function that returns one value has no row count to constrain
+    // (upstream `failMaxAffectedRpcReturnsSingle`).
+    if (prefer.handling === 'strict' && prefer.maxAffected !== undefined
+        && !routine.returnsSet) {
+      throw new PostgRESTError(400, 'PGRST128',
+        'Function must return SETOF or TABLE when max-affected preference '
+        + 'is used with handling=strict');
     }
 
-    if (method === 'HEAD' && fnSchema.returnsSet) {
-      parsed = { ...parsed, limit: 0 };
+    const range = effectiveRange(parsed, headerRange);
+    if (routine.returnsSet) {
+      parsed = { ...parsed, limit: range.limit, offset: range.offset };
     }
 
-    const q = buildRpcCall(fnName, args, fnSchema, parsed);
+    const q = buildRpcCall(fnName, call, routine, parsed, schema);
 
     if (!ctx.production) {
       console.info(
         `[pgrest-lambda] rpc: ${fnName}(`
-        + `${Object.keys(args).join(', ')})`);
+        + `${source.argKeys.join(', ')})`);
     }
 
-    const result = await pool.query(q.text, q.values);
+    // GET is read-only, so a function that writes must fail rather than write
+    // (upstream plans GET as a read-only transaction; PostgreSQL then answers
+    // 25006, which maps to 405). Only a VOLATILE function can write, and only
+    // that case pays for the transaction.
+    // `max-affected` on a set-returning function is settled after the call, by
+    // rolling it back when it returned too many rows (queryWrite).
+    const enforceMaxAffected = prefer.handling === 'strict'
+      && prefer.maxAffected !== undefined
+      && routine.returnsSet;
 
-    if (method === 'HEAD') {
-      return {
-        statusCode: 200,
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json',
-        },
-        body: '',
-      };
+    let result;
+    if (routine.volatility === 'v' && method === 'GET') {
+      result = await queryReadOnly(pool, q);
+    } else if (routine.volatility === 'v' || enforceMaxAffected) {
+      result = await queryWrite(session, q, {
+        max: enforceMaxAffected ? prefer.maxAffected : null,
+        rollback: txRollback,
+      });
+    } else {
+      // Nothing to end: a stable or immutable function cannot write, and
+      // upstream plans it as a read-only transaction.
+      result = await pool.query(q.text, q.values);
     }
+
+    const base = {
+      media, headersOnly, corsHeaders,
+      preferenceApplied: preferenceApplied(prefer, 'rpc'),
+    };
 
     if (q.resultMode === 'void') {
-      return success(200, null, { corsHeaders });
+      return success(204, null, base);
     }
 
-    if (q.resultMode === 'scalar') {
-      const value = result.rows[0]?.[fnName] ?? null;
-      return {
-        statusCode: 200,
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json',
+    if (q.resultMode === 'scalar' || q.resultMode === 'single') {
+      const value = q.resultMode === 'scalar'
+        ? (result.rows[0]?.[RPC_SCALAR] ?? null)
+        : (result.rows[0] ?? null);
+      return success(200, value, {
+        ...base,
+        // A function returning one scalar/composite counts as exactly one row
+        // (upstream: "includes exact count of 1 for functions that return a
+        // single scalar, domain or composite").
+        contentRange: contentRangeH(0, 0, shouldCount(prefer) ? 1 : null),
+        // A single value is a body even when it is JSON null.
+        serializedBody: q.resultMode === 'scalar' && rawMedia
+          // A media type domain takes the value itself, not its JSON rendering
+          // (upstream serves those from the raw scalar).
+          ? (value == null ? '' : String(value))
+          : JSON.stringify(value ?? null),
+      });
+    }
+
+    // SETOF a scalar type is a list of values, not of one-column rows.
+    const rows = q.resultMode === 'setofScalar'
+      ? result.rows.map(r => r[RPC_SCALAR] ?? null)
+      : result.rows;
+
+    // Set-returning: the window and the total are the same machinery as a
+    // table read, so 206/416 apply here too.
+    let total = null;
+    if (shouldCount(prefer)) {
+      total = (range.limit == null && range.lower === 0)
+        // Nothing was windowed away, so the rows in hand *are* the total. This
+        // also covers VOLATILE functions, which must not be called twice.
+        ? rows.length
+        : await countRpcRows({ fnName, call, routine, parsed, schema, pool });
+    }
+
+    const lower = range.lower;
+    const upper = lower + rows.length - 1;
+    const cRange = contentRangeH(lower, upper, total);
+    const status = rangeStatus(lower, upper, total);
+
+    if (status === 416) {
+      return error(
+        new PostgRESTError(416, 'PGRST103',
+          'Requested range not satisfiable',
+          `An offset of ${lower} was requested, but there are only `
+          + `${total} rows.`),
+        corsHeaders,
+        {
+          'Content-Range': cRange,
+          ...(base.preferenceApplied
+            ? { 'Preference-Applied': base.preferenceApplied }
+            : null),
         },
-        body: JSON.stringify(value),
-      };
+        errorOpts,
+      );
     }
 
-    const singleObject =
-      accept.includes('application/vnd.pgrst.object+json');
-
-    if (!fnSchema.returnsSet) {
-      const row = result.rows[0] || null;
-      return {
-        statusCode: 200,
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(row),
-      };
-    }
-
-    return success(200, result.rows, {
-      singleObject,
-      corsHeaders,
+    return success(status, rows, {
+      ...base,
+      contentRange: cRange,
     });
   }
 

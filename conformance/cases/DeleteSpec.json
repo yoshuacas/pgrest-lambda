@@ -1,0 +1,585 @@
+{
+  "source": "Feature/Query/DeleteSpec.hs",
+  "extractedCases": 16,
+  "skippedSites": 0,
+  "needsConfigCases": 0,
+  "cases": [
+    {
+      "id": "DeleteSpec:16",
+      "source": "Feature/Query/DeleteSpec.hs",
+      "line": 16,
+      "category": "delete",
+      "description": "succeeds with 204 and deletion count",
+      "example": "DeleteSpec:it:15",
+      "request": {
+        "method": "DELETE",
+        "path": "/items",
+        "query": "id=eq.1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Range": "*/*"
+        },
+        "headersAbsent": [
+          "Content-Type",
+          "Content-Length"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "DeleteSpec:28",
+      "source": "Feature/Query/DeleteSpec.hs",
+      "line": 28,
+      "category": "delete",
+      "description": "returns the deleted item and count if requested",
+      "example": "DeleteSpec:it:27",
+      "request": {
+        "method": "DELETE",
+        "path": "/items",
+        "query": "id=eq.2",
+        "headers": {
+          "Prefer": "return=representation, count=exact"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 2
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "*/1",
+          "Content-Length": "10",
+          "Preference-Applied": "return=representation, count=exact"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "DeleteSpec:37",
+      "source": "Feature/Query/DeleteSpec.hs",
+      "line": 37,
+      "category": "delete",
+      "description": "ignores ?select= when return not set or return=minimal",
+      "example": "DeleteSpec:it:36",
+      "request": {
+        "method": "DELETE",
+        "path": "/items",
+        "query": "id=eq.3&select=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Range": "*/*"
+        },
+        "headersAbsent": [
+          "Content-Type",
+          "Content-Length"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "DeleteSpec:47",
+      "source": "Feature/Query/DeleteSpec.hs",
+      "line": 47,
+      "category": "delete",
+      "description": "ignores ?select= when return not set or return=minimal",
+      "example": "DeleteSpec:it:36",
+      "request": {
+        "method": "DELETE",
+        "path": "/items",
+        "query": "id=eq.3&select=id",
+        "headers": {
+          "Prefer": "return=minimal"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Range": "*/*",
+          "Preference-Applied": "return=minimal"
+        },
+        "headersAbsent": [
+          "Content-Type",
+          "Content-Length"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "DeleteSpec:60",
+      "source": "Feature/Query/DeleteSpec.hs",
+      "line": 60,
+      "category": "delete",
+      "description": "returns the deleted item and shapes the response",
+      "example": "DeleteSpec:it:59",
+      "request": {
+        "method": "DELETE",
+        "path": "/complex_items",
+        "query": "id=eq.2&select=id,name",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 2,
+            "name": "Two"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "*/*",
+          "Content-Length": "23"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "DeleteSpec:68",
+      "source": "Feature/Query/DeleteSpec.hs",
+      "line": 68,
+      "category": "delete",
+      "description": "can rename and cast the selected columns",
+      "example": "DeleteSpec:it:67",
+      "request": {
+        "method": "DELETE",
+        "path": "/complex_items",
+        "query": "id=eq.3&select=ciId:id::text,ciName:name",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "ciId": "3",
+            "ciName": "Three"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "DeleteSpec:72",
+      "source": "Feature/Query/DeleteSpec.hs",
+      "line": 72,
+      "category": "delete",
+      "description": "can embed (parent) entities",
+      "example": "DeleteSpec:it:71",
+      "request": {
+        "method": "DELETE",
+        "path": "/tasks",
+        "query": "id=eq.8&select=id,name,project:projects(id)",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 8,
+            "name": "Code OSX",
+            "project": {
+              "id": 4
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "*/*"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "DeleteSpec:79",
+      "source": "Feature/Query/DeleteSpec.hs",
+      "line": 79,
+      "category": "delete",
+      "description": "embeds an O2O relationship after delete",
+      "example": "DeleteSpec:it:78",
+      "request": {
+        "method": "DELETE",
+        "path": "/students",
+        "query": "id=eq.1&select=name,students_info(address)",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "John Doe",
+            "students_info": {
+              "address": "Street 1"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "DeleteSpec:91",
+      "source": "Feature/Query/DeleteSpec.hs",
+      "line": 91,
+      "category": "delete",
+      "description": "embeds an O2O relationship after delete",
+      "example": "DeleteSpec:it:78",
+      "request": {
+        "method": "DELETE",
+        "path": "/students_info",
+        "query": "id=eq.1&select=address,students(name)",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "address": "Street 1",
+            "students": {
+              "name": "John Doe"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "DeleteSpec:106",
+      "source": "Feature/Query/DeleteSpec.hs",
+      "line": 106,
+      "category": "delete",
+      "description": "includes [] body if return=rep",
+      "example": "DeleteSpec:it:105",
+      "request": {
+        "method": "DELETE",
+        "path": "/items",
+        "query": "id=eq.101",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "*/*"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "DeleteSpec:115",
+      "source": "Feature/Query/DeleteSpec.hs",
+      "line": 115,
+      "category": "delete",
+      "description": "fails with 404",
+      "example": "DeleteSpec:it:114",
+      "request": {
+        "method": "DELETE",
+        "path": "/foozle",
+        "query": "id=eq.101",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "code": "PGRST205",
+          "details": null,
+          "hint": null,
+          "message": "Could not find the table 'public.foozle' in the schema cache"
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [
+        "expected body: schema \"test.\" rewritten to \"public.\" (the DSQL fixtures load upstream's test schema into public)"
+      ],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "DeleteSpec:124",
+      "source": "Feature/Query/DeleteSpec.hs",
+      "line": 124,
+      "category": "delete",
+      "description": "fails deleting the row when return=representation and selecting all the columns",
+      "example": "DeleteSpec:it:123",
+      "request": {
+        "method": "DELETE",
+        "path": "/app_users",
+        "query": "id=eq.1",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 401,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "DeleteSpec:128",
+      "source": "Feature/Query/DeleteSpec.hs",
+      "line": 128,
+      "category": "delete",
+      "description": "succeeds deleting the row when return=representation and selecting only the privileged columns",
+      "example": "DeleteSpec:it:127",
+      "request": {
+        "method": "DELETE",
+        "path": "/app_users",
+        "query": "id=eq.1&select=id,email",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "password": "passxyz"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "email": "test@123.com"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "*/*"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "DeleteSpec:136",
+      "source": "Feature/Query/DeleteSpec.hs",
+      "line": 136,
+      "category": "delete",
+      "description": "suceeds deleting the row with no explicit select when using return=minimal",
+      "example": "DeleteSpec:it:135",
+      "request": {
+        "method": "DELETE",
+        "path": "/app_users",
+        "query": "id=eq.2",
+        "headers": {
+          "Prefer": "return=minimal"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Preference-Applied": "return=minimal"
+        },
+        "headersAbsent": [
+          "Content-Type",
+          "Content-Length"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "DeleteSpec:148",
+      "source": "Feature/Query/DeleteSpec.hs",
+      "line": 148,
+      "category": "delete",
+      "description": "suceeds deleting the row with no explicit select by default",
+      "example": "DeleteSpec:it:147",
+      "request": {
+        "method": "DELETE",
+        "path": "/app_users",
+        "query": "id=eq.3",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {},
+        "headersAbsent": [
+          "Content-Type",
+          "Content-Length"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "DeleteSpec:160",
+      "source": "Feature/Query/DeleteSpec.hs",
+      "line": 160,
+      "category": "delete",
+      "description": "works with request method DELETE and embedded resource",
+      "example": "DeleteSpec:it:159",
+      "request": {
+        "method": "DELETE",
+        "path": "/artists",
+        "query": "id=lt.3&select=id,name,albums(title)&order=id.desc",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 2,
+            "name": "black country, new road",
+            "albums": [
+              {
+                "title": "ants from up above"
+              }
+            ]
+          },
+          {
+            "id": 1,
+            "name": "duster",
+            "albums": [
+              {
+                "title": "stratosphere"
+              },
+              {
+                "title": "contemporary movement"
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Preference-Applied": "return=representation"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    }
+  ]
+}

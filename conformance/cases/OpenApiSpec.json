@@ -1,0 +1,100 @@
+{
+  "source": "Feature/OpenApi/OpenApiSpec.hs",
+  "extractedCases": 3,
+  "skippedSites": 0,
+  "needsConfigCases": 0,
+  "cases": [
+    {
+      "id": "OpenApiSpec:21",
+      "source": "Feature/OpenApi/OpenApiSpec.hs",
+      "line": 21,
+      "category": "openapi",
+      "description": "root path returns a valid openapi spec",
+      "example": "OpenApiSpec:it:19",
+      "request": {
+        "method": "HEAD",
+        "path": "/",
+        "query": "",
+        "headers": {
+          "Accept": "application/openapi+json"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Type": "application/openapi+json; charset=utf-8"
+        },
+        "headersAbsent": [
+          "Content-Length"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "OpenApiSpec:31",
+      "source": "Feature/OpenApi/OpenApiSpec.hs",
+      "line": 31,
+      "category": "openapi",
+      "description": "should respond to openapi request on none root path with 406",
+      "example": "OpenApiSpec:it:30",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "",
+        "headers": {
+          "Accept": "application/openapi+json"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 406,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "OpenApiSpec:36",
+      "source": "Feature/OpenApi/OpenApiSpec.hs",
+      "line": 36,
+      "category": "openapi",
+      "description": "should respond to openapi request with unsupported media type with 406",
+      "example": "OpenApiSpec:it:35",
+      "request": {
+        "method": "GET",
+        "path": "/",
+        "query": "",
+        "headers": {
+          "Accept": "text/csv"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 406,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    }
+  ]
+}

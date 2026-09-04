@@ -1,0 +1,44 @@
+{
+  "source": "Feature/OpenApi/DisabledOpenApiSpec.hs",
+  "extractedCases": 0,
+  "skippedSites": 1,
+  "needsConfigCases": 1,
+  "cases": [
+    {
+      "id": "DisabledOpenApiSpec:18",
+      "source": "Feature/OpenApi/DisabledOpenApiSpec.hs",
+      "line": 18,
+      "category": "openapi",
+      "description": "responds with 404",
+      "example": "DisabledOpenApiSpec:it:17",
+      "request": {
+        "method": "GET",
+        "path": "/",
+        "query": "",
+        "headers": {
+          "Accept": "application/openapi+json"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "code": "PGRST126",
+          "details": null,
+          "hint": null,
+          "message": "Root endpoint metadata is disabled"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Length": "93"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configOpenApiMode)",
+      "skipClass": "needs-engine-config"
+    }
+  ]
+}

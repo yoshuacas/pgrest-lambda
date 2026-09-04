@@ -1,6 +1,8 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { PostgRESTError, mapPgError, _getMapKeys } from '../errors.mjs';
+import {
+  PostgRESTError, mapPgError, _getMapKeys, pgStatusFor,
+} from '../errors.mjs';
 
 describe('errors', () => {
   describe('PostgRESTError.toJSON()', () => {
@@ -42,10 +44,89 @@ describe('errors', () => {
         'not-null violation should map to 400');
     });
 
-    it('maps unknown PG code to HTTP 500', () => {
+    // Upstream's mapSQLtoHTTP ends in `_ -> HTTP.status400`: an SQLSTATE it
+    // does not recognise is the client's fault, because nearly all of them are
+    // (invalid input syntax, numeric overflow, check violation, ...). Only the
+    // classes it lists explicitly are server errors. This assertion used to
+    // expect 500, which turned every data exception into a PGRST000.
+    it('maps an unrecognised PG code to HTTP 400, as upstream does', () => {
       const result = mapPgError({ code: '99999', message: 'unknown error' });
-      assert.equal(result.statusCode, 500,
-        'unknown PG error should map to 500');
+      assert.equal(result.statusCode, 400,
+        'unrecognised SQLSTATE should fall through to 400');
+    });
+  });
+
+  describe('pgStatusFor() — ported from upstream mapSQLtoHTTP', () => {
+    it('maps data exceptions (class 22) to 400', () => {
+      assert.equal(pgStatusFor('22P02',
+        'invalid input syntax for type integer: "baz"'), 400);
+      assert.equal(pgStatusFor('22003', 'numeric field overflow'), 400);
+      assert.equal(pgStatusFor('22001', 'value too long'), 400);
+    });
+
+    it('maps integrity violations the way upstream does', () => {
+      assert.equal(pgStatusFor('23503', 'fk'), 409);
+      assert.equal(pgStatusFor('23505', 'unique'), 409);
+      assert.equal(pgStatusFor('23502', 'not null'), 400);
+      assert.equal(pgStatusFor('23514', 'check'), 400);
+    });
+
+    it('matches whole classes on their two-character prefix', () => {
+      assert.equal(pgStatusFor('08006', 'connection failure'), 503);
+      assert.equal(pgStatusFor('0LP01', 'invalid grantor'), 403);
+      assert.equal(pgStatusFor('28000', 'invalid authorization'), 403);
+      assert.equal(pgStatusFor('25001', 'invalid tx state'), 500);
+      assert.equal(pgStatusFor('40001', 'serialization failure'), 500);
+      assert.equal(pgStatusFor('53200', 'out of memory'), 503);
+      assert.equal(pgStatusFor('XX000', 'internal error'), 500);
+    });
+
+    it('exact codes win over their class prefix', () => {
+      // 53400 is 500 while the rest of class 53 is 503.
+      assert.equal(pgStatusFor('53400', 'config limit exceeded'), 500);
+      assert.equal(pgStatusFor('53300', 'too many connections'), 503);
+      // 57P01 is 503 while the rest of class 57 is 500.
+      assert.equal(pgStatusFor('57P01', 'terminating connection'), 503);
+      assert.equal(pgStatusFor('57014', 'query canceled'), 500);
+      // P0001 (RAISE) is 400 while the rest of class P0 is 500.
+      assert.equal(pgStatusFor('P0001', 'raised'), 400);
+      assert.equal(pgStatusFor('P0002', 'no data found'), 500);
+    });
+
+    it('branches 21000 on the pg-safeupdate message', () => {
+      assert.equal(pgStatusFor('21000',
+        'DELETE requires a WHERE clause'), 400);
+      assert.equal(pgStatusFor('21000',
+        'more than one row returned by a subquery'), 500);
+    });
+
+    it('branches 22023 on the missing-role message', () => {
+      assert.equal(pgStatusFor('22023', 'role "ghost" does not exist'), 401);
+      assert.equal(pgStatusFor('22023', 'invalid regular expression'), 400);
+    });
+
+    it('branches 42883 on the xmlagg message', () => {
+      assert.equal(pgStatusFor('42883',
+        'function xmlagg(record) does not exist'), 406);
+      assert.equal(pgStatusFor('42883',
+        'function nope(integer) does not exist'), 404);
+    });
+
+    it('answers 401 for insufficient_privilege only when unauthenticated', () => {
+      assert.equal(pgStatusFor('42501', 'permission denied', true), 403);
+      assert.equal(pgStatusFor('42501', 'permission denied', false), 401);
+    });
+
+    it('reads the status out of a PT<nnn> code', () => {
+      assert.equal(pgStatusFor('PT402', 'Payment Required'), 402);
+      assert.equal(pgStatusFor('PT301', 'Moved'), 301);
+      // Out of the HTTP range: refuse rather than emit a bogus status.
+      assert.equal(pgStatusFor('PT999', 'nope'), 500);
+    });
+
+    it('treats a missing or empty code as a client error', () => {
+      assert.equal(pgStatusFor(undefined, ''), 400);
+      assert.equal(pgStatusFor('', ''), 400);
     });
   });
 
@@ -82,9 +163,9 @@ describe('errors', () => {
       },
     };
 
-    describe('sanitized mode (default)', () => {
+    describe('sanitize mode (opt-in)', () => {
       it('23505 sanitized — safe message, null details/hint', () => {
-        const result = mapPgError(pgErrors['23505']);
+        const result = mapPgError(pgErrors['23505'], { sanitize: true });
         assert.equal(result.statusCode, 409,
           'statusCode should be 409');
         assert.equal(result.code, '23505',
@@ -98,7 +179,7 @@ describe('errors', () => {
       });
 
       it('23503 sanitized — safe message', () => {
-        const result = mapPgError(pgErrors['23503']);
+        const result = mapPgError(pgErrors['23503'], { sanitize: true });
         assert.equal(result.statusCode, 409,
           'statusCode should be 409');
         assert.equal(result.code, '23503',
@@ -112,7 +193,7 @@ describe('errors', () => {
       });
 
       it('23502 sanitized — safe message', () => {
-        const result = mapPgError(pgErrors['23502']);
+        const result = mapPgError(pgErrors['23502'], { sanitize: true });
         assert.equal(result.statusCode, 400,
           'statusCode should be 400');
         assert.equal(result.code, '23502',
@@ -126,7 +207,7 @@ describe('errors', () => {
       });
 
       it('42P01 sanitized — safe message', () => {
-        const result = mapPgError(pgErrors['42P01']);
+        const result = mapPgError(pgErrors['42P01'], { sanitize: true });
         assert.equal(result.statusCode, 404,
           'statusCode should be 404');
         assert.equal(result.code, '42P01',
@@ -140,7 +221,7 @@ describe('errors', () => {
       });
 
       it('42703 sanitized — safe message', () => {
-        const result = mapPgError(pgErrors['42703']);
+        const result = mapPgError(pgErrors['42703'], { sanitize: true });
         assert.equal(result.statusCode, 400,
           'statusCode should be 400');
         assert.equal(result.code, '42703',
@@ -154,7 +235,7 @@ describe('errors', () => {
       });
 
       it('unmapped code sanitized — fallback safe message', () => {
-        const result = mapPgError(pgErrors['55P03']);
+        const result = mapPgError(pgErrors['55P03'], { sanitize: true });
         assert.equal(result.statusCode, 500,
           'statusCode should be 500');
         assert.equal(result.code, '55P03',
@@ -177,7 +258,7 @@ describe('errors', () => {
           { code: '42703', substr: 'secret_col' },
         ];
         for (const { code, substr } of leakChecks) {
-          const result = mapPgError(pgErrors[code]);
+          const result = mapPgError(pgErrors[code], { sanitize: true });
           assert.ok(
             !result.message.toLowerCase().includes(substr),
             `sanitized message for ${code} must not contain "${substr}"`,
@@ -188,10 +269,10 @@ describe('errors', () => {
       });
     });
 
-    describe('verbose mode', () => {
-      it('23505 verbose — raw passthrough', () => {
+    describe('default mode — upstream passthrough', () => {
+      it('23505 default — raw passthrough', () => {
         const err = pgErrors['23505'];
-        const result = mapPgError(err, { verbose: true });
+        const result = mapPgError(err);
         assert.equal(result.statusCode, 409,
           'statusCode should be 409');
         assert.equal(result.message, err.message,
@@ -202,9 +283,9 @@ describe('errors', () => {
           'hint should be null (no hint on source error)');
       });
 
-      it('unmapped code verbose — raw passthrough', () => {
+      it('unmapped code default — raw passthrough', () => {
         const err = pgErrors['55P03'];
-        const result = mapPgError(err, { verbose: true });
+        const result = mapPgError(err);
         assert.equal(result.statusCode, 500,
           'statusCode should be 500');
         assert.equal(result.message,
@@ -217,33 +298,87 @@ describe('errors', () => {
           'See server log for query details.',
           'hint should be the raw PG hint');
       });
+
+      // Upstream has no sanitized form of a PG error: the body is the
+      // server's own code/message/detail/hint (PostgREST.Error,
+      // `instance ToJSON PgError`), and the upstream test suite asserts those
+      // strings verbatim — e.g. `invalid input syntax for type integer: ""`
+      // for `?int_data=in.( ,3,4)` (QuerySpec.hs:1395) and
+      // `Failing row contains (null, foo).` as the *detail* of a 23502
+      // (InsertSpec.hs:210). `verbose` must not change any of that.
+      it('the legacy verbose flag no longer changes the body', () => {
+        const err = pgErrors['23502'];
+        for (const opts of [undefined, { verbose: false }, { verbose: true }]) {
+          const result = mapPgError(err, opts);
+          assert.equal(result.message, err.message,
+            'message must be the raw PG message whatever verbose says');
+          assert.equal(result.details, err.detail,
+            'details must be the raw PG detail whatever verbose says');
+        }
+      });
+
+      it('every SQLSTATE class reaches the client with its own message', () => {
+        const { errorMap, safeMessage } = _getMapKeys();
+        const message = 'invalid input syntax for type integer: ""';
+        for (const code of [...new Set([...errorMap, ...safeMessage,
+          '22P02', '42601', '99999', 'XX000', 'PT402'])]) {
+          const mapped = mapPgError({ code, message, detail: 'd', hint: 'h' });
+          assert.equal(mapped.message, message,
+            `${code} must forward the server message`);
+          assert.equal(mapped.details, 'd', `${code} must forward the detail`);
+          assert.equal(mapped.hint, 'h', `${code} must forward the hint`);
+        }
+      });
     });
 
     describe('code preservation', () => {
       it('SQLSTATE code preserved in sanitized mode', () => {
         for (const code of ['23505', '23503', '23502', '42P01', '42703', '55P03']) {
-          const result = mapPgError(pgErrors[code]);
+          const result = mapPgError(pgErrors[code], { sanitize: true });
           assert.equal(result.code, code,
             `code ${code} must be preserved in sanitized mode`);
         }
       });
 
-      it('SQLSTATE code preserved in verbose mode', () => {
+      it('SQLSTATE code preserved in default mode', () => {
         for (const code of ['23505', '55P03']) {
-          const result = mapPgError(pgErrors[code], { verbose: true });
+          const result = mapPgError(pgErrors[code]);
           assert.equal(result.code, code,
-            `code ${code} must be preserved in verbose mode`);
+            `code ${code} must be preserved in default mode`);
         }
       });
     });
   });
 
   describe('map sync guard', () => {
-    it('PG_SAFE_MESSAGE and PG_ERROR_MAP have identical keys', () => {
+    // The status map and the safe-message map no longer have to agree key for
+    // key: the status map now mirrors upstream's mapSQLtoHTTP, which assigns a
+    // status to codes and whole classes that need no bespoke sanitized wording
+    // (they get PG_SAFE_FALLBACK). What must still hold is the property the
+    // guard existed for — sanitized mode never leaks a server message.
+    it('every mapped SQLSTATE has a sanitized message, without exception', () => {
       const { errorMap, safeMessage } = _getMapKeys();
-      assert.deepStrictEqual(errorMap, safeMessage,
-        'PG_ERROR_MAP and PG_SAFE_MESSAGE must cover '
-        + 'the same SQLSTATE codes');
+      const leaky = 'Key (email)=(alice@example.com) already exists';
+      for (const code of [...new Set([...errorMap, ...safeMessage,
+        '22P02', '99999', 'XX000', 'PT402'])]) {
+        const mapped = mapPgError({ code, message: leaky, detail: leaky }, { sanitize: true });
+        assert.notEqual(mapped.message, leaky,
+          `sanitized mode leaked the server message for ${code}`);
+        assert.ok(mapped.message.length > 0,
+          `sanitized mode produced no message for ${code}`);
+        assert.equal(mapped.details, null,
+          `sanitized mode leaked details for ${code}`);
+        assert.equal(mapped.hint, null,
+          `sanitized mode leaked a hint for ${code}`);
+      }
+    });
+
+    it('every code with a safe message also has a status', () => {
+      const { safeMessage } = _getMapKeys();
+      for (const code of safeMessage) {
+        assert.equal(typeof pgStatusFor(code, ''), 'number',
+          `${code} has a sanitized message but no status`);
+      }
     });
   });
 });

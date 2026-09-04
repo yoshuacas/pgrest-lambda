@@ -1,0 +1,528 @@
+{
+  "source": "Feature/Query/ServerTimingSpec.hs",
+  "extractedCases": 10,
+  "skippedSites": 0,
+  "needsConfigCases": 0,
+  "cases": [
+    {
+      "id": "ServerTimingSpec:19",
+      "source": "Feature/Query/ServerTimingSpec.hs",
+      "line": 19,
+      "category": "observability",
+      "description": "works with get request",
+      "example": "ServerTimingSpec:it:18",
+      "request": {
+        "method": "GET",
+        "path": "/organizations",
+        "query": "id=eq.6",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 6,
+            "name": "Oscorp",
+            "referee": 3,
+            "auditor": 4,
+            "manager_id": 6
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "headersMatch": [
+          {
+            "name": "Server-Timing",
+            "pattern": "jwt;dur=[0-9]+.[0-9]+"
+          },
+          {
+            "name": "Server-Timing",
+            "pattern": "parse;dur=[0-9]+.[0-9]+"
+          },
+          {
+            "name": "Server-Timing",
+            "pattern": "plan;dur=[0-9]+.[0-9]+"
+          },
+          {
+            "name": "Server-Timing",
+            "pattern": "transaction;dur=[0-9]+.[0-9]+"
+          },
+          {
+            "name": "Server-Timing",
+            "pattern": "response;dur=[0-9]+.[0-9]+"
+          }
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ServerTimingSpec:29",
+      "source": "Feature/Query/ServerTimingSpec.hs",
+      "line": 29,
+      "category": "observability",
+      "description": "works with post request",
+      "example": "ServerTimingSpec:it:28",
+      "request": {
+        "method": "POST",
+        "path": "/organizations",
+        "query": "select=*",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "id": 7,
+          "name": "John",
+          "referee": null,
+          "auditor": null,
+          "manager_id": 6
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "id": 7,
+            "name": "John",
+            "referee": null,
+            "auditor": null,
+            "manager_id": 6
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "headersMatch": [
+          {
+            "name": "Server-Timing",
+            "pattern": "jwt;dur=[0-9]+.[0-9]+"
+          },
+          {
+            "name": "Server-Timing",
+            "pattern": "parse;dur=[0-9]+.[0-9]+"
+          },
+          {
+            "name": "Server-Timing",
+            "pattern": "plan;dur=[0-9]+.[0-9]+"
+          },
+          {
+            "name": "Server-Timing",
+            "pattern": "transaction;dur=[0-9]+.[0-9]+"
+          },
+          {
+            "name": "Server-Timing",
+            "pattern": "response;dur=[0-9]+.[0-9]+"
+          }
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ServerTimingSpec:39",
+      "source": "Feature/Query/ServerTimingSpec.hs",
+      "line": 39,
+      "category": "observability",
+      "description": "works with patch request",
+      "example": "ServerTimingSpec:it:38",
+      "request": {
+        "method": "PATCH",
+        "path": "/no_pk",
+        "query": "b=eq.0",
+        "headers": {},
+        "body": {
+          "b": "1"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {},
+        "headersAbsent": [
+          "Content-Type"
+        ],
+        "headersMatch": [
+          {
+            "name": "Server-Timing",
+            "pattern": "jwt;dur=[0-9]+.[0-9]+"
+          },
+          {
+            "name": "Server-Timing",
+            "pattern": "parse;dur=[0-9]+.[0-9]+"
+          },
+          {
+            "name": "Server-Timing",
+            "pattern": "plan;dur=[0-9]+.[0-9]+"
+          },
+          {
+            "name": "Server-Timing",
+            "pattern": "transaction;dur=[0-9]+.[0-9]+"
+          },
+          {
+            "name": "Server-Timing",
+            "pattern": "response;dur=[0-9]+.[0-9]+"
+          }
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ServerTimingSpec:48",
+      "source": "Feature/Query/ServerTimingSpec.hs",
+      "line": 48,
+      "category": "observability",
+      "description": "works with put request",
+      "example": "ServerTimingSpec:it:47",
+      "request": {
+        "method": "PUT",
+        "path": "/tiobe_pls",
+        "query": "name=eq.Python",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": [
+          {
+            "name": "Python",
+            "rank": 19
+          }
+        ],
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Python",
+            "rank": 19
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {},
+        "headersMatch": [
+          {
+            "name": "Server-Timing",
+            "pattern": "jwt;dur=[0-9]+.[0-9]+"
+          },
+          {
+            "name": "Server-Timing",
+            "pattern": "parse;dur=[0-9]+.[0-9]+"
+          },
+          {
+            "name": "Server-Timing",
+            "pattern": "plan;dur=[0-9]+.[0-9]+"
+          },
+          {
+            "name": "Server-Timing",
+            "pattern": "transaction;dur=[0-9]+.[0-9]+"
+          },
+          {
+            "name": "Server-Timing",
+            "pattern": "response;dur=[0-9]+.[0-9]+"
+          }
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ServerTimingSpec:58",
+      "source": "Feature/Query/ServerTimingSpec.hs",
+      "line": 58,
+      "category": "observability",
+      "description": "works with delete request",
+      "example": "ServerTimingSpec:it:57",
+      "request": {
+        "method": "DELETE",
+        "path": "/items",
+        "query": "id=eq.1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {},
+        "headersAbsent": [
+          "Content-Type"
+        ],
+        "headersMatch": [
+          {
+            "name": "Server-Timing",
+            "pattern": "jwt;dur=[0-9]+.[0-9]+"
+          },
+          {
+            "name": "Server-Timing",
+            "pattern": "parse;dur=[0-9]+.[0-9]+"
+          },
+          {
+            "name": "Server-Timing",
+            "pattern": "plan;dur=[0-9]+.[0-9]+"
+          },
+          {
+            "name": "Server-Timing",
+            "pattern": "transaction;dur=[0-9]+.[0-9]+"
+          },
+          {
+            "name": "Server-Timing",
+            "pattern": "response;dur=[0-9]+.[0-9]+"
+          }
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ServerTimingSpec:68",
+      "source": "Feature/Query/ServerTimingSpec.hs",
+      "line": 68,
+      "category": "observability",
+      "description": "works with rpc call",
+      "example": "ServerTimingSpec:it:67",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/ret_point_overloaded",
+        "query": "",
+        "headers": {},
+        "body": {
+          "x": 1,
+          "y": 2
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "x": 1,
+          "y": 2
+        },
+        "bodyFormat": "json",
+        "headers": {},
+        "headersMatch": [
+          {
+            "name": "Server-Timing",
+            "pattern": "jwt;dur=[0-9]+.[0-9]+"
+          },
+          {
+            "name": "Server-Timing",
+            "pattern": "parse;dur=[0-9]+.[0-9]+"
+          },
+          {
+            "name": "Server-Timing",
+            "pattern": "plan;dur=[0-9]+.[0-9]+"
+          },
+          {
+            "name": "Server-Timing",
+            "pattern": "transaction;dur=[0-9]+.[0-9]+"
+          },
+          {
+            "name": "Server-Timing",
+            "pattern": "response;dur=[0-9]+.[0-9]+"
+          }
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ServerTimingSpec:78",
+      "source": "Feature/Query/ServerTimingSpec.hs",
+      "line": 78,
+      "category": "observability",
+      "description": "works with root spec",
+      "example": "ServerTimingSpec:it:77",
+      "request": {
+        "method": "HEAD",
+        "path": "/",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {},
+        "headersMatch": [
+          {
+            "name": "Server-Timing",
+            "pattern": "jwt;dur=[0-9]+.[0-9]+"
+          },
+          {
+            "name": "Server-Timing",
+            "pattern": "parse;dur=[0-9]+.[0-9]+"
+          },
+          {
+            "name": "Server-Timing",
+            "pattern": "plan;dur=[0-9]+.[0-9]+"
+          },
+          {
+            "name": "Server-Timing",
+            "pattern": "transaction;dur=[0-9]+.[0-9]+"
+          },
+          {
+            "name": "Server-Timing",
+            "pattern": "response;dur=[0-9]+.[0-9]+"
+          }
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ServerTimingSpec:88",
+      "source": "Feature/Query/ServerTimingSpec.hs",
+      "line": 88,
+      "category": "observability",
+      "description": "works with OPTIONS method",
+      "example": "ServerTimingSpec:it:87",
+      "request": {
+        "method": "OPTIONS",
+        "path": "/organizations",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {},
+        "headersMatch": [
+          {
+            "name": "Server-Timing",
+            "pattern": "jwt;dur=[0-9]+.[0-9]+"
+          },
+          {
+            "name": "Server-Timing",
+            "pattern": "parse;dur=[0-9]+.[0-9]+"
+          },
+          {
+            "name": "Server-Timing",
+            "pattern": "response;dur=[0-9]+.[0-9]+"
+          }
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ServerTimingSpec:96",
+      "source": "Feature/Query/ServerTimingSpec.hs",
+      "line": 96,
+      "category": "observability",
+      "description": "works with OPTIONS method",
+      "example": "ServerTimingSpec:it:87",
+      "request": {
+        "method": "OPTIONS",
+        "path": "/rpc/getallprojects",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {},
+        "headersMatch": [
+          {
+            "name": "Server-Timing",
+            "pattern": "jwt;dur=[0-9]+.[0-9]+"
+          },
+          {
+            "name": "Server-Timing",
+            "pattern": "parse;dur=[0-9]+.[0-9]+"
+          },
+          {
+            "name": "Server-Timing",
+            "pattern": "response;dur=[0-9]+.[0-9]+"
+          }
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ServerTimingSpec:104",
+      "source": "Feature/Query/ServerTimingSpec.hs",
+      "line": 104,
+      "category": "observability",
+      "description": "works with OPTIONS method",
+      "example": "ServerTimingSpec:it:87",
+      "request": {
+        "method": "OPTIONS",
+        "path": "/",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {},
+        "headersMatch": [
+          {
+            "name": "Server-Timing",
+            "pattern": "jwt;dur=[0-9]+.[0-9]+"
+          },
+          {
+            "name": "Server-Timing",
+            "pattern": "parse;dur=[0-9]+.[0-9]+"
+          },
+          {
+            "name": "Server-Timing",
+            "pattern": "response;dur=[0-9]+.[0-9]+"
+          }
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    }
+  ]
+}

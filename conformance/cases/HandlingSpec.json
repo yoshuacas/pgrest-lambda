@@ -1,0 +1,286 @@
+{
+  "source": "Feature/Query/Preferences/HandlingSpec.hs",
+  "extractedCases": 8,
+  "skippedSites": 0,
+  "needsConfigCases": 0,
+  "cases": [
+    {
+      "id": "HandlingSpec:16",
+      "source": "Feature/Query/Preferences/HandlingSpec.hs",
+      "line": 16,
+      "category": "preferences",
+      "description": "throws error when handling=strict and invalid prefs are given",
+      "example": "HandlingSpec:it:15",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "",
+        "headers": {
+          "Prefer": "handling=strict, anything"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "details": "Invalid preferences: anything",
+          "message": "Invalid preferences given with handling=strict",
+          "code": "PGRST122",
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "HandlingSpec:22",
+      "source": "Feature/Query/Preferences/HandlingSpec.hs",
+      "line": 22,
+      "category": "preferences",
+      "description": "throw error when handling=strict and invalid prefs are given with multiples in separate prefers",
+      "example": "HandlingSpec:it:21",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "",
+        "headers": {
+          "Prefer": "handling=strict, something, else"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "details": "Invalid preferences: something, else",
+          "message": "Invalid preferences given with handling=strict",
+          "code": "PGRST122",
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "HandlingSpec:28",
+      "source": "Feature/Query/Preferences/HandlingSpec.hs",
+      "line": 28,
+      "category": "preferences",
+      "description": "throws error with post request",
+      "example": "HandlingSpec:it:27",
+      "request": {
+        "method": "POST",
+        "path": "/organizations",
+        "query": "select=*",
+        "headers": {
+          "Prefer": "return=representation, handling=strict, anything"
+        },
+        "body": {
+          "id": 7,
+          "name": "John",
+          "referee": null,
+          "auditor": null,
+          "manager_id": 6
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "details": "Invalid preferences: anything",
+          "message": "Invalid preferences given with handling=strict",
+          "code": "PGRST122",
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "HandlingSpec:36",
+      "source": "Feature/Query/Preferences/HandlingSpec.hs",
+      "line": 36,
+      "category": "preferences",
+      "description": "throws error with rpc",
+      "example": "HandlingSpec:it:35",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/overloaded_unnamed_param",
+        "query": "",
+        "headers": {
+          "Content-Type": "application/json",
+          "Prefer": "handling=strict, anything"
+        },
+        "body": {},
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "details": "Invalid preferences: anything",
+          "message": "Invalid preferences given with handling=strict",
+          "code": "PGRST122",
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "HandlingSpec:45",
+      "source": "Feature/Query/Preferences/HandlingSpec.hs",
+      "line": 45,
+      "category": "preferences",
+      "description": "does not throw error when handling=lenient and invalid prefs",
+      "example": "HandlingSpec:it:44",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "",
+        "headers": {
+          "Prefer": "handling=lenient, anything"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "HandlingSpec:49",
+      "source": "Feature/Query/Preferences/HandlingSpec.hs",
+      "line": 49,
+      "category": "preferences",
+      "description": "does not throw error when handling=lenient and invalid prefs in multiples prefers",
+      "example": "HandlingSpec:it:48",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "",
+        "headers": {
+          "Prefer": "handling=lenient, anything"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "HandlingSpec:53",
+      "source": "Feature/Query/Preferences/HandlingSpec.hs",
+      "line": 53,
+      "category": "preferences",
+      "description": "does not throw error with post request",
+      "example": "HandlingSpec:it:52",
+      "request": {
+        "method": "POST",
+        "path": "/organizations",
+        "query": "select=*",
+        "headers": {
+          "Prefer": "return=representation, handling=lenient, anything"
+        },
+        "body": {
+          "id": 7,
+          "name": "John",
+          "referee": null,
+          "auditor": null,
+          "manager_id": 6
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "id": 7,
+            "name": "John",
+            "referee": null,
+            "auditor": null,
+            "manager_id": 6
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "HandlingSpec:63",
+      "source": "Feature/Query/Preferences/HandlingSpec.hs",
+      "line": 63,
+      "category": "preferences",
+      "description": "does not throw error with rpc",
+      "example": "HandlingSpec:it:62",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/overloaded_unnamed_param",
+        "query": "",
+        "headers": {
+          "Content-Type": "application/json",
+          "Prefer": "handling=lenient, anything"
+        },
+        "body": {},
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": 1,
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    }
+  ]
+}

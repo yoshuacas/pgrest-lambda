@@ -1,0 +1,35 @@
+{
+  "source": "Feature/OptionsSpec.hs",
+  "extractedCases": 1,
+  "skippedSites": 0,
+  "needsConfigCases": 0,
+  "cases": [
+    {
+      "id": "OptionsSpec:22",
+      "source": "Feature/OptionsSpec.hs",
+      "line": 22,
+      "category": "options",
+      "description": "fails with 404 for an unknown table",
+      "example": "OptionsSpec:it:21",
+      "request": {
+        "method": "OPTIONS",
+        "path": "/unknown",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 404,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    }
+  ]
+}

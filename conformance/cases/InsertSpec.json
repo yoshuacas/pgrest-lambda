@@ -1,0 +1,3326 @@
+{
+  "source": "Feature/Query/InsertSpec.hs",
+  "extractedCases": 81,
+  "skippedSites": 4,
+  "needsConfigCases": 0,
+  "cases": [
+    {
+      "id": "InsertSpec:21",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 21,
+      "category": "insert",
+      "description": "accepts disparate json types",
+      "example": "InsertSpec:it:20",
+      "request": {
+        "method": "POST",
+        "path": "/menagerie",
+        "query": "",
+        "headers": {},
+        "body": {
+          "integer": 13,
+          "double": 3.14159,
+          "varchar": "testing!",
+          "boolean": false,
+          "date": "1900-01-01",
+          "money": "$3.99",
+          "enum": "foo"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Length": "0"
+        },
+        "headersAbsent": [
+          "Content-Type"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:34",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 34,
+      "category": "insert",
+      "description": "filters columns in result using &select",
+      "example": "InsertSpec:it:33",
+      "request": {
+        "method": "POST",
+        "path": "/menagerie",
+        "query": "select=integer,varchar",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": [
+          {
+            "integer": 14,
+            "double": 3.14159,
+            "varchar": "testing!",
+            "boolean": false,
+            "date": "1900-01-01",
+            "money": "$3.99",
+            "enum": "foo"
+          }
+        ],
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "integer": 14,
+            "varchar": "testing!"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Length": "37",
+          "Preference-Applied": "return=representation"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:47",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 47,
+      "category": "insert",
+      "description": "ignores &select when return not set or using return=minimal",
+      "example": "InsertSpec:it:46",
+      "request": {
+        "method": "POST",
+        "path": "/menagerie",
+        "query": "select=integer,varchar",
+        "headers": {},
+        "body": [
+          {
+            "integer": 15,
+            "double": 3.14159,
+            "varchar": "testing!",
+            "boolean": false,
+            "date": "1900-01-01",
+            "money": "$3.99",
+            "enum": "foo"
+          }
+        ],
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {},
+        "headersAbsent": [
+          "Content-Type"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:59",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 59,
+      "category": "insert",
+      "description": "ignores &select when return not set or using return=minimal",
+      "example": "InsertSpec:it:46",
+      "request": {
+        "method": "POST",
+        "path": "/menagerie",
+        "query": "select=integer,varchar",
+        "headers": {
+          "Prefer": "return=minimal"
+        },
+        "body": [
+          {
+            "integer": 16,
+            "double": 3.14159,
+            "varchar": "testing!",
+            "boolean": false,
+            "date": "1900-01-01",
+            "money": "$3.99",
+            "enum": "foo"
+          }
+        ],
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Preference-Applied": "return=minimal"
+        },
+        "headersAbsent": [
+          "Content-Type"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:75",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 75,
+      "category": "insert",
+      "description": "rejects json array that isn't exclusivily composed of objects",
+      "example": "InsertSpec:it:74",
+      "request": {
+        "method": "POST",
+        "path": "/articles",
+        "query": "",
+        "headers": {},
+        "body": [
+          {
+            "id": 100,
+            "body": "xxxxx"
+          },
+          123,
+          "xxxx",
+          {
+            "id": 111,
+            "body": "xxxx"
+          }
+        ],
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "message": "All object keys must match",
+          "code": "PGRST102",
+          "hint": null,
+          "details": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:84",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 84,
+      "category": "insert",
+      "description": "rejects json array that has objects with different keys",
+      "example": "InsertSpec:it:83",
+      "request": {
+        "method": "POST",
+        "path": "/articles",
+        "query": "",
+        "headers": {},
+        "body": [
+          {
+            "id": 100,
+            "body": "xxxxx"
+          },
+          {
+            "id": 111,
+            "body": "xxxx",
+            "owner": "me"
+          }
+        ],
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "message": "All object keys must match",
+          "code": "PGRST102",
+          "hint": null,
+          "details": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:94",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 94,
+      "category": "insert",
+      "description": "includes related data after insert",
+      "example": "InsertSpec:it:93",
+      "request": {
+        "method": "POST",
+        "path": "/projects",
+        "query": "select=id,name,clients(id,name)",
+        "headers": {
+          "Prefer": "return=representation, count=exact"
+        },
+        "body": {
+          "id": 6,
+          "name": "New Project",
+          "client_id": 2
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "id": 6,
+            "name": "New Project",
+            "clients": {
+              "id": 2,
+              "name": "Apple"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "*/1",
+          "Preference-Applied": "return=representation, count=exact"
+        },
+        "headersAbsent": [
+          "Location"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:105",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 105,
+      "category": "insert",
+      "description": "can rename and cast the selected columns",
+      "example": "InsertSpec:it:104",
+      "request": {
+        "method": "POST",
+        "path": "/projects",
+        "query": "select=pId:id::text,pName:name,cId:client_id::text",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "id": 7,
+          "name": "New Project",
+          "client_id": 2
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "pId": "7",
+            "pName": "New Project",
+            "cId": "2"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "*/*",
+          "Preference-Applied": "return=representation"
+        },
+        "headersAbsent": [
+          "Location"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:117",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 117,
+      "category": "insert",
+      "description": "should not throw and return location header when selecting without PK",
+      "example": "InsertSpec:it:116",
+      "request": {
+        "method": "POST",
+        "path": "/projects",
+        "query": "select=name,client_id",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "id": 10,
+          "name": "New Project",
+          "client_id": 2
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "name": "New Project",
+            "client_id": 2
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "*/*",
+          "Preference-Applied": "return=representation"
+        },
+        "headersAbsent": [
+          "Location"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:129",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 129,
+      "category": "insert",
+      "description": "should not throw and return location header when selecting without PK",
+      "example": "InsertSpec:it:128",
+      "request": {
+        "method": "POST",
+        "path": "/projects",
+        "query": "select=name,client_id",
+        "headers": {
+          "Prefer": "return=headers-only"
+        },
+        "body": {
+          "id": 11,
+          "name": "New Project",
+          "client_id": 2
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Location": "/projects?id=eq.11",
+          "Content-Range": "*/*",
+          "Content-Length": "0",
+          "Preference-Applied": "return=headers-only"
+        },
+        "headersAbsent": [
+          "Content-Type"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:143",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 143,
+      "category": "insert",
+      "description": "should not throw and return location header for partitioned tables when selecting without PK",
+      "example": "InsertSpec:it:142",
+      "request": {
+        "method": "POST",
+        "path": "/car_models",
+        "query": "",
+        "headers": {
+          "Prefer": "return=headers-only"
+        },
+        "body": {
+          "name": "Enzo",
+          "year": 2021
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Location": "/car_models?name=eq.Enzo&year=eq.2021",
+          "Content-Range": "*/*",
+          "Content-Length": "0",
+          "Preference-Applied": "return=headers-only"
+        },
+        "headersAbsent": [
+          "Content-Type"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:158",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 158,
+      "category": "insert",
+      "description": "should not throw and return no location header when selecting without PK",
+      "example": "InsertSpec:it:157",
+      "request": {
+        "method": "POST",
+        "path": "/projects",
+        "query": "select=name,client_id",
+        "headers": {},
+        "body": {
+          "id": 12,
+          "name": "New Project",
+          "client_id": 2
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Length": "0"
+        },
+        "headersAbsent": [
+          "Content-Type",
+          "Location"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:171",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 171,
+      "category": "insert",
+      "description": "accepts disparate json types",
+      "example": "InsertSpec:it:170",
+      "request": {
+        "method": "POST",
+        "path": "/menagerie",
+        "query": "",
+        "headers": {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        "body": "integer=7&double=2.71828&varchar=forms+are+fun&boolean=false&date=1900-01-01&money=$3.99&enum=foo",
+        "bodyFormat": "text"
+      },
+      "expected": {
+        "status": 201,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Length": "0"
+        },
+        "headersAbsent": [
+          "Content-Type"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:186",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 186,
+      "category": "insert",
+      "description": "succeeds with 201 and location header",
+      "example": "InsertSpec:it:184",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/reset_sequence",
+        "query": "",
+        "headers": {
+          "Prefer": "tx=commit"
+        },
+        "body": {
+          "name": "auto_incrementing_pk_id_seq",
+          "value": 2
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {},
+        "headersAbsent": [
+          "Content-Type",
+          "Content-Length"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:196",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 196,
+      "category": "insert",
+      "description": "succeeds with 201 and location header",
+      "example": "InsertSpec:it:184",
+      "request": {
+        "method": "POST",
+        "path": "/auto_incrementing_pk",
+        "query": "",
+        "headers": {
+          "Prefer": "return=headers-only"
+        },
+        "body": {
+          "non_nullable_string": "not null"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Length": "0",
+          "Location": "/auto_incrementing_pk?id=eq.2",
+          "Preference-Applied": "return=headers-only"
+        },
+        "headersAbsent": [
+          "Content-Type"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:210",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 210,
+      "category": "insert",
+      "description": "fails with 400 and error",
+      "example": "InsertSpec:it:209",
+      "request": {
+        "method": "POST",
+        "path": "/simple_pk",
+        "query": "",
+        "headers": {},
+        "body": {
+          "extra": "foo"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "hint": null,
+          "details": "Failing row contains (null, foo).",
+          "code": "23502",
+          "message": "null value in column \"k\" of relation \"simple_pk\" violates not-null constraint"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:219",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 219,
+      "category": "insert",
+      "description": "succeeds with 201 but no location header",
+      "example": "InsertSpec:it:218",
+      "request": {
+        "method": "POST",
+        "path": "/no_pk",
+        "query": "",
+        "headers": {},
+        "body": {
+          "a": "foo",
+          "b": "bar"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {},
+        "headersAbsent": [
+          "Content-Type",
+          "Location"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:229",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 229,
+      "category": "insert",
+      "description": "returns full details of inserted record if asked",
+      "example": "InsertSpec:it:228",
+      "request": {
+        "method": "POST",
+        "path": "/no_pk",
+        "query": "",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "a": "bar",
+          "b": "baz"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "a": "bar",
+            "b": "baz"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Preference-Applied": "return=representation"
+        },
+        "headersAbsent": [
+          "Location"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:240",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 240,
+      "category": "insert",
+      "description": "returns empty array when no items inserted, and return=rep",
+      "example": "InsertSpec:it:239",
+      "request": {
+        "method": "POST",
+        "path": "/no_pk",
+        "query": "",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": [],
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:248",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 248,
+      "category": "insert",
+      "description": "can post nulls",
+      "example": "InsertSpec:it:247",
+      "request": {
+        "method": "POST",
+        "path": "/no_pk",
+        "query": "",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "a": null,
+          "b": "foo"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "a": null,
+            "b": "foo"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {},
+        "headersAbsent": [
+          "Location"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:259",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 259,
+      "category": "insert",
+      "description": "builds response location header appropriately",
+      "example": "InsertSpec:it:258",
+      "request": {
+        "method": "POST",
+        "path": "/compound_pk",
+        "query": "",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "k1": 12,
+          "k2": "Rock & R+ll"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "k1": 12,
+            "k2": "Rock & R+ll",
+            "extra": null
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {},
+        "headersAbsent": [
+          "Location"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:273",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 273,
+      "category": "insert",
+      "description": "returns 201 but no location header",
+      "example": "InsertSpec:it:269",
+      "request": {
+        "method": "POST",
+        "path": "/compound_pk",
+        "query": "",
+        "headers": {},
+        "body": [
+          {
+            "k1": 21,
+            "k2": "hello world"
+          },
+          {
+            "k1": 22,
+            "k2": "bye for now"
+          }
+        ],
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {},
+        "headersAbsent": [
+          "Content-Type",
+          "Location"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:285",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 285,
+      "category": "insert",
+      "description": "fails with 400 and error",
+      "example": "InsertSpec:it:284",
+      "request": {
+        "method": "POST",
+        "path": "/simple_pk",
+        "query": "",
+        "headers": {},
+        "body": "}{ x = 2",
+        "bodyFormat": "text"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "message": "Empty or invalid json",
+          "code": "PGRST102",
+          "details": null,
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Length": "80"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:295",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 295,
+      "category": "insert",
+      "description": "fails with 400 and error",
+      "example": "InsertSpec:it:294",
+      "request": {
+        "method": "POST",
+        "path": "/simple_pk",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "message": "Empty or invalid json",
+          "code": "PGRST102",
+          "details": null,
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:304",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 304,
+      "category": "insert",
+      "description": "succeeds and returns 201 created",
+      "example": "InsertSpec:it:303",
+      "request": {
+        "method": "POST",
+        "path": "/simple_pk",
+        "query": "",
+        "headers": {},
+        "body": {
+          "k": "k1",
+          "extra": "e1"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {},
+        "headersAbsent": [
+          "Content-Type"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:314",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 314,
+      "category": "insert",
+      "description": "fails returning a 409 Conflict",
+      "example": "InsertSpec:it:313",
+      "request": {
+        "method": "POST",
+        "path": "/simple_pk",
+        "query": "",
+        "headers": {},
+        "body": {
+          "k": "xyyx",
+          "extra": "e1"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 409,
+        "body": {
+          "hint": null,
+          "details": "Key (k)=(xyyx) already exists.",
+          "code": "23505",
+          "message": "duplicate key value violates unique constraint \"simple_pk_pkey\""
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:322",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 322,
+      "category": "insert",
+      "description": "fails returning a 409 Conflict",
+      "example": "InsertSpec:it:321",
+      "request": {
+        "method": "POST",
+        "path": "/withUnique",
+        "query": "",
+        "headers": {},
+        "body": {
+          "uni": "nodup",
+          "extra": "e2"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 409,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:327",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 327,
+      "category": "insert",
+      "description": "serializes nested object",
+      "example": "InsertSpec:it:325",
+      "request": {
+        "method": "POST",
+        "path": "/json_table",
+        "query": "",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "data": {
+            "foo": "bar"
+          }
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "data": {
+              "foo": "bar"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:336",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 336,
+      "category": "insert",
+      "description": "serializes nested array",
+      "example": "InsertSpec:it:334",
+      "request": {
+        "method": "POST",
+        "path": "/json_table",
+        "query": "",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "data": [
+            1,
+            2,
+            3
+          ]
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "data": [
+              1,
+              2,
+              3
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:345",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 345,
+      "category": "insert",
+      "description": "successfully inserts a row with all-default columns",
+      "example": "InsertSpec:it:344",
+      "request": {
+        "method": "POST",
+        "path": "/items",
+        "query": "",
+        "headers": {},
+        "body": {},
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {},
+        "headersAbsent": [
+          "Content-Type"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:352",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 352,
+      "category": "insert",
+      "description": "successfully inserts a row with all-default columns",
+      "example": "InsertSpec:it:344",
+      "request": {
+        "method": "POST",
+        "path": "/items",
+        "query": "",
+        "headers": {},
+        "body": "[{}]",
+        "bodyFormat": "text"
+      },
+      "expected": {
+        "status": 201,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:358",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 358,
+      "category": "insert",
+      "description": "successfully inserts two rows with all-default columns",
+      "example": "InsertSpec:it:357",
+      "request": {
+        "method": "POST",
+        "path": "/items",
+        "query": "",
+        "headers": {},
+        "body": [
+          {},
+          {}
+        ],
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {},
+        "headersAbsent": [
+          "Content-Type"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:368",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 368,
+      "category": "insert",
+      "description": "successfully inserts a row with all-default columns with prefer=rep",
+      "example": "InsertSpec:it:366",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/reset_sequence",
+        "query": "",
+        "headers": {
+          "Prefer": "tx=commit"
+        },
+        "body": {
+          "name": "items2_id_seq",
+          "value": 20
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {},
+        "headersAbsent": [
+          "Content-Type",
+          "Content-Length"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:378",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 378,
+      "category": "insert",
+      "description": "successfully inserts a row with all-default columns with prefer=rep",
+      "example": "InsertSpec:it:366",
+      "request": {
+        "method": "POST",
+        "path": "/items2",
+        "query": "",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {},
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "id": 20
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:387",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 387,
+      "category": "insert",
+      "description": "successfully inserts a row with all-default columns with prefer=rep and &select=",
+      "example": "InsertSpec:it:385",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/reset_sequence",
+        "query": "",
+        "headers": {
+          "Prefer": "tx=commit"
+        },
+        "body": {
+          "name": "items3_id_seq",
+          "value": 20
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {},
+        "headersAbsent": [
+          "Content-Type",
+          "Content-Length"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:397",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 397,
+      "category": "insert",
+      "description": "successfully inserts a row with all-default columns with prefer=rep and &select=",
+      "example": "InsertSpec:it:385",
+      "request": {
+        "method": "POST",
+        "path": "/items3",
+        "query": "select=id",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {},
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "id": 20
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:405",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 405,
+      "category": "insert",
+      "description": "ignores it and successfuly inserts with json payload",
+      "example": "InsertSpec:it:404",
+      "request": {
+        "method": "POST",
+        "path": "/json_table",
+        "query": "",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": "\t \n \r { \"data\": { \"foo\":\"bar\" } }\t \n \r ",
+        "bodyFormat": "text"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "data": {
+              "foo": "bar"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:412",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 412,
+      "category": "insert",
+      "description": "ignores it and successfuly inserts with json payload",
+      "example": "InsertSpec:it:404",
+      "request": {
+        "method": "POST",
+        "path": "/json_table",
+        "query": "",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": "\t \n \r [{ \"data\": { \"foo\":\"bar\" } }, \t \n \r {\"data\": 34}]\t \n \r ",
+        "bodyFormat": "text"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "data": {
+              "foo": "bar"
+            }
+          },
+          {
+            "data": 34
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:422",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 422,
+      "category": "insert",
+      "description": "should insert to a bit column with length",
+      "example": "InsertSpec:it:421",
+      "request": {
+        "method": "POST",
+        "path": "/bitchar_with_length",
+        "query": "select=bit",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "bit": "10101"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "bit": "10101"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:429",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 429,
+      "category": "insert",
+      "description": "should insert to a char column with length",
+      "example": "InsertSpec:it:428",
+      "request": {
+        "method": "POST",
+        "path": "/bitchar_with_length",
+        "query": "select=char",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "char": "abcde"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "char": "abcde"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:437",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 437,
+      "category": "insert",
+      "description": "ignores json keys not included in ?columns",
+      "example": "InsertSpec:it:436",
+      "request": {
+        "method": "POST",
+        "path": "/articles",
+        "query": "columns=id,body",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "id": 200,
+          "body": "xxx",
+          "smth": "here",
+          "other": "stuff",
+          "fake_id": 13
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "id": 200,
+            "body": "xxx",
+            "owner": "postgrest_test_anonymous"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:442",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 442,
+      "category": "insert",
+      "description": "ignores json keys not included in ?columns",
+      "example": "InsertSpec:it:436",
+      "request": {
+        "method": "POST",
+        "path": "/articles",
+        "query": "columns=id,body&select=id,body",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": [
+          {
+            "id": 201,
+            "body": "yyy",
+            "smth": "here",
+            "other": "stuff",
+            "fake_id": 13
+          },
+          {
+            "id": 202,
+            "body": "zzz",
+            "garbage": "%%$&",
+            "kkk": "jjj"
+          },
+          {
+            "id": 203,
+            "body": "aaa",
+            "hey": "ho"
+          }
+        ],
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "id": 201,
+            "body": "yyy"
+          },
+          {
+            "id": 202,
+            "body": "zzz"
+          },
+          {
+            "id": 203,
+            "body": "aaa"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:456",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 456,
+      "category": "insert",
+      "description": "disallows blank ?columns",
+      "example": "InsertSpec:it:455",
+      "request": {
+        "method": "POST",
+        "path": "/articles",
+        "query": "columns=",
+        "headers": {},
+        "body": [
+          {
+            "id": 204,
+            "body": "yyy"
+          },
+          {
+            "id": 205,
+            "body": "zzz"
+          }
+        ],
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "details": "unexpected end of input expecting field name (* or [a..z0..9_$])",
+          "message": "\"failed to parse columns parameter ()\" (line 1, column 1)",
+          "code": "PGRST100",
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:467",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 467,
+      "category": "insert",
+      "description": "disallows ?columns which don't exist",
+      "example": "InsertSpec:it:466",
+      "request": {
+        "method": "POST",
+        "path": "/articles",
+        "query": "columns=helicopter",
+        "headers": {},
+        "body": [
+          {
+            "id": 204,
+            "body": "yyy"
+          },
+          {
+            "id": 205,
+            "body": "zzz"
+          }
+        ],
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "code": "PGRST204",
+          "details": null,
+          "hint": null,
+          "message": "Could not find the 'helicopter' column of 'articles' in the schema cache"
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:478",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 478,
+      "category": "insert",
+      "description": "returns missing table error even if also has invalid ?columns",
+      "example": "InsertSpec:it:477",
+      "request": {
+        "method": "POST",
+        "path": "/garlic",
+        "query": "columns=helicopter",
+        "headers": {},
+        "body": [
+          {
+            "id": 204,
+            "body": "yyy"
+          },
+          {
+            "id": 205,
+            "body": "zzz"
+          }
+        ],
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "code": "PGRST205",
+          "details": null,
+          "hint": null,
+          "message": "Could not find the table 'public.garlic' in the schema cache"
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [
+        "expected body: schema \"test.\" rewritten to \"public.\" (the DSQL fixtures load upstream's test schema into public)"
+      ],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:489",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 489,
+      "category": "insert",
+      "description": "disallows array elements that are not json objects",
+      "example": "InsertSpec:it:488",
+      "request": {
+        "method": "POST",
+        "path": "/articles",
+        "query": "columns=id,body",
+        "headers": {},
+        "body": [
+          {
+            "id": 204,
+            "body": "yyy"
+          },
+          333,
+          "asdf",
+          {
+            "id": 205,
+            "body": "zzz"
+          }
+        ],
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 400,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:498",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 498,
+      "category": "insert",
+      "description": "inserts table default values(field-with_sep) when json keys are undefined",
+      "example": "InsertSpec:it:497",
+      "request": {
+        "method": "POST",
+        "path": "/complex_items",
+        "query": "columns=id,name,field-with_sep,arr_data",
+        "headers": {
+          "Prefer": "return=representation, missing=default"
+        },
+        "body": [
+          {
+            "id": 4,
+            "name": "Vier"
+          },
+          {
+            "id": 5,
+            "name": "Funf",
+            "arr_data": null
+          },
+          {
+            "id": 6,
+            "name": "Sechs",
+            "field-with_sep": 6,
+            "arr_data": "{1,2,3}"
+          }
+        ],
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "id": 4,
+            "name": "Vier",
+            "field-with_sep": 1,
+            "settings": null,
+            "arr_data": null
+          },
+          {
+            "id": 5,
+            "name": "Funf",
+            "field-with_sep": 1,
+            "settings": null,
+            "arr_data": null
+          },
+          {
+            "id": 6,
+            "name": "Sechs",
+            "field-with_sep": 6,
+            "settings": null,
+            "arr_data": [
+              1,
+              2,
+              3
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Preference-Applied": "missing=default, return=representation"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:515",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 515,
+      "category": "insert",
+      "description": "inserts view default values(field-with_sep) when json keys are undefined",
+      "example": "InsertSpec:it:514",
+      "request": {
+        "method": "POST",
+        "path": "/complex_items_view",
+        "query": "columns=id,name",
+        "headers": {
+          "Prefer": "return=representation, missing=default"
+        },
+        "body": [
+          {
+            "id": 7,
+            "name": "Sieben"
+          },
+          {
+            "id": 8
+          }
+        ],
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "id": 7,
+            "name": "Sieben",
+            "field-with_sep": 1,
+            "settings": null,
+            "arr_data": null
+          },
+          {
+            "id": 8,
+            "name": "Default",
+            "field-with_sep": 1,
+            "settings": null,
+            "arr_data": null
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Preference-Applied": "missing=default, return=representation"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:530",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 530,
+      "category": "insert",
+      "description": "doesn't insert json duplicate keys(since it uses jsonb)",
+      "example": "InsertSpec:it:529",
+      "request": {
+        "method": "POST",
+        "path": "/tbl_w_json",
+        "query": "columns=id,data",
+        "headers": {
+          "Prefer": "return=representation, missing=default"
+        },
+        "body": {
+          "data": {
+            "a": 2
+          },
+          "id": 3
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "data": {
+              "a": 2
+            },
+            "id": 3
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Preference-Applied": "missing=default, return=representation"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:539",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 539,
+      "category": "insert",
+      "description": "inserts a default on a generated by default as identity column",
+      "example": "InsertSpec:it:538",
+      "request": {
+        "method": "POST",
+        "path": "/channels",
+        "query": "columns=id,data,slug&select=data,slug",
+        "headers": {
+          "Prefer": "return=representation, missing=default"
+        },
+        "body": {
+          "slug": "foo"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "data": {
+              "foo": "bar"
+            },
+            "slug": "foo"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Preference-Applied": "missing=default, return=representation"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:548",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 548,
+      "category": "insert",
+      "description": "fails with a good error message on generated always columns",
+      "example": "InsertSpec:it:547",
+      "request": {
+        "method": "POST",
+        "path": "/foo",
+        "query": "columns=a,b",
+        "headers": {
+          "Prefer": "return=representation, missing=default"
+        },
+        "body": [
+          {
+            "a": "val"
+          },
+          {
+            "a": "val",
+            "b": "val"
+          }
+        ],
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "code": "428C9",
+          "details": "Column \"b\" is a generated column.",
+          "hint": null,
+          "message": "cannot insert a non-DEFAULT value into column \"b\""
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:563",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 563,
+      "category": "insert",
+      "description": "inserts a default on a DOMAIN with default",
+      "example": "InsertSpec:it:562",
+      "request": {
+        "method": "POST",
+        "path": "/evil_friends",
+        "query": "columns=id,name",
+        "headers": {
+          "Prefer": "return=representation, missing=default"
+        },
+        "body": {
+          "name": "Lu"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "id": 666,
+            "name": "Lu"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Preference-Applied": "missing=default, return=representation"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:572",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 572,
+      "category": "insert",
+      "description": "inserts a COLUMN default before a DOMAIN default with missing=default",
+      "example": "InsertSpec:it:571",
+      "request": {
+        "method": "POST",
+        "path": "/evil_friends_with_column_default",
+        "query": "columns=id,name",
+        "headers": {
+          "Prefer": "return=representation, missing=default"
+        },
+        "body": {
+          "name": "Demon"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "id": 420,
+            "name": "Demon"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Preference-Applied": "missing=default, return=representation"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:581",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 581,
+      "category": "insert",
+      "description": "inserts json that has duplicate keys",
+      "example": "InsertSpec:it:580",
+      "request": {
+        "method": "POST",
+        "path": "/tbl_w_json",
+        "query": "",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "data": {
+            "a": 2
+          },
+          "id": 3
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "data": {
+              "a": 2
+            },
+            "id": 3
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:587",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 587,
+      "category": "insert",
+      "description": "inserts json that has duplicate keys",
+      "example": "InsertSpec:it:580",
+      "request": {
+        "method": "POST",
+        "path": "/tbl_w_json",
+        "query": "columns=id,data",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "data": {
+            "a": 2
+          },
+          "id": 3
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "data": {
+              "a": 2
+            },
+            "id": 3
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:596",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 596,
+      "category": "insert",
+      "description": "succeeds and returns full representation",
+      "example": "InsertSpec:it:595",
+      "request": {
+        "method": "POST",
+        "path": "/simple_pk2",
+        "query": "select=extra,k",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "k": "棋圍",
+          "extra": "￥"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "k": "棋圍",
+            "extra": "￥"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:607",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 607,
+      "category": "insert",
+      "description": "succeeds and returns usable location header",
+      "example": "InsertSpec:it:603",
+      "request": null,
+      "expected": {
+        "status": 201,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "no request helper between \"pure\" and shouldRespondWith",
+      "skipClass": "not-representable"
+    },
+    {
+      "id": "InsertSpec:612",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 612,
+      "category": "insert",
+      "description": "succeeds and returns usable location header",
+      "example": "InsertSpec:it:603",
+      "request": null,
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "k": "圍棋",
+            "extra": "￥"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "request path is not a literal: unresolved identifier \"location\"; a preceding assertion in the same example was skipped, so the state this one depends on is never created",
+      "skipClass": "not-representable"
+    },
+    {
+      "id": "InsertSpec:616",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 616,
+      "category": "insert",
+      "description": "succeeds and returns usable location header",
+      "example": "InsertSpec:it:603",
+      "request": null,
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {},
+        "headersAbsent": [
+          "Content-Type",
+          "Content-Length"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "request path is not a literal: unresolved identifier \"location\"; a preceding assertion in the same example was skipped, so the state this one depends on is never created",
+      "skipClass": "not-representable"
+    },
+    {
+      "id": "InsertSpec:634",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 634,
+      "category": "insert",
+      "description": "succeeds with multipart response",
+      "example": "InsertSpec:it:628",
+      "request": {
+        "method": "POST",
+        "path": "/menagerie",
+        "query": "",
+        "headers": {
+          "Content-Type": "text/csv",
+          "Accept": "text/csv",
+          "Prefer": "return=representation"
+        },
+        "body": "integer,double,varchar,boolean,date,money,enum\n13,3.14159,testing!,false,1900-01-01,$3.99,foo\n12,0.1,a string,true,1929-10-01,12,bar\n",
+        "bodyFormat": "text"
+      },
+      "expected": {
+        "status": 201,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {
+          "Content-Type": "text/csv; charset=utf-8"
+        }
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "uses a custom matchBody matcher; ResponseMatcher record without a representable matchBody; example is conditionally pending (pendingWith)",
+      "skipClass": "not-representable"
+    },
+    {
+      "id": "InsertSpec:643",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 643,
+      "category": "insert",
+      "description": "returns full details of inserted record",
+      "example": "InsertSpec:it:642",
+      "request": {
+        "method": "POST",
+        "path": "/no_pk",
+        "query": "",
+        "headers": {
+          "Content-Type": "text/csv",
+          "Accept": "text/csv",
+          "Prefer": "return=representation"
+        },
+        "body": "a,b\nbar,baz",
+        "bodyFormat": "text"
+      },
+      "expected": {
+        "status": 201,
+        "body": "a,b\nbar,baz",
+        "bodyFormat": "text",
+        "headers": {
+          "Content-Type": "text/csv; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:652",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 652,
+      "category": "insert",
+      "description": "can post nulls",
+      "example": "InsertSpec:it:651",
+      "request": {
+        "method": "POST",
+        "path": "/no_pk",
+        "query": "",
+        "headers": {
+          "Content-Type": "text/csv",
+          "Accept": "text/csv",
+          "Prefer": "return=representation"
+        },
+        "body": "a,b\nNULL,foo",
+        "bodyFormat": "text"
+      },
+      "expected": {
+        "status": 201,
+        "body": "a,b\n,foo",
+        "bodyFormat": "text",
+        "headers": {
+          "Content-Type": "text/csv; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:661",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 661,
+      "category": "insert",
+      "description": "only returns the requested column header with its associated data",
+      "example": "InsertSpec:it:660",
+      "request": {
+        "method": "POST",
+        "path": "/projects",
+        "query": "select=id",
+        "headers": {
+          "Content-Type": "text/csv",
+          "Accept": "text/csv",
+          "Prefer": "return=representation"
+        },
+        "body": "id,name,client_id\n8,Xenix,1\n9,Windows NT,1",
+        "bodyFormat": "text"
+      },
+      "expected": {
+        "status": 201,
+        "body": "id\n8\n9",
+        "bodyFormat": "text",
+        "headers": {
+          "Content-Type": "text/csv; charset=utf-8",
+          "Content-Range": "*/*"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:672",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 672,
+      "category": "insert",
+      "description": "fails for too few",
+      "example": "InsertSpec:it:671",
+      "request": {
+        "method": "POST",
+        "path": "/no_pk",
+        "query": "",
+        "headers": {
+          "Content-Type": "text/csv"
+        },
+        "body": "a,b\nfoo,bar\nbaz",
+        "bodyFormat": "text"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "message": "All lines must have same number of fields",
+          "code": "PGRST102",
+          "details": null,
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:681",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 681,
+      "category": "insert",
+      "description": "set user_id when inserting rows",
+      "example": "InsertSpec:it:680",
+      "request": {
+        "method": "POST",
+        "path": "/authors_only",
+        "query": "",
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoicG9zdGdyZXN0X3Rlc3RfYXV0aG9yIiwiaWQiOiJqZG9lIn0.B-lReuGNDwAlU1GOC476MlO0vAt9JNoHIlxg2vwMaO0",
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "secret": "nyancat"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "owner": "jdoe",
+            "secret": "nyancat"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:688",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 688,
+      "category": "insert",
+      "description": "set user_id when inserting rows",
+      "example": "InsertSpec:it:680",
+      "request": {
+        "method": "POST",
+        "path": "/authors_only",
+        "query": "",
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoicG9zdGdyZXN0X3Rlc3RfYXV0aG9yIiwiaWQiOiJqcm9lIn0.2e7mx0U4uDcInlbJVOBGlrRufwqWLINDIEDC1vS0nw8",
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "secret": "lolcat",
+          "owner": "hacker"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "owner": "jroe",
+            "secret": "lolcat"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:698",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 698,
+      "category": "insert",
+      "description": "embeds parent after insert",
+      "example": "InsertSpec:it:697",
+      "request": {
+        "method": "POST",
+        "path": "/web_content",
+        "query": "select=id,name,parent_content:p_web_id(name)",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "id": 6,
+          "name": "wot",
+          "p_web_id": 4
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "id": 6,
+            "name": "wot",
+            "parent_content": {
+              "name": "wut"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "headersAbsent": [
+          "Location"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:709",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 709,
+      "category": "insert",
+      "description": "succeeds inserting if correct select is applied",
+      "example": "InsertSpec:it:708",
+      "request": {
+        "method": "POST",
+        "path": "/limited_article_stars",
+        "query": "select=article_id,user_id",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "article_id": 2,
+          "user_id": 1
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "article_id": 2,
+            "user_id": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:716",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 716,
+      "category": "insert",
+      "description": "fails inserting if more columns are selected",
+      "example": "InsertSpec:it:715",
+      "request": {
+        "method": "POST",
+        "path": "/limited_article_stars",
+        "query": "select=article_id,user_id,created_at",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "article_id": 2,
+          "user_id": 2
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 401,
+        "body": {
+          "hint": null,
+          "details": null,
+          "code": "42501",
+          "message": "permission denied for view limited_article_stars"
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:724",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 724,
+      "category": "insert",
+      "description": "fails inserting if select is not specified",
+      "example": "InsertSpec:it:723",
+      "request": {
+        "method": "POST",
+        "path": "/limited_article_stars",
+        "query": "",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "article_id": 3,
+          "user_id": 1
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 401,
+        "body": {
+          "hint": null,
+          "details": null,
+          "code": "42501",
+          "message": "permission denied for view limited_article_stars"
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:732",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 732,
+      "category": "insert",
+      "description": "can insert in a table with no select and return=minimal",
+      "example": "InsertSpec:it:731",
+      "request": {
+        "method": "POST",
+        "path": "/insertonly",
+        "query": "",
+        "headers": {
+          "Prefer": "return=minimal"
+        },
+        "body": {
+          "v": "some value"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Length": "0",
+          "Preference-Applied": "return=minimal"
+        },
+        "headersAbsent": [
+          "Content-Type"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:746",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 746,
+      "category": "insert",
+      "description": "succeeds with 201",
+      "example": "InsertSpec:it:745",
+      "request": {
+        "method": "POST",
+        "path": "/compound_pk_view",
+        "query": "",
+        "headers": {},
+        "body": {
+          "k1": 1,
+          "k2": "test",
+          "extra": 2
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Length": "0"
+        },
+        "headersAbsent": [
+          "Content-Type",
+          "Location"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:757",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 757,
+      "category": "insert",
+      "description": "returns a location header with pks from both tables",
+      "example": "InsertSpec:it:756",
+      "request": {
+        "method": "POST",
+        "path": "/with_multiple_pks",
+        "query": "",
+        "headers": {
+          "Prefer": "return=headers-only"
+        },
+        "body": {
+          "pk1": 1,
+          "pk2": 2
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Location": "/with_multiple_pks?pk1=eq.1&pk2=eq.2",
+          "Content-Range": "*/*",
+          "Content-Length": "0",
+          "Preference-Applied": "return=headers-only"
+        },
+        "headersAbsent": [
+          "Content-Type"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:771",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 771,
+      "category": "insert",
+      "description": "returns a location header with a composite PK col",
+      "example": "InsertSpec:it:770",
+      "request": {
+        "method": "POST",
+        "path": "/compound_pk_view",
+        "query": "",
+        "headers": {
+          "Prefer": "return=headers-only"
+        },
+        "body": {
+          "k1": 1,
+          "k2": "test",
+          "extra": 2
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Location": "/compound_pk_view?k1=eq.1&k2=eq.test",
+          "Content-Range": "*/*",
+          "Content-Length": "0",
+          "Preference-Applied": "return=headers-only"
+        },
+        "headersAbsent": [
+          "Content-Type"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:784",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 784,
+      "category": "insert",
+      "description": "should not throw and return location header when a PK is null",
+      "example": "InsertSpec:it:783",
+      "request": {
+        "method": "POST",
+        "path": "/test_null_pk_competitors_sponsors",
+        "query": "",
+        "headers": {
+          "Prefer": "return=headers-only"
+        },
+        "body": {
+          "id": 1
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Location": "/test_null_pk_competitors_sponsors?id=eq.1&sponsor_id=is.null",
+          "Content-Range": "*/*",
+          "Content-Length": "0",
+          "Preference-Applied": "return=headers-only"
+        },
+        "headersAbsent": [
+          "Content-Type"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:802",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 802,
+      "category": "insert",
+      "description": "parses values in POST body",
+      "example": "InsertSpec:it:799",
+      "request": {
+        "method": "POST",
+        "path": "/datarep_todos",
+        "query": "",
+        "headers": {
+          "Prefer": "return=headers-only"
+        },
+        "body": {
+          "id": 5,
+          "name": "party",
+          "label_color": "#001100",
+          "due_at": "2018-01-03T11:00:00+00"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Location": "/datarep_todos?id=eq.5",
+          "Content-Range": "*/*",
+          "Content-Length": "0",
+          "Preference-Applied": "return=headers-only"
+        },
+        "headersAbsent": [
+          "Content-Type"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:815",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 815,
+      "category": "insert",
+      "description": "parses values in POST body and formats individually selected values in return=representation",
+      "example": "InsertSpec:it:814",
+      "request": {
+        "method": "POST",
+        "path": "/datarep_todos",
+        "query": "select=id,label_color",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "id": 5,
+          "name": "party",
+          "label_color": "#001100",
+          "due_at": "2018-01-03T11:00:00+00"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "id": 5,
+            "label_color": "#001100"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "*/*"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:825",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 825,
+      "category": "insert",
+      "description": "parses values in POST body and formats values in return=representation",
+      "example": "InsertSpec:it:824",
+      "request": {
+        "method": "POST",
+        "path": "/datarep_todos",
+        "query": "",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "id": 5,
+          "name": "party",
+          "label_color": "#001100",
+          "due_at": "2018-01-03T11:00:00+00",
+          "icon_image": "3q2+7w",
+          "created_at": -15,
+          "budget": "-100000000000000.13"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "id": 5,
+            "name": "party",
+            "label_color": "#001100",
+            "due_at": "2018-01-03T11:00:00Z",
+            "icon_image": "3q2+7w==",
+            "created_at": -15,
+            "budget": "-100000000000000.13"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "*/*"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:836",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 836,
+      "category": "insert",
+      "description": "ignores json keys not included in ?columns; parses only the ones specified",
+      "example": "InsertSpec:it:835",
+      "request": {
+        "method": "POST",
+        "path": "/datarep_todos",
+        "query": "columns=id,label_color&select=id,name,label_color,due_at",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "id": 5,
+          "name": "party",
+          "label_color": "#001100",
+          "due_at": "invalid but should be ignored"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "id": 5,
+            "name": null,
+            "label_color": "#001100",
+            "due_at": "2018-01-01T00:00:00Z"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "*/*"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:846",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 846,
+      "category": "insert",
+      "description": "fails without parsing anything if at least one specified column doesn't exist",
+      "example": "InsertSpec:it:845",
+      "request": {
+        "method": "POST",
+        "path": "/datarep_todos",
+        "query": "columns=id,label_color,helicopters&select=id,name,label_color,due_at",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "due_at": "2019-01-03T11:00:00+00",
+          "smth": "here",
+          "label_color": "invalid",
+          "fake_id": 13
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "code": "PGRST204",
+          "details": null,
+          "hint": null,
+          "message": "Could not find the 'helicopters' column of 'datarep_todos' in the schema cache"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:858",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 858,
+      "category": "insert",
+      "description": "parses values in POST body",
+      "example": "InsertSpec:it:855",
+      "request": {
+        "method": "POST",
+        "path": "/datarep_todos_computed",
+        "query": "",
+        "headers": {
+          "Prefer": "return=headers-only"
+        },
+        "body": {
+          "id": 5,
+          "name": "party",
+          "label_color": "#001100",
+          "due_at": "2018-01-03T11:00:00+00"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Location": "/datarep_todos_computed?id=eq.5",
+          "Content-Range": "*/*",
+          "Content-Length": "0",
+          "Preference-Applied": "return=headers-only"
+        },
+        "headersAbsent": [
+          "Content-Type"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:871",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 871,
+      "category": "insert",
+      "description": "parses values in POST body and formats individually selected values in return=representation",
+      "example": "InsertSpec:it:870",
+      "request": {
+        "method": "POST",
+        "path": "/datarep_todos_computed",
+        "query": "select=id,label_color",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "id": 5,
+          "name": "party",
+          "label_color": "#001100",
+          "due_at": "2018-01-03T11:00:00+00"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "id": 5,
+            "label_color": "#001100"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "*/*"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:881",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 881,
+      "category": "insert",
+      "description": "parses values in POST body and formats values in return=representation",
+      "example": "InsertSpec:it:880",
+      "request": {
+        "method": "POST",
+        "path": "/datarep_todos_computed",
+        "query": "",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "id": 5,
+          "name": "party",
+          "label_color": "#001100",
+          "due_at": "2018-01-03T11:00:00+00"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "id": 5,
+            "name": "party",
+            "label_color": "#001100",
+            "due_at": "2018-01-03T11:00:00Z",
+            "dark_color": "#000880"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "*/*"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:892",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 892,
+      "category": "insert",
+      "description": "ignores json keys not included in ?columns; parses only the ones specified",
+      "example": "InsertSpec:it:891",
+      "request": {
+        "method": "POST",
+        "path": "/datarep_todos_computed",
+        "query": "columns=id,label_color&select=id,name,label_color,due_at",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "id": 5,
+          "name": "party",
+          "label_color": "#001100",
+          "due_at": "invalid but should be ignored"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "id": 5,
+            "name": null,
+            "label_color": "#001100",
+            "due_at": "2018-01-01T00:00:00Z"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "*/*"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "InsertSpec:902",
+      "source": "Feature/Query/InsertSpec.hs",
+      "line": 902,
+      "category": "insert",
+      "description": "fails without parsing anything if at least one specified column doesn't exist",
+      "example": "InsertSpec:it:901",
+      "request": {
+        "method": "POST",
+        "path": "/datarep_todos_computed",
+        "query": "columns=id,label_color,helicopters&select=id,name,label_color,due_at",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "due_at": "2019-01-03T11:00:00+00",
+          "smth": "here",
+          "label_color": "invalid",
+          "fake_id": 13
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "code": "PGRST204",
+          "details": null,
+          "hint": null,
+          "message": "Could not find the 'helicopters' column of 'datarep_todos_computed' in the schema cache"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    }
+  ]
+}

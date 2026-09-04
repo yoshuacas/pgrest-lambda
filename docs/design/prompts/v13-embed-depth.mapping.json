@@ -1,0 +1,6 @@
+{
+  "prompt": "docs/design/prompts/v13-embed-depth.md",
+  "designs": [
+    "docs/design/security-v13-embed-depth.md"
+  ]
+}

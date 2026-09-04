@@ -1,0 +1,738 @@
+{
+  "source": "Feature/Query/ErrorSpec.hs",
+  "extractedCases": 18,
+  "skippedSites": 2,
+  "needsConfigCases": 2,
+  "cases": [
+    {
+      "id": "ErrorSpec:17",
+      "source": "Feature/Query/ErrorSpec.hs",
+      "line": 17,
+      "category": "errors",
+      "description": "should return 500 for cardinality_violation",
+      "example": "ErrorSpec:it:16",
+      "request": {
+        "method": "GET",
+        "path": "/bad_subquery",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 500,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ErrorSpec:20",
+      "source": "Feature/Query/ErrorSpec.hs",
+      "line": 20,
+      "category": "errors",
+      "description": "should return 500 for statement too complex",
+      "example": "ErrorSpec:it:19",
+      "request": {
+        "method": "POST",
+        "path": "/infinite_inserts",
+        "query": "",
+        "headers": {},
+        "body": {
+          "id": 3,
+          "name": "qwer"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 500,
+        "body": {
+          "code": "54001",
+          "details": null,
+          "hint": "Increase the configuration parameter \"max_stack_depth\" (currently 2048kB), after ensuring the platform's stack depth limit is adequate.",
+          "message": "stack depth limit exceeded"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Length": "217"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ErrorSpec:34",
+      "source": "Feature/Query/ErrorSpec.hs",
+      "line": 34,
+      "category": "errors",
+      "description": "works with ApiRequest error",
+      "example": "ErrorSpec:it:33",
+      "request": {
+        "method": "GET",
+        "path": "/invalid/nested/paths",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "code": "PGRST125",
+          "details": null,
+          "hint": null,
+          "message": "Invalid path specified in request URL"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Proxy-Status": "PostgREST; error=PGRST125",
+          "Content-Length": "96"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ErrorSpec:43",
+      "source": "Feature/Query/ErrorSpec.hs",
+      "line": 43,
+      "category": "errors",
+      "description": "works with SchemaCache error",
+      "example": "ErrorSpec:it:42",
+      "request": {
+        "method": "GET",
+        "path": "/non_existent_table",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "code": "PGRST205",
+          "details": null,
+          "hint": null,
+          "message": "Could not find the table 'public.non_existent_table' in the schema cache"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Proxy-Status": "PostgREST; error=PGRST205",
+          "Content-Length": "131"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [
+        "expected body: schema \"test.\" rewritten to \"public.\" (the DSQL fixtures load upstream's test schema into public)",
+        "expected Content-Length: 129 -> 131 (1 schema rename(s), 2 byte(s) each)"
+      ],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ErrorSpec:53",
+      "source": "Feature/Query/ErrorSpec.hs",
+      "line": 53,
+      "category": "errors",
+      "description": "works with Jwt error",
+      "example": "ErrorSpec:it:51",
+      "request": {
+        "method": "GET",
+        "path": "/authors_only",
+        "query": "",
+        "headers": {
+          "Authorization": "Bearer ey9zdGdyZXN0X3Rlc3RfYXV0aG9yIiwiaWQiOiJqZG9lIn0.y4vZuu1dDdwAl0-S00MCRWRYMlJ5YAMSir6Es6WtWx0"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 401,
+        "body": {
+          "message": "Expected 3 parts in JWT; got 2",
+          "code": "PGRST301",
+          "hint": null,
+          "details": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Proxy-Status": "PostgREST; error=PGRST301",
+          "Content-Length": "89"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ErrorSpec:62",
+      "source": "Feature/Query/ErrorSpec.hs",
+      "line": 62,
+      "category": "errors",
+      "description": "works with raise sqlstate custom error",
+      "example": "ErrorSpec:it:61",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/raise_pt402",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 402,
+        "body": {
+          "code": "PT402",
+          "details": "Quota exceeded",
+          "hint": "Upgrade your plan",
+          "message": "Payment Required"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Proxy-Status": "PostgREST; error=PT402",
+          "Content-Length": "99"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ErrorSpec:71",
+      "source": "Feature/Query/ErrorSpec.hs",
+      "line": 71,
+      "category": "errors",
+      "description": "works with sqlstate PGRST custom error",
+      "example": "ErrorSpec:it:70",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/raise_sqlstate_test1",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 332,
+        "body": {
+          "code": "123",
+          "details": "DEF",
+          "hint": "XYZ",
+          "message": "ABC"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Proxy-Status": "PostgREST; error=123",
+          "Content-Length": "59"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ErrorSpec:81",
+      "source": "Feature/Query/ErrorSpec.hs",
+      "line": 81,
+      "category": "errors",
+      "description": "show hint when similarity score is at least 75%",
+      "example": "ErrorSpec:it:80",
+      "request": {
+        "method": "GET",
+        "path": "/projectx",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "code": "PGRST205",
+          "details": null,
+          "hint": "Perhaps you meant the table 'public.projects'",
+          "message": "Could not find the table 'public.projectx' in the schema cache"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Proxy-Status": "PostgREST; error=PGRST205",
+          "Content-Length": "164"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [
+        "expected body: schema \"test.\" rewritten to \"public.\" (the DSQL fixtures load upstream's test schema into public)",
+        "expected Content-Length: 160 -> 164 (2 schema rename(s), 2 byte(s) each)"
+      ],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ErrorSpec:89",
+      "source": "Feature/Query/ErrorSpec.hs",
+      "line": 89,
+      "category": "errors",
+      "description": "show hint when similarity score is at least 75%",
+      "example": "ErrorSpec:it:80",
+      "request": {
+        "method": "GET",
+        "path": "/projecxx",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "code": "PGRST205",
+          "details": null,
+          "hint": "Perhaps you meant the table 'public.projects'",
+          "message": "Could not find the table 'public.projecxx' in the schema cache"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Proxy-Status": "PostgREST; error=PGRST205",
+          "Content-Length": "164"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [
+        "expected body: schema \"test.\" rewritten to \"public.\" (the DSQL fixtures load upstream's test schema into public)",
+        "expected Content-Length: 160 -> 164 (2 schema rename(s), 2 byte(s) each)"
+      ],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ErrorSpec:98",
+      "source": "Feature/Query/ErrorSpec.hs",
+      "line": 98,
+      "category": "errors",
+      "description": "don't show hint when similarity score is less than 75%",
+      "example": "ErrorSpec:it:97",
+      "request": {
+        "method": "GET",
+        "path": "/projxxxx",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "code": "PGRST205",
+          "details": null,
+          "hint": null,
+          "message": "Could not find the table 'public.projxxxx' in the schema cache"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Proxy-Status": "PostgREST; error=PGRST205",
+          "Content-Length": "121"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [
+        "expected body: schema \"test.\" rewritten to \"public.\" (the DSQL fixtures load upstream's test schema into public)",
+        "expected Content-Length: 119 -> 121 (1 schema rename(s), 2 byte(s) each)"
+      ],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ErrorSpec:110",
+      "source": "Feature/Query/ErrorSpec.hs",
+      "line": 110,
+      "category": "errors",
+      "description": "error on jwt encoded with wrong secret",
+      "example": "ErrorSpec:it:107",
+      "request": {
+        "method": "GET",
+        "path": "/authors_only",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none",
+        "jwt": {
+          "alg": "HS256",
+          "secret": "wrong secret",
+          "claims": {}
+        }
+      },
+      "expected": {
+        "status": 401,
+        "body": {
+          "code": "PGRST301",
+          "details": "None of the keys was able to decode the JWT",
+          "hint": null,
+          "message": "No suitable key or wrong key type"
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ErrorSpec:123",
+      "source": "Feature/Query/ErrorSpec.hs",
+      "line": 123,
+      "category": "errors",
+      "description": "when role does not exist",
+      "example": "ErrorSpec:it:120",
+      "request": {
+        "method": "GET",
+        "path": "/authors_only",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none",
+        "jwt": {
+          "alg": "HS256",
+          "secret": "reallyreallyreallyreallyverysafe",
+          "claims": {
+            "role": "not existing"
+          }
+        }
+      },
+      "expected": {
+        "status": 401,
+        "body": {
+          "code": "22023",
+          "details": null,
+          "hint": null,
+          "message": "role \"not existing\" does not exist"
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ErrorSpec:138",
+      "source": "Feature/Query/ErrorSpec.hs",
+      "line": 138,
+      "category": "errors",
+      "description": "it should return error if expired",
+      "example": "ErrorSpec:it:134",
+      "request": {
+        "method": "GET",
+        "path": "/authors_only",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none",
+        "jwt": {
+          "alg": "HS256",
+          "secret": "reallyreallyreallyreallyverysafe",
+          "claims": {
+            "exp": {
+              "$secondsFromNow": -35
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": 401,
+        "body": {
+          "code": "PGRST303",
+          "details": null,
+          "hint": null,
+          "message": "JWT expired"
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ErrorSpec:152",
+      "source": "Feature/Query/ErrorSpec.hs",
+      "line": 152,
+      "category": "errors",
+      "description": "it should return error if used before it is valid",
+      "example": "ErrorSpec:it:148",
+      "request": {
+        "method": "GET",
+        "path": "/authors_only",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none",
+        "jwt": {
+          "alg": "HS256",
+          "secret": "reallyreallyreallyreallyverysafe",
+          "claims": {
+            "nbf": {
+              "$secondsFromNow": 35
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": 401,
+        "body": {
+          "code": "PGRST303",
+          "details": null,
+          "hint": null,
+          "message": "JWT not yet valid"
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ErrorSpec:166",
+      "source": "Feature/Query/ErrorSpec.hs",
+      "line": 166,
+      "category": "errors",
+      "description": "it should return error if issued at future",
+      "example": "ErrorSpec:it:162",
+      "request": {
+        "method": "GET",
+        "path": "/authors_only",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none",
+        "jwt": {
+          "alg": "HS256",
+          "secret": "reallyreallyreallyreallyverysafe",
+          "claims": {
+            "iat": {
+              "$secondsFromNow": 35
+            }
+          }
+        }
+      },
+      "expected": {
+        "status": 401,
+        "body": {
+          "code": "PGRST303",
+          "details": null,
+          "hint": null,
+          "message": "JWT issued at future"
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ErrorSpec:180",
+      "source": "Feature/Query/ErrorSpec.hs",
+      "line": 180,
+      "category": "errors",
+      "description": "it should return error if JWT not in audience",
+      "example": "ErrorSpec:it:177",
+      "request": {
+        "method": "GET",
+        "path": "/authors_only",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none",
+        "jwt": {
+          "alg": "HS256",
+          "secret": "reallyreallyreallyreallyverysafe",
+          "claims": {
+            "aud": "not set"
+          }
+        }
+      },
+      "expected": {
+        "status": 401,
+        "body": {
+          "code": "PGRST303",
+          "details": null,
+          "hint": null,
+          "message": "JWT not in audience"
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configJwtAudience)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "ErrorSpec:193",
+      "source": "Feature/Query/ErrorSpec.hs",
+      "line": 193,
+      "category": "errors",
+      "description": "when partial token is provided",
+      "example": "ErrorSpec:it:191",
+      "request": {
+        "method": "GET",
+        "path": "/authors_only",
+        "query": "",
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.bm90IGFuIG9iamVjdA"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 401,
+        "body": {
+          "code": "PGRST301",
+          "details": null,
+          "hint": null,
+          "message": "Expected 3 parts in JWT; got 2"
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ErrorSpec:205",
+      "source": "Feature/Query/ErrorSpec.hs",
+      "line": 205,
+      "category": "errors",
+      "description": "when token is complete but random characters",
+      "example": "ErrorSpec:it:203",
+      "request": {
+        "method": "GET",
+        "path": "/authors_only",
+        "query": "",
+        "headers": {
+          "Authorization": "Bearer quifquirndsjagnrgniur.fonvoienqhhdj.iuqvnvhojah"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 401,
+        "body": {
+          "code": "PGRST301",
+          "details": null,
+          "hint": null,
+          "message": "JWT cryptographic operation failed"
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ErrorSpec:217",
+      "source": "Feature/Query/ErrorSpec.hs",
+      "line": 217,
+      "category": "errors",
+      "description": "when token with algorithm 'none' is used",
+      "example": "ErrorSpec:it:215",
+      "request": {
+        "method": "GET",
+        "path": "/authors_only",
+        "query": "",
+        "headers": {
+          "Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJub25lIn0.e30.yOBhlOIqn56T-4NvyEXCjfi3UmyQZ-BzXtePMO2NgRI"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 401,
+        "body": {
+          "code": "PGRST301",
+          "details": "JWT is unsecured but expected 'alg' was not 'none'",
+          "hint": null,
+          "message": "Wrong or unsupported encoding algorithm"
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ErrorSpec:231",
+      "source": "Feature/Query/ErrorSpec.hs",
+      "line": 231,
+      "category": "errors",
+      "description": "hides details and hint when set to 'minimal'",
+      "example": "ErrorSpec:it:230",
+      "request": {
+        "method": "GET",
+        "path": "/itemsx",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "code": "PGRST205",
+          "message": "Could not find the table 'public.itemsx' in the schema cache"
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [
+        "expected body: schema \"test.\" rewritten to \"public.\" (the DSQL fixtures load upstream's test schema into public)"
+      ],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configClientErrorVerbosity)",
+      "skipClass": "needs-engine-config"
+    }
+  ]
+}

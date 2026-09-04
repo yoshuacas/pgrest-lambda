@@ -1,0 +1,42 @@
+{
+  "source": "Feature/ConcurrentSpec.hs",
+  "extractedCases": 1,
+  "skippedSites": 0,
+  "needsConfigCases": 0,
+  "cases": [
+    {
+      "id": "ConcurrentSpec:25",
+      "source": "Feature/ConcurrentSpec.hs",
+      "line": 25,
+      "category": "select",
+      "description": "should not raise 'transaction in progress' error",
+      "example": "ConcurrentSpec:it:23",
+      "request": {
+        "method": "GET",
+        "path": "/fakefake",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 404,
+        "body": {
+          "code": "PGRST205",
+          "details": null,
+          "hint": null,
+          "message": "Could not find the table 'public.fakefake' in the schema cache"
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [
+        "expected body: schema \"test.\" rewritten to \"public.\" (the DSQL fixtures load upstream's test schema into public)"
+      ],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    }
+  ]
+}

@@ -287,7 +287,10 @@ More targets are welcome &mdash; the pattern is in
 
 - [Configuration reference](./docs/configuration.md) &mdash; every config key and env var, plus secret-management patterns.
 - [Authorization guide](./docs/authorization.md) &mdash; Cedar policies with recipes and a syntax cheatsheet.
-- [RPC guide](./docs/rpc.md) &mdash; calling PostgreSQL functions from clients, with a section on how to do the same work on Aurora DSQL (which doesn't support RPC).
+- [RPC guide](./docs/rpc.md) &mdash; calling PostgreSQL functions from clients, with a section on Aurora DSQL, where RPC works for `LANGUAGE sql` functions and PL/pgSQL needs a substitute.
+- [Resource embedding reference](./docs/reference/embedding.md) &mdash; where relationships come from, the full embed syntax, and the error each mistake raises.
+- [Error codes](./docs/reference/errors.md) &mdash; every `PGRST*` code with its status, message, and cause.
+- [PostgREST compatibility](./docs/reference/postgrest-compatibility.md) &mdash; how much of upstream PostgREST's own test suite the engine passes, measured on a live Aurora DSQL cluster.
 - [AWS SAM deploy runbook](./deploy/aws-sam/README.md) &mdash; end-to-end live-on-AWS walkthrough.
 - [Changelog](./CHANGELOG.md) &mdash; what's shipped and what's coming.
 - [Agent integration guide](./AGENTS.md) &mdash; notes for AI coding agents working in this repo.

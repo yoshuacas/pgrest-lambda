@@ -1,0 +1,2305 @@
+{
+  "source": "Feature/Query/AggregateFunctionsSpec.hs",
+  "extractedCases": 46,
+  "skippedSites": 4,
+  "needsConfigCases": 4,
+  "cases": [
+    {
+      "id": "AggregateFunctionsSpec:17",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 17,
+      "category": "aggregates",
+      "description": "returns the count of all rows when no other fields are selected",
+      "example": "AggregateFunctionsSpec:it:16",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "select=count()",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "count": 4
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:20",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 20,
+      "category": "aggregates",
+      "description": "allows you to specify an alias for the count",
+      "example": "AggregateFunctionsSpec:it:19",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "select=cnt:count()",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "cnt": 4
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:23",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 23,
+      "category": "aggregates",
+      "description": "allows you to cast the result of the count",
+      "example": "AggregateFunctionsSpec:it:22",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "select=count()::text",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "count": "4"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:26",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 26,
+      "category": "aggregates",
+      "description": "returns the count grouped by all provided fields when other fields are selected",
+      "example": "AggregateFunctionsSpec:it:25",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "select=c:count(),client_id&order=client_id.desc",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "c": 1,
+            "client_id": null
+          },
+          {
+            "c": 2,
+            "client_id": 2
+          },
+          {
+            "c": 2,
+            "client_id": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:31",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 31,
+      "category": "aggregates",
+      "description": "returns the count of all rows when no other fields are selected",
+      "example": "AggregateFunctionsSpec:it:30",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "select=count",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "count": 4
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:34",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 34,
+      "category": "aggregates",
+      "description": "returns the embedded count of another resource",
+      "example": "AggregateFunctionsSpec:it:33",
+      "request": {
+        "method": "GET",
+        "path": "/clients",
+        "query": "select=name,projects(count)'",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Microsoft",
+            "projects": [
+              {
+                "count": 2
+              }
+            ]
+          },
+          {
+            "name": "Apple",
+            "projects": [
+              {
+                "count": 2
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:39",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 39,
+      "category": "aggregates",
+      "description": "supports sum()",
+      "example": "AggregateFunctionsSpec:it:38",
+      "request": {
+        "method": "GET",
+        "path": "/project_invoices",
+        "query": "select=invoice_total.sum()",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "sum": 8800
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:42",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 42,
+      "category": "aggregates",
+      "description": "supports avg()",
+      "example": "AggregateFunctionsSpec:it:41",
+      "request": {
+        "method": "GET",
+        "path": "/project_invoices",
+        "query": "select=invoice_total.avg()",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "avg": 1100
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:45",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 45,
+      "category": "aggregates",
+      "description": "supports min()",
+      "example": "AggregateFunctionsSpec:it:44",
+      "request": {
+        "method": "GET",
+        "path": "/project_invoices",
+        "query": "select=invoice_total.min()",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "min": 100
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:48",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 48,
+      "category": "aggregates",
+      "description": "supports max()",
+      "example": "AggregateFunctionsSpec:it:47",
+      "request": {
+        "method": "GET",
+        "path": "/project_invoices",
+        "query": "select=invoice_total.max()",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "max": 4000
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:51",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 51,
+      "category": "aggregates",
+      "description": "supports count()",
+      "example": "AggregateFunctionsSpec:it:50",
+      "request": {
+        "method": "GET",
+        "path": "/project_invoices",
+        "query": "select=invoice_total.count()",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "count": 8
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:54",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 54,
+      "category": "aggregates",
+      "description": "groups by any fields selected that do not have an aggregate applied",
+      "example": "AggregateFunctionsSpec:it:53",
+      "request": {
+        "method": "GET",
+        "path": "/project_invoices",
+        "query": "select=invoice_total.sum(),invoice_total.max(),invoice_total.min(),project_id&order=project_id.desc",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "sum": 4100,
+            "max": 4000,
+            "min": 100,
+            "project_id": 4
+          },
+          {
+            "sum": 3200,
+            "max": 2000,
+            "min": 1200,
+            "project_id": 3
+          },
+          {
+            "sum": 1200,
+            "max": 700,
+            "min": 500,
+            "project_id": 2
+          },
+          {
+            "sum": 300,
+            "max": 200,
+            "min": 100,
+            "project_id": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:62",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 62,
+      "category": "aggregates",
+      "description": "supports the use of aliases on fields that will be used in the group by",
+      "example": "AggregateFunctionsSpec:it:61",
+      "request": {
+        "method": "GET",
+        "path": "/project_invoices",
+        "query": "select=invoice_total.sum(),invoice_total.max(),invoice_total.min(),pid:project_id&order=project_id.desc",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "sum": 4100,
+            "max": 4000,
+            "min": 100,
+            "pid": 4
+          },
+          {
+            "sum": 3200,
+            "max": 2000,
+            "min": 1200,
+            "pid": 3
+          },
+          {
+            "sum": 1200,
+            "max": 700,
+            "min": 500,
+            "pid": 2
+          },
+          {
+            "sum": 300,
+            "max": 200,
+            "min": 100,
+            "pid": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:70",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 70,
+      "category": "aggregates",
+      "description": "allows you to specify an alias for the aggregate",
+      "example": "AggregateFunctionsSpec:it:69",
+      "request": {
+        "method": "GET",
+        "path": "/project_invoices",
+        "query": "select=total_charged:invoice_total.sum(),project_id&order=project_id.desc",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "total_charged": 4100,
+            "project_id": 4
+          },
+          {
+            "total_charged": 3200,
+            "project_id": 3
+          },
+          {
+            "total_charged": 1200,
+            "project_id": 2
+          },
+          {
+            "total_charged": 300,
+            "project_id": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:77",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 77,
+      "category": "aggregates",
+      "description": "allows you to cast the result of the aggregate",
+      "example": "AggregateFunctionsSpec:it:76",
+      "request": {
+        "method": "GET",
+        "path": "/project_invoices",
+        "query": "select=total_charged:invoice_total.sum()::text,project_id&order=project_id.desc",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "total_charged": "4100",
+            "project_id": 4
+          },
+          {
+            "total_charged": "3200",
+            "project_id": 3
+          },
+          {
+            "total_charged": "1200",
+            "project_id": 2
+          },
+          {
+            "total_charged": "300",
+            "project_id": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:84",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 84,
+      "category": "aggregates",
+      "description": "allows you to cast the input argument of the aggregate",
+      "example": "AggregateFunctionsSpec:it:83",
+      "request": {
+        "method": "GET",
+        "path": "/trash_details",
+        "query": "select=jsonb_col->>key::integer.sum()",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "sum": 24
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:87",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 87,
+      "category": "aggregates",
+      "description": "allows the combination of an alias, a before cast, and an after cast",
+      "example": "AggregateFunctionsSpec:it:86",
+      "request": {
+        "method": "GET",
+        "path": "/trash_details",
+        "query": "select=s:jsonb_col->>key::integer.sum()::text",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "s": "24"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:90",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 90,
+      "category": "aggregates",
+      "description": "supports use of aggregates on RPC functions that return table values",
+      "example": "AggregateFunctionsSpec:it:89",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/getallprojects",
+        "query": "select=id.max()",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "max": 5
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:93",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 93,
+      "category": "aggregates",
+      "description": "allows the use of an JSON-embedded relationship column as part of the group by",
+      "example": "AggregateFunctionsSpec:it:92",
+      "request": {
+        "method": "GET",
+        "path": "/project_invoices",
+        "query": "select=project_id,total:invoice_total.sum(),projects(name)&order=project_id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "project_id": 1,
+            "total": 300,
+            "projects": {
+              "name": "Windows 7"
+            }
+          },
+          {
+            "project_id": 2,
+            "total": 1200,
+            "projects": {
+              "name": "Windows 10"
+            }
+          },
+          {
+            "project_id": 3,
+            "total": 3200,
+            "projects": {
+              "name": "IOS"
+            }
+          },
+          {
+            "project_id": 4,
+            "total": 4100,
+            "projects": {
+              "name": "OSX"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:101",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 101,
+      "category": "aggregates",
+      "description": "supports sum()",
+      "example": "AggregateFunctionsSpec:it:100",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "select=name,project_invoices(invoice_total.sum())",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Windows 7",
+            "project_invoices": [
+              {
+                "sum": 300
+              }
+            ]
+          },
+          {
+            "name": "Windows 10",
+            "project_invoices": [
+              {
+                "sum": 1200
+              }
+            ]
+          },
+          {
+            "name": "IOS",
+            "project_invoices": [
+              {
+                "sum": 3200
+              }
+            ]
+          },
+          {
+            "name": "OSX",
+            "project_invoices": [
+              {
+                "sum": 4100
+              }
+            ]
+          },
+          {
+            "name": "Orphan",
+            "project_invoices": [
+              {
+                "sum": null
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:110",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 110,
+      "category": "aggregates",
+      "description": "supports max()",
+      "example": "AggregateFunctionsSpec:it:109",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "select=name,project_invoices(invoice_total.max())",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Windows 7",
+            "project_invoices": [
+              {
+                "max": 200
+              }
+            ]
+          },
+          {
+            "name": "Windows 10",
+            "project_invoices": [
+              {
+                "max": 700
+              }
+            ]
+          },
+          {
+            "name": "IOS",
+            "project_invoices": [
+              {
+                "max": 2000
+              }
+            ]
+          },
+          {
+            "name": "OSX",
+            "project_invoices": [
+              {
+                "max": 4000
+              }
+            ]
+          },
+          {
+            "name": "Orphan",
+            "project_invoices": [
+              {
+                "max": null
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:118",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 118,
+      "category": "aggregates",
+      "description": "supports avg()",
+      "example": "AggregateFunctionsSpec:it:117",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "select=name,project_invoices(invoice_total.avg())",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Windows 7",
+            "project_invoices": [
+              {
+                "avg": 150
+              }
+            ]
+          },
+          {
+            "name": "Windows 10",
+            "project_invoices": [
+              {
+                "avg": 600
+              }
+            ]
+          },
+          {
+            "name": "IOS",
+            "project_invoices": [
+              {
+                "avg": 1600
+              }
+            ]
+          },
+          {
+            "name": "OSX",
+            "project_invoices": [
+              {
+                "avg": 2050
+              }
+            ]
+          },
+          {
+            "name": "Orphan",
+            "project_invoices": [
+              {
+                "avg": null
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:126",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 126,
+      "category": "aggregates",
+      "description": "supports min()",
+      "example": "AggregateFunctionsSpec:it:125",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "select=name,project_invoices(invoice_total.min())",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Windows 7",
+            "project_invoices": [
+              {
+                "min": 100
+              }
+            ]
+          },
+          {
+            "name": "Windows 10",
+            "project_invoices": [
+              {
+                "min": 500
+              }
+            ]
+          },
+          {
+            "name": "IOS",
+            "project_invoices": [
+              {
+                "min": 1200
+              }
+            ]
+          },
+          {
+            "name": "OSX",
+            "project_invoices": [
+              {
+                "min": 100
+              }
+            ]
+          },
+          {
+            "name": "Orphan",
+            "project_invoices": [
+              {
+                "min": null
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:134",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 134,
+      "category": "aggregates",
+      "description": "supports all at once",
+      "example": "AggregateFunctionsSpec:it:133",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "select=name,project_invoices(invoice_total.max(),invoice_total.min(),invoice_total.avg(),invoice_total.sum(),invoice_total.count())",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Windows 7",
+            "project_invoices": [
+              {
+                "avg": 150,
+                "max": 200,
+                "min": 100,
+                "sum": 300,
+                "count": 2
+              }
+            ]
+          },
+          {
+            "name": "Windows 10",
+            "project_invoices": [
+              {
+                "avg": 600,
+                "max": 700,
+                "min": 500,
+                "sum": 1200,
+                "count": 2
+              }
+            ]
+          },
+          {
+            "name": "IOS",
+            "project_invoices": [
+              {
+                "avg": 1600,
+                "max": 2000,
+                "min": 1200,
+                "sum": 3200,
+                "count": 2
+              }
+            ]
+          },
+          {
+            "name": "OSX",
+            "project_invoices": [
+              {
+                "avg": 2050,
+                "max": 4000,
+                "min": 100,
+                "sum": 4100,
+                "count": 2
+              }
+            ]
+          },
+          {
+            "name": "Orphan",
+            "project_invoices": [
+              {
+                "avg": null,
+                "max": null,
+                "min": null,
+                "sum": null,
+                "count": 0
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:146",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 146,
+      "category": "aggregates",
+      "description": "supports the use of aggregates on spreaded fields",
+      "example": "AggregateFunctionsSpec:it:145",
+      "request": {
+        "method": "GET",
+        "path": "/budget_expenses",
+        "query": "select=total_expenses:expense_amount.sum(),...budget_categories(budget_owner,total_budget:budget_amount.sum())&order=budget_categories(budget_owner)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "total_expenses": 600.52,
+            "budget_owner": "Brian Smith",
+            "total_budget": 2000.42
+          },
+          {
+            "total_expenses": 100.22,
+            "budget_owner": "Jane Clarkson",
+            "total_budget": 7000.41
+          },
+          {
+            "total_expenses": 900.27,
+            "budget_owner": "Sally Hughes",
+            "total_budget": 500.23
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:153",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 153,
+      "category": "aggregates",
+      "description": "supports the use of aggregates on spreaded fields when only aggregates are supplied",
+      "example": "AggregateFunctionsSpec:it:152",
+      "request": {
+        "method": "GET",
+        "path": "/budget_expenses",
+        "query": "select=...budget_categories(total_budget:budget_amount.sum())",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "total_budget": 9501.06
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:157",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 157,
+      "category": "aggregates",
+      "description": "supports aggregates from a spread relationships grouped by spreaded fields from other relationships",
+      "example": "AggregateFunctionsSpec:it:156",
+      "request": {
+        "method": "GET",
+        "path": "/processes",
+        "query": "select=...process_costs(cost.sum()),...process_categories(name)&order=process_categories(name)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "sum": 400,
+            "name": "Batch"
+          },
+          {
+            "sum": 350,
+            "name": "Mass"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:162",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 162,
+      "category": "aggregates",
+      "description": "supports aggregates from a spread relationships grouped by spreaded fields from other relationships",
+      "example": "AggregateFunctionsSpec:it:156",
+      "request": {
+        "method": "GET",
+        "path": "/processes",
+        "query": "select=...process_costs(cost_sum:cost.sum()),...process_categories(category:name)&order=process_categories(category)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "cost_sum": 400,
+            "category": "Batch"
+          },
+          {
+            "cost_sum": 350,
+            "category": "Mass"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:168",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 168,
+      "category": "aggregates",
+      "description": "supports aggregates on spreaded fields from nested relationships",
+      "example": "AggregateFunctionsSpec:it:167",
+      "request": {
+        "method": "GET",
+        "path": "/process_supervisor",
+        "query": "select=...processes(factory_id,...process_costs(cost.sum()))&order=processes(factory_id).desc",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "factory_id": 3,
+            "sum": 110
+          },
+          {
+            "factory_id": 2,
+            "sum": 500
+          },
+          {
+            "factory_id": 1,
+            "sum": 350
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:174",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 174,
+      "category": "aggregates",
+      "description": "supports aggregates on spreaded fields from nested relationships",
+      "example": "AggregateFunctionsSpec:it:167",
+      "request": {
+        "method": "GET",
+        "path": "/process_supervisor",
+        "query": "select=...processes(factory_id,...process_costs(cost_sum:cost.sum()))&order=processes(factory_id).desc",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "factory_id": 3,
+            "cost_sum": 110
+          },
+          {
+            "factory_id": 2,
+            "cost_sum": 500
+          },
+          {
+            "factory_id": 1,
+            "cost_sum": 350
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:181",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 181,
+      "category": "aggregates",
+      "description": "supports aggregates on spreaded fields from nested relationships, grouped by a regular nested relationship",
+      "example": "AggregateFunctionsSpec:it:180",
+      "request": {
+        "method": "GET",
+        "path": "/process_supervisor",
+        "query": "select=...processes(factories(name),...process_costs(cost.sum()))",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "factories": {
+              "name": "Factory A"
+            },
+            "sum": 350
+          },
+          {
+            "factories": {
+              "name": "Factory B"
+            },
+            "sum": 500
+          },
+          {
+            "factories": {
+              "name": "Factory C"
+            },
+            "sum": 110
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:187",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 187,
+      "category": "aggregates",
+      "description": "supports aggregates on spreaded fields from nested relationships, grouped by a regular nested relationship",
+      "example": "AggregateFunctionsSpec:it:180",
+      "request": {
+        "method": "GET",
+        "path": "/process_supervisor",
+        "query": "select=...processes(factory:factories(name),...process_costs(cost_sum:cost.sum()))",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "factory": {
+              "name": "Factory A"
+            },
+            "cost_sum": 350
+          },
+          {
+            "factory": {
+              "name": "Factory B"
+            },
+            "cost_sum": 500
+          },
+          {
+            "factory": {
+              "name": "Factory C"
+            },
+            "cost_sum": 110
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:194",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 194,
+      "category": "aggregates",
+      "description": "supports aggregates on spreaded fields from nested relationships, grouped by spreaded fields from other nested relationships",
+      "example": "AggregateFunctionsSpec:it:193",
+      "request": {
+        "method": "GET",
+        "path": "/process_supervisor",
+        "query": "select=supervisor_id,...processes(...process_costs(cost.sum()),...process_categories(name))&order=supervisor_id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "supervisor_id": 1,
+            "sum": 220,
+            "name": "Batch"
+          },
+          {
+            "supervisor_id": 2,
+            "sum": 70,
+            "name": "Batch"
+          },
+          {
+            "supervisor_id": 2,
+            "sum": 200,
+            "name": "Mass"
+          },
+          {
+            "supervisor_id": 3,
+            "sum": 180,
+            "name": "Batch"
+          },
+          {
+            "supervisor_id": 3,
+            "sum": 110,
+            "name": "Mass"
+          },
+          {
+            "supervisor_id": 4,
+            "sum": 180,
+            "name": "Batch"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:203",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 203,
+      "category": "aggregates",
+      "description": "supports aggregates on spreaded fields from nested relationships, grouped by spreaded fields from other nested relationships",
+      "example": "AggregateFunctionsSpec:it:193",
+      "request": {
+        "method": "GET",
+        "path": "/process_supervisor",
+        "query": "select=supervisor_id,...processes(...process_costs(cost_sum:cost.sum()),...process_categories(category:name))&order=supervisor_id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "supervisor_id": 1,
+            "cost_sum": 220,
+            "category": "Batch"
+          },
+          {
+            "supervisor_id": 2,
+            "cost_sum": 70,
+            "category": "Batch"
+          },
+          {
+            "supervisor_id": 2,
+            "cost_sum": 200,
+            "category": "Mass"
+          },
+          {
+            "supervisor_id": 3,
+            "cost_sum": 180,
+            "category": "Batch"
+          },
+          {
+            "supervisor_id": 3,
+            "cost_sum": 110,
+            "category": "Mass"
+          },
+          {
+            "supervisor_id": 4,
+            "cost_sum": 180,
+            "category": "Batch"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:213",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 213,
+      "category": "aggregates",
+      "description": "supports aggregates on spreaded fields from nested relationships, grouped by spreaded fields from other nested relationships, using a nested relationship as top parent",
+      "example": "AggregateFunctionsSpec:it:212",
+      "request": {
+        "method": "GET",
+        "path": "/supervisors",
+        "query": "select=name,process_supervisor(...processes(...process_costs(cost.sum()),...process_categories(name)))",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Mary",
+            "process_supervisor": [
+              {
+                "name": "Batch",
+                "sum": 220
+              }
+            ]
+          },
+          {
+            "name": "John",
+            "process_supervisor": [
+              {
+                "name": "Batch",
+                "sum": 70
+              },
+              {
+                "name": "Mass",
+                "sum": 200
+              }
+            ]
+          },
+          {
+            "name": "Peter",
+            "process_supervisor": [
+              {
+                "name": "Batch",
+                "sum": 180
+              },
+              {
+                "name": "Mass",
+                "sum": 110
+              }
+            ]
+          },
+          {
+            "name": "Sarah",
+            "process_supervisor": [
+              {
+                "name": "Batch",
+                "sum": 180
+              }
+            ]
+          },
+          {
+            "name": "Jane",
+            "process_supervisor": []
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:221",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 221,
+      "category": "aggregates",
+      "description": "supports aggregates on spreaded fields from nested relationships, grouped by spreaded fields from other nested relationships, using a nested relationship as top parent",
+      "example": "AggregateFunctionsSpec:it:212",
+      "request": {
+        "method": "GET",
+        "path": "/supervisors",
+        "query": "select=name,process_supervisor(...processes(...process_costs(cost_sum:cost.sum()),...process_categories(category:name)))",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Mary",
+            "process_supervisor": [
+              {
+                "category": "Batch",
+                "cost_sum": 220
+              }
+            ]
+          },
+          {
+            "name": "John",
+            "process_supervisor": [
+              {
+                "category": "Batch",
+                "cost_sum": 70
+              },
+              {
+                "category": "Mass",
+                "cost_sum": 200
+              }
+            ]
+          },
+          {
+            "name": "Peter",
+            "process_supervisor": [
+              {
+                "category": "Batch",
+                "cost_sum": 180
+              },
+              {
+                "category": "Mass",
+                "cost_sum": 110
+              }
+            ]
+          },
+          {
+            "name": "Sarah",
+            "process_supervisor": [
+              {
+                "category": "Batch",
+                "cost_sum": 180
+              }
+            ]
+          },
+          {
+            "name": "Jane",
+            "process_supervisor": []
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:232",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 232,
+      "category": "aggregates",
+      "description": "works by itself in the embedded resource",
+      "example": "AggregateFunctionsSpec:it:231",
+      "request": {
+        "method": "GET",
+        "path": "/process_supervisor",
+        "query": "select=supervisor_id,...processes(count())&order=supervisor_id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "supervisor_id": 1,
+            "count": 2
+          },
+          {
+            "supervisor_id": 2,
+            "count": 2
+          },
+          {
+            "supervisor_id": 3,
+            "count": 3
+          },
+          {
+            "supervisor_id": 4,
+            "count": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:239",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 239,
+      "category": "aggregates",
+      "description": "works by itself in the embedded resource",
+      "example": "AggregateFunctionsSpec:it:231",
+      "request": {
+        "method": "GET",
+        "path": "/process_supervisor",
+        "query": "select=supervisor_id,...processes(processes_count:count())&order=supervisor_id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "supervisor_id": 1,
+            "processes_count": 2
+          },
+          {
+            "supervisor_id": 2,
+            "processes_count": 2
+          },
+          {
+            "supervisor_id": 3,
+            "processes_count": 3
+          },
+          {
+            "supervisor_id": 4,
+            "processes_count": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:247",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 247,
+      "category": "aggregates",
+      "description": "works alongside other columns in the embedded resource",
+      "example": "AggregateFunctionsSpec:it:246",
+      "request": {
+        "method": "GET",
+        "path": "/process_supervisor",
+        "query": "select=...supervisors(id,count())&order=supervisors(id)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "count": 2
+          },
+          {
+            "id": 2,
+            "count": 2
+          },
+          {
+            "id": 3,
+            "count": 3
+          },
+          {
+            "id": 4,
+            "count": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:254",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 254,
+      "category": "aggregates",
+      "description": "works alongside other columns in the embedded resource",
+      "example": "AggregateFunctionsSpec:it:246",
+      "request": {
+        "method": "GET",
+        "path": "/process_supervisor",
+        "query": "select=...supervisors(supervisor:id,supervisor_count:count())&order=supervisors(supervisor)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "supervisor": 1,
+            "supervisor_count": 2
+          },
+          {
+            "supervisor": 2,
+            "supervisor_count": 2
+          },
+          {
+            "supervisor": 3,
+            "supervisor_count": 3
+          },
+          {
+            "supervisor": 4,
+            "supervisor_count": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:262",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 262,
+      "category": "aggregates",
+      "description": "works on nested resources",
+      "example": "AggregateFunctionsSpec:it:261",
+      "request": {
+        "method": "GET",
+        "path": "/process_supervisor",
+        "query": "select=supervisor_id,...processes(...process_costs(count()))&order=supervisor_id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "supervisor_id": 1,
+            "count": 2
+          },
+          {
+            "supervisor_id": 2,
+            "count": 2
+          },
+          {
+            "supervisor_id": 3,
+            "count": 3
+          },
+          {
+            "supervisor_id": 4,
+            "count": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:269",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 269,
+      "category": "aggregates",
+      "description": "works on nested resources",
+      "example": "AggregateFunctionsSpec:it:261",
+      "request": {
+        "method": "GET",
+        "path": "/process_supervisor",
+        "query": "select=supervisor:supervisor_id,...processes(...process_costs(process_costs_count:count()))&order=supervisor_id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "supervisor": 1,
+            "process_costs_count": 2
+          },
+          {
+            "supervisor": 2,
+            "process_costs_count": 2
+          },
+          {
+            "supervisor": 3,
+            "process_costs_count": 3
+          },
+          {
+            "supervisor": 4,
+            "process_costs_count": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:277",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 277,
+      "category": "aggregates",
+      "description": "works on nested resources grouped by spreaded fields",
+      "example": "AggregateFunctionsSpec:it:276",
+      "request": {
+        "method": "GET",
+        "path": "/process_supervisor",
+        "query": "select=...processes(factory_id,...process_costs(count()))&order=processes(factory_id)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "factory_id": 1,
+            "count": 2
+          },
+          {
+            "factory_id": 2,
+            "count": 4
+          },
+          {
+            "factory_id": 3,
+            "count": 2
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:283",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 283,
+      "category": "aggregates",
+      "description": "works on nested resources grouped by spreaded fields",
+      "example": "AggregateFunctionsSpec:it:276",
+      "request": {
+        "method": "GET",
+        "path": "/process_supervisor",
+        "query": "select=...processes(factory:factory_id,...process_costs(process_costs_count:count()))&order=processes(factory)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "factory": 1,
+            "process_costs_count": 2
+          },
+          {
+            "factory": 2,
+            "process_costs_count": 4
+          },
+          {
+            "factory": 3,
+            "process_costs_count": 2
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:290",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 290,
+      "category": "aggregates",
+      "description": "works on different levels of the nested resources at the same time",
+      "example": "AggregateFunctionsSpec:it:289",
+      "request": {
+        "method": "GET",
+        "path": "/process_supervisor",
+        "query": "select=...processes(factory:factory_id,processes_count:count(),...process_costs(process_costs_count:count()))&order=processes(factory)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "factory": 1,
+            "processes_count": 2,
+            "process_costs_count": 2
+          },
+          {
+            "factory": 2,
+            "processes_count": 4,
+            "process_costs_count": 4
+          },
+          {
+            "factory": 3,
+            "processes_count": 2,
+            "process_costs_count": 2
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:299",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 299,
+      "category": "aggregates",
+      "description": "does not support the use of aggregates",
+      "example": "AggregateFunctionsSpec:it:298",
+      "request": {
+        "method": "GET",
+        "path": "/factories",
+        "query": "select=name,...factory_buildings(type,size.sum())",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "code": "PGRST127",
+          "message": "Feature not implemented",
+          "details": "Aggregates are not implemented for one-to-many or many-to-many spreads.",
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "AggregateFunctionsSpec:313",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 313,
+      "category": "aggregates",
+      "description": "prevents the use of aggregates",
+      "example": "AggregateFunctionsSpec:it:312",
+      "request": {
+        "method": "GET",
+        "path": "/project_invoices",
+        "query": "select=invoice_total.sum()",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "hint": null,
+          "details": null,
+          "code": "PGRST123",
+          "message": "Use of aggregate functions is not allowed"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "asserts the behaviour of a PostgREST feature that is off by default and the engine has no switch for (db-aggregates-enabled)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "AggregateFunctionsSpec:324",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 324,
+      "category": "aggregates",
+      "description": "prevents the use of aggregates on embedded relationships",
+      "example": "AggregateFunctionsSpec:it:323",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "select=name,project_invoices(invoice_total.sum())",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "hint": null,
+          "details": null,
+          "code": "PGRST123",
+          "message": "Use of aggregate functions is not allowed"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "asserts the behaviour of a PostgREST feature that is off by default and the engine has no switch for (db-aggregates-enabled)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "AggregateFunctionsSpec:335",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 335,
+      "category": "aggregates",
+      "description": "prevents the use of aggregates on to-one spread embeds",
+      "example": "AggregateFunctionsSpec:it:334",
+      "request": {
+        "method": "GET",
+        "path": "/project_invoices",
+        "query": "select=...projects(id.count())",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "hint": null,
+          "details": null,
+          "code": "PGRST123",
+          "message": "Use of aggregate functions is not allowed"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "asserts the behaviour of a PostgREST feature that is off by default and the engine has no switch for (db-aggregates-enabled)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "AggregateFunctionsSpec:346",
+      "source": "Feature/Query/AggregateFunctionsSpec.hs",
+      "line": 346,
+      "category": "aggregates",
+      "description": "prevents the use of aggregates on to-many spread embeds",
+      "example": "AggregateFunctionsSpec:it:345",
+      "request": {
+        "method": "GET",
+        "path": "/factories",
+        "query": "select=...processes(id.count())",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "hint": null,
+          "details": null,
+          "code": "PGRST123",
+          "message": "Use of aggregate functions is not allowed"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "asserts the behaviour of a PostgREST feature that is off by default and the engine has no switch for (db-aggregates-enabled)",
+      "skipClass": "needs-engine-config"
+    }
+  ]
+}

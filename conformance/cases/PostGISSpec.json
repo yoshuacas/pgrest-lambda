@@ -1,0 +1,779 @@
+{
+  "source": "Feature/Query/PostGISSpec.hs",
+  "extractedCases": 0,
+  "skippedSites": 13,
+  "needsConfigCases": 13,
+  "cases": [
+    {
+      "id": "PostGISSpec:17",
+      "source": "Feature/Query/PostGISSpec.hs",
+      "line": 17,
+      "category": "media-types",
+      "description": "works for a table that has a geometry column",
+      "example": "PostGISSpec:it:16",
+      "request": {
+        "method": "GET",
+        "path": "/shops",
+        "query": "",
+        "headers": {
+          "Accept": "application/geo+json"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "type": "FeatureCollection",
+          "features": [
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Point",
+                "coordinates": [
+                  -71.10044,
+                  42.373695
+                ]
+              },
+              "properties": {
+                "id": 1,
+                "address": "1369 Cambridge St"
+              }
+            },
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Point",
+                "coordinates": [
+                  -71.10543,
+                  42.366432
+                ]
+              },
+              "properties": {
+                "id": 2,
+                "address": "757 Massachusetts Ave"
+              }
+            },
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Point",
+                "coordinates": [
+                  -71.081924,
+                  42.36437
+                ]
+              },
+              "properties": {
+                "id": 3,
+                "address": "605 W Kendall St"
+              }
+            }
+          ]
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/geo+json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbExtraSearchPath)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "PostGISSpec:29",
+      "source": "Feature/Query/PostGISSpec.hs",
+      "line": 29,
+      "category": "media-types",
+      "description": "fails for a table that doesn't have a geometry column",
+      "example": "PostGISSpec:it:28",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "",
+        "headers": {
+          "Accept": "application/geo+json"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "hint": null,
+          "details": null,
+          "code": "22023",
+          "message": "geometry column is missing"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbExtraSearchPath)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "PostGISSpec:37",
+      "source": "Feature/Query/PostGISSpec.hs",
+      "line": 37,
+      "category": "media-types",
+      "description": "gives an empty features array on no rows",
+      "example": "PostGISSpec:it:36",
+      "request": {
+        "method": "GET",
+        "path": "/shops",
+        "query": "id=gt.3",
+        "headers": {
+          "Accept": "application/geo+json"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "type": "FeatureCollection",
+          "features": []
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/geo+json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbExtraSearchPath)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "PostGISSpec:45",
+      "source": "Feature/Query/PostGISSpec.hs",
+      "line": 45,
+      "category": "media-types",
+      "description": "must include the geometry column when using ?select",
+      "example": "PostGISSpec:it:44",
+      "request": {
+        "method": "GET",
+        "path": "/shops",
+        "query": "select=id,shop_geom&id=eq.1",
+        "headers": {
+          "Accept": "application/geo+json"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "type": "FeatureCollection",
+          "features": [
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Point",
+                "coordinates": [
+                  -71.10044,
+                  42.373695
+                ]
+              },
+              "properties": {
+                "id": 1
+              }
+            }
+          ]
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/geo+json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbExtraSearchPath)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "PostGISSpec:55",
+      "source": "Feature/Query/PostGISSpec.hs",
+      "line": 55,
+      "category": "media-types",
+      "description": "works with resource embedding",
+      "example": "PostGISSpec:it:54",
+      "request": {
+        "method": "GET",
+        "path": "/shops",
+        "query": "select=*,shop_bles(*)&id=eq.1",
+        "headers": {
+          "Accept": "application/geo+json"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "type": "FeatureCollection",
+          "features": [
+            {
+              "type": "Feature",
+              "geometry": {
+                "coordinates": [
+                  -71.10044,
+                  42.373695
+                ],
+                "type": "Point"
+              },
+              "properties": {
+                "address": "1369 Cambridge St",
+                "id": 1,
+                "shop_bles": [
+                  {
+                    "id": 1,
+                    "name": "Beacon-1",
+                    "shop_id": 1,
+                    "coords": {
+                      "coordinates": [
+                        -71.10044,
+                        42.373695
+                      ],
+                      "crs": {
+                        "properties": {
+                          "name": "EPSG:4326"
+                        },
+                        "type": "name"
+                      },
+                      "type": "Point"
+                    },
+                    "range_area": {
+                      "coordinates": [
+                        [
+                          [
+                            -71.10045254230499,
+                            42.37387083326593
+                          ],
+                          [
+                            -71.10048070549963,
+                            42.37377126199953
+                          ],
+                          [
+                            -71.10039688646793,
+                            42.37375838212269
+                          ],
+                          [
+                            -71.10037006437777,
+                            42.37385844878863
+                          ],
+                          [
+                            -71.10045254230499,
+                            42.37387083326593
+                          ]
+                        ]
+                      ],
+                      "crs": {
+                        "properties": {
+                          "name": "EPSG:4326"
+                        },
+                        "type": "name"
+                      },
+                      "type": "Polygon"
+                    }
+                  },
+                  {
+                    "coords": {
+                      "coordinates": [
+                        -71.10044,
+                        42.373695
+                      ],
+                      "crs": {
+                        "properties": {
+                          "name": "EPSG:4326"
+                        },
+                        "type": "name"
+                      },
+                      "type": "Point"
+                    },
+                    "id": 2,
+                    "name": "Beacon-2",
+                    "shop_id": 1,
+                    "range_area": {
+                      "coordinates": [
+                        [
+                          [
+                            -71.10034391283989,
+                            42.37385299961788
+                          ],
+                          [
+                            -71.10036939382553,
+                            42.373756895982865
+                          ],
+                          [
+                            -71.1002916097641,
+                            42.373745997623224
+                          ],
+                          [
+                            -71.1002641171217,
+                            42.37384408279195
+                          ],
+                          [
+                            -71.10034391283989,
+                            42.37385299961788
+                          ]
+                        ]
+                      ],
+                      "crs": {
+                        "properties": {
+                          "name": "EPSG:4326"
+                        },
+                        "type": "name"
+                      },
+                      "type": "Polygon"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/geo+json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbExtraSearchPath)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "PostGISSpec:86",
+      "source": "Feature/Query/PostGISSpec.hs",
+      "line": 86,
+      "category": "media-types",
+      "description": "works with RPC",
+      "example": "PostGISSpec:it:85",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/get_shop",
+        "query": "id=1",
+        "headers": {
+          "Accept": "application/geo+json"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "type": "FeatureCollection",
+          "features": [
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Point",
+                "coordinates": [
+                  -71.10044,
+                  42.373695
+                ]
+              },
+              "properties": {
+                "id": 1,
+                "address": "1369 Cambridge St"
+              }
+            }
+          ]
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/geo+json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbExtraSearchPath)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "PostGISSpec:97",
+      "source": "Feature/Query/PostGISSpec.hs",
+      "line": 97,
+      "category": "media-types",
+      "description": "works with Prefer: return=representation after POST",
+      "example": "PostGISSpec:it:96",
+      "request": {
+        "method": "POST",
+        "path": "/shops",
+        "query": "",
+        "headers": {
+          "Accept": "application/geo+json",
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "id": 4,
+          "address": "1354 Massachusetts Ave",
+          "shop_geom": "SRID=4326;POINT(-71.11834 42.373238)"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": {
+          "type": "FeatureCollection",
+          "features": [
+            {
+              "type": "Feature",
+              "geometry": {
+                "coordinates": [
+                  -71.11834,
+                  42.373238
+                ],
+                "type": "Point"
+              },
+              "properties": {
+                "address": "1354 Massachusetts Ave",
+                "id": 4
+              }
+            }
+          ]
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/geo+json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbExtraSearchPath)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "PostGISSpec:116",
+      "source": "Feature/Query/PostGISSpec.hs",
+      "line": 116,
+      "category": "media-types",
+      "description": "works with Prefer: return=representation after PATCH",
+      "example": "PostGISSpec:it:115",
+      "request": {
+        "method": "PATCH",
+        "path": "/shops",
+        "query": "id=eq.3",
+        "headers": {
+          "Accept": "application/geo+json",
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "address": "1354 Massachusetts Avenue"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "type": "FeatureCollection",
+          "features": [
+            {
+              "type": "Feature",
+              "geometry": {
+                "coordinates": [
+                  -71.081924,
+                  42.36437
+                ],
+                "type": "Point"
+              },
+              "properties": {
+                "address": "1354 Massachusetts Avenue",
+                "id": 3
+              }
+            }
+          ]
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/geo+json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbExtraSearchPath)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "PostGISSpec:135",
+      "source": "Feature/Query/PostGISSpec.hs",
+      "line": 135,
+      "category": "media-types",
+      "description": "works with Prefer: return=representation after PUT",
+      "example": "PostGISSpec:it:134",
+      "request": {
+        "method": "PUT",
+        "path": "/shops",
+        "query": "id=eq.3",
+        "headers": {
+          "Accept": "application/geo+json",
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "id": 3,
+          "address": "1354 Massachusetts Avenue"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "type": "FeatureCollection",
+          "features": [
+            {
+              "type": "Feature",
+              "geometry": {
+                "coordinates": [
+                  -71.081924,
+                  42.36437
+                ],
+                "type": "Point"
+              },
+              "properties": {
+                "address": "1354 Massachusetts Avenue",
+                "id": 3
+              }
+            }
+          ]
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/geo+json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbExtraSearchPath)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "PostGISSpec:154",
+      "source": "Feature/Query/PostGISSpec.hs",
+      "line": 154,
+      "category": "media-types",
+      "description": "works with Prefer: return=representation after DELETE",
+      "example": "PostGISSpec:it:153",
+      "request": {
+        "method": "DELETE",
+        "path": "/shops",
+        "query": "id=eq.3",
+        "headers": {
+          "Accept": "application/geo+json",
+          "Prefer": "return=representation"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "type": "FeatureCollection",
+          "features": [
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Point",
+                "coordinates": [
+                  -71.081924,
+                  42.36437
+                ]
+              },
+              "properties": {
+                "id": 3,
+                "address": "605 W Kendall St"
+              }
+            }
+          ]
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/geo+json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbExtraSearchPath)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "PostGISSpec:168",
+      "source": "Feature/Query/PostGISSpec.hs",
+      "line": 168,
+      "category": "media-types",
+      "description": "can select the geometry column to get as a feature with ?select",
+      "example": "PostGISSpec:it:167",
+      "request": {
+        "method": "GET",
+        "path": "/shop_bles",
+        "query": "select=id,name,coords&id=eq.1",
+        "headers": {
+          "Accept": "application/geo+json"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "type": "FeatureCollection",
+          "features": [
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Point",
+                "coordinates": [
+                  -71.10044,
+                  42.373695
+                ]
+              },
+              "properties": {
+                "id": 1,
+                "name": "Beacon-1"
+              }
+            }
+          ]
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/geo+json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbExtraSearchPath)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "PostGISSpec:180",
+      "source": "Feature/Query/PostGISSpec.hs",
+      "line": 180,
+      "category": "media-types",
+      "description": "can select the geometry column to get as a feature with ?select",
+      "example": "PostGISSpec:it:167",
+      "request": {
+        "method": "GET",
+        "path": "/shop_bles",
+        "query": "select=id,name,range_area&id=eq.1",
+        "headers": {
+          "Accept": "application/geo+json"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "type": "FeatureCollection",
+          "features": [
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                  [
+                    [
+                      -71.100452542,
+                      42.373870833
+                    ],
+                    [
+                      -71.100480705,
+                      42.373771262
+                    ],
+                    [
+                      -71.100396886,
+                      42.373758382
+                    ],
+                    [
+                      -71.100370064,
+                      42.373858449
+                    ],
+                    [
+                      -71.100452542,
+                      42.373870833
+                    ]
+                  ]
+                ]
+              },
+              "properties": {
+                "id": 1,
+                "name": "Beacon-1"
+              }
+            }
+          ]
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/geo+json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbExtraSearchPath)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "PostGISSpec:192",
+      "source": "Feature/Query/PostGISSpec.hs",
+      "line": 192,
+      "category": "media-types",
+      "description": "gets the geojson geometry object with the regular application/json output",
+      "example": "PostGISSpec:it:191",
+      "request": {
+        "method": "GET",
+        "path": "/shops",
+        "query": "id=eq.1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "address": "1369 Cambridge St",
+            "shop_geom": {
+              "type": "Point",
+              "crs": {
+                "type": "name",
+                "properties": {
+                  "name": "EPSG:4326"
+                }
+              },
+              "coordinates": [
+                -71.10044,
+                42.373695
+              ]
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbExtraSearchPath)",
+      "skipClass": "needs-engine-config"
+    }
+  ]
+}

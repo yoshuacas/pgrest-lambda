@@ -1,0 +1,1572 @@
+{
+  "source": "Feature/Query/RelatedQueriesSpec.hs",
+  "extractedCases": 36,
+  "skippedSites": 0,
+  "needsConfigCases": 0,
+  "cases": [
+    {
+      "id": "RelatedQueriesSpec:15",
+      "source": "Feature/Query/RelatedQueriesSpec.hs",
+      "line": 15,
+      "category": "embedding",
+      "description": "works on a many-to-one relationship",
+      "example": "RelatedQueriesSpec:it:14",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "select=id,clients(name)&order=clients(name).nullsfirst",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 5,
+            "clients": null
+          },
+          {
+            "id": 3,
+            "clients": {
+              "name": "Apple"
+            }
+          },
+          {
+            "id": 4,
+            "clients": {
+              "name": "Apple"
+            }
+          },
+          {
+            "id": 1,
+            "clients": {
+              "name": "Microsoft"
+            }
+          },
+          {
+            "id": 2,
+            "clients": {
+              "name": "Microsoft"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RelatedQueriesSpec:25",
+      "source": "Feature/Query/RelatedQueriesSpec.hs",
+      "line": 25,
+      "category": "embedding",
+      "description": "works on a many-to-one relationship",
+      "example": "RelatedQueriesSpec:it:14",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "select=id,client:clients(name)&order=client(name).asc",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 3,
+            "client": {
+              "name": "Apple"
+            }
+          },
+          {
+            "id": 4,
+            "client": {
+              "name": "Apple"
+            }
+          },
+          {
+            "id": 1,
+            "client": {
+              "name": "Microsoft"
+            }
+          },
+          {
+            "id": 2,
+            "client": {
+              "name": "Microsoft"
+            }
+          },
+          {
+            "id": 5,
+            "client": null
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RelatedQueriesSpec:35",
+      "source": "Feature/Query/RelatedQueriesSpec.hs",
+      "line": 35,
+      "category": "embedding",
+      "description": "works on a many-to-one relationship",
+      "example": "RelatedQueriesSpec:it:14",
+      "request": {
+        "method": "GET",
+        "path": "/videogames",
+        "query": "select=id,computed_designers(id)&order=computed_designers(id).desc",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 3,
+            "computed_designers": {
+              "id": 2
+            }
+          },
+          {
+            "id": 4,
+            "computed_designers": {
+              "id": 2
+            }
+          },
+          {
+            "id": 1,
+            "computed_designers": {
+              "id": 1
+            }
+          },
+          {
+            "id": 2,
+            "computed_designers": {
+              "id": 1
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RelatedQueriesSpec:47",
+      "source": "Feature/Query/RelatedQueriesSpec.hs",
+      "line": 47,
+      "category": "embedding",
+      "description": "works on a one-to-one relationship and jsonb column",
+      "example": "RelatedQueriesSpec:it:46",
+      "request": {
+        "method": "GET",
+        "path": "/trash",
+        "query": "select=id,trash_details(id,jsonb_col)&order=trash_details(jsonb_col->key).asc",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 2,
+            "trash_details": {
+              "id": 2,
+              "jsonb_col": {
+                "key": 6
+              }
+            }
+          },
+          {
+            "id": 3,
+            "trash_details": {
+              "id": 3,
+              "jsonb_col": {
+                "key": 8
+              }
+            }
+          },
+          {
+            "id": 1,
+            "trash_details": {
+              "id": 1,
+              "jsonb_col": {
+                "key": 10
+              }
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RelatedQueriesSpec:56",
+      "source": "Feature/Query/RelatedQueriesSpec.hs",
+      "line": 56,
+      "category": "embedding",
+      "description": "works on a one-to-one relationship and jsonb column",
+      "example": "RelatedQueriesSpec:it:46",
+      "request": {
+        "method": "GET",
+        "path": "/trash",
+        "query": "select=id,trash_details(id,jsonb_col)&order=trash_details(jsonb_col->key).desc",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "trash_details": {
+              "id": 1,
+              "jsonb_col": {
+                "key": 10
+              }
+            }
+          },
+          {
+            "id": 3,
+            "trash_details": {
+              "id": 3,
+              "jsonb_col": {
+                "key": 8
+              }
+            }
+          },
+          {
+            "id": 2,
+            "trash_details": {
+              "id": 2,
+              "jsonb_col": {
+                "key": 6
+              }
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RelatedQueriesSpec:67",
+      "source": "Feature/Query/RelatedQueriesSpec.hs",
+      "line": 67,
+      "category": "embedding",
+      "description": "works on an embedded resource",
+      "example": "RelatedQueriesSpec:it:66",
+      "request": {
+        "method": "GET",
+        "path": "/users",
+        "query": "select=name,tasks(id,name,projects(id,name))&tasks.order=projects(id).desc&limit=1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Angela Martin",
+            "tasks": [
+              {
+                "id": 3,
+                "name": "Design w10",
+                "projects": {
+                  "id": 2,
+                  "name": "Windows 10"
+                }
+              },
+              {
+                "id": 4,
+                "name": "Code w10",
+                "projects": {
+                  "id": 2,
+                  "name": "Windows 10"
+                }
+              },
+              {
+                "id": 1,
+                "name": "Design w7",
+                "projects": {
+                  "id": 1,
+                  "name": "Windows 7"
+                }
+              },
+              {
+                "id": 2,
+                "name": "Code w7",
+                "projects": {
+                  "id": 1,
+                  "name": "Windows 7"
+                }
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RelatedQueriesSpec:80",
+      "source": "Feature/Query/RelatedQueriesSpec.hs",
+      "line": 80,
+      "category": "embedding",
+      "description": "works on an embedded resource",
+      "example": "RelatedQueriesSpec:it:66",
+      "request": {
+        "method": "GET",
+        "path": "/users",
+        "query": "select=name,tasks(id,name,projects(id,name))&tasks.order=projects(id).desc,name&limit=1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Angela Martin",
+            "tasks": [
+              {
+                "id": 4,
+                "name": "Code w10",
+                "projects": {
+                  "id": 2,
+                  "name": "Windows 10"
+                }
+              },
+              {
+                "id": 3,
+                "name": "Design w10",
+                "projects": {
+                  "id": 2,
+                  "name": "Windows 10"
+                }
+              },
+              {
+                "id": 2,
+                "name": "Code w7",
+                "projects": {
+                  "id": 1,
+                  "name": "Windows 7"
+                }
+              },
+              {
+                "id": 1,
+                "name": "Design w7",
+                "projects": {
+                  "id": 1,
+                  "name": "Windows 7"
+                }
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RelatedQueriesSpec:93",
+      "source": "Feature/Query/RelatedQueriesSpec.hs",
+      "line": 93,
+      "category": "embedding",
+      "description": "works on an embedded resource",
+      "example": "RelatedQueriesSpec:it:66",
+      "request": {
+        "method": "GET",
+        "path": "/users",
+        "query": "select=name,tasks(id,name,projects(id,name))&tasks.order=projects(id).asc&limit=1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Angela Martin",
+            "tasks": [
+              {
+                "id": 1,
+                "name": "Design w7",
+                "projects": {
+                  "id": 1,
+                  "name": "Windows 7"
+                }
+              },
+              {
+                "id": 2,
+                "name": "Code w7",
+                "projects": {
+                  "id": 1,
+                  "name": "Windows 7"
+                }
+              },
+              {
+                "id": 3,
+                "name": "Design w10",
+                "projects": {
+                  "id": 2,
+                  "name": "Windows 10"
+                }
+              },
+              {
+                "id": 4,
+                "name": "Code w10",
+                "projects": {
+                  "id": 2,
+                  "name": "Windows 10"
+                }
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RelatedQueriesSpec:108",
+      "source": "Feature/Query/RelatedQueriesSpec.hs",
+      "line": 108,
+      "category": "embedding",
+      "description": "fails when is not a to-one relationship",
+      "example": "RelatedQueriesSpec:it:107",
+      "request": {
+        "method": "GET",
+        "path": "/clients",
+        "query": "select=*,projects(*)&order=projects(id)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "code": "PGRST118",
+          "details": "'clients' and 'projects' do not form a many-to-one or one-to-one relationship",
+          "hint": null,
+          "message": "A related order on 'projects' is not possible"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RelatedQueriesSpec:118",
+      "source": "Feature/Query/RelatedQueriesSpec.hs",
+      "line": 118,
+      "category": "embedding",
+      "description": "fails when is not a to-one relationship",
+      "example": "RelatedQueriesSpec:it:107",
+      "request": {
+        "method": "GET",
+        "path": "/clients",
+        "query": "select=*,pros:projects(*)&order=pros(id)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "code": "PGRST118",
+          "details": "'clients' and 'pros' do not form a many-to-one or one-to-one relationship",
+          "hint": null,
+          "message": "A related order on 'pros' is not possible"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RelatedQueriesSpec:128",
+      "source": "Feature/Query/RelatedQueriesSpec.hs",
+      "line": 128,
+      "category": "embedding",
+      "description": "fails when is not a to-one relationship",
+      "example": "RelatedQueriesSpec:it:107",
+      "request": {
+        "method": "GET",
+        "path": "/designers",
+        "query": "select=id,computed_videogames(id)&order=computed_videogames(id).desc",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "code": "PGRST118",
+          "details": "'designers' and 'computed_videogames' do not form a many-to-one or one-to-one relationship",
+          "hint": null,
+          "message": "A related order on 'computed_videogames' is not possible"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RelatedQueriesSpec:140",
+      "source": "Feature/Query/RelatedQueriesSpec.hs",
+      "line": 140,
+      "category": "embedding",
+      "description": "fails when the resource is not embedded",
+      "example": "RelatedQueriesSpec:it:139",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "select=id,clients(name)&order=clientsx(name).nullsfirst",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "code": "PGRST108",
+          "details": null,
+          "hint": "Verify that 'clientsx' is included in the 'select' query parameter.",
+          "message": "'clientsx' is not an embedded resource in this request"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RelatedQueriesSpec:153",
+      "source": "Feature/Query/RelatedQueriesSpec.hs",
+      "line": 153,
+      "category": "embedding",
+      "description": "works on a many-to-one relationship",
+      "example": "RelatedQueriesSpec:it:152",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "select=name,clients()&clients=not.is.null",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Windows 7"
+          },
+          {
+            "name": "Windows 10"
+          },
+          {
+            "name": "IOS"
+          },
+          {
+            "name": "OSX"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RelatedQueriesSpec:163",
+      "source": "Feature/Query/RelatedQueriesSpec.hs",
+      "line": 163,
+      "category": "embedding",
+      "description": "works on a many-to-one relationship",
+      "example": "RelatedQueriesSpec:it:152",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "select=name,clients()&clients=is.null",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Orphan"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RelatedQueriesSpec:168",
+      "source": "Feature/Query/RelatedQueriesSpec.hs",
+      "line": 168,
+      "category": "embedding",
+      "description": "works on a many-to-one relationship",
+      "example": "RelatedQueriesSpec:it:152",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "select=name,computed_clients()&computed_clients=is.null",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Orphan"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RelatedQueriesSpec:175",
+      "source": "Feature/Query/RelatedQueriesSpec.hs",
+      "line": 175,
+      "category": "embedding",
+      "description": "works on a one-to-many relationship",
+      "example": "RelatedQueriesSpec:it:174",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "select=name,child_entities()&child_entities=not.is.null",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "entity 1"
+          },
+          {
+            "name": "entity 2"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RelatedQueriesSpec:183",
+      "source": "Feature/Query/RelatedQueriesSpec.hs",
+      "line": 183,
+      "category": "embedding",
+      "description": "works on a one-to-many relationship",
+      "example": "RelatedQueriesSpec:it:174",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "select=name,child_entities()&child_entities=is.null",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "entity 3"
+          },
+          {
+            "name": null
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RelatedQueriesSpec:191",
+      "source": "Feature/Query/RelatedQueriesSpec.hs",
+      "line": 191,
+      "category": "embedding",
+      "description": "works on a one-to-many relationship",
+      "example": "RelatedQueriesSpec:it:174",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "select=name,childs:child_entities()&childs=is.null",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "entity 3"
+          },
+          {
+            "name": null
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RelatedQueriesSpec:201",
+      "source": "Feature/Query/RelatedQueriesSpec.hs",
+      "line": 201,
+      "category": "embedding",
+      "description": "works on a many-to-many relationship",
+      "example": "RelatedQueriesSpec:it:200",
+      "request": {
+        "method": "GET",
+        "path": "/users",
+        "query": "select=name,tasks()&tasks.id=eq.1&tasks=not.is.null",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Angela Martin"
+          },
+          {
+            "name": "Dwight Schrute"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RelatedQueriesSpec:209",
+      "source": "Feature/Query/RelatedQueriesSpec.hs",
+      "line": 209,
+      "category": "embedding",
+      "description": "works on a many-to-many relationship",
+      "example": "RelatedQueriesSpec:it:200",
+      "request": {
+        "method": "GET",
+        "path": "/users",
+        "query": "select=name,tasks()&tasks.id=eq.1&tasks=is.null",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Michael Scott"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RelatedQueriesSpec:218",
+      "source": "Feature/Query/RelatedQueriesSpec.hs",
+      "line": 218,
+      "category": "embedding",
+      "description": "works on nested embeds",
+      "example": "RelatedQueriesSpec:it:217",
+      "request": {
+        "method": "GET",
+        "path": "/entities",
+        "query": "select=name,child_entities(name,grandchild_entities())&child_entities.grandchild_entities=not.is.null&child_entities=not.is.null",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "entity 1",
+            "child_entities": [
+              {
+                "name": "child entity 1"
+              },
+              {
+                "name": "child entity 2"
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RelatedQueriesSpec:226",
+      "source": "Feature/Query/RelatedQueriesSpec.hs",
+      "line": 226,
+      "category": "embedding",
+      "description": "can do an or across embeds",
+      "example": "RelatedQueriesSpec:it:225",
+      "request": {
+        "method": "GET",
+        "path": "/client",
+        "query": "select=*,clientinfo(),contact()&clientinfo.other=ilike.*main*&contact.name=ilike.*tabby*&or=(clientinfo.not.is.null,contact.not.is.null)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "Walmart"
+          },
+          {
+            "id": 2,
+            "name": "Target"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RelatedQueriesSpec:236",
+      "source": "Feature/Query/RelatedQueriesSpec.hs",
+      "line": 236,
+      "category": "embedding",
+      "description": "doesn't interfere filtering when embedding using the column name",
+      "example": "RelatedQueriesSpec:it:235",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "select=name,client_id,client:client_id(name)&client_id=eq.2",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "IOS",
+            "client_id": 2,
+            "client": {
+              "name": "Apple"
+            }
+          },
+          {
+            "name": "OSX",
+            "client_id": 2,
+            "client": {
+              "name": "Apple"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RelatedQueriesSpec:246",
+      "source": "Feature/Query/RelatedQueriesSpec.hs",
+      "line": 246,
+      "category": "embedding",
+      "description": "doesn't interfere filtering on column names used for disambiguation",
+      "example": "RelatedQueriesSpec:it:245",
+      "request": {
+        "method": "GET",
+        "path": "/user_friend",
+        "query": "select=*,user1(*)&user1=eq.a02fb934-3a4d-469b-a6b6-4fcd88b973cf",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RelatedQueriesSpec:253",
+      "source": "Feature/Query/RelatedQueriesSpec.hs",
+      "line": 253,
+      "category": "embedding",
+      "description": "doesn't interfere filtering on column names that are the same as the relation name",
+      "example": "RelatedQueriesSpec:it:252",
+      "request": {
+        "method": "GET",
+        "path": "/tournaments",
+        "query": "select=*,status(*)&status=eq.3",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RelatedQueriesSpec:262",
+      "source": "Feature/Query/RelatedQueriesSpec.hs",
+      "line": 262,
+      "category": "embedding",
+      "description": "embeds verifying that the entire target table row is not null",
+      "example": "RelatedQueriesSpec:it:261",
+      "request": {
+        "method": "GET",
+        "path": "/table_b",
+        "query": "select=name,table_a(name)&table_a=not.is.null",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Test 1",
+            "table_a": {
+              "name": "Not null 1"
+            }
+          },
+          {
+            "name": "Test 2",
+            "table_a": {
+              "name": null
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RelatedQueriesSpec:270",
+      "source": "Feature/Query/RelatedQueriesSpec.hs",
+      "line": 270,
+      "category": "embedding",
+      "description": "embeds verifying that the entire target table row is not null",
+      "example": "RelatedQueriesSpec:it:261",
+      "request": {
+        "method": "GET",
+        "path": "/table_b",
+        "query": "select=name,table_a()&table_a=is.null",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Test 3"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RelatedQueriesSpec:279",
+      "source": "Feature/Query/RelatedQueriesSpec.hs",
+      "line": 279,
+      "category": "embedding",
+      "description": "works with count=exact",
+      "example": "RelatedQueriesSpec:it:278",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "select=name,clients(name)&clients=not.is.null",
+        "headers": {
+          "Prefer": "count=exact"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Windows 7",
+            "clients": {
+              "name": "Microsoft"
+            }
+          },
+          {
+            "name": "Windows 10",
+            "clients": {
+              "name": "Microsoft"
+            }
+          },
+          {
+            "name": "IOS",
+            "clients": {
+              "name": "Apple"
+            }
+          },
+          {
+            "name": "OSX",
+            "clients": {
+              "name": "Apple"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "0-3/4"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RelatedQueriesSpec:292",
+      "source": "Feature/Query/RelatedQueriesSpec.hs",
+      "line": 292,
+      "category": "embedding",
+      "description": "works with count=exact",
+      "example": "RelatedQueriesSpec:it:278",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "select=name,clients()&clients=is.null",
+        "headers": {
+          "Prefer": "count=exact"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Orphan"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "0-0/1"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RelatedQueriesSpec:300",
+      "source": "Feature/Query/RelatedQueriesSpec.hs",
+      "line": 300,
+      "category": "embedding",
+      "description": "works with count=exact",
+      "example": "RelatedQueriesSpec:it:278",
+      "request": {
+        "method": "GET",
+        "path": "/client",
+        "query": "select=*,clientinfo(),contact()&clientinfo.other=ilike.*main*&contact.name=ilike.*tabby*&or=(clientinfo.not.is.null,contact.not.is.null)",
+        "headers": {
+          "Prefer": "count=exact"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "Walmart"
+          },
+          {
+            "id": 2,
+            "name": "Target"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "0-1/2"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RelatedQueriesSpec:313",
+      "source": "Feature/Query/RelatedQueriesSpec.hs",
+      "line": 313,
+      "category": "embedding",
+      "description": "works with count=planned",
+      "example": "RelatedQueriesSpec:it:312",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "select=name,clients(name)&clients=not.is.null",
+        "headers": {
+          "Prefer": "count=planned"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 206,
+        "body": [
+          {
+            "name": "Windows 7",
+            "clients": {
+              "name": "Microsoft"
+            }
+          },
+          {
+            "name": "Windows 10",
+            "clients": {
+              "name": "Microsoft"
+            }
+          },
+          {
+            "name": "IOS",
+            "clients": {
+              "name": "Apple"
+            }
+          },
+          {
+            "name": "OSX",
+            "clients": {
+              "name": "Apple"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "0-3/5"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RelatedQueriesSpec:326",
+      "source": "Feature/Query/RelatedQueriesSpec.hs",
+      "line": 326,
+      "category": "embedding",
+      "description": "works with count=planned",
+      "example": "RelatedQueriesSpec:it:312",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "select=name,clients()&clients=is.null",
+        "headers": {
+          "Prefer": "count=planned"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Orphan"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "0-0/1"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RelatedQueriesSpec:334",
+      "source": "Feature/Query/RelatedQueriesSpec.hs",
+      "line": 334,
+      "category": "embedding",
+      "description": "works with count=planned",
+      "example": "RelatedQueriesSpec:it:312",
+      "request": {
+        "method": "GET",
+        "path": "/client",
+        "query": "select=*,clientinfo(),contact()&clientinfo.other=ilike.*main*&contact.name=ilike.*tabby*&or=(clientinfo.not.is.null,contact.not.is.null)",
+        "headers": {
+          "Prefer": "count=planned"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "Walmart"
+          },
+          {
+            "id": 2,
+            "name": "Target"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "0-1/2"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RelatedQueriesSpec:347",
+      "source": "Feature/Query/RelatedQueriesSpec.hs",
+      "line": 347,
+      "category": "embedding",
+      "description": "works with count=estimated",
+      "example": "RelatedQueriesSpec:it:346",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "select=name,clients(name)&clients=not.is.null",
+        "headers": {
+          "Prefer": "count=estimated"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 206,
+        "body": [
+          {
+            "name": "Windows 7",
+            "clients": {
+              "name": "Microsoft"
+            }
+          },
+          {
+            "name": "Windows 10",
+            "clients": {
+              "name": "Microsoft"
+            }
+          },
+          {
+            "name": "IOS",
+            "clients": {
+              "name": "Apple"
+            }
+          },
+          {
+            "name": "OSX",
+            "clients": {
+              "name": "Apple"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "0-3/5"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RelatedQueriesSpec:360",
+      "source": "Feature/Query/RelatedQueriesSpec.hs",
+      "line": 360,
+      "category": "embedding",
+      "description": "works with count=estimated",
+      "example": "RelatedQueriesSpec:it:346",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "select=name,clients()&clients=is.null",
+        "headers": {
+          "Prefer": "count=estimated"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Orphan"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "0-0/1"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RelatedQueriesSpec:368",
+      "source": "Feature/Query/RelatedQueriesSpec.hs",
+      "line": 368,
+      "category": "embedding",
+      "description": "works with count=estimated",
+      "example": "RelatedQueriesSpec:it:346",
+      "request": {
+        "method": "GET",
+        "path": "/client",
+        "query": "select=*,clientinfo(),contact()&clientinfo.other=ilike.*main*&contact.name=ilike.*tabby*&or=(clientinfo.not.is.null,contact.not.is.null)",
+        "headers": {
+          "Prefer": "count=estimated"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "Walmart"
+          },
+          {
+            "id": 2,
+            "name": "Target"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "0-1/2"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    }
+  ]
+}

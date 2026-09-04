@@ -1,0 +1,162 @@
+{
+  "source": "Feature/Query/RawOutputTypesSpec.hs",
+  "extractedCases": 4,
+  "skippedSites": 0,
+  "needsConfigCases": 0,
+  "cases": [
+    {
+      "id": "RawOutputTypesSpec:16",
+      "source": "Feature/Query/RawOutputTypesSpec.hs",
+      "line": 16,
+      "category": "media-types",
+      "description": "responds json to a GET request with Firefox Accept headers",
+      "example": "RawOutputTypesSpec:it:15",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "id=eq.1",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RawOutputTypesSpec:20",
+      "source": "Feature/Query/RawOutputTypesSpec.hs",
+      "line": 20,
+      "category": "media-types",
+      "description": "responds json to a GET request with Chrome Accept headers",
+      "example": "RawOutputTypesSpec:it:19",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "id=eq.1",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RawOutputTypesSpec:25",
+      "source": "Feature/Query/RawOutputTypesSpec.hs",
+      "line": 25,
+      "category": "media-types",
+      "description": "responds json to a GET request to RPC with Firefox Accept headers",
+      "example": "RawOutputTypesSpec:it:24",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/get_projects_below",
+        "query": "id=3",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "Windows 7",
+            "client_id": 1
+          },
+          {
+            "id": 2,
+            "name": "Windows 10",
+            "client_id": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RawOutputTypesSpec:29",
+      "source": "Feature/Query/RawOutputTypesSpec.hs",
+      "line": 29,
+      "category": "media-types",
+      "description": "responds json to a GET request to RPC with Chrome Accept headers",
+      "example": "RawOutputTypesSpec:it:28",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/get_projects_below",
+        "query": "id=3",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "Windows 7",
+            "client_id": 1
+          },
+          {
+            "id": 2,
+            "name": "Windows 10",
+            "client_id": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    }
+  ]
+}

@@ -185,11 +185,18 @@ describe('query-parser', () => {
         'direction should default to asc');
     });
 
+    // The four rejections below still reject exactly what they rejected
+    // before; only the message changed. The order value is now parsed with
+    // the same Parsec-shaped scanner as select and filters, so a malformed
+    // one reports the position and the expectation set upstream reports
+    // (QuerySpec:1174 asserts that body) instead of a hand-written
+    // "Invalid order direction/nulls option" sentence.
     it('rejects SQL injection via order direction (V-14)', () => {
       assert.throws(
         () => parseQuery({ order: 'col.asc;DROP TABLE x--' }, 'GET'),
         (err) => err.code === 'PGRST100'
-          && err.message.includes('Invalid order direction'),
+          && err.message.includes(
+            'failed to parse order (col.asc;DROP TABLE x--)'),
         'should reject injection payload in direction'
       );
     });
@@ -198,7 +205,7 @@ describe('query-parser', () => {
       assert.throws(
         () => parseQuery({ order: 'col.ascending' }, 'GET'),
         (err) => err.code === 'PGRST100'
-          && err.message.includes('Invalid order direction'),
+          && err.message.includes('failed to parse order (col.ascending)'),
         'should reject non-asc/desc direction'
       );
     });
@@ -207,7 +214,7 @@ describe('query-parser', () => {
       assert.throws(
         () => parseQuery({ order: 'col.asc.nullsfirst;DROP TABLE x' }, 'GET'),
         (err) => err.code === 'PGRST100'
-          && err.message.includes('Invalid nulls option'),
+          && err.details === 'unexpected \';\' expecting "," or end of input',
         'should reject injection payload in nulls'
       );
     });
@@ -216,7 +223,8 @@ describe('query-parser', () => {
       assert.throws(
         () => parseQuery({ order: 'col.desc.first' }, 'GET'),
         (err) => err.code === 'PGRST100'
-          && err.message.includes('Invalid nulls option'),
+          && err.details
+            === 'unexpected "f" expecting "nullsfirst" or "nullslast"',
         'should reject non-nullsfirst/nullslast value'
       );
     });
@@ -224,6 +232,83 @@ describe('query-parser', () => {
     it('accepts valid nullsfirst option', () => {
       const result = parseQuery({ order: 'col.asc.nullsfirst' }, 'GET');
       assert.equal(result.order[0].nulls, 'nullsfirst');
+    });
+
+    // QuerySpec:1174. The doctests in upstream's `pOrder` are the reference:
+    // the message names the position the scanner stopped at and the details
+    // name the offending token and every word that was acceptable there.
+    it('reports a bad nulls suffix where upstream reports it', () => {
+      assert.throws(
+        () => parseQuery({ order: 'id.asc.nullslasttt' }, 'GET'),
+        (err) => err.code === 'PGRST100'
+          && err.message
+            === '"failed to parse order (id.asc.nullslasttt)"'
+              + ' (line 1, column 17)'
+          && err.details === 'unexpected \'t\' expecting "," or end of input',
+      );
+    });
+
+    it('reports a bad direction where upstream reports it', () => {
+      assert.throws(
+        () => parseQuery({ order: 'id.ac' }, 'GET'),
+        (err) => err.code === 'PGRST100'
+          && err.message === '"failed to parse order (id.ac)" (line 1, column 4)'
+          && err.details === 'unexpected "c" expecting "asc", "desc",'
+            + ' "nullsfirst" or "nullslast"',
+      );
+    });
+
+    it('orders by a related column', () => {
+      const { order } = parseQuery({ order: 'clients(name).desc' }, 'GET');
+      assert.deepStrictEqual(order, [{
+        relation: 'clients', column: 'name', direction: 'desc', nulls: null,
+      }]);
+    });
+
+    it('takes a quoted column name with a dot in it as one column', () => {
+      const { order } = parseQuery({ order: '"a.dotted.column".desc' }, 'GET');
+      assert.deepStrictEqual(order, [{
+        column: 'a.dotted.column', direction: 'desc', nulls: null,
+      }]);
+    });
+  });
+
+  // QuerySpec:1291. A quoted field name is one token, so the characters
+  // PostgREST reserves are ordinary characters inside it.
+  describe('reserved characters in a quoted name', () => {
+    it('keeps a comma and parentheses inside a quoted select item', () => {
+      assert.deepStrictEqual(
+        parseSelectList('":arr->ow::cast","(inside,parens)","a.dotted.column"'),
+        [
+          { type: 'column', name: ':arr->ow::cast' },
+          { type: 'column', name: '(inside,parens)' },
+          { type: 'column', name: 'a.dotted.column' },
+        ]);
+    });
+
+    it('keeps the spaces inside a quoted select item', () => {
+      assert.deepStrictEqual(parseSelectList('"  col  w  space  "'),
+        [{ type: 'column', name: '  col  w  space  ' }]);
+    });
+
+    it('still reads an embed after a quoted item', () => {
+      const nodes = parseSelectList('"(inside,parens)",clients(name)');
+      assert.equal(nodes.length, 2);
+      assert.equal(nodes[0].name, '(inside,parens)');
+      assert.equal(nodes[1].type, 'embed');
+      assert.equal(nodes[1].name, 'clients');
+    });
+
+    it('filters on the column inside the quotes', () => {
+      const { filters } = parseQuery({ '"*id*"': 'eq.1' }, 'GET');
+      assert.equal(filters.length, 1);
+      assert.equal(filters[0].column, '*id*');
+      assert.equal(filters[0].value, '1');
+    });
+
+    it('leaves an unterminated quote to the grammar', () => {
+      const { filters } = parseQuery({ '"unterminated': 'eq.1' }, 'GET');
+      assert.equal(filters[0].column, '"unterminated');
     });
   });
 
@@ -272,6 +357,90 @@ describe('query-parser', () => {
       const result = parseQuery({ on_conflict: 'id' }, 'POST');
       assert.equal(result.onConflict, 'id',
         'onConflict should be id');
+    });
+  });
+
+  // Upstream folds the whole query string into a list of predicates; it does
+  // not key them by column. `?id=gt.5&id=lt.11` is the documented way to write
+  // a range (SingularSpec:227). API Gateway's single-valued
+  // `queryStringParameters` keeps only the last occurrence, so the parser has
+  // to read the multi-value map to see the rest.
+  describe('repeated filters on one column', () => {
+    it('keeps both predicates from ?id=gt.5&id=lt.11', () => {
+      const result = parseQuery(
+        { id: 'lt.11' },
+        'GET',
+        { id: ['gt.5', 'lt.11'] },
+      );
+      assert.equal(result.filters.length, 2,
+        'both occurrences of id should become filters');
+      assert.deepStrictEqual(
+        result.filters.map(f => [f.column, f.operator, f.value]),
+        [['id', 'gt', '5'], ['id', 'lt', '11']],
+        'filters should be gt.5 and lt.11, in query-string order');
+    });
+
+    it('does not duplicate a filter that appears once', () => {
+      const result = parseQuery(
+        { id: 'eq.7' }, 'GET', { id: ['eq.7'] });
+      assert.equal(result.filters.length, 1,
+        'a single occurrence should produce one filter');
+    });
+
+    it('keeps repeated filters on an embedded table', () => {
+      const result = parseQuery(
+        { select: 'id,clients(id)', 'clients.id': 'lt.11' },
+        'GET',
+        { 'clients.id': ['gt.5', 'lt.11'] },
+      );
+      const embed = result.select.find(n => n.type === 'embed');
+      assert.equal(embed.filters.length, 2,
+        'both embedded predicates should be kept');
+      assert.deepStrictEqual(
+        embed.filters.map(f => [f.column, f.operator, f.value]),
+        [['id', 'gt', '5'], ['id', 'lt', '11']],
+        'embedded filters should be gt.5 and lt.11');
+    });
+  });
+
+  // `pEmbedParam` (upstream ApiRequest/QueryParams.hs:601) reserves exactly two
+  // words after '!': `left` and `inner`. Anything else is a hint.
+  describe('embed join type', () => {
+    it('treats !inner as an inner join, not a hint', () => {
+      const [embed] = parseQuery(
+        { select: 'id,clients!inner(id)' }, 'GET').select
+        .filter(n => n.type === 'embed');
+      assert.equal(embed.inner, true, 'inner should be true');
+      assert.equal(embed.hint, null, 'inner is not a hint');
+    });
+
+    it('treats !left as the default left join, not a hint', () => {
+      const [embed] = parseQuery(
+        { select: 'id,clients!left(id)' }, 'GET').select
+        .filter(n => n.type === 'embed');
+      assert.equal(embed.inner, false, 'left join means inner is false');
+      assert.equal(embed.hint, null,
+        '!left must not be read as a relationship hint named "left"');
+    });
+
+    it('keeps a hint alongside !inner in either order', () => {
+      for (const sel of [
+        'id,clients!client_fk!inner(id)',
+        'id,clients!inner!client_fk(id)',
+      ]) {
+        const [embed] = parseQuery({ select: sel }, 'GET').select
+          .filter(n => n.type === 'embed');
+        assert.equal(embed.hint, 'client_fk', `hint for ${sel}`);
+        assert.equal(embed.inner, true, `inner for ${sel}`);
+      }
+    });
+
+    it('keeps a hint alongside !left', () => {
+      const [embed] = parseQuery(
+        { select: 'id,clients!left!client_fk(id)' }, 'GET').select
+        .filter(n => n.type === 'embed');
+      assert.equal(embed.hint, 'client_fk', 'hint should survive !left');
+      assert.equal(embed.inner, false, 'inner should stay false');
     });
   });
 });
@@ -685,29 +854,31 @@ describe('parseSelectList', () => {
       assert.equal(result[0].cast, undefined);
     });
 
-    it('rejects unknown cast type xml', () => {
-      assert.throws(
-        () => parseSelectList('col::xml'),
-        (err) => err.code === 'PGRST100'
-          && err.message.includes("Unsupported cast type 'xml'"),
-        'xml should be rejected',
-      );
+    // These three used to assert that anything outside a built-in-type
+    // allowlist was rejected with PGRST100. That was wrong: upstream parses a
+    // cast as a bare identifier and lets PostgreSQL decide whether the type
+    // exists, which is the only way a domain, enum or composite type can be
+    // cast to at all (QuerySpec:615 expects PostgreSQL's 42704 `type
+    // "fakecolumntype" does not exist`, not a parser error). The allowlist is
+    // gone; the charset guard stays.
+    it('accepts a built-in type outside the old allowlist', () => {
+      const result = parseSelectList('col::xml');
+      assert.equal(result[0].cast, 'xml');
     });
 
-    it('rejects unknown cast type money', () => {
-      assert.throws(
-        () => parseSelectList('col::money'),
-        (err) => err.code === 'PGRST100',
-        'money should be rejected',
-      );
+    it('accepts the money type', () => {
+      const result = parseSelectList('col::money');
+      assert.equal(result[0].cast, 'money');
     });
 
-    it('rejects unknown cast type custom_type', () => {
-      assert.throws(
-        () => parseSelectList('col::custom_type'),
-        (err) => err.code === 'PGRST100',
-        'custom_type should be rejected',
-      );
+    it('accepts a user-defined type name', () => {
+      const result = parseSelectList('col::custom_type');
+      assert.equal(result[0].cast, 'custom_type');
+    });
+
+    it('accepts an array type name spelled with a leading underscore', () => {
+      const result = parseSelectList('col::_int4');
+      assert.equal(result[0].cast, '_int4');
     });
 
     it('rejects array cast type int[]', () => {
@@ -881,13 +1052,21 @@ describe('select validation', () => {
       );
     });
 
-    it('throws on extra closing paren', () => {
-      assert.throws(
-        () => parseSelectList('id,customers(name))'),
-        (err) => err.code === 'PGRST100'
-          && err.message.includes('Unbalanced parentheses'),
-        'extra closing paren should throw PGRST100',
-      );
+    // Upstream runs `P.parse pFieldForest` (QueryParams.hs:220) without
+    // `eof`, so a `)` that closes nothing ends the forest and the rest of the
+    // string is dropped rather than reported. SpreadQueriesSpec:391 relies on
+    // it: it asks for `...processes(process:name,...process_costs(cost)))`
+    // and expects 200.
+    it('ignores an extra closing paren and everything after it', () => {
+      const nodes = parseSelectList('id,customers(name))');
+      assert.deepStrictEqual(nodes.map(n => n.name), ['id', 'customers']);
+      assert.deepStrictEqual(
+        nodes[1].select.map(n => n.name), ['name']);
+    });
+
+    it('ignores trailing text after an unmatched closing paren', () => {
+      const nodes = parseSelectList('id)name,other');
+      assert.deepStrictEqual(nodes.map(n => n.name), ['id']);
     });
 
     it('throws on nested unclosed paren', () => {
@@ -900,13 +1079,197 @@ describe('select validation', () => {
     });
   });
 
+  // An empty embed is legal upstream (Plan.hs `rsEmptyEmbed`): it adds no
+  // key to the response and exists so `?customers=is.null` can filter on it.
   describe('empty embed select', () => {
-    it('throws on empty embed select list', () => {
+    it('accepts an empty embed select list', () => {
+      const nodes = parseSelectList('id,customers()');
+      assert.equal(nodes.length, 2);
+      assert.equal(nodes[1].type, 'embed');
+      assert.equal(nodes[1].name, 'customers');
+      assert.deepStrictEqual(nodes[1].select, []);
+    });
+
+    it('accepts an empty embed nested in an embed', () => {
+      const nodes = parseSelectList('id,customers(orders())');
+      const orders = nodes[1].select[0];
+      assert.equal(orders.type, 'embed');
+      assert.deepStrictEqual(orders.select, []);
+    });
+
+    it('does not treat two empty embeds as duplicate keys', () => {
+      const nodes = parseSelectList('id,customers(),customers()');
+      assert.equal(nodes.length, 3);
+    });
+  });
+});
+
+describe('embed depth limit', () => {
+  it('depth 1 embed passes with default limit', () => {
+    const result = parseSelectList('id,customers(name)');
+    assert.equal(result.length, 2);
+    assert.deepStrictEqual(result[0], { type: 'column', name: 'id' });
+    assert.equal(result[1].type, 'embed');
+    assert.equal(result[1].name, 'customers');
+    assert.deepStrictEqual(result[1].select, [
+      { type: 'column', name: 'name' },
+    ]);
+  });
+
+  it('depth 2 embed passes with default limit', () => {
+    const result = parseSelectList('id,items(id,products(name))');
+    assert.equal(result.length, 2);
+    assert.deepStrictEqual(result[0], { type: 'column', name: 'id' });
+    const items = result[1];
+    assert.equal(items.type, 'embed');
+    assert.equal(items.name, 'items');
+    const products = items.select[1];
+    assert.equal(products.type, 'embed');
+    assert.equal(products.name, 'products');
+  });
+
+  it('depth 5 embed passes with default limit', () => {
+    const result = parseSelectList('a(b(c(d(e(id)))))');
+    assert.equal(result.length, 1);
+    assert.equal(result[0].type, 'embed');
+    assert.equal(result[0].name, 'a');
+  });
+
+  it('depth 6 embed throws PGRST100 with default limit', () => {
+    assert.throws(
+      () => parseSelectList('a(b(c(d(e(f(id))))))'),
+      (err) => err.code === 'PGRST100'
+        && err.message === 'Embedding depth exceeds maximum of 5',
+      'depth 6 should throw PGRST100',
+    );
+  });
+
+  it('custom maxEmbedDepth=3 allows depth 3', () => {
+    const result = parseSelectList('a(b(c(id)))', 3);
+    assert.equal(result.length, 1);
+    assert.equal(result[0].type, 'embed');
+    assert.equal(result[0].name, 'a');
+  });
+
+  it('custom maxEmbedDepth=3 rejects depth 4', () => {
+    assert.throws(
+      () => parseSelectList('a(b(c(d(id))))', 3),
+      (err) => err.code === 'PGRST100'
+        && err.message === 'Embedding depth exceeds maximum of 3',
+      'depth 4 with limit 3 should throw PGRST100',
+    );
+  });
+
+  it('maxEmbedDepth=1 allows single embed', () => {
+    const result = parseSelectList('id,customers(name)', 1);
+    assert.equal(result.length, 2);
+    assert.equal(result[1].type, 'embed');
+    assert.equal(result[1].name, 'customers');
+  });
+
+  it('maxEmbedDepth=1 rejects nested embed', () => {
+    assert.throws(
+      () => parseSelectList('id,items(id,products(name))', 1),
+      (err) => err.code === 'PGRST100'
+        && err.message === 'Embedding depth exceeds maximum of 1',
+      'depth 2 with limit 1 should throw PGRST100',
+    );
+  });
+
+  it('multiple embeds at same depth pass', () => {
+    const result = parseSelectList('id,customers(name),items(id)');
+    assert.equal(result.length, 3);
+    assert.equal(result[0].type, 'column');
+    assert.equal(result[1].type, 'embed');
+    assert.equal(result[1].name, 'customers');
+    assert.equal(result[2].type, 'embed');
+    assert.equal(result[2].name, 'items');
+  });
+
+  it('depth check does not affect non-embed selects', () => {
+    const result = parseSelectList('id,name,amount');
+    assert.equal(result.length, 3);
+    assert.deepStrictEqual(result, [
+      { type: 'column', name: 'id' },
+      { type: 'column', name: 'name' },
+      { type: 'column', name: 'amount' },
+    ]);
+  });
+
+  it('maxEmbedDepth=0 rejects all embeds', () => {
+    assert.throws(
+      () => parseSelectList('id,customers(name)', 0),
+      (err) => err.code === 'PGRST100'
+        && err.message === 'Embedding depth exceeds maximum of 0',
+      'any embed should be rejected with limit 0',
+    );
+  });
+
+  it('maxEmbedDepth=0 allows flat selects', () => {
+    const result = parseSelectList('id,name', 0);
+    assert.equal(result.length, 2);
+    assert.deepStrictEqual(result[0], { type: 'column', name: 'id' });
+    assert.deepStrictEqual(result[1], { type: 'column', name: 'name' });
+  });
+
+  it('maxEmbedDepth=2 allows depth-2 nesting', () => {
+    const result = parseSelectList('a(b(id))', 2);
+    assert.equal(result.length, 1);
+    assert.equal(result[0].type, 'embed');
+    assert.equal(result[0].name, 'a');
+  });
+
+  it('maxEmbedDepth=2 rejects depth-3 nesting', () => {
+    assert.throws(
+      () => parseSelectList('a(b(c(id)))', 2),
+      (err) => err.code === 'PGRST100'
+        && err.message === 'Embedding depth exceeds maximum of 2',
+      'depth 3 with limit 2 should throw PGRST100',
+    );
+  });
+
+  it('negative maxEmbedDepth rejects all embeds', () => {
+    assert.throws(
+      () => parseSelectList('id,customers(name)', -1),
+      (err) => err.code === 'PGRST100'
+        && err.message === 'Embedding depth exceeds maximum of -1',
+      'any embed should be rejected with negative limit',
+    );
+  });
+
+  it('NaN maxEmbedDepth does not bypass limit', () => {
+    assert.throws(
+      () => parseSelectList(
+        'a(b(c(d(e(f(id))))))', NaN),
+      (err) => err.code === 'PGRST100',
+    );
+  });
+
+  describe('parseQuery threading', () => {
+    it('parseQuery passes maxEmbedDepth to parser', () => {
       assert.throws(
-        () => parseSelectList('id,customers()'),
+        () => parseQuery({ select: 'a(b(c(d(id))))' }, 'GET', null, 3),
         (err) => err.code === 'PGRST100'
-          && err.message.includes('Empty select list'),
-        'empty embed select should throw PGRST100',
+          && err.message === 'Embedding depth exceeds maximum of 3',
+        'parseQuery should forward maxEmbedDepth to parseSelectList',
+      );
+    });
+
+    it('parseQuery default maxEmbedDepth is 5', () => {
+      const result = parseQuery(
+        { select: 'a(b(c(d(e(id)))))' }, 'GET');
+      assert.equal(result.select.length, 1);
+      assert.equal(result.select[0].type, 'embed');
+      assert.equal(result.select[0].name, 'a');
+    });
+
+    it('parseQuery default rejects depth 6', () => {
+      assert.throws(
+        () => parseQuery(
+          { select: 'a(b(c(d(e(f(id))))))' }, 'GET'),
+        (err) => err.code === 'PGRST100'
+          && err.message === 'Embedding depth exceeds maximum of 5',
+        'parseQuery should reject depth 6 with default limit',
       );
     });
   });

@@ -1,0 +1,20 @@
+{
+  "generatedAt": "2026-08-28T20:40:02.192Z",
+  "endpoint": "6juamhyj5nkoeatkzc3ieaerc4.dsql.us-east-1.on.aws",
+  "elapsedMs": 82354,
+  "statementsTotal": 1251,
+  "statementsFailed": 1,
+  "resetApplied": 493,
+  "resetFailures": 0,
+  "byError": {
+    "relation \"…\" does not exist": 1
+  },
+  "failures": [
+    {
+      "file": "08-foreign-keys.sql",
+      "line": 194,
+      "statement": "alter table \"public\".\"car_racers\" add constraint \"car_racers_car_model_name_car_model_year_fkey\" foreign key (\"car_model_name\", \"car_model_year\") references \"pu",
+      "error": "relation \"public.car_racers\" does not exist"
+    }
+  ]
+}

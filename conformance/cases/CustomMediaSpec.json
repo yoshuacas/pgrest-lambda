@@ -1,0 +1,1347 @@
+{
+  "source": "Feature/Query/CustomMediaSpec.hs",
+  "extractedCases": 42,
+  "skippedSites": 0,
+  "needsConfigCases": 0,
+  "cases": [
+    {
+      "id": "CustomMediaSpec:30",
+      "source": "Feature/Query/CustomMediaSpec.hs",
+      "line": 30,
+      "category": "media-types",
+      "description": "will fail if there's no aggregate defined for the table",
+      "example": "CustomMediaSpec:it:29",
+      "request": {
+        "method": "GET",
+        "path": "/lines",
+        "query": "",
+        "headers": {
+          "Accept": "text/plain"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 406,
+        "body": {
+          "code": "PGRST107",
+          "details": null,
+          "hint": null,
+          "message": "None of these media types are available: text/plain"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Length": "110"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CustomMediaSpec:39",
+      "source": "Feature/Query/CustomMediaSpec.hs",
+      "line": 39,
+      "category": "media-types",
+      "description": "can get raw xml output with Accept: text/xml if there's an aggregate defined",
+      "example": "CustomMediaSpec:it:38",
+      "request": {
+        "method": "GET",
+        "path": "/xmltest",
+        "query": "",
+        "headers": {
+          "Accept": "text/xml"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": "<myxml>foo</myxml>bar<foobar><baz/></foobar>",
+        "bodyFormat": "text",
+        "headers": {
+          "Content-Type": "text/xml; charset=utf-8",
+          "Content-Length": "44"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CustomMediaSpec:50",
+      "source": "Feature/Query/CustomMediaSpec.hs",
+      "line": 50,
+      "category": "media-types",
+      "description": "will use the application/vnd.geo2+json media type for any table",
+      "example": "CustomMediaSpec:it:49",
+      "request": {
+        "method": "GET",
+        "path": "/lines",
+        "query": "",
+        "headers": {
+          "Accept": "application/vnd.geo2+json"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": "\u0001{\"type\": \"FeatureCollection\", \"hello\": \"world\"}",
+        "bodyFormat": "text",
+        "headers": {
+          "Content-Type": "application/vnd.geo2+json",
+          "Content-Length": "48"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CustomMediaSpec:59",
+      "source": "Feature/Query/CustomMediaSpec.hs",
+      "line": 59,
+      "category": "media-types",
+      "description": "will use the more specific application/vnd.geo2 handler for this table",
+      "example": "CustomMediaSpec:it:58",
+      "request": {
+        "method": "GET",
+        "path": "/shop_bles",
+        "query": "",
+        "headers": {
+          "Accept": "application/vnd.geo2+json"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": "\u0001\"anyelement overridden\"",
+        "bodyFormat": "text",
+        "headers": {
+          "Content-Type": "application/vnd.geo2+json"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CustomMediaSpec:66",
+      "source": "Feature/Query/CustomMediaSpec.hs",
+      "line": 66,
+      "category": "media-types",
+      "description": "will use the more specific application/vnd.geo2 handler for this table",
+      "example": "CustomMediaSpec:it:58",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/get_shop_bles",
+        "query": "",
+        "headers": {
+          "Accept": "application/vnd.geo2+json"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": "\u0001\"anyelement overridden\"",
+        "bodyFormat": "text",
+        "headers": {
+          "Content-Type": "application/vnd.geo2+json"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CustomMediaSpec:75",
+      "source": "Feature/Query/CustomMediaSpec.hs",
+      "line": 75,
+      "category": "media-types",
+      "description": "can get raw output with Accept: text/html",
+      "example": "CustomMediaSpec:it:74",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/welcome.html",
+        "query": "",
+        "headers": {
+          "Accept": "text/html"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": "\n<html>\n  <head>\n    <title>PostgREST</title>\n  </head>\n  <body>\n    <h1>Welcome to PostgREST</h1>\n  </body>\n</html>\n",
+        "bodyFormat": "text",
+        "headers": {
+          "Content-Type": "text/html",
+          "Content-Length": "117"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CustomMediaSpec:93",
+      "source": "Feature/Query/CustomMediaSpec.hs",
+      "line": 93,
+      "category": "media-types",
+      "description": "can get raw output with Accept: text/plain",
+      "example": "CustomMediaSpec:it:92",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/welcome",
+        "query": "",
+        "headers": {
+          "Accept": "text/plain"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": "Welcome to PostgREST",
+        "bodyFormat": "text",
+        "headers": {
+          "Content-Type": "text/plain; charset=utf-8",
+          "Content-Length": "20"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CustomMediaSpec:101",
+      "source": "Feature/Query/CustomMediaSpec.hs",
+      "line": 101,
+      "category": "media-types",
+      "description": "can get raw xml output with Accept: text/xml",
+      "example": "CustomMediaSpec:it:100",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/return_scalar_xml",
+        "query": "",
+        "headers": {
+          "Accept": "text/xml"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": "<my-xml-tag/>",
+        "bodyFormat": "text",
+        "headers": {
+          "Content-Type": "text/xml; charset=utf-8",
+          "Content-Length": "13"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CustomMediaSpec:110",
+      "source": "Feature/Query/CustomMediaSpec.hs",
+      "line": 110,
+      "category": "media-types",
+      "description": "can get raw xml output with Accept: text/xml",
+      "example": "CustomMediaSpec:it:109",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/welcome.xml",
+        "query": "",
+        "headers": {
+          "Accept": "text/xml"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": "<html>\n  <head>\n    <title>PostgREST</title>\n  </head>\n  <body>\n    <h1>Welcome to PostgREST</h1>\n  </body>\n</html>",
+        "bodyFormat": "text",
+        "headers": {
+          "Content-Type": "text/xml; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CustomMediaSpec:118",
+      "source": "Feature/Query/CustomMediaSpec.hs",
+      "line": 118,
+      "category": "media-types",
+      "description": "should fail with function returning text and Accept: text/xml",
+      "example": "CustomMediaSpec:it:117",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/welcome",
+        "query": "",
+        "headers": {
+          "Accept": "text/xml"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 406,
+        "body": {
+          "code": "PGRST107",
+          "details": null,
+          "hint": null,
+          "message": "None of these media types are available: text/xml"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CustomMediaSpec:128",
+      "source": "Feature/Query/CustomMediaSpec.hs",
+      "line": 128,
+      "category": "media-types",
+      "description": "should not fail when the function doesn't return a row",
+      "example": "CustomMediaSpec:it:127",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/get_line",
+        "query": "id=777",
+        "headers": {
+          "Accept": "application/vnd.twkb"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Type": "application/vnd.twkb"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CustomMediaSpec:144",
+      "source": "Feature/Query/CustomMediaSpec.hs",
+      "line": 144,
+      "category": "media-types",
+      "description": "will err because only scalars work with media type domains",
+      "example": "CustomMediaSpec:it:143",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/welcome_twice",
+        "query": "",
+        "headers": {
+          "Accept": "text/plain"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 406,
+        "body": {
+          "code": "PGRST107",
+          "details": null,
+          "hint": null,
+          "message": "None of these media types are available: text/plain"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Length": "110"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CustomMediaSpec:162",
+      "source": "Feature/Query/CustomMediaSpec.hs",
+      "line": 162,
+      "category": "media-types",
+      "description": "fails if doesn't have an aggregate defined",
+      "example": "CustomMediaSpec:it:161",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/get_lines",
+        "query": "",
+        "headers": {
+          "Accept": "application/octet-stream"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 406,
+        "body": {
+          "code": "PGRST107",
+          "details": null,
+          "hint": null,
+          "message": "None of these media types are available: application/octet-stream"
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CustomMediaSpec:170",
+      "source": "Feature/Query/CustomMediaSpec.hs",
+      "line": 170,
+      "category": "media-types",
+      "description": "works if there's an anyelement aggregate defined",
+      "example": "CustomMediaSpec:it:169",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/get_lines",
+        "query": "",
+        "headers": {
+          "Accept": "application/vnd.geo2+json"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": "\u0001{\"type\": \"FeatureCollection\", \"hello\": \"world\"}",
+        "bodyFormat": "text",
+        "headers": {
+          "Content-Type": "application/vnd.geo2+json"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CustomMediaSpec:179",
+      "source": "Feature/Query/CustomMediaSpec.hs",
+      "line": 179,
+      "category": "media-types",
+      "description": "will override the application/json handler for a single table",
+      "example": "CustomMediaSpec:it:178",
+      "request": {
+        "method": "GET",
+        "path": "/ov_json",
+        "query": "",
+        "headers": {
+          "Accept": "application/json"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "overridden": "true"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Length": "22"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CustomMediaSpec:189",
+      "source": "Feature/Query/CustomMediaSpec.hs",
+      "line": 189,
+      "category": "media-types",
+      "description": "will override the application/geo+json handler for a single table",
+      "example": "CustomMediaSpec:it:188",
+      "request": {
+        "method": "GET",
+        "path": "/lines",
+        "query": "id=eq.1",
+        "headers": {
+          "Accept": "application/geo+json"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": "\u0001{\"crs\": {\"type\": \"name\", \"properties\": {\"name\": \"EPSG:4326\"}}, \"type\": \"FeatureCollection\", \"features\": [{\"type\": \"Feature\", \"geometry\": {\"type\": \"LineString\", \"coordinates\": [[1, 1], [5, 5]]}, \"properties\": {\"id\": 1, \"name\": \"line-1\"}}]}",
+        "bodyFormat": "text",
+        "headers": {
+          "Content-Type": "application/geo+json; charset=utf-8",
+          "Content-Length": "239"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CustomMediaSpec:198",
+      "source": "Feature/Query/CustomMediaSpec.hs",
+      "line": 198,
+      "category": "media-types",
+      "description": "will not override vendored media types like application/vnd.pgrst.object",
+      "example": "CustomMediaSpec:it:197",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "id=eq.1",
+        "headers": {
+          "Accept": "application/vnd.pgrst.object"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "id": 1,
+          "name": "Windows 7",
+          "client_id": 1
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/vnd.pgrst.object+json; charset=utf-8",
+          "Content-Length": "41"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CustomMediaSpec:230",
+      "source": "Feature/Query/CustomMediaSpec.hs",
+      "line": 230,
+      "category": "media-types",
+      "description": "will match a custom text/tab-separated-values",
+      "example": "CustomMediaSpec:it:229",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "id=in.(1,2)",
+        "headers": {
+          "Accept": "text/tab-separated-values"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": "id\tname\tclient_id\n1\tWindows 7\t1\n2\tWindows 10\t1\n",
+        "bodyFormat": "text",
+        "headers": {
+          "Content-Type": "text/tab-separated-values",
+          "Content-Length": "47"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CustomMediaSpec:250",
+      "source": "Feature/Query/CustomMediaSpec.hs",
+      "line": 250,
+      "category": "media-types",
+      "description": "without select",
+      "example": "CustomMediaSpec:it:249",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "id=in.(1,2)",
+        "headers": {
+          "Accept": "pg/outfunc"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": "(1,\"Windows 7\",1)\n(2,\"Windows 10\",1)\n",
+        "bodyFormat": "text",
+        "headers": {
+          "Content-Type": "pg/outfunc",
+          "Content-Length": "37"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CustomMediaSpec:261",
+      "source": "Feature/Query/CustomMediaSpec.hs",
+      "line": 261,
+      "category": "media-types",
+      "description": "with fewer columns selected",
+      "example": "CustomMediaSpec:it:260",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "id=in.(1,2)&select=id,name",
+        "headers": {
+          "Accept": "pg/outfunc"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": "(1,\"Windows 7\")\n(2,\"Windows 10\")\n",
+        "bodyFormat": "text",
+        "headers": {
+          "Content-Type": "pg/outfunc"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CustomMediaSpec:271",
+      "source": "Feature/Query/CustomMediaSpec.hs",
+      "line": 271,
+      "category": "media-types",
+      "description": "with columns in different order",
+      "example": "CustomMediaSpec:it:270",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "id=in.(1,2)&select=name,id,client_id",
+        "headers": {
+          "Accept": "pg/outfunc"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": "(\"Windows 7\",1,1)\n(\"Windows 10\",2,1)\n",
+        "bodyFormat": "text",
+        "headers": {
+          "Content-Type": "pg/outfunc"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CustomMediaSpec:281",
+      "source": "Feature/Query/CustomMediaSpec.hs",
+      "line": 281,
+      "category": "media-types",
+      "description": "with computed columns",
+      "example": "CustomMediaSpec:it:280",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "id=in.(1,2)&select=id,always_true",
+        "headers": {
+          "Accept": "pg/outfunc"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": "(1,t)\n(2,t)\n",
+        "bodyFormat": "text",
+        "headers": {
+          "Content-Type": "pg/outfunc"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CustomMediaSpec:292",
+      "source": "Feature/Query/CustomMediaSpec.hs",
+      "line": 292,
+      "category": "media-types",
+      "description": "with embedding",
+      "example": "CustomMediaSpec:it:291",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "id=in.(1,2)&select=*,clients(id)",
+        "headers": {
+          "Accept": "pg/outfunc"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": "(1,\"Windows 7\",1,\"{\"\"id\"\": 1}\")\n(2,\"Windows 10\",1,\"{\"\"id\"\": 1}\")\n",
+        "bodyFormat": "text",
+        "headers": {
+          "Content-Type": "pg/outfunc"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CustomMediaSpec:302",
+      "source": "Feature/Query/CustomMediaSpec.hs",
+      "line": 302,
+      "category": "media-types",
+      "description": "will fail for specific aggregate with fewer columns",
+      "example": "CustomMediaSpec:it:301",
+      "request": {
+        "method": "GET",
+        "path": "/lines",
+        "query": "select=id",
+        "headers": {
+          "Accept": "application/vnd.twkb"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 406,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CustomMediaSpec:306",
+      "source": "Feature/Query/CustomMediaSpec.hs",
+      "line": 306,
+      "category": "media-types",
+      "description": "will fail for specific aggregate with more columns",
+      "example": "CustomMediaSpec:it:305",
+      "request": {
+        "method": "GET",
+        "path": "/lines",
+        "query": "select=id,name,geom,id",
+        "headers": {
+          "Accept": "application/vnd.twkb"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 406,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CustomMediaSpec:310",
+      "source": "Feature/Query/CustomMediaSpec.hs",
+      "line": 310,
+      "category": "media-types",
+      "description": "will fail for specific aggregate with columns in different order",
+      "example": "CustomMediaSpec:it:309",
+      "request": {
+        "method": "GET",
+        "path": "/lines",
+        "query": "select=name,id,geom",
+        "headers": {
+          "Accept": "application/vnd.twkb"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 406,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CustomMediaSpec:315",
+      "source": "Feature/Query/CustomMediaSpec.hs",
+      "line": 315,
+      "category": "media-types",
+      "description": "will fail for specific aggregate with columns in same order",
+      "example": "CustomMediaSpec:it:314",
+      "request": {
+        "method": "GET",
+        "path": "/lines",
+        "query": "select=id,name,geom",
+        "headers": {
+          "Accept": "application/vnd.twkb"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 406,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CustomMediaSpec:321",
+      "source": "Feature/Query/CustomMediaSpec.hs",
+      "line": 321,
+      "category": "media-types",
+      "description": "returns application/json for */* if not explicitly set",
+      "example": "CustomMediaSpec:it:320",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/ret_any_mt",
+        "query": "",
+        "headers": {
+          "Accept": "*/*"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": "any",
+        "bodyFormat": "text",
+        "headers": {
+          "Content-Type": "application/octet-stream"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CustomMediaSpec:328",
+      "source": "Feature/Query/CustomMediaSpec.hs",
+      "line": 328,
+      "category": "media-types",
+      "description": "accepts any media type and sets the generic octet-stream as content type",
+      "example": "CustomMediaSpec:it:327",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/ret_any_mt",
+        "query": "",
+        "headers": {
+          "Accept": "app/bingo"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": "any",
+        "bodyFormat": "text",
+        "headers": {
+          "Content-Type": "application/octet-stream"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CustomMediaSpec:334",
+      "source": "Feature/Query/CustomMediaSpec.hs",
+      "line": 334,
+      "category": "media-types",
+      "description": "accepts any media type and sets the generic octet-stream as content type",
+      "example": "CustomMediaSpec:it:327",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/ret_any_mt",
+        "query": "",
+        "headers": {
+          "Accept": "text/bango"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": "any",
+        "bodyFormat": "text",
+        "headers": {
+          "Content-Type": "application/octet-stream"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CustomMediaSpec:340",
+      "source": "Feature/Query/CustomMediaSpec.hs",
+      "line": 340,
+      "category": "media-types",
+      "description": "accepts any media type and sets the generic octet-stream as content type",
+      "example": "CustomMediaSpec:it:327",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/ret_any_mt",
+        "query": "",
+        "headers": {
+          "Accept": "image/boingo"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": "any",
+        "bodyFormat": "text",
+        "headers": {
+          "Content-Type": "application/octet-stream"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CustomMediaSpec:347",
+      "source": "Feature/Query/CustomMediaSpec.hs",
+      "line": 347,
+      "category": "media-types",
+      "description": "returns custom media type for */* if explicitly set",
+      "example": "CustomMediaSpec:it:346",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/ret_some_mt",
+        "query": "",
+        "headers": {
+          "Accept": "*/*"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": "groucho",
+        "bodyFormat": "text",
+        "headers": {
+          "Content-Type": "app/groucho"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CustomMediaSpec:354",
+      "source": "Feature/Query/CustomMediaSpec.hs",
+      "line": 354,
+      "category": "media-types",
+      "description": "accepts some media types if there's conditional logic",
+      "example": "CustomMediaSpec:it:353",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/ret_some_mt",
+        "query": "",
+        "headers": {
+          "Accept": "app/chico"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": "chico",
+        "bodyFormat": "text",
+        "headers": {
+          "Content-Type": "app/chico"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CustomMediaSpec:360",
+      "source": "Feature/Query/CustomMediaSpec.hs",
+      "line": 360,
+      "category": "media-types",
+      "description": "accepts some media types if there's conditional logic",
+      "example": "CustomMediaSpec:it:353",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/ret_some_mt",
+        "query": "",
+        "headers": {
+          "Accept": "app/harpo"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": "harpo",
+        "bodyFormat": "text",
+        "headers": {
+          "Content-Type": "app/harpo"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CustomMediaSpec:366",
+      "source": "Feature/Query/CustomMediaSpec.hs",
+      "line": 366,
+      "category": "media-types",
+      "description": "accepts some media types if there's conditional logic",
+      "example": "CustomMediaSpec:it:353",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/ret_some_mt",
+        "query": "",
+        "headers": {
+          "Accept": "text/csv"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 406,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CustomMediaSpec:371",
+      "source": "Feature/Query/CustomMediaSpec.hs",
+      "line": 371,
+      "category": "media-types",
+      "description": "returns application/json for */* if not explicitly set",
+      "example": "CustomMediaSpec:it:370",
+      "request": {
+        "method": "GET",
+        "path": "/some_numbers",
+        "query": "val=eq.1",
+        "headers": {
+          "Accept": "*/*"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": "anything\n1",
+        "bodyFormat": "text",
+        "headers": {
+          "Content-Type": "application/octet-stream"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CustomMediaSpec:378",
+      "source": "Feature/Query/CustomMediaSpec.hs",
+      "line": 378,
+      "category": "media-types",
+      "description": "accepts any media type and sets it as a header",
+      "example": "CustomMediaSpec:it:377",
+      "request": {
+        "method": "GET",
+        "path": "/some_numbers",
+        "query": "val=eq.2",
+        "headers": {
+          "Accept": "magic/number"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": "magic\n2",
+        "bodyFormat": "text",
+        "headers": {
+          "Content-Type": "magic/number"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CustomMediaSpec:383",
+      "source": "Feature/Query/CustomMediaSpec.hs",
+      "line": 383,
+      "category": "media-types",
+      "description": "accepts any media type and sets it as a header",
+      "example": "CustomMediaSpec:it:377",
+      "request": {
+        "method": "GET",
+        "path": "/some_numbers",
+        "query": "val=eq.3",
+        "headers": {
+          "Accept": "crazy/bingo"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": "crazy\n3",
+        "bodyFormat": "text",
+        "headers": {
+          "Content-Type": "crazy/bingo"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CustomMediaSpec:388",
+      "source": "Feature/Query/CustomMediaSpec.hs",
+      "line": 388,
+      "category": "media-types",
+      "description": "accepts any media type and sets it as a header",
+      "example": "CustomMediaSpec:it:377",
+      "request": {
+        "method": "GET",
+        "path": "/some_numbers",
+        "query": "val=eq.4",
+        "headers": {
+          "Accept": "unknown/unknown"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": "anything\n4",
+        "bodyFormat": "text",
+        "headers": {
+          "Content-Type": "application/octet-stream"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CustomMediaSpec:396",
+      "source": "Feature/Query/CustomMediaSpec.hs",
+      "line": 396,
+      "category": "media-types",
+      "description": "sends media type as is",
+      "example": "CustomMediaSpec:it:395",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "",
+        "headers": {
+          "Accept": "undefined"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 406,
+        "body": {
+          "code": "PGRST107",
+          "details": null,
+          "hint": null,
+          "message": "None of these media types are available: undefined"
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CustomMediaSpec:403",
+      "source": "Feature/Query/CustomMediaSpec.hs",
+      "line": 403,
+      "category": "media-types",
+      "description": "regression test allowing charset=utf-8",
+      "example": "CustomMediaSpec:it:402",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/overloaded_default",
+        "query": "",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "must_param": 1
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "val": 1
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "CustomMediaSpec:413",
+      "source": "Feature/Query/CustomMediaSpec.hs",
+      "line": 413,
+      "category": "media-types",
+      "description": "handle unrecognized parameters leniently",
+      "example": "CustomMediaSpec:it:412",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/overloaded_default",
+        "query": "",
+        "headers": {
+          "Content-Type": "application/json; $$ unrecognized-chars=ignored $$"
+        },
+        "body": {
+          "must_param": 1
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": {
+          "val": 1
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    }
+  ]
+}

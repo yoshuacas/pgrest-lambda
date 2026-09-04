@@ -55,8 +55,8 @@ The live OpenAPI explorer at `GET /rest/v1/_docs` documents the exact query para
 | `201` | `POST` insert succeeded and rows are returned (`Prefer: return=representation`). |
 | `204` | Write succeeded with `Prefer: return=minimal`. |
 | `400` | Malformed query syntax. |
-| `401` | Missing or invalid `apikey`. |
-| `403` | Cedar policy denied. See [`PGRST403`](../authorization.md#errors). |
+| `401` | Missing or invalid `apikey`, or a Cedar policy denied an anonymous caller — the response carries `WWW-Authenticate: Bearer` and `PGRST403`. |
+| `403` | Cedar policy denied an authenticated caller. See [`PGRST403`](../authorization.md#errors). |
 | `404` | Table or function not in the schema cache. Call `POST /rest/v1/_refresh`. |
 | `406` | Requested a response type that can't be produced. |
 

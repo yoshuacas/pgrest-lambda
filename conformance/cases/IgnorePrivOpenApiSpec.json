@@ -1,0 +1,42 @@
+{
+  "source": "Feature/OpenApi/IgnorePrivOpenApiSpec.hs",
+  "extractedCases": 0,
+  "skippedSites": 1,
+  "needsConfigCases": 1,
+  "cases": [
+    {
+      "id": "IgnorePrivOpenApiSpec:29",
+      "source": "Feature/OpenApi/IgnorePrivOpenApiSpec.hs",
+      "line": 29,
+      "category": "openapi",
+      "description": "root path returns a valid openapi spec",
+      "example": "IgnorePrivOpenApiSpec:it:27",
+      "request": {
+        "method": "HEAD",
+        "path": "/",
+        "query": "",
+        "headers": {
+          "Accept": "application/openapi+json"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Type": "application/openapi+json; charset=utf-8"
+        },
+        "headersAbsent": [
+          "Content-Length"
+        ]
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configOpenApiMode, configDbSchemas)",
+      "skipClass": "needs-engine-config"
+    }
+  ]
+}

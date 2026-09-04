@@ -97,10 +97,12 @@ describe('buildFilterConditions', () => {
     const conditions = _buildFilterConditions(
       filters, values, columnValidator);
 
+    // Upstream passes an `in` list as a single array literal parameter
+    // and matches with `= ANY(...)`, so the list costs one placeholder.
     assert.deepStrictEqual(conditions, [
-      '("status" IN ($1, $2, $3) OR "priority" = $4)',
+      '("status" = ANY($1) OR "priority" = $2)',
     ]);
-    assert.deepStrictEqual(values, ['a', 'b', 'c', 'high']);
+    assert.deepStrictEqual(values, ['{"a","b","c"}', 'high']);
   });
 
   it('test_negate_wrapping', () => {

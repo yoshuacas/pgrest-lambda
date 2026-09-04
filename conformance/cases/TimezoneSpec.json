@@ -1,0 +1,312 @@
+{
+  "source": "Feature/Query/Preferences/TimezoneSpec.hs",
+  "extractedCases": 8,
+  "skippedSites": 0,
+  "needsConfigCases": 0,
+  "cases": [
+    {
+      "id": "TimezoneSpec:15",
+      "source": "Feature/Query/Preferences/TimezoneSpec.hs",
+      "line": 15,
+      "category": "preferences",
+      "description": "should change timezone with handling=strict",
+      "example": "TimezoneSpec:it:14",
+      "request": {
+        "method": "GET",
+        "path": "/timestamps",
+        "query": "",
+        "headers": {
+          "Prefer": "handling=strict, timezone=America/Los_Angeles"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "t": "2023-10-18T05:37:59.611-07:00"
+          },
+          {
+            "t": "2023-10-18T07:37:59.611-07:00"
+          },
+          {
+            "t": "2023-10-18T09:37:59.611-07:00"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Preference-Applied": "handling=strict, timezone=America/Los_Angeles"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "TimezoneSpec:25",
+      "source": "Feature/Query/Preferences/TimezoneSpec.hs",
+      "line": 25,
+      "category": "preferences",
+      "description": "should change timezone without handling=strict",
+      "example": "TimezoneSpec:it:24",
+      "request": {
+        "method": "GET",
+        "path": "/timestamps",
+        "query": "",
+        "headers": {
+          "Prefer": "timezone=America/Los_Angeles"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "t": "2023-10-18T05:37:59.611-07:00"
+          },
+          {
+            "t": "2023-10-18T07:37:59.611-07:00"
+          },
+          {
+            "t": "2023-10-18T09:37:59.611-07:00"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Preference-Applied": "timezone=America/Los_Angeles"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "TimezoneSpec:36",
+      "source": "Feature/Query/Preferences/TimezoneSpec.hs",
+      "line": 36,
+      "category": "preferences",
+      "description": "should throw error without handling",
+      "example": "TimezoneSpec:it:35",
+      "request": {
+        "method": "GET",
+        "path": "/timestamps",
+        "query": "",
+        "headers": {
+          "Prefer": "timezone=Invalid/Timezone"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "code": "22023",
+          "details": null,
+          "hint": null,
+          "message": "invalid value for parameter \"TimeZone\": \"Invalid/Timezone\""
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "TimezoneSpec:44",
+      "source": "Feature/Query/Preferences/TimezoneSpec.hs",
+      "line": 44,
+      "category": "preferences",
+      "description": "should throw error with handling=strict",
+      "example": "TimezoneSpec:it:43",
+      "request": {
+        "method": "GET",
+        "path": "/timestamps",
+        "query": "",
+        "headers": {
+          "Prefer": "handling=strict, timezone=Invalid/Timezone"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "code": "22023",
+          "details": null,
+          "hint": null,
+          "message": "invalid value for parameter \"TimeZone\": \"Invalid/Timezone\""
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "TimezoneSpec:52",
+      "source": "Feature/Query/Preferences/TimezoneSpec.hs",
+      "line": 52,
+      "category": "preferences",
+      "description": "should throw error with handling=lenient",
+      "example": "TimezoneSpec:it:51",
+      "request": {
+        "method": "GET",
+        "path": "/timestamps",
+        "query": "",
+        "headers": {
+          "Prefer": "handling=lenient, timezone=Invalid/Timezone"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "code": "22023",
+          "details": null,
+          "hint": null,
+          "message": "invalid value for parameter \"TimeZone\": \"Invalid/Timezone\""
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "TimezoneSpec:61",
+      "source": "Feature/Query/Preferences/TimezoneSpec.hs",
+      "line": 61,
+      "category": "preferences",
+      "description": "should change with positive offset",
+      "example": "TimezoneSpec:it:60",
+      "request": {
+        "method": "GET",
+        "path": "/timestamps",
+        "query": "",
+        "headers": {
+          "Prefer": "timezone=+05:30"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "t": "2023-10-18T07:07:59.611-05:30"
+          },
+          {
+            "t": "2023-10-18T09:07:59.611-05:30"
+          },
+          {
+            "t": "2023-10-18T11:07:59.611-05:30"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Preference-Applied": "timezone=+05:30"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "TimezoneSpec:71",
+      "source": "Feature/Query/Preferences/TimezoneSpec.hs",
+      "line": 71,
+      "category": "preferences",
+      "description": "should change with negative offset",
+      "example": "TimezoneSpec:it:70",
+      "request": {
+        "method": "GET",
+        "path": "/timestamps",
+        "query": "",
+        "headers": {
+          "Prefer": "timezone=-4"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "t": "2023-10-18T08:37:59.611-04:00"
+          },
+          {
+            "t": "2023-10-18T10:37:59.611-04:00"
+          },
+          {
+            "t": "2023-10-18T12:37:59.611-04:00"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Preference-Applied": "timezone=-4"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "TimezoneSpec:81",
+      "source": "Feature/Query/Preferences/TimezoneSpec.hs",
+      "line": 81,
+      "category": "preferences",
+      "description": "fails on leap seconds",
+      "example": "TimezoneSpec:it:80",
+      "request": {
+        "method": "GET",
+        "path": "/timestamps",
+        "query": "",
+        "headers": {
+          "Prefer": "timezone=05:30:15"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 400,
+        "body": {
+          "code": "22023",
+          "details": "PostgreSQL does not support leap seconds.",
+          "hint": null,
+          "message": "time zone \"05:30:15\" appears to use leap seconds"
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    }
+  ]
+}

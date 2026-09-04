@@ -173,7 +173,15 @@ function buildPrincipalUid(role, userId) {
   if (role === 'anon') {
     return { type: 'PgrestLambda::AnonRole', id: 'anon' };
   }
-  return { type: 'PgrestLambda::User', id: userId };
+  // A Cedar entity id is a string. A JWT is free to carry a numeric `sub` or
+  // `id` — upstream's own AuthSpec sends `{"id": 1}` — and passing that number
+  // through made Cedar reject the request as unparseable, which every caller
+  // here reads as a denial. So a numeric or otherwise non-string subject
+  // becomes its string form rather than a blanket 403.
+  return {
+    type: 'PgrestLambda::User',
+    id: typeof userId === 'string' ? userId : String(userId ?? ''),
+  };
 }
 
 function buildEntities(principalUid, principal, schema) {
@@ -546,6 +554,28 @@ export function createCedar(config) {
     );
   }
 
+  // Every denial goes through here so the wire shape is decided in one place.
+  //
+  // PostgREST answers a privilege denial 401 with `WWW-Authenticate: Bearer`
+  // when the caller is anonymous and 403 when it is authenticated: an
+  // anonymous caller might succeed if it authenticated, an authenticated one
+  // will not. The engine already makes that distinction for a real PostgreSQL
+  // 42501 (errors.mjs `statusFromPgCode`, `authed ? 403 : 401`); a policy
+  // denial is the same event reached by a different mechanism, so it gets the
+  // same shape. Measured before this: the Cedar equivalence suite reported
+  // Cedar:AuthSpec:41, :130 and :135 diverging from upstream on status alone
+  // (docs/reference/cedar-equivalence.md). supabase-js reads 401 as "refresh
+  // and retry", which makes this a wire-compatibility question, not cosmetics.
+  function denyError(principal, action, table, details = null) {
+    const anon = (principal?.role ?? 'anon') === 'anon';
+    const err = new PostgRESTError(
+      anon ? 401 : 403, 'PGRST403',
+      denyMessage(principal, action, table), details,
+    );
+    if (anon) err.responseHeaders = { 'WWW-Authenticate': 'Bearer' };
+    return err;
+  }
+
   function loadPolicyText() {
     if (source.scheme === 's3') {
       return loadFromS3(source.bucket, source.prefix, config.region);
@@ -592,10 +622,7 @@ export function createCedar(config) {
     principal, action, resource, resourceType, schema,
   }) {
     if (!cachedPolicies) {
-      throw new PostgRESTError(
-        403, 'PGRST403',
-        denyMessage(principal, action, resource),
-      );
+      throw denyError(principal, action, resource);
     }
 
     const principalUid = buildPrincipalUid(principal.role, principal.userId);
@@ -636,20 +663,14 @@ export function createCedar(config) {
       }
     }
 
-    throw new PostgRESTError(
-      403, 'PGRST403',
-      denyMessage(principal, action, resource),
-    );
+    throw denyError(principal, action, resource);
   }
 
   function authorizeInsert({
     principal, resource, schema, rows,
   }) {
     if (!cachedPolicies) {
-      throw new PostgRESTError(
-        403, 'PGRST403',
-        denyMessage(principal, 'insert', resource),
-      );
+      throw denyError(principal, 'insert', resource);
     }
 
     const principalUid = buildPrincipalUid(
@@ -691,10 +712,7 @@ export function createCedar(config) {
 
     if (partial.type !== 'residuals') {
       if (tablePermitGranted) return true;
-      throw new PostgRESTError(
-        403, 'PGRST403',
-        denyMessage(principal, 'insert', resource),
-      );
+      throw denyError(principal, 'insert', resource);
     }
 
     const resp = partial.response;
@@ -704,18 +722,12 @@ export function createCedar(config) {
           || resp.decision === 'allow') {
         return true;
       }
-      throw new PostgRESTError(
-        403, 'PGRST403',
-        denyMessage(principal, 'insert', resource),
-      );
+      throw denyError(principal, 'insert', resource);
     }
 
     if (resp.decision === 'deny'
         && !tablePermitGranted) {
-      throw new PostgRESTError(
-        403, 'PGRST403',
-        denyMessage(principal, 'insert', resource),
-      );
+      throw denyError(principal, 'insert', resource);
     }
 
     for (let i = 0; i < rows.length; i++) {
@@ -727,11 +739,7 @@ export function createCedar(config) {
           ? `Row ${i} of the batch violates the`
             + ` insert policy`
           : null;
-        throw new PostgRESTError(
-          403, 'PGRST403',
-          denyMessage(principal, 'insert', resource),
-          detail,
-        );
+        throw denyError(principal, 'insert', resource, detail);
       }
     }
 
@@ -742,10 +750,7 @@ export function createCedar(config) {
     principal, action, context, schema, startParam,
   }) {
     if (!cachedPolicies) {
-      throw new PostgRESTError(
-        403, 'PGRST403',
-        denyMessage(principal, action, context.table),
-      );
+      throw denyError(principal, action, context.table);
     }
 
     const principalUid = buildPrincipalUid(principal.role, principal.userId);
@@ -762,10 +767,7 @@ export function createCedar(config) {
     });
 
     if (result.type === 'failure') {
-      throw new PostgRESTError(
-        403, 'PGRST403',
-        denyMessage(principal, action, context.table),
-      );
+      throw denyError(principal, action, context.table);
     }
 
     const response = result.response;
@@ -776,63 +778,107 @@ export function createCedar(config) {
     }
 
     if (response.decision === 'deny') {
-      throw new PostgRESTError(
-        403, 'PGRST403',
-        denyMessage(principal, action, context.table),
-      );
+      throw denyError(principal, action, context.table);
     }
 
     const tempValues = new Array(startParam - 1);
     const permitConditions = [];
     const forbidConditions = [];
-    let anyPermitGrantsAccess = false;
+    // `allow` from a partial authorization means some permit is satisfied
+    // without knowing the resource — a table-scoped grant such as `when {
+    // principal.role == "author" && context.table == "authors_only" }`. Cedar
+    // reports it in `satisfied` and leaves it out of `nontrivialResiduals`, so
+    // the residual loops below never see it. Reading only the residuals denied
+    // the request whenever a *different* permit left a residual that happens to
+    // translate to FALSE — the shipped `resource has user_id` rule does exactly
+    // that on a table with no `user_id` column. The early return above catches
+    // only the case where no residual survives at all.
+    //
+    // Forbids still apply: they are collected below, and a satisfied forbid
+    // would have made the decision `deny`, which already returned.
+    let anyPermitGrantsAccess = response.decision === 'allow';
+    let permitIsUnconditional = response.decision === 'allow';
 
-    for (const policyId of response.nontrivialResiduals) {
-      const residual = response.residuals[policyId];
-      const effect = residual.effect;
-
-      for (const cond of residual.conditions || []) {
-        if (cond.kind !== 'when') continue;
-        let sql;
-        try {
-          sql = translateExpr(
-            cond.body, tempValues, context.table, schema,
-          );
-        } catch (err) {
-          if (err?.code === 'PGRST000' && !production) {
-            err.message =
-              `${err.message}\n` +
-              `  policy id: ${policyId}\n` +
-              `  policies loaded from: ${currentSourceKey()}`;
-          }
-          throw err;
+    // Translate one residual's `when` clauses, tagging a PGRST000 with the
+    // policy that produced it.
+    const sqlFor = (policyId, cond) => {
+      try {
+        return translateExpr(cond.body, tempValues, context.table, schema);
+      } catch (err) {
+        if (err?.code === 'PGRST000' && !production) {
+          err.message =
+            `${err.message}\n` +
+            `  policy id: ${policyId}\n` +
+            `  policies loaded from: ${currentSourceKey()}`;
         }
+        throw err;
+      }
+    };
+
+    const whenClauses = (policyId, effect) => {
+      const residual = response.residuals[policyId];
+      return residual.effect === effect
+        ? (residual.conditions || []).filter((c) => c.kind === 'when')
+        : [];
+    };
+
+    // Forbids first, and all of them, before any permit can conclude the scan.
+    //
+    // This used to be one loop over the residuals in whatever order Cedar
+    // returned them, and a permit whose residual translated to "unconditional"
+    // returned `{conditions: [], values: []}` on the spot. That discarded every
+    // forbid — the ones not yet visited, and the ones already collected. So a
+    // policy set as ordinary as `permit(... resource is PgrestLambda::Row) when
+    // { context.table == "public_posts" }` plus `forbid(...) when { resource has
+    // status && resource.status == "archived" }` returned archived rows, in
+    // either policy order. Cedar's own semantics are that a forbid always
+    // overrides a permit, so that was an authorization bypass, not a
+    // conservative approximation.
+    //
+    // A forbid whose residual is unconditional denies outright, and a forbid
+    // whose residual will not translate now raises PGRST000 where it previously
+    // could be skipped unnoticed. Both are the safe direction: the alternative
+    // is returning rows a forbid was written to hide.
+    for (const policyId of response.nontrivialResiduals) {
+      for (const cond of whenClauses(policyId, 'forbid')) {
+        const sql = sqlFor(policyId, cond);
+        if (sql === null) throw denyError(principal, action, context.table);
+        if (sql !== 'FALSE') forbidConditions.push(sql);
+      }
+    }
+
+    // Then permits. An unconditional permit ends this pass — nothing a later
+    // permit says can widen access that is already unrestricted, and not
+    // scanning further keeps a permit that would fail to translate from turning
+    // an allowed request into a 500. The forbids above are already collected.
+    const permitValuesFrom = tempValues.length;
+    for (const policyId of response.nontrivialResiduals) {
+      if (permitIsUnconditional) break;
+      for (const cond of whenClauses(policyId, 'permit')) {
+        const sql = sqlFor(policyId, cond);
         if (sql === null) {
-          if (effect === 'permit') {
-            return { conditions: [], values: [] };
-          }
-          if (effect === 'forbid') {
-            throw new PostgRESTError(
-              403, 'PGRST403',
-              denyMessage(principal, action, context.table),
-            );
-          }
-        } else if (sql !== 'FALSE') {
-          if (effect === 'permit') {
-            permitConditions.push(sql);
-            anyPermitGrantsAccess = true;
-          } else if (effect === 'forbid') {
-            forbidConditions.push(sql);
-          }
+          permitIsUnconditional = true;
+          anyPermitGrantsAccess = true;
+          break;
+        }
+        if (sql !== 'FALSE') {
+          permitConditions.push(sql);
+          anyPermitGrantsAccess = true;
         }
       }
     }
 
+    if (permitIsUnconditional) {
+      // Unrestricted OR anything is unrestricted, so the collected permit
+      // conditions go, and with them their bind values. Rolling back to
+      // `permitValuesFrom` is safe because permits were translated last, so
+      // nothing numbered after them.
+      permitConditions.length = 0;
+      tempValues.length = permitValuesFrom;
+    }
+
     if (!anyPermitGrantsAccess && forbidConditions.length === 0) {
-      throw new PostgRESTError(
-        403, 'PGRST403',
-        denyMessage(principal, action, context.table),
-      );
+      throw denyError(principal, action, context.table);
     }
 
     const allConditions = [];

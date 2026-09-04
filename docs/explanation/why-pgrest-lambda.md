@@ -24,7 +24,7 @@ If you want the Supabase developer experience without the Supabase platform, tha
 | **PostgREST** | Pure REST over PostgreSQL. Proven, minimal, language-agnostic. | Auth is out of scope — you bolt on GoTrue, Kong, an nginx reverse proxy, or roll your own. Row-level security goes in the database (PL/pgSQL + `RLS`). |
 | **Supabase** | Hosted, batteries-included. Auth, storage, edge functions, realtime. Great for greenfield. | Control plane you don't own. Egress and tenancy follow Supabase's pricing. RLS lives in Postgres; your policies are coupled to schema migrations. |
 | **Hasura** | GraphQL-first. Excellent subscriptions and introspection. | GraphQL is not REST; existing Supabase-client code does not translate. Different mental model. |
-| **pgrest-lambda** | Drop-in for Supabase clients; auth + REST + authz in one package; runs as a Lambda you own. | Younger project. No realtime, no storage, no hosted dashboard. Aurora DSQL support has caveats (no RPC — see [docs/rpc.md](../rpc.md)). |
+| **pgrest-lambda** | Drop-in for Supabase clients; auth + REST + authz in one package; runs as a Lambda you own. | Younger project. No realtime, no storage, no hosted dashboard. On Aurora DSQL, RPC bodies have to be `LANGUAGE sql` — DSQL has no PL/pgSQL (see [docs/rpc.md](../rpc.md)) — and the [compatibility page](../reference/postgrest-compatibility) itemises what else DSQL puts out of reach. |
 
 ## Why a library, not a service
 

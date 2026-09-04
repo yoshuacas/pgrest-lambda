@@ -1,0 +1,71 @@
+{
+  "source": "Feature/Auth/NoAnonSpec.hs",
+  "extractedCases": 0,
+  "skippedSites": 2,
+  "needsConfigCases": 2,
+  "cases": [
+    {
+      "id": "NoAnonSpec:18",
+      "source": "Feature/Auth/NoAnonSpec.hs",
+      "line": 18,
+      "category": "auth",
+      "description": "behaves normally on attempted auth",
+      "example": "NoAnonSpec:it:15",
+      "request": {
+        "method": "GET",
+        "path": "/authors_only",
+        "query": "",
+        "headers": {
+          "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoicG9zdGdyZXN0X3Rlc3RfYXV0aG9yIn0.Xod-F15qsGL0WhdOCr2j3DdKuTw9QJERVgoFD3vGaWA"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbAnonRole)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "NoAnonSpec:25",
+      "source": "Feature/Auth/NoAnonSpec.hs",
+      "line": 25,
+      "category": "auth",
+      "description": "responds with error when user does not attempt auth",
+      "example": "NoAnonSpec:it:24",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 401,
+        "body": {
+          "hint": null,
+          "details": null,
+          "code": "PGRST302",
+          "message": "Anonymous access is disabled"
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "WWW-Authenticate": "Bearer"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbAnonRole)",
+      "skipClass": "needs-engine-config"
+    }
+  ]
+}

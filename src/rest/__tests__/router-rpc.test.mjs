@@ -41,31 +41,48 @@ describe('router: /rpc/ path matching', () => {
     });
   });
 
+  // A PostgreSQL function name is an arbitrary identifier. Upstream's router
+  // takes the path segment as that identifier and lets the schema cache decide
+  // whether it exists (`["rpc", pName] -> TargetProc`), so a function really
+  // called `welcome.html` or `my-func` is reachable and an unknown one answers
+  // 404 PGRST202 from routine resolution — not 400 from the router.
+  //
+  // These cases replace three that asserted PGRST100 for a hyphen, a leading
+  // digit and an encoded space. That rule made two upstream cases unreachable
+  // (CustomMediaSpec:75 GET /rpc/welcome.html, :110 GET /rpc/welcome.xml) and
+  // bought no safety: the name never reaches SQL as text — routines.mjs
+  // resolves it against pg_proc and the call is built from the catalog row.
+  describe('names that are identifiers but not bare words', () => {
+    it('routes a dotted name (a function literally called welcome.html)', () => {
+      assert.deepStrictEqual(route('/rest/v1/rpc/welcome.html', mockSchema), {
+        type: 'rpc',
+        functionName: 'welcome.html',
+      });
+    });
+
+    it('routes a hyphenated name and leaves existence to the schema cache', () => {
+      assert.deepStrictEqual(route('/rest/v1/rpc/my-func', mockSchema), {
+        type: 'rpc',
+        functionName: 'my-func',
+      });
+    });
+
+    it('routes a leading-digit name', () => {
+      assert.deepStrictEqual(route('/rest/v1/rpc/123abc', mockSchema), {
+        type: 'rpc',
+        functionName: '123abc',
+      });
+    });
+
+    it('percent-decodes the segment', () => {
+      assert.deepStrictEqual(route('/rest/v1/rpc/my%20func', mockSchema), {
+        type: 'rpc',
+        functionName: 'my func',
+      });
+    });
+  });
+
   describe('invalid function names', () => {
-    it('throws PGRST100 for hyphen in name', () => {
-      assert.throws(
-        () => route('/rest/v1/rpc/my-func', mockSchema),
-        (err) => err.code === 'PGRST100',
-        'should throw PGRST100 for hyphen in function name',
-      );
-    });
-
-    it('throws PGRST100 for leading digit', () => {
-      assert.throws(
-        () => route('/rest/v1/rpc/123abc', mockSchema),
-        (err) => err.code === 'PGRST100',
-        'should throw PGRST100 for leading digit',
-      );
-    });
-
-    it('throws PGRST100 for space (URL-encoded)', () => {
-      assert.throws(
-        () => route('/rest/v1/rpc/my%20func', mockSchema),
-        (err) => err.code === 'PGRST100',
-        'should throw PGRST100 for space in function name',
-      );
-    });
-
     it('throws PGRST100 for empty after /rpc/', () => {
       assert.throws(
         () => route('/rest/v1/rpc/', mockSchema),
@@ -74,12 +91,21 @@ describe('router: /rpc/ path matching', () => {
       );
     });
 
-    it('throws PGRST100 for nested path /rpc/fn/extra', () => {
+    it('throws PGRST100 for a malformed percent escape', () => {
       assert.throws(
-        () => route('/rest/v1/rpc/fn/extra', mockSchema),
-        (err) => err.code === 'PGRST100',
-        'should throw PGRST100 for nested path after function name',
+        () => route('/rest/v1/rpc/%zz', mockSchema),
+        (err) => err.code === 'PGRST100' && err.statusCode === 400,
       );
+    });
+
+    it('takes only the first segment of /rpc/fn/extra', () => {
+      // Upstream has no route for a three-segment path at all; taking the
+      // function name and letting resolution 404 is the same visible outcome
+      // for any real request, and never routes to a different function.
+      assert.deepStrictEqual(route('/rest/v1/rpc/fn/extra', mockSchema), {
+        type: 'rpc',
+        functionName: 'fn',
+      });
     });
   });
 

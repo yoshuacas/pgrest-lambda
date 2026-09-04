@@ -128,10 +128,18 @@ describe('db capabilities integration', () => {
     });
   });
 
+  // This suite used to assert the opposite: that a DSQL connection never sent
+  // FK_SQL. DSQL added foreign key constraints on 2026-08-27, so it does now,
+  // and reading the catalog is the whole point of the change.
   describe('schema cache with DSQL stub', () => {
-    it('skips FK query when provider lacks FK support', async () => {
+    /**
+     * A pool that answers the introspection queries and records them.
+     * @param {object[]} fkRows what `contype = 'f'` returns.
+     */
+    function stubPool(fkRows) {
       const queries = [];
-      const mockPool = {
+      return {
+        queries,
         query(sql) {
           queries.push(sql);
           if (sql.includes('format_type')) {
@@ -140,6 +148,7 @@ describe('db capabilities integration', () => {
                 { table_name: 'users', column_name: 'id', data_type: 'bigint', is_nullable: false, column_default: null },
                 { table_name: 'notes', column_name: 'id', data_type: 'bigint', is_nullable: false, column_default: null },
                 { table_name: 'notes', column_name: 'user_id', data_type: 'text', is_nullable: false, column_default: null },
+                { table_name: 'notes', column_name: 'author', data_type: 'bigint', is_nullable: true, column_default: null },
               ],
             };
           }
@@ -151,13 +160,15 @@ describe('db capabilities integration', () => {
               ],
             };
           }
-          if (sql.includes("contype = 'f'")) return { rows: [] };
+          if (sql.includes("contype = 'f'")) return { rows: fkRows };
           return { rows: [] };
         },
         end: () => Promise.resolve(),
       };
+    }
 
-      const pgrest = createPgrest({
+    function dsqlPgrest() {
+      return createPgrest({
         database: {
           dsqlEndpoint: 'test.dsql.amazonaws.com',
           region: 'us-east-1',
@@ -168,23 +179,62 @@ describe('db capabilities integration', () => {
         production: false,
         docs: false,
       });
+    }
+
+    it('reads foreign keys from pg_constraint on DSQL', async () => {
+      // On DSQL a key added to an existing table can only be NOT VALID, so
+      // convalidated is false for every fixture key. FK_SQL does not filter on
+      // it, deliberately — upstream PostgREST does not either.
+      const mockPool = stubPool([{
+        constraint_name: 'notes_author_fkey',
+        from_schema: 'public',
+        from_table: 'notes',
+        from_columns: ['author'],
+        to_schema: 'public',
+        to_table: 'users',
+        to_columns: ['id'],
+      }]);
+      const pgrest = dsqlPgrest();
 
       try {
         pgrest._db._setPool(mockPool);
         const schema = await pgrest._schemaCache.refresh(mockPool);
 
-        const fkCalls = queries.filter(q => q.includes("contype = 'f'"));
-        assert.equal(fkCalls.length, 0, 'FK_SQL should not be sent to DSQL');
+        assert.equal(
+          mockPool.queries.filter(q => q.includes("contype = 'f'")).length, 1,
+          'FK_SQL should be sent to DSQL');
 
         const rel = schema.relationships.find(
-          r => r.fromTable === 'notes' && r.fromColumns.includes('user_id'),
+          r => r.fromTable === 'notes' && r.fromColumns.includes('author'),
         );
-        assert.ok(rel, 'convention fallback should infer notes.user_id → users');
+        assert.ok(rel, 'the NOT VALID key should produce a relationship');
         assert.equal(rel.toTable, 'users');
         assert.deepStrictEqual(rel.toColumns, ['id']);
+        assert.equal(rel.constraint, 'notes_author_fkey');
       } finally {
         await pgrest._db.close();
       }
     });
+
+    it('falls back to the naming convention when the catalog reports nothing',
+      async () => {
+        // Not DSQL-specific any more: this is what any database with no keys
+        // declared gets. `notes.user_id` has no constraint behind it in the stub.
+        const mockPool = stubPool([]);
+        const pgrest = dsqlPgrest();
+
+        try {
+          pgrest._db._setPool(mockPool);
+          const schema = await pgrest._schemaCache.refresh(mockPool);
+          const rel = schema.relationships.find(
+            r => r.fromTable === 'notes' && r.fromColumns.includes('user_id'),
+          );
+          assert.ok(rel, 'convention fallback should infer notes.user_id → users');
+          assert.equal(rel.toTable, 'users');
+          assert.deepStrictEqual(rel.toColumns, ['id']);
+        } finally {
+          await pgrest._db.close();
+        }
+      });
   });
 });

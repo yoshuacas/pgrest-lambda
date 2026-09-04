@@ -1,0 +1,1202 @@
+{
+  "source": "Feature/Query/ComputedRelsSpec.hs",
+  "extractedCases": 30,
+  "skippedSites": 0,
+  "needsConfigCases": 0,
+  "cases": [
+    {
+      "id": "ComputedRelsSpec:14",
+      "source": "Feature/Query/ComputedRelsSpec.hs",
+      "line": 14,
+      "category": "embedding",
+      "description": "can define a many-to-one relationship with SETOF and ROWS 1 and embed",
+      "example": "ComputedRelsSpec:it:13",
+      "request": {
+        "method": "GET",
+        "path": "/videogames",
+        "query": "select=name,designer:computed_designers(name)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Civilization I",
+            "designer": {
+              "name": "Sid Meier"
+            }
+          },
+          {
+            "name": "Civilization II",
+            "designer": {
+              "name": "Sid Meier"
+            }
+          },
+          {
+            "name": "Final Fantasy I",
+            "designer": {
+              "name": "Hironobu Sakaguchi"
+            }
+          },
+          {
+            "name": "Final Fantasy II",
+            "designer": {
+              "name": "Hironobu Sakaguchi"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ComputedRelsSpec:24",
+      "source": "Feature/Query/ComputedRelsSpec.hs",
+      "line": 24,
+      "category": "embedding",
+      "description": "can define a many-to-one relationship without SETOF and embed",
+      "example": "ComputedRelsSpec:it:23",
+      "request": {
+        "method": "GET",
+        "path": "/videogames",
+        "query": "select=name,designer:computed_designers_noset(name)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Civilization I",
+            "designer": {
+              "name": "Sid Meier"
+            }
+          },
+          {
+            "name": "Civilization II",
+            "designer": {
+              "name": "Sid Meier"
+            }
+          },
+          {
+            "name": "Final Fantasy I",
+            "designer": {
+              "name": "Hironobu Sakaguchi"
+            }
+          },
+          {
+            "name": "Final Fantasy II",
+            "designer": {
+              "name": "Hironobu Sakaguchi"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ComputedRelsSpec:34",
+      "source": "Feature/Query/ComputedRelsSpec.hs",
+      "line": 34,
+      "category": "embedding",
+      "description": "can define a one-to-many relationship and embed",
+      "example": "ComputedRelsSpec:it:33",
+      "request": {
+        "method": "GET",
+        "path": "/designers",
+        "query": "select=name,videogames:computed_videogames(name)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Sid Meier",
+            "videogames": [
+              {
+                "name": "Civilization I"
+              },
+              {
+                "name": "Civilization II"
+              }
+            ]
+          },
+          {
+            "name": "Hironobu Sakaguchi",
+            "videogames": [
+              {
+                "name": "Final Fantasy I"
+              },
+              {
+                "name": "Final Fantasy II"
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ComputedRelsSpec:42",
+      "source": "Feature/Query/ComputedRelsSpec.hs",
+      "line": 42,
+      "category": "embedding",
+      "description": "works with !inner and count=exact",
+      "example": "ComputedRelsSpec:it:41",
+      "request": {
+        "method": "GET",
+        "path": "/designers",
+        "query": "select=name,videogames:computed_videogames!inner(name)&videogames.name=eq.Civilization%20I",
+        "headers": {
+          "Prefer": "count=exact"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Sid Meier",
+            "videogames": [
+              {
+                "name": "Civilization I"
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "0-0/1"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ComputedRelsSpec:49",
+      "source": "Feature/Query/ComputedRelsSpec.hs",
+      "line": 49,
+      "category": "embedding",
+      "description": "works with !inner and count=exact",
+      "example": "ComputedRelsSpec:it:41",
+      "request": {
+        "method": "GET",
+        "path": "/videogames",
+        "query": "select=name,designer:computed_designers!inner(name)&designer.name=like.*Hironobu*",
+        "headers": {
+          "Prefer": "count=exact"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Final Fantasy I",
+            "designer": {
+              "name": "Hironobu Sakaguchi"
+            }
+          },
+          {
+            "name": "Final Fantasy II",
+            "designer": {
+              "name": "Hironobu Sakaguchi"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "0-1/2"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ComputedRelsSpec:59",
+      "source": "Feature/Query/ComputedRelsSpec.hs",
+      "line": 59,
+      "category": "embedding",
+      "description": "works with !inner and count=exact",
+      "example": "ComputedRelsSpec:it:41",
+      "request": {
+        "method": "GET",
+        "path": "/videogames",
+        "query": "select=name,designer:computed_designers_noset!inner(name)&designer.name=like.*Hironobu*",
+        "headers": {
+          "Prefer": "count=exact"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Final Fantasy I",
+            "designer": {
+              "name": "Hironobu Sakaguchi"
+            }
+          },
+          {
+            "name": "Final Fantasy II",
+            "designer": {
+              "name": "Hironobu Sakaguchi"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "0-1/2"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ComputedRelsSpec:71",
+      "source": "Feature/Query/ComputedRelsSpec.hs",
+      "line": 71,
+      "category": "embedding",
+      "description": "works with rpc",
+      "example": "ComputedRelsSpec:it:70",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/getallvideogames",
+        "query": "select=name,designer:computed_designers(name)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Civilization I",
+            "designer": {
+              "name": "Sid Meier"
+            }
+          },
+          {
+            "name": "Civilization II",
+            "designer": {
+              "name": "Sid Meier"
+            }
+          },
+          {
+            "name": "Final Fantasy I",
+            "designer": {
+              "name": "Hironobu Sakaguchi"
+            }
+          },
+          {
+            "name": "Final Fantasy II",
+            "designer": {
+              "name": "Hironobu Sakaguchi"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ComputedRelsSpec:79",
+      "source": "Feature/Query/ComputedRelsSpec.hs",
+      "line": 79,
+      "category": "embedding",
+      "description": "works with rpc",
+      "example": "ComputedRelsSpec:it:70",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/getalldesigners",
+        "query": "select=name,videogames:computed_videogames(name)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Sid Meier",
+            "videogames": [
+              {
+                "name": "Civilization I"
+              },
+              {
+                "name": "Civilization II"
+              }
+            ]
+          },
+          {
+            "name": "Hironobu Sakaguchi",
+            "videogames": [
+              {
+                "name": "Final Fantasy I"
+              },
+              {
+                "name": "Final Fantasy II"
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ComputedRelsSpec:87",
+      "source": "Feature/Query/ComputedRelsSpec.hs",
+      "line": 87,
+      "category": "embedding",
+      "description": "works with mutations",
+      "example": "ComputedRelsSpec:it:86",
+      "request": {
+        "method": "POST",
+        "path": "/videogames",
+        "query": "select=name,designer:computed_designers(name)",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "id": 5,
+          "name": "Chrono Trigger",
+          "designer_id": 2
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 201,
+        "body": [
+          {
+            "name": "Chrono Trigger",
+            "designer": {
+              "name": "Hironobu Sakaguchi"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ComputedRelsSpec:93",
+      "source": "Feature/Query/ComputedRelsSpec.hs",
+      "line": 93,
+      "category": "embedding",
+      "description": "works with mutations",
+      "example": "ComputedRelsSpec:it:86",
+      "request": {
+        "method": "PATCH",
+        "path": "/designers",
+        "query": "select=name,videogames:computed_videogames(name)&id=eq.1",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": {
+          "name": "Sidney K. Meier"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Sidney K. Meier",
+            "videogames": [
+              {
+                "name": "Civilization I"
+              },
+              {
+                "name": "Civilization II"
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ComputedRelsSpec:99",
+      "source": "Feature/Query/ComputedRelsSpec.hs",
+      "line": 99,
+      "category": "embedding",
+      "description": "works with mutations",
+      "example": "ComputedRelsSpec:it:86",
+      "request": {
+        "method": "DELETE",
+        "path": "/videogames",
+        "query": "select=name,designer:computed_designers(name)&id=eq.3",
+        "headers": {
+          "Prefer": "return=representation"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Final Fantasy I",
+            "designer": {
+              "name": "Hironobu Sakaguchi"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ComputedRelsSpec:110",
+      "source": "Feature/Query/ComputedRelsSpec.hs",
+      "line": 110,
+      "category": "embedding",
+      "description": "applies data representations to response",
+      "example": "ComputedRelsSpec:it:105",
+      "request": {
+        "method": "PATCH",
+        "path": "/designers",
+        "query": "select=name,videogames:computed_videogames(name)&id=eq.1",
+        "headers": {
+          "Prefer": "return=representation, tx=commit"
+        },
+        "body": {
+          "name": "sidney k. meier"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Sidney K. Meier",
+            "videogames": [
+              {
+                "name": "Civilization I"
+              },
+              {
+                "name": "Civilization II"
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ComputedRelsSpec:118",
+      "source": "Feature/Query/ComputedRelsSpec.hs",
+      "line": 118,
+      "category": "embedding",
+      "description": "applies data representations to response",
+      "example": "ComputedRelsSpec:it:105",
+      "request": {
+        "method": "GET",
+        "path": "/designers",
+        "query": "select=id&name=eq.Sidney%20K.%20Meier",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ComputedRelsSpec:123",
+      "source": "Feature/Query/ComputedRelsSpec.hs",
+      "line": 123,
+      "category": "embedding",
+      "description": "applies data representations to response",
+      "example": "ComputedRelsSpec:it:105",
+      "request": {
+        "method": "GET",
+        "path": "/designers",
+        "query": "select=id,name&name=eq.sidney%20k.%20meier",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "name": "Sidney K. Meier"
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ComputedRelsSpec:129",
+      "source": "Feature/Query/ComputedRelsSpec.hs",
+      "line": 129,
+      "category": "embedding",
+      "description": "applies data representations to response",
+      "example": "ComputedRelsSpec:it:105",
+      "request": {
+        "method": "GET",
+        "path": "/videogames",
+        "query": "select=name,designer:computed_designers(*)&id=eq.1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Civilization I",
+            "designer": {
+              "id": 1,
+              "name": "Sidney K. Meier"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ComputedRelsSpec:136",
+      "source": "Feature/Query/ComputedRelsSpec.hs",
+      "line": 136,
+      "category": "embedding",
+      "description": "applies data representations to response",
+      "example": "ComputedRelsSpec:it:105",
+      "request": {
+        "method": "PATCH",
+        "path": "/designers",
+        "query": "id=eq.1",
+        "headers": {
+          "Prefer": "tx=commit"
+        },
+        "body": {
+          "name": "Sid Meier"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ComputedRelsSpec:141",
+      "source": "Feature/Query/ComputedRelsSpec.hs",
+      "line": 141,
+      "category": "embedding",
+      "description": "applies data representations to response",
+      "example": "ComputedRelsSpec:it:105",
+      "request": {
+        "method": "PATCH",
+        "path": "/designers",
+        "query": "id=eq.2",
+        "headers": {
+          "Prefer": "tx=commit"
+        },
+        "body": {
+          "name": "Hironobu Sakaguchi"
+        },
+        "bodyFormat": "json"
+      },
+      "expected": {
+        "status": 204,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ComputedRelsSpec:147",
+      "source": "Feature/Query/ComputedRelsSpec.hs",
+      "line": 147,
+      "category": "embedding",
+      "description": "works with self joins",
+      "example": "ComputedRelsSpec:it:146",
+      "request": {
+        "method": "GET",
+        "path": "/web_content",
+        "query": "select=name,child_web_content(name),parent_web_content(name)&id=in.(0,1)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "tardis",
+            "child_web_content": [
+              {
+                "name": "fezz"
+              },
+              {
+                "name": "foo"
+              },
+              {
+                "name": "bar"
+              }
+            ],
+            "parent_web_content": {
+              "name": "wat"
+            }
+          },
+          {
+            "name": "fezz",
+            "child_web_content": [
+              {
+                "name": "wut"
+              }
+            ],
+            "parent_web_content": {
+              "name": "tardis"
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ComputedRelsSpec:155",
+      "source": "Feature/Query/ComputedRelsSpec.hs",
+      "line": 155,
+      "category": "embedding",
+      "description": "can override many-to-one and one-to-many relationships",
+      "example": "ComputedRelsSpec:it:154",
+      "request": {
+        "method": "GET",
+        "path": "/videogames",
+        "query": "select=*,designers!inner(*)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ComputedRelsSpec:158",
+      "source": "Feature/Query/ComputedRelsSpec.hs",
+      "line": 158,
+      "category": "embedding",
+      "description": "can override many-to-one and one-to-many relationships",
+      "example": "ComputedRelsSpec:it:154",
+      "request": {
+        "method": "GET",
+        "path": "/designers",
+        "query": "select=*,videogames!inner(*)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ComputedRelsSpec:163",
+      "source": "Feature/Query/ComputedRelsSpec.hs",
+      "line": 163,
+      "category": "embedding",
+      "description": "can override one-to-one relationships(would give disambiguation errors otherwise)",
+      "example": "ComputedRelsSpec:it:162",
+      "request": {
+        "method": "GET",
+        "path": "/first_1",
+        "query": "select=*,second_1(*)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ComputedRelsSpec:166",
+      "source": "Feature/Query/ComputedRelsSpec.hs",
+      "line": 166,
+      "category": "embedding",
+      "description": "can override one-to-one relationships(would give disambiguation errors otherwise)",
+      "example": "ComputedRelsSpec:it:162",
+      "request": {
+        "method": "GET",
+        "path": "/second_1",
+        "query": "select=*,first_1(*)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ComputedRelsSpec:172",
+      "source": "Feature/Query/ComputedRelsSpec.hs",
+      "line": 172,
+      "category": "embedding",
+      "description": "creates queries with the right aliasing",
+      "example": "ComputedRelsSpec:it:171",
+      "request": {
+        "method": "GET",
+        "path": "/fee",
+        "query": "select=*,jsbaz(*,janedoe(*))",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ComputedRelsSpec:175",
+      "source": "Feature/Query/ComputedRelsSpec.hs",
+      "line": 175,
+      "category": "embedding",
+      "description": "creates queries with the right aliasing",
+      "example": "ComputedRelsSpec:it:171",
+      "request": {
+        "method": "GET",
+        "path": "/fee",
+        "query": "select=*,jsbaz(*,johnsmith(*, fee(*)))",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ComputedRelsSpec:180",
+      "source": "Feature/Query/ComputedRelsSpec.hs",
+      "line": 180,
+      "category": "embedding",
+      "description": "creates queries with the right aliasing when following a normal embed",
+      "example": "ComputedRelsSpec:it:179",
+      "request": {
+        "method": "GET",
+        "path": "/projects",
+        "query": "select=name,clients(name,computed_projects(name))&limit=1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Windows 7",
+            "clients": {
+              "name": "Microsoft",
+              "computed_projects": {
+                "name": "Windows 7"
+              }
+            }
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ComputedRelsSpec:185",
+      "source": "Feature/Query/ComputedRelsSpec.hs",
+      "line": 185,
+      "category": "embedding",
+      "description": "creates queries with the right aliasing when following a normal embed",
+      "example": "ComputedRelsSpec:it:179",
+      "request": {
+        "method": "GET",
+        "path": "/clients",
+        "query": "select=name,projects(name,computed_clients(name))&limit=1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "name": "Microsoft",
+            "projects": [
+              {
+                "name": "Windows 7",
+                "computed_clients": {
+                  "name": "Microsoft"
+                }
+              },
+              {
+                "name": "Windows 10",
+                "computed_clients": {
+                  "name": "Microsoft"
+                }
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ComputedRelsSpec:197",
+      "source": "Feature/Query/ComputedRelsSpec.hs",
+      "line": 197,
+      "category": "embedding",
+      "description": "tables",
+      "example": "ComputedRelsSpec:it:196",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "select=*,computed_rel_overload(*)&limit=1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "computed_rel_overload": [
+              {
+                "id": 1
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ComputedRelsSpec:202",
+      "source": "Feature/Query/ComputedRelsSpec.hs",
+      "line": 202,
+      "category": "embedding",
+      "description": "tables",
+      "example": "ComputedRelsSpec:it:196",
+      "request": {
+        "method": "GET",
+        "path": "/items2",
+        "query": "select=*,computed_rel_overload(*)&limit=1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "computed_rel_overload": [
+              {
+                "id": 1
+              },
+              {
+                "id": 2
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ComputedRelsSpec:209",
+      "source": "Feature/Query/ComputedRelsSpec.hs",
+      "line": 209,
+      "category": "embedding",
+      "description": "rpc",
+      "example": "ComputedRelsSpec:it:208",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/search",
+        "query": "id=1&select=*,computed_rel_overload(*)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "computed_rel_overload": [
+              {
+                "id": 1
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "ComputedRelsSpec:214",
+      "source": "Feature/Query/ComputedRelsSpec.hs",
+      "line": 214,
+      "category": "embedding",
+      "description": "rpc",
+      "example": "ComputedRelsSpec:it:208",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/search2",
+        "query": "id=1&select=*,computed_rel_overload(*)",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "computed_rel_overload": [
+              {
+                "id": 1
+              },
+              {
+                "id": 2
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    }
+  ]
+}

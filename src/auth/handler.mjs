@@ -5,7 +5,7 @@ import {
   logoutResponse,
   errorResponse,
 } from './supabase-response.mjs';
-import { buildCorsHeaders } from '../shared/cors.mjs';
+import { buildCorsHeaders, JSON_CONTENT_TYPE } from '../shared/cors.mjs';
 import { assertBodySize, MAX_BODY_BYTES } from '../shared/body-size.mjs';
 import { isSafeRedirect } from '../shared/url.mjs';
 import { createTokenVerifier } from './verify-token.mjs';
@@ -148,7 +148,7 @@ export function createAuthHandler(config, ctx) {
       if (err instanceof SyntaxError) {
         return {
           statusCode: 400,
-          headers: corsHeaders,
+          headers: { ...corsHeaders, 'Content-Type': JSON_CONTENT_TYPE },
           body: JSON.stringify({
             error: 'validation_failed',
             error_description: 'Invalid JSON in request body',
@@ -357,7 +357,11 @@ export function createAuthHandler(config, ctx) {
 
     try {
       await prov.sendOtp(email);
-      return { statusCode: 200, headers: corsHeaders, body: '{}' };
+      return {
+        statusCode: 200,
+        headers: { ...corsHeaders, 'Content-Type': JSON_CONTENT_TYPE },
+        body: '{}',
+      };
     } catch (err) {
       if (err.code && ERROR_STATUS[err.code]) {
         return providerErrorResponse(err, corsHeaders, ctx);
@@ -453,7 +457,7 @@ export function createAuthHandler(config, ctx) {
         statusCode: 200,
         headers: {
           ...corsHeaders,
-          'Content-Type': 'application/json',
+          'Content-Type': JSON_CONTENT_TYPE,
           'Cache-Control': 'public, max-age=3600',
         },
         body: JSON.stringify(jwks),

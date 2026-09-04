@@ -1,0 +1,1794 @@
+{
+  "source": "Feature/Query/RangeSpec.hs",
+  "extractedCases": 45,
+  "skippedSites": 0,
+  "needsConfigCases": 0,
+  "cases": [
+    {
+      "id": "RangeSpec:19",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 19,
+      "category": "range",
+      "description": "returns whole range with status 200",
+      "example": "RangeSpec:it:18",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/getitemrange",
+        "query": "min=0&max=15",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:23",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 23,
+      "category": "range",
+      "description": "returns range Content-Range with */* for empty range",
+      "example": "RangeSpec:it:22",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/getitemrange",
+        "query": "min=2&max=2",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "*/*",
+          "Content-Length": "2"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:30",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 30,
+      "category": "range",
+      "description": "returns range Content-Range with range/*",
+      "example": "RangeSpec:it:29",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/getitemrange",
+        "query": "order=id&min=0&max=15",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          },
+          {
+            "id": 2
+          },
+          {
+            "id": 3
+          },
+          {
+            "id": 4
+          },
+          {
+            "id": 5
+          },
+          {
+            "id": 6
+          },
+          {
+            "id": 7
+          },
+          {
+            "id": 8
+          },
+          {
+            "id": 9
+          },
+          {
+            "id": 10
+          },
+          {
+            "id": 11
+          },
+          {
+            "id": 12
+          },
+          {
+            "id": 13
+          },
+          {
+            "id": 14
+          },
+          {
+            "id": 15
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "0-14/*"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:37",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 37,
+      "category": "range",
+      "description": "refuses a range with nonzero start when there are no items",
+      "example": "RangeSpec:it:36",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/getitemrange",
+        "query": "offset=1&min=2&max=2",
+        "headers": {
+          "Prefer": "count=exact"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 416,
+        "body": {
+          "message": "Requested range not satisfiable",
+          "code": "PGRST103",
+          "details": "An offset of 1 was requested, but there are only 0 rows.",
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "*/0",
+          "Content-Length": "144"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:52",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 52,
+      "category": "range",
+      "description": "refuses a range requesting start past last item",
+      "example": "RangeSpec:it:51",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/getitemrange",
+        "query": "offset=100&min=0&max=15",
+        "headers": {
+          "Prefer": "count=exact"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 416,
+        "body": {
+          "message": "Requested range not satisfiable",
+          "code": "PGRST103",
+          "details": "An offset of 100 was requested, but there are only 15 rows.",
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "*/15"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:76",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 76,
+      "category": "range",
+      "description": "understands open-ended ranges",
+      "example": "RangeSpec:it:75",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/getitemrange",
+        "query": "min=0&max=15",
+        "headers": {
+          "Range-Unit": "items",
+          "Range": "bytes=0-"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:81",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 81,
+      "category": "range",
+      "description": "returns an empty body when there are no results",
+      "example": "RangeSpec:it:80",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/getitemrange",
+        "query": "min=2&max=2",
+        "headers": {
+          "Range-Unit": "items",
+          "Range": "bytes=0-1"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "*/*"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:106",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 106,
+      "category": "range",
+      "description": "fails with 416 for offside range",
+      "example": "RangeSpec:it:105",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/getitemrange",
+        "query": "min=2&max=2",
+        "headers": {
+          "Range-Unit": "items",
+          "Range": "bytes=1-0"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 416,
+        "body": {
+          "message": "Requested range not satisfiable",
+          "code": "PGRST103",
+          "details": "The lower boundary must be lower than or equal to the upper boundary in the Range header.",
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:118",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 118,
+      "category": "range",
+      "description": "refuses a range with nonzero start when there are no items",
+      "example": "RangeSpec:it:117",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/getitemrange",
+        "query": "min=2&max=2",
+        "headers": {
+          "Prefer": "count=exact",
+          "Range-Unit": "items",
+          "Range": "bytes=1-2"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 416,
+        "body": {
+          "message": "Requested range not satisfiable",
+          "code": "PGRST103",
+          "details": "An offset of 1 was requested, but there are only 0 rows.",
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "*/0",
+          "Content-Length": "144"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:133",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 133,
+      "category": "range",
+      "description": "refuses a range requesting start past last item",
+      "example": "RangeSpec:it:132",
+      "request": {
+        "method": "GET",
+        "path": "/rpc/getitemrange",
+        "query": "min=0&max=15",
+        "headers": {
+          "Prefer": "count=exact",
+          "Range-Unit": "items",
+          "Range": "bytes=100-199"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 416,
+        "body": {
+          "message": "Requested range not satisfiable",
+          "code": "PGRST103",
+          "details": "An offset of 100 was requested, but there are only 15 rows.",
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "*/15"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:150",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 150,
+      "category": "range",
+      "description": "returns whole range with status 200",
+      "example": "RangeSpec:it:149",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:154",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 154,
+      "category": "range",
+      "description": "returns empty body with Content-Range */0",
+      "example": "RangeSpec:it:153",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "id=eq.0",
+        "headers": {
+          "Prefer": "count=exact"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "*/0"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:162",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 162,
+      "category": "range",
+      "description": "returns range Content-Range with /*",
+      "example": "RangeSpec:it:161",
+      "request": {
+        "method": "GET",
+        "path": "/menagerie",
+        "query": "",
+        "headers": {
+          "Prefer": "count=none"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "*/*"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:169",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 169,
+      "category": "range",
+      "description": "returns range Content-Range with range/*",
+      "example": "RangeSpec:it:168",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "order=id",
+        "headers": {
+          "Prefer": "count=none"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          },
+          {
+            "id": 2
+          },
+          {
+            "id": 3
+          },
+          {
+            "id": 4
+          },
+          {
+            "id": 5
+          },
+          {
+            "id": 6
+          },
+          {
+            "id": 7
+          },
+          {
+            "id": 8
+          },
+          {
+            "id": 9
+          },
+          {
+            "id": 10
+          },
+          {
+            "id": 11
+          },
+          {
+            "id": 12
+          },
+          {
+            "id": 13
+          },
+          {
+            "id": 14
+          },
+          {
+            "id": 15
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "0-14/*"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:175",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 175,
+      "category": "range",
+      "description": "returns range Content-Range with range/* even using other filters",
+      "example": "RangeSpec:it:174",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "id=eq.1&order=id",
+        "headers": {
+          "Prefer": "count=none"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "0-0/*"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:182",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 182,
+      "category": "range",
+      "description": "no parameters return everything",
+      "example": "RangeSpec:it:181",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "select=id&order=id.asc",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          },
+          {
+            "id": 2
+          },
+          {
+            "id": 3
+          },
+          {
+            "id": 4
+          },
+          {
+            "id": 5
+          },
+          {
+            "id": 6
+          },
+          {
+            "id": 7
+          },
+          {
+            "id": 8
+          },
+          {
+            "id": 9
+          },
+          {
+            "id": 10
+          },
+          {
+            "id": 11
+          },
+          {
+            "id": 12
+          },
+          {
+            "id": 13
+          },
+          {
+            "id": 14
+          },
+          {
+            "id": 15
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "0-14/*"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:189",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 189,
+      "category": "range",
+      "description": "top level limit with parameter",
+      "example": "RangeSpec:it:188",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "select=id&order=id.asc&limit=3",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          },
+          {
+            "id": 2
+          },
+          {
+            "id": 3
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "0-2/*"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:195",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 195,
+      "category": "range",
+      "description": "headers override get parameters",
+      "example": "RangeSpec:it:194",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "select=id&order=id.asc&limit=3",
+        "headers": {
+          "Range-Unit": "items",
+          "Range": "bytes=0-1"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          },
+          {
+            "id": 2
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "0-1/*"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:203",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 203,
+      "category": "range",
+      "description": "limit works on all levels",
+      "example": "RangeSpec:it:202",
+      "request": {
+        "method": "GET",
+        "path": "/clients",
+        "query": "select=id,projects(id,tasks(id))&order=id.asc&limit=1&projects.order=id.asc&projects.limit=2&projects.tasks.order=id.asc&projects.tasks.limit=1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "projects": [
+              {
+                "id": 1,
+                "tasks": [
+                  {
+                    "id": 1
+                  }
+                ]
+              },
+              {
+                "id": 2,
+                "tasks": [
+                  {
+                    "id": 3
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "0-0/*"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:211",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 211,
+      "category": "range",
+      "description": "limit and offset works on first level",
+      "example": "RangeSpec:it:210",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "select=id&order=id.asc&limit=3&offset=2",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 3
+          },
+          {
+            "id": 4
+          },
+          {
+            "id": 5
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "2-4/*"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:216",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 216,
+      "category": "range",
+      "description": "limit and offset works on first level",
+      "example": "RangeSpec:it:210",
+      "request": {
+        "method": "HEAD",
+        "path": "/items",
+        "query": "select=id&order=id.asc&limit=3&offset=2",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "2-4/*"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:227",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 227,
+      "category": "range",
+      "description": "works alongside order by with nulls order",
+      "example": "RangeSpec:it:226",
+      "request": {
+        "method": "GET",
+        "path": "/clients",
+        "query": "select=id,projects(id,tasks(id))&order=id.asc.nullslast&limit=1&projects.order=id.asc.nullsfirst&projects.limit=2",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1,
+            "projects": [
+              {
+                "id": 1,
+                "tasks": [
+                  {
+                    "id": 1
+                  },
+                  {
+                    "id": 2
+                  }
+                ]
+              },
+              {
+                "id": 2,
+                "tasks": [
+                  {
+                    "id": 3
+                  },
+                  {
+                    "id": 4
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "0-0/*"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:236",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 236,
+      "category": "range",
+      "description": "no items",
+      "example": "RangeSpec:it:235",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "offset=0&id=eq.0",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "*/*"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:241",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 241,
+      "category": "range",
+      "description": "no items",
+      "example": "RangeSpec:it:235",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "offset=0&id=eq.0",
+        "headers": {
+          "Prefer": "count=exact"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "*/0"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:248",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 248,
+      "category": "range",
+      "description": "one or more items",
+      "example": "RangeSpec:it:247",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "select=id&offset=0&order=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          },
+          {
+            "id": 2
+          },
+          {
+            "id": 3
+          },
+          {
+            "id": 4
+          },
+          {
+            "id": 5
+          },
+          {
+            "id": 6
+          },
+          {
+            "id": 7
+          },
+          {
+            "id": 8
+          },
+          {
+            "id": 9
+          },
+          {
+            "id": 10
+          },
+          {
+            "id": 11
+          },
+          {
+            "id": 12
+          },
+          {
+            "id": 13
+          },
+          {
+            "id": 14
+          },
+          {
+            "id": 15
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "0-14/*"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:254",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 254,
+      "category": "range",
+      "description": "succeeds if offset is negative as a no-op",
+      "example": "RangeSpec:it:253",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "select=id&offset=-4&order=id",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [
+          {
+            "id": 1
+          },
+          {
+            "id": 2
+          },
+          {
+            "id": 3
+          },
+          {
+            "id": 4
+          },
+          {
+            "id": 5
+          },
+          {
+            "id": 6
+          },
+          {
+            "id": 7
+          },
+          {
+            "id": 8
+          },
+          {
+            "id": 9
+          },
+          {
+            "id": 10
+          },
+          {
+            "id": 11
+          },
+          {
+            "id": 12
+          },
+          {
+            "id": 13
+          },
+          {
+            "id": 14
+          },
+          {
+            "id": 15
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "0-14/*"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:260",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 260,
+      "category": "range",
+      "description": "succeeds and returns an empty array if limit equals 0",
+      "example": "RangeSpec:it:259",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "select=id&limit=0",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "*/*"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:267",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 267,
+      "category": "range",
+      "description": "fails if limit is negative",
+      "example": "RangeSpec:it:266",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "select=id&limit=-1",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 416,
+        "body": {
+          "message": "Requested range not satisfiable",
+          "code": "PGRST103",
+          "details": "Limit should be greater than or equal to zero.",
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:281",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 281,
+      "category": "range",
+      "description": "refuses a range with nonzero start when there are no items",
+      "example": "RangeSpec:it:280",
+      "request": {
+        "method": "GET",
+        "path": "/menagerie",
+        "query": "offset=1",
+        "headers": {
+          "Prefer": "count=exact"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 416,
+        "body": {
+          "message": "Requested range not satisfiable",
+          "code": "PGRST103",
+          "details": "An offset of 1 was requested, but there are only 0 rows.",
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "*/0",
+          "Content-Length": "144"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:296",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 296,
+      "category": "range",
+      "description": "refuses a range requesting start past last item",
+      "example": "RangeSpec:it:295",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "offset=100",
+        "headers": {
+          "Prefer": "count=exact"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 416,
+        "body": {
+          "message": "Requested range not satisfiable",
+          "code": "PGRST103",
+          "details": "An offset of 100 was requested, but there are only 15 rows.",
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "*/15"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:311",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 311,
+      "category": "range",
+      "description": "obtains a filtered range",
+      "example": "RangeSpec:it:310",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "select=id&id=gt.8",
+        "headers": {
+          "Prefer": "count=planned"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 206,
+        "body": [
+          {
+            "id": 9
+          },
+          {
+            "id": 10
+          },
+          {
+            "id": 11
+          },
+          {
+            "id": 12
+          },
+          {
+            "id": 13
+          },
+          {
+            "id": 14
+          },
+          {
+            "id": 15
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "0-6/8"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:320",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 320,
+      "category": "range",
+      "description": "obtains a filtered range",
+      "example": "RangeSpec:it:310",
+      "request": {
+        "method": "GET",
+        "path": "/child_entities",
+        "query": "select=id&id=gt.3",
+        "headers": {
+          "Prefer": "count=planned"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 206,
+        "body": [
+          {
+            "id": 4
+          },
+          {
+            "id": 5
+          },
+          {
+            "id": 6
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "0-2/4"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:329",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 329,
+      "category": "range",
+      "description": "obtains a filtered range",
+      "example": "RangeSpec:it:310",
+      "request": {
+        "method": "GET",
+        "path": "/getallprojects_view",
+        "query": "select=id&id=lt.3",
+        "headers": {
+          "Prefer": "count=planned"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 206,
+        "body": [
+          {
+            "id": 1
+          },
+          {
+            "id": 2
+          }
+        ],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "0-1/673"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:339",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 339,
+      "category": "range",
+      "description": "obtains the full range",
+      "example": "RangeSpec:it:338",
+      "request": {
+        "method": "HEAD",
+        "path": "/items",
+        "query": "",
+        "headers": {
+          "Prefer": "count=planned"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "0-14/15"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:349",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 349,
+      "category": "range",
+      "description": "obtains the full range",
+      "example": "RangeSpec:it:338",
+      "request": {
+        "method": "HEAD",
+        "path": "/child_entities",
+        "query": "",
+        "headers": {
+          "Prefer": "count=planned"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "0-5/6"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:359",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 359,
+      "category": "range",
+      "description": "obtains the full range",
+      "example": "RangeSpec:it:338",
+      "request": {
+        "method": "HEAD",
+        "path": "/getallprojects_view",
+        "query": "",
+        "headers": {
+          "Prefer": "count=planned"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 206,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "0-4/2019"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:370",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 370,
+      "category": "range",
+      "description": "ignores limit/offset on the planned count",
+      "example": "RangeSpec:it:369",
+      "request": {
+        "method": "HEAD",
+        "path": "/items",
+        "query": "limit=2&offset=3",
+        "headers": {
+          "Prefer": "count=planned"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 206,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "3-4/15"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:380",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 380,
+      "category": "range",
+      "description": "ignores limit/offset on the planned count",
+      "example": "RangeSpec:it:369",
+      "request": {
+        "method": "HEAD",
+        "path": "/child_entities",
+        "query": "limit=2",
+        "headers": {
+          "Prefer": "count=planned"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 206,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "0-1/6"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:390",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 390,
+      "category": "range",
+      "description": "ignores limit/offset on the planned count",
+      "example": "RangeSpec:it:369",
+      "request": {
+        "method": "HEAD",
+        "path": "/getallprojects_view",
+        "query": "limit=2",
+        "headers": {
+          "Prefer": "count=planned"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 206,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "0-1/2019"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:401",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 401,
+      "category": "range",
+      "description": "works with two levels",
+      "example": "RangeSpec:it:400",
+      "request": {
+        "method": "HEAD",
+        "path": "/child_entities",
+        "query": "select=*,entities(*)",
+        "headers": {
+          "Prefer": "count=planned"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "none",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "Content-Range": "0-5/6"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:422",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 422,
+      "category": "range",
+      "description": "understands open-ended ranges",
+      "example": "RangeSpec:it:421",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "",
+        "headers": {
+          "Range-Unit": "items",
+          "Range": "bytes=0-"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:427",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 427,
+      "category": "range",
+      "description": "returns an empty body when there are no results",
+      "example": "RangeSpec:it:426",
+      "request": {
+        "method": "GET",
+        "path": "/menagerie",
+        "query": "",
+        "headers": {
+          "Range-Unit": "items",
+          "Range": "bytes=0-1"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": [],
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "*/*"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:452",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 452,
+      "category": "range",
+      "description": "fails with 416 for offside range",
+      "example": "RangeSpec:it:451",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "",
+        "headers": {
+          "Range-Unit": "items",
+          "Range": "bytes=1-0"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 416,
+        "body": {
+          "message": "Requested range not satisfiable",
+          "code": "PGRST103",
+          "details": "The lower boundary must be lower than or equal to the upper boundary in the Range header.",
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:464",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 464,
+      "category": "range",
+      "description": "refuses a range with nonzero start when there are no items",
+      "example": "RangeSpec:it:463",
+      "request": {
+        "method": "GET",
+        "path": "/menagerie",
+        "query": "",
+        "headers": {
+          "Prefer": "count=exact",
+          "Range-Unit": "items",
+          "Range": "bytes=1-2"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 416,
+        "body": {
+          "message": "Requested range not satisfiable",
+          "code": "PGRST103",
+          "details": "An offset of 1 was requested, but there are only 0 rows.",
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "*/0",
+          "Content-Length": "144"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    },
+    {
+      "id": "RangeSpec:479",
+      "source": "Feature/Query/RangeSpec.hs",
+      "line": 479,
+      "category": "range",
+      "description": "refuses a range requesting start past last item",
+      "example": "RangeSpec:it:478",
+      "request": {
+        "method": "GET",
+        "path": "/items",
+        "query": "",
+        "headers": {
+          "Prefer": "count=exact",
+          "Range-Unit": "items",
+          "Range": "bytes=100-199"
+        },
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 416,
+        "body": {
+          "message": "Requested range not satisfiable",
+          "code": "PGRST103",
+          "details": "An offset of 100 was requested, but there are only 15 rows.",
+          "hint": null
+        },
+        "bodyFormat": "json",
+        "headers": {
+          "Content-Range": "*/15"
+        }
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": false,
+      "skipReason": null,
+      "skipClass": null
+    }
+  ]
+}

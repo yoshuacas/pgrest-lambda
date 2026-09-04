@@ -2,6 +2,18 @@
 
 Date: 2026-04-12
 
+> **Superseded.** This was the plan, written before the harness existed. It
+> guesses at test counts and pass rates; do not quote it. The harness was built,
+> the upstream suite was extracted to 1,539 cases, and the engine has been
+> measured against a live Aurora DSQL cluster. Read
+> [`docs/reference/postgrest-compatibility.md`](../reference/postgrest-compatibility.md)
+> for what actually passes, and `compatreport/index.html` for the full generated
+> report. Numbers below that this page got wrong include the estimated baseline
+> ("likely 60-70% of extractable tests" — the first measured run was 11.7%) and
+> the per-feature test counts, which were read from `grep` rather than from
+> extraction. The architecture sections are still broadly accurate and are the
+> reason the reference page exists; the phases are done or superseded.
+
 ## Goal
 
 Validate pgrest-lambda's wire compatibility with PostgREST by building a portable HTTP test suite extracted from PostgREST's own test cases.

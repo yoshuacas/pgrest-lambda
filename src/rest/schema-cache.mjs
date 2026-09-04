@@ -1,8 +1,34 @@
 // schema-cache.mjs — pg_catalog introspection + TTL cache
 
+import { readFileSync } from 'node:fs';
+import {
+  parseViewTargetLists,
+  resolveViewColumnSources,
+} from './view-sources.mjs';
+import { ROUTINES_SQL, buildRoutineMap } from './routines.mjs';
+
+// Relation kinds the engine exposes as endpoints. Matches PostgREST:
+// ordinary tables, views, materialised views, foreign tables and
+// partitioned tables are all selectable relations.
+const READABLE_RELKINDS = ['r', 'p', 'v', 'm', 'f'];
+
+const RELKIND_LIST = READABLE_RELKINDS.map(k => `'${k}'`).join(', ');
+
+// pg_relation_is_updatable() returns a bitmask keyed by CmdType:
+// 1<<CMD_SELECT = 2, 1<<CMD_UPDATE = 4, 1<<CMD_INSERT = 8,
+// 1<<CMD_DELETE = 16. A plain table and an auto-updatable view both
+// report 28 (update|insert|delete).
+const UPDATABLE_BIT = 4;
+const INSERTABLE_BIT = 8;
+const DELETABLE_BIT = 16;
+
 const COLUMNS_SQL = `
   SELECT c.relname AS table_name,
+         c.oid AS rel_oid,
+         c.relkind::text AS relkind,
+         pg_catalog.pg_relation_is_updatable(c.oid, true) AS updatable_bits,
          a.attname AS column_name,
+         a.attnum AS attnum,
          pg_catalog.format_type(a.atttypid, a.atttypmod) AS data_type,
          NOT a.attnotnull AS is_nullable,
          pg_get_expr(d.adbin, d.adrelid) AS column_default
@@ -12,11 +38,27 @@ const COLUMNS_SQL = `
     LEFT JOIN pg_catalog.pg_attrdef d
       ON d.adrelid = c.oid AND d.adnum = a.attnum
    WHERE n.nspname = 'public'
-     AND c.relkind IN ('r', 'p')
+     AND c.relkind IN (${RELKIND_LIST})
      AND c.relname NOT LIKE '\\_%'
      AND a.attnum > 0
      AND NOT a.attisdropped
    ORDER BY c.relname, a.attnum`;
+
+// The rewrite rule of a view carries, per output column, the base
+// relation and base attnum it came from (resorigtbl/resorigcol). That
+// is the only place the mapping exists in the catalog, and it is how
+// PostgREST propagates keys and relationships onto views.
+const VIEW_DEFS_SQL = `
+  SELECT c.oid AS view_oid,
+         c.relname AS view_name,
+         r.ev_action::text AS view_definition
+    FROM pg_catalog.pg_class c
+    JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+    JOIN pg_catalog.pg_rewrite r
+      ON r.ev_class = c.oid AND r.ev_type = '1'
+   WHERE n.nspname = 'public'
+     AND c.relkind IN ('v', 'm')
+     AND c.relname NOT LIKE '\\_%'`;
 
 const PK_SQL = `
   SELECT c.relname AS table_name,
@@ -31,10 +73,16 @@ const PK_SQL = `
      AND c.relname NOT LIKE '\\_%'
    ORDER BY c.relname, a.attnum`;
 
+// Foreign keys are read from every non-system schema, not just `public`.
+// A key on a table the engine does not serve still matters: a `public`
+// view over that table inherits the relationship, which is how PostgREST
+// resolves embeds between views over a hidden base schema.
 const FK_SQL = `
   SELECT con.conname AS constraint_name,
+         n.nspname AS from_schema,
          c.relname AS from_table,
          array_agg(a.attname ORDER BY k.n)::text[] AS from_columns,
+         fn.nspname AS to_schema,
          fc.relname AS to_table,
          array_agg(fa.attname ORDER BY k.n)::text[] AS to_columns
     FROM pg_catalog.pg_constraint con
@@ -44,16 +92,98 @@ const FK_SQL = `
       ON n.oid = c.relnamespace
     JOIN pg_catalog.pg_class fc
       ON fc.oid = con.confrelid
+    JOIN pg_catalog.pg_namespace fn
+      ON fn.oid = fc.relnamespace
     CROSS JOIN LATERAL unnest(con.conkey, con.confkey)
       WITH ORDINALITY AS k(col, fcol, n)
     JOIN pg_catalog.pg_attribute a
       ON a.attrelid = c.oid AND a.attnum = k.col
     JOIN pg_catalog.pg_attribute fa
       ON fa.attrelid = fc.oid AND fa.attnum = k.fcol
+   -- No convalidated filter, deliberately: on DSQL a key added to an existing
+   -- table has to be ALTER TABLE ... ADD CONSTRAINT ... NOT VALID (plain ADD
+   -- CONSTRAINT returns 0A000), which leaves convalidated = false while still
+   -- enforcing every later write. Upstream PostgREST's relationship query
+   -- filters on contype alone too, so an unvalidated key embeds there as well.
    WHERE con.contype = 'f'
-     AND n.nspname = 'public'
-   GROUP BY con.conname, c.relname, fc.relname
+     AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+     AND fn.nspname NOT IN ('pg_catalog', 'information_schema')
+   GROUP BY con.conname, n.nspname, c.relname, fn.nspname, fc.relname
    ORDER BY con.conname`;
+
+/**
+ * Data representations (PostgREST "custom types / data representations"),
+ * from upstream SchemaCache.hs `dataRepresentations`.
+ *
+ * A cast is usable as a representation when it is implicit, implemented by a
+ * function, executable by the current role, and has a domain on one side with
+ * `json` or `text` on the other. The three directions each have a job:
+ *
+ *   domain -> json   render the column in a response
+ *   text   -> domain parse a filter value out of the query string
+ *   json   -> domain parse a value out of a request body
+ */
+const DATA_REPRESENTATIONS_SQL = `
+  SELECT c.castsource::regtype::text AS source_type,
+         c.casttarget::regtype::text AS target_type,
+         c.castfunc::regproc::text AS cast_function
+    FROM pg_catalog.pg_cast c
+    JOIN pg_catalog.pg_type src ON src.oid = c.castsource
+    JOIN pg_catalog.pg_type dst ON dst.oid = c.casttarget
+   WHERE c.castcontext = 'i'
+     AND c.castmethod = 'f'
+     AND pg_catalog.has_function_privilege(c.castfunc, 'execute')
+     AND ((src.typtype = 'd'
+           AND c.casttarget IN ('json'::regtype::oid, 'text'::regtype::oid))
+       OR (dst.typtype = 'd'
+           AND c.castsource IN ('json'::regtype::oid, 'text'::regtype::oid)))`;
+
+// Relations a view's columns come from may live outside `public`. Only
+// the oids the view definitions actually name are looked up.
+const SOURCE_COLUMNS_SQL = `
+  SELECT c.oid AS rel_oid,
+         n.nspname AS schema_name,
+         c.relname AS rel_name,
+         a.attnum AS attnum,
+         a.attname AS column_name
+    FROM pg_catalog.pg_class c
+    JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+    JOIN pg_catalog.pg_attribute a ON a.attrelid = c.oid
+   WHERE c.oid = ANY($1::oid[])
+     AND a.attnum > 0
+     AND NOT a.attisdropped`;
+
+const SOURCE_PK_SQL = `
+  SELECT con.conrelid AS rel_oid,
+         a.attname AS column_name
+    FROM pg_catalog.pg_constraint con
+    CROSS JOIN LATERAL unnest(con.conkey) WITH ORDINALITY AS k(col, n)
+    JOIN pg_catalog.pg_attribute a
+      ON a.attrelid = con.conrelid AND a.attnum = k.col
+   WHERE con.contype = 'p'
+     AND con.conrelid = ANY($1::oid[])
+   ORDER BY con.conrelid, k.n`;
+
+// Primary and unique keys of every non-system relation, one row per key.
+// A foreign key whose columns cover one of these is one-to-one, not
+// many-to-one (SchemaCache.hs `addO2ORels`). Read from every schema for
+// the same reason FK_SQL is: a `public` view inherits the cardinality of
+// the key on its base relation.
+const UNIQUE_KEYS_SQL = `
+  SELECT n.nspname AS schema_name,
+         c.relname AS table_name,
+         con.conname AS constraint_name,
+         con.contype AS contype,
+         array_agg(a.attname ORDER BY k.n)::text[] AS columns
+    FROM pg_catalog.pg_constraint con
+    JOIN pg_catalog.pg_class c ON c.oid = con.conrelid
+    JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+    CROSS JOIN LATERAL unnest(con.conkey) WITH ORDINALITY AS k(col, n)
+    JOIN pg_catalog.pg_attribute a
+      ON a.attrelid = c.oid AND a.attnum = k.col
+   WHERE con.contype IN ('p', 'u')
+     AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+   GROUP BY n.nspname, c.relname, con.conname, con.contype`;
 
 const FUNCTIONS_SQL = `
   SELECT p.proname AS function_name,
@@ -89,6 +219,43 @@ const FUNCTIONS_SQL = `
        p.proargmodes IS NULL
        OR NOT p.proargmodes::text[] && ARRAY['o','b','v']
      )
+   ORDER BY p.proname`;
+
+// Computed relationships: a one-argument function whose argument is the row
+// type of a served relation and whose return type is the row type of another
+// (upstream `allComputedRels`). `single_row` is upstream's test verbatim —
+// a plain composite return, or `SETOF ... ROWS 1`, is a to-one embed.
+//
+// The row type of a table carries the table's name, which is why the type
+// names are what come back: `videogames` the type is `videogames` the table.
+const COMPUTED_RELS_SQL = `
+  WITH all_relations AS (
+    SELECT c.reltype, n.nspname
+      FROM pg_catalog.pg_class c
+      JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+     WHERE c.relkind IN ('v', 'r', 'm', 'f', 'p')
+  )
+  SELECT p.proname AS function_name,
+         arg_type.typname AS from_table,
+         ret_type.typname AS to_table,
+         (NOT p.proretset OR p.prorows = 1) AS single_row
+    FROM pg_catalog.pg_proc p
+    JOIN pg_catalog.pg_namespace fn_schema
+      ON fn_schema.oid = p.pronamespace
+    JOIN pg_catalog.pg_type arg_type
+      ON arg_type.oid = p.proargtypes[0]
+    JOIN pg_catalog.pg_namespace arg_schema
+      ON arg_schema.oid = arg_type.typnamespace
+    JOIN pg_catalog.pg_type ret_type
+      ON ret_type.oid = p.prorettype
+    JOIN pg_catalog.pg_namespace ret_schema
+      ON ret_schema.oid = ret_type.typnamespace
+   WHERE fn_schema.nspname = 'public'
+     AND arg_schema.nspname = 'public'
+     AND ret_schema.nspname = 'public'
+     AND p.pronargs = 1
+     AND p.proargtypes[0] IN (SELECT reltype FROM all_relations)
+     AND p.prorettype IN (SELECT reltype FROM all_relations)
    ORDER BY p.proname`;
 
 const EXCLUDED_ARG_MODES = new Set(['o', 'b', 'v']);
@@ -251,23 +418,520 @@ function inferConventionRelationships(tables) {
   return relationships;
 }
 
-async function pgIntrospect(pool, capabilities) {
-  const [colResult, pkResult] = await Promise.all([
+// --- Declared relationships (external manifest) ---
+//
+// A manifest names foreign keys out of band, for a database whose catalog
+// cannot report them. Aurora DSQL is no longer one of those: it took foreign
+// keys on 2026-08-27 and populates pg_constraint contype='f' (see
+// src/rest/db/dsql.mjs). The catalog is always read first and the manifest only
+// adds what the catalog did not report, so it stays useful for relationships no
+// constraint can express and for engines that still reject FOREIGN KEY.
+
+function relKey(rel) {
+  return [
+    rel.fromSchema || 'public', rel.fromTable, rel.fromColumns.join(','),
+    rel.toSchema || 'public', rel.toTable, rel.toColumns.join(','),
+    rel.junctionSchema || '',
+    rel.junctionTable || '',
+    (rel.junctionFromColumns || []).join(','),
+    (rel.junctionToColumns || []).join(','),
+  ].join('|');
+}
+
+/**
+ * Normalise the manifest format documented in
+ * conformance/CONTRACTS.md §2 into the engine's internal relationship
+ * shape. Schemas are kept: a key on a relation outside `public` is not
+ * served directly but still propagates onto `public` views.
+ */
+export function normalizeDeclaredRelationships(manifest) {
+  const list = Array.isArray(manifest)
+    ? manifest
+    : (manifest?.relationships || []);
+  const out = [];
+  for (const entry of list) {
+    if (!entry || typeof entry !== 'object') continue;
+    const { table, foreignTable } = entry;
+    const columns = entry.columns || [];
+    const foreignColumns = entry.foreignColumns || [];
+    if (!table || !foreignTable) continue;
+    if (!Array.isArray(columns) || !Array.isArray(foreignColumns)) continue;
+    if (columns.length === 0
+        || columns.length !== foreignColumns.length) {
+      continue;
+    }
+    out.push({
+      constraint: entry.constraint || null,
+      fromSchema: entry.schema || 'public',
+      fromTable: table,
+      fromColumns: [...columns],
+      toSchema: entry.foreignSchema || 'public',
+      toTable: foreignTable,
+      toColumns: [...foreignColumns],
+      source: 'declared',
+    });
+  }
+  return out;
+}
+
+function loadRelationshipManifest(source) {
+  if (!source) return null;
+  if (typeof source !== 'string') return source;
+  let text;
+  try {
+    text = readFileSync(source, 'utf8');
+  } catch (err) {
+    throw new Error(
+      `pgrest-lambda: cannot read relationship manifest '${source}': `
+      + err.message);
+  }
+  try {
+    return JSON.parse(text);
+  } catch (err) {
+    throw new Error(
+      `pgrest-lambda: relationship manifest '${source}' is not valid `
+      + `JSON: ${err.message}`);
+  }
+}
+
+// --- Declared data representations (external manifest) ---
+//
+// Aurora DSQL rejects CREATE CAST, so pg_cast never carries a
+// domain <-> json/text cast and `DATA_REPRESENTATIONS_SQL` comes back empty
+// even when every transform function exists. A manifest names the same
+// (source type, target type, function) triples out of band, exactly as the
+// relationship manifest names foreign keys. On a database that does have the
+// casts the catalog is read first and the manifest only adds what the catalog
+// did not report.
+
+// A transform is emitted as a function call, so its name is the one piece of
+// manifest text that reaches the statement as SQL rather than as a bind
+// parameter. Only a bare or schema-qualified identifier is accepted — each
+// part either a plain identifier or a double-quoted one (`"json"`), which is
+// what `regproc::text` prints for the function names these casts use.
+const IDENT_PART = String.raw`(?:[A-Za-z_][A-Za-z0-9_$]*|"(?:[^"]|"")+")`;
+const FUNCTION_NAME = new RegExp(
+  `^${IDENT_PART}(?:\\.${IDENT_PART})?$`);
+
+function representationKey(sourceType, targetType) {
+  return `${sourceType}|${targetType}`;
+}
+
+/**
+ * Normalise the representation manifest format into
+ * `{ key: 'source|target', sourceType, targetType, function }` entries.
+ *
+ * A type name has to be spelled the way `format_type()`/`regtype` print it,
+ * because that is what the column types in the schema cache are compared
+ * against: unqualified when the type is reachable through the search path
+ * (`color`), schema-qualified when it is not (`other.color`).
+ *
+ * @param {object|Array} manifest `{representations: [...]}` or a bare array
+ * @returns {Array<{key: string, sourceType: string, targetType: string,
+ *   function: string}>}
+ */
+export function normalizeDeclaredRepresentations(manifest) {
+  const list = Array.isArray(manifest)
+    ? manifest
+    : (manifest?.representations || []);
+  const out = [];
+  for (const entry of list) {
+    if (!entry || typeof entry !== 'object') continue;
+    const sourceType = entry.sourceType || entry.source || null;
+    const targetType = entry.targetType || entry.target || null;
+    const fn = entry.function || entry.castFunction || null;
+    if (!sourceType || !targetType || !fn) continue;
+    if (typeof sourceType !== 'string' || typeof targetType !== 'string'
+        || typeof fn !== 'string') {
+      continue;
+    }
+    if (!FUNCTION_NAME.test(fn)) {
+      throw new Error(
+        'pgrest-lambda: data representation function '
+        + `'${fn}' is not an identifier`);
+    }
+    out.push({
+      key: representationKey(sourceType, targetType),
+      sourceType,
+      targetType,
+      function: fn,
+      source: 'declared',
+    });
+  }
+  return out;
+}
+
+function loadRepresentationManifest(source) {
+  if (!source) return null;
+  if (typeof source !== 'string') return source;
+  let text;
+  try {
+    text = readFileSync(source, 'utf8');
+  } catch (err) {
+    throw new Error(
+      `pgrest-lambda: cannot read data representation manifest '${source}': `
+      + err.message);
+  }
+  try {
+    return JSON.parse(text);
+  } catch (err) {
+    throw new Error(
+      `pgrest-lambda: data representation manifest '${source}' is not valid `
+      + `JSON: ${err.message}`);
+  }
+}
+
+/**
+ * The catalog's representations, keyed `source|target`, with the manifest
+ * filling in only the pairs the catalog did not report.
+ *
+ * @param {Array} castRows rows of DATA_REPRESENTATIONS_SQL
+ * @param {object|Array|null} manifest
+ * @returns {Object<string, {sourceType: string, targetType: string,
+ *   function: string}>}
+ */
+export function buildRepresentations(castRows, manifest) {
+  const out = {};
+  for (const row of castRows || []) {
+    if (!row.source_type || !row.target_type || !row.cast_function) continue;
+    if (!FUNCTION_NAME.test(row.cast_function)) continue;
+    out[representationKey(row.source_type, row.target_type)] = {
+      sourceType: row.source_type,
+      targetType: row.target_type,
+      function: row.cast_function,
+      source: 'catalog',
+    };
+  }
+  for (const entry of normalizeDeclaredRepresentations(manifest)) {
+    if (out[entry.key]) continue;
+    out[entry.key] = entry;
+  }
+  return out;
+}
+
+/**
+ * Propagate primary keys and foreign-key relationships from base
+ * relations onto the views that expose their columns, the way PostgREST
+ * does (SchemaCache.hs `addViewPrimaryKeys` / `addViewM2OAndO2ORels`).
+ *
+ * @param {Array} baseRels    schema-qualified base relationships
+ * @param {Map} viewColumnMap viewName →
+ *   Map('baseSchema.baseTable.baseCol' → [viewColumn])
+ * @returns {Array} relationships that involve at least one view
+ */
+export function deriveViewRelationships(baseRels, viewColumnMap) {
+  const derived = [];
+
+  // All combinations of view columns for a list of base columns. A view
+  // may expose the same base column more than once (aliased twice), and
+  // PostgREST then treats each exposure as its own relationship — which
+  // is what makes those embeds ambiguous rather than silently picking
+  // one.
+  const MAX_COMBOS = 8;
+  function combos(viewName, schema, baseTable, baseColumns) {
+    const map = viewColumnMap.get(viewName);
+    if (!map) return [];
+    let acc = [[]];
+    for (const col of baseColumns) {
+      const options = map.get(`${schema}.${baseTable}.${col}`);
+      if (!options || options.length === 0) return [];
+      const next = [];
+      for (const prefix of acc) {
+        for (const option of options) {
+          if (next.length >= MAX_COMBOS) break;
+          next.push([...prefix, option]);
+        }
+      }
+      acc = next;
+    }
+    return acc;
+  }
+
+  const viewNames = [...viewColumnMap.keys()];
+
+  // A view inherits the cardinality of the key it exposes: a one-to-one
+  // base key stays one-to-one through the view. Spread conditionally so a
+  // plain many-to-one keeps the field absent.
+  const card = (rel) =>
+    rel.cardinality ? { cardinality: rel.cardinality } : {};
+
+  for (const rel of baseRels) {
+    const fromViews = [];
+    const toViews = [];
+    for (const viewName of viewNames) {
+      for (const cols of combos(
+          viewName, rel.fromSchema, rel.fromTable, rel.fromColumns)) {
+        fromViews.push({ viewName, cols });
+      }
+      for (const cols of combos(
+          viewName, rel.toSchema, rel.toTable, rel.toColumns)) {
+        toViews.push({ viewName, cols });
+      }
+    }
+
+    for (const fv of fromViews) {
+      derived.push({
+        constraint: rel.constraint,
+        ...card(rel),
+        fromSchema: 'public',
+        fromTable: fv.viewName,
+        fromColumns: fv.cols,
+        toSchema: rel.toSchema,
+        toTable: rel.toTable,
+        toColumns: rel.toColumns,
+        source: 'view',
+      });
+    }
+    for (const tv of toViews) {
+      derived.push({
+        constraint: rel.constraint,
+        ...card(rel),
+        fromSchema: rel.fromSchema,
+        fromTable: rel.fromTable,
+        fromColumns: rel.fromColumns,
+        toSchema: 'public',
+        toTable: tv.viewName,
+        toColumns: tv.cols,
+        source: 'view',
+      });
+    }
+    for (const fv of fromViews) {
+      for (const tv of toViews) {
+        derived.push({
+          constraint: rel.constraint,
+          ...card(rel),
+          fromSchema: 'public',
+          fromTable: fv.viewName,
+          fromColumns: fv.cols,
+          toSchema: 'public',
+          toTable: tv.viewName,
+          toColumns: tv.cols,
+          source: 'view',
+        });
+      }
+    }
+  }
+
+  return derived;
+}
+
+/**
+ * Group primary/unique key rows by qualified relation name.
+ * @param {Array<object>} rows rows of UNIQUE_KEYS_SQL
+ * @returns {Map<string, string[][]>} 'schema.table' → list of key column
+ *   lists
+ */
+export function buildUniqueKeyMap(rows) {
+  const map = new Map();
+  for (const row of rows || []) {
+    const cols = Array.isArray(row?.columns) ? row.columns : [];
+    if (cols.length === 0 || !row.table_name) continue;
+    const key = `${row.schema_name || 'public'}.${row.table_name}`;
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(cols);
+  }
+  return map;
+}
+
+/**
+ * A foreign key is one-to-one, not many-to-one, when its own columns
+ * cover a primary or unique key of the referencing table: at most one
+ * child row can point at a given parent. PostgREST reports that
+ * cardinality in `PGRST201` details and returns the embed as a single
+ * object instead of an array (SchemaCache.hs `addO2ORels`).
+ *
+ * @param {Array<object>} rels relationships to classify
+ * @param {Map<string, string[][]>} uniqueKeys from buildUniqueKeyMap
+ * @returns {Array<object>} same list, one-to-one entries marked
+ */
+export function markOneToOneRelationships(rels, uniqueKeys) {
+  if (!uniqueKeys || uniqueKeys.size === 0) return rels;
+  return rels.map((rel) => {
+    if (rel.cardinality) return rel;
+    const keys = uniqueKeys.get(`${rel.fromSchema}.${rel.fromTable}`);
+    if (!keys) return rel;
+    const fkCols = new Set(rel.fromColumns);
+    const covered = keys.some(cols => cols.every(c => fkCols.has(c)));
+    return covered ? { ...rel, cardinality: 'one-to-one' } : rel;
+  });
+}
+
+/**
+ * A junction table — one whose primary key covers the columns of two
+ * different foreign keys — yields a many-to-many relationship between
+ * the two tables it points at. PostgREST derives `actors?select=films(*)`
+ * this way (SchemaCache.hs `addM2MRels`).
+ *
+ * The junction itself does not have to be served: upstream derives the
+ * relationship over every schema it introspects and only filters the two
+ * ends afterwards, so `public.a ↔ public.b` through `private.junction`
+ * embeds normally.
+ *
+ * @param {object} tables served relations, keyed by bare name
+ * @param {Array<object>} rels candidate foreign keys, any schema
+ * @param {Map<string, string[]>} [primaryKeys] 'schema.table' → pk
+ *   columns, for junctions outside the served schema
+ */
+export function deriveManyToManyRelationships(tables, rels, primaryKeys) {
+  const pkOf = (schema, tableName) => {
+    if (schema === 'public') {
+      const pk = tables[tableName]?.primaryKey || [];
+      if (pk.length > 0) return pk;
+    }
+    return primaryKeys?.get(`${schema}.${tableName}`) || [];
+  };
+
+  const byJunction = new Map();
+  for (const rel of rels) {
+    // Only plain many-to-one keys form a junction. A one-to-one key
+    // already matches at most one row, and an m2m is a derivation output.
+    if (rel.cardinality) continue;
+    const key = `${rel.fromSchema || 'public'}.${rel.fromTable}`;
+    if (!byJunction.has(key)) byJunction.set(key, []);
+    byJunction.get(key).push(rel);
+  }
+
+  const out = [];
+  const seen = new Set();
+  for (const [qualified, jrels] of byJunction) {
+    const junctionSchema = jrels[0].fromSchema || 'public';
+    const junction = jrels[0].fromTable;
+    const pk = pkOf(junctionSchema, junction);
+    if (pk.length === 0) continue;
+    const pkSet = new Set(pk);
+    for (const a of jrels) {
+      for (const b of jrels) {
+        if (a === b) continue;
+        if (a.constraint && b.constraint
+            && a.constraint === b.constraint) {
+          continue;
+        }
+        const used = [...a.fromColumns, ...b.fromColumns];
+        if (!used.every(c => pkSet.has(c))) continue;
+        // The pair (a, b) and the pair (b, a) are the same
+        // relationship seen from either end. Emitting both would make
+        // every m2m embed ambiguous.
+        const side = (r) =>
+          `${r.toSchema || 'public'}.${r.toTable}`
+          + `(${r.toColumns.join(',')})`
+          + `:${r.fromColumns.join(',')}`;
+        const pairKey = `${qualified}|`
+          + [side(a), side(b)].sort().join('|');
+        if (seen.has(pairKey)) continue;
+        seen.add(pairKey);
+        out.push({
+          constraint: null,
+          cardinality: 'many-to-many',
+          fromSchema: a.toSchema || 'public',
+          fromTable: a.toTable,
+          fromColumns: a.toColumns,
+          toSchema: b.toSchema || 'public',
+          toTable: b.toTable,
+          toColumns: b.toColumns,
+          junctionSchema,
+          junctionTable: junction,
+          junctionFromColumns: a.fromColumns,
+          junctionToColumns: b.fromColumns,
+          junctionFromConstraint: a.constraint || null,
+          junctionToConstraint: b.constraint || null,
+          source: 'm2m',
+        });
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Turn `COMPUTED_RELS_SQL` rows into relationship records.
+ *
+ * Only relations the engine serves can take part in an embed, which is the
+ * same rule the key-based relationships go through.
+ *
+ * @param {Array<object>} rows  COMPUTED_RELS_SQL result rows
+ * @param {object} tables       served relations, keyed by name
+ * @returns {Array<object>} computed relationships
+ */
+export function buildComputedRelationships(rows, tables) {
+  const out = [];
+  for (const row of rows) {
+    if (!tables[row.from_table] || !tables[row.to_table]) continue;
+    out.push({
+      computed: true,
+      function: row.function_name,
+      fromSchema: 'public',
+      fromTable: row.from_table,
+      toSchema: 'public',
+      toTable: row.to_table,
+      toOne: Boolean(row.single_row),
+      source: 'computed',
+    });
+  }
+  return out;
+}
+
+function dedupeRelationships(lists) {
+  const seen = new Set();
+  const out = [];
+  for (const list of lists) {
+    for (const rel of list) {
+      const key = relKey(rel);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(rel);
+    }
+  }
+  return out;
+}
+
+async function pgIntrospect(pool, capabilities, options = {}) {
+  const [colResult, pkResult, uniqueResult, castResult] = await Promise.all([
     pool.query(COLUMNS_SQL),
     pool.query(PK_SQL),
+    pool.query(UNIQUE_KEYS_SQL),
+    pool.query(DATA_REPRESENTATIONS_SQL),
   ]);
 
+  const representations = buildRepresentations(
+    castResult?.rows || [],
+    loadRepresentationManifest(options.representations));
+
   const tables = {};
+  // oid → relation name and (oid, attnum) → column name, needed to turn
+  // the view provenance oids back into names.
+  const oidToRelation = new Map();
+  const attnumToColumn = new Map();
+  let hasViews = false;
 
   for (const row of colResult.rows) {
     if (!tables[row.table_name]) {
-      tables[row.table_name] = { columns: {}, primaryKey: [] };
+      const bits = row.updatable_bits == null
+        ? INSERTABLE_BIT | UPDATABLE_BIT | DELETABLE_BIT
+        : Number(row.updatable_bits);
+      const kind = row.relkind || 'r';
+      if (kind === 'v' || kind === 'm') hasViews = true;
+      tables[row.table_name] = {
+        columns: {},
+        primaryKey: [],
+        kind,
+        isView: kind === 'v' || kind === 'm',
+        insertable: (bits & INSERTABLE_BIT) !== 0,
+        updatable: (bits & UPDATABLE_BIT) !== 0,
+        deletable: (bits & DELETABLE_BIT) !== 0,
+      };
+      if (row.rel_oid != null) {
+        oidToRelation.set(Number(row.rel_oid), row.table_name);
+      }
     }
     tables[row.table_name].columns[row.column_name] = {
       type: row.data_type,
       nullable: Boolean(row.is_nullable),
       defaultValue: row.column_default || null,
     };
+    if (row.rel_oid != null && row.attnum != null) {
+      attnumToColumn.set(
+        `${Number(row.rel_oid)}.${Number(row.attnum)}`, row.column_name);
+    }
   }
 
   for (const row of pkResult.rows) {
@@ -282,33 +946,208 @@ async function pgIntrospect(pool, capabilities) {
     fkRows = fkResult.rows;
   }
 
-  let relationships = fkRows.map(row => ({
-    constraint: row.constraint_name,
-    fromTable: row.from_table,
-    fromColumns: row.from_columns,
-    toTable: row.to_table,
-    toColumns: row.to_columns,
-  }));
+  const catalogRels = fkRows
+    .filter(row =>
+      row.from_table && row.to_table
+      && Array.isArray(row.from_columns)
+      && Array.isArray(row.to_columns)
+      && row.from_columns.length === row.to_columns.length
+      && row.from_columns.length > 0)
+    .map(row => ({
+      constraint: row.constraint_name,
+      fromSchema: row.from_schema || 'public',
+      fromTable: row.from_table,
+      fromColumns: row.from_columns,
+      toSchema: row.to_schema || 'public',
+      toTable: row.to_table,
+      toColumns: row.to_columns,
+      source: 'catalog',
+    }));
 
-  // Convention fallback when no real FKs found
+  const manifest = loadRelationshipManifest(options.relationships);
+  const declaredRels = manifest
+    ? normalizeDeclaredRelationships(manifest)
+    : [];
+
+  const uniqueRows = uniqueResult?.rows || [];
+  const baseRels = markOneToOneRelationships(
+    dedupeRelationships([catalogRels, declaredRels]),
+    buildUniqueKeyMap(uniqueRows));
+  // Primary keys of every schema, so a junction the engine does not serve
+  // can still be recognised as one.
+  const allPrimaryKeys = new Map();
+  for (const [name, keys] of buildUniqueKeyMap(
+      uniqueRows.filter(r => r.contype === 'p'))) {
+    allPrimaryKeys.set(name, keys[0]);
+  }
+
+  // View column provenance: view column → 'schema.table.column' of the
+  // base relation it came from. The base relation is often outside
+  // `public`, which is exactly why the oids are looked up separately.
+  const viewColumnMap = new Map();
+  const sourcePk = new Map();
+  if (hasViews) {
+    const viewRows = await pool.query(VIEW_DEFS_SQL);
+    const sources = resolveViewColumnSources(
+      parseViewTargetLists(viewRows.rows));
+
+    const unknownOids = new Set();
+    for (const entries of sources.values()) {
+      for (const entry of entries) {
+        if (!oidToRelation.has(entry.srcOid)) unknownOids.add(entry.srcOid);
+      }
+    }
+    if (unknownOids.size > 0) {
+      const oids = [...unknownOids];
+      const [srcCols, srcPks] = await Promise.all([
+        pool.query(SOURCE_COLUMNS_SQL, [oids]),
+        pool.query(SOURCE_PK_SQL, [oids]),
+      ]);
+      for (const row of srcCols.rows) {
+        const oid = Number(row.rel_oid);
+        oidToRelation.set(oid, `${row.schema_name}.${row.rel_name}`);
+        attnumToColumn.set(
+          `${oid}.${Number(row.attnum)}`, row.column_name);
+      }
+      for (const row of srcPks.rows) {
+        const name = oidToRelation.get(Number(row.rel_oid));
+        if (!name) continue;
+        if (!sourcePk.has(name)) sourcePk.set(name, []);
+        sourcePk.get(name).push(row.column_name);
+      }
+    }
+
+    for (const [viewOid, entries] of sources) {
+      const viewName = oidToRelation.get(viewOid);
+      if (!viewName || !tables[viewName]) continue;
+      const map = new Map();
+      for (const entry of entries) {
+        const viewCol =
+          attnumToColumn.get(`${viewOid}.${entry.attnum}`);
+        const base = oidToRelation.get(entry.srcOid);
+        const baseCol = base
+          ? attnumToColumn.get(`${entry.srcOid}.${entry.srcAttnum}`)
+          : null;
+        if (!viewCol || !base || !baseCol) continue;
+        // Names from COLUMNS_SQL are bare (public); source lookups are
+        // already qualified.
+        const key = base.includes('.')
+          ? `${base}.${baseCol}`
+          : `public.${base}.${baseCol}`;
+        if (!map.has(key)) map.set(key, []);
+        map.get(key).push(viewCol);
+      }
+      if (map.size > 0) viewColumnMap.set(viewName, map);
+    }
+
+    // A view inherits the primary key of a source relation when it
+    // exposes every PK column. PostgREST needs this for Location headers
+    // and to treat a junction view as a junction.
+    for (const [name, def] of Object.entries(tables)) {
+      if (def.primaryKey.length > 0) {
+        sourcePk.set(`public.${name}`, def.primaryKey);
+      }
+    }
+    for (const [viewName, map] of viewColumnMap) {
+      if (!tables[viewName].isView) continue;
+      if (tables[viewName].primaryKey.length > 0) continue;
+      // Prefer the relation the view draws the most columns from.
+      const contributors = new Map();
+      for (const key of map.keys()) {
+        const rel = key.slice(0, key.lastIndexOf('.'));
+        contributors.set(rel, (contributors.get(rel) || 0) + 1);
+      }
+      const ranked = [...contributors.entries()]
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+      for (const [rel] of ranked) {
+        if (rel === `public.${viewName}`) continue;
+        const pk = sourcePk.get(rel);
+        if (!pk || pk.length === 0) continue;
+        const mapped = pk.map(c => map.get(`${rel}.${c}`)?.[0]);
+        if (mapped.every(Boolean)) {
+          tables[viewName].primaryKey = mapped;
+          break;
+        }
+      }
+    }
+  }
+
+  const withViews = dedupeRelationships([
+    baseRels,
+    deriveViewRelationships(baseRels, viewColumnMap),
+  ]);
+
+  // Only relations the engine serves can take part in an embed.
+  const isServed = (rel) =>
+    rel.fromSchema === 'public' && rel.toSchema === 'public'
+    && tables[rel.fromTable] && tables[rel.toTable]
+    && rel.fromColumns.every(c => tables[rel.fromTable].columns[c])
+    && rel.toColumns.every(c => tables[rel.toTable].columns[c]);
+  const servedRels = withViews.filter(isServed);
+
+  // Junctions are looked for among the served relations only. Deriving
+  // over every schema instead double-counts a junction that lives in a
+  // hidden schema and is also exposed as a `public` view: both copies
+  // link the same two tables, and every m2m embed through it turns
+  // ambiguous.
+  let relationships = dedupeRelationships([
+    servedRels,
+    deriveManyToManyRelationships(tables, servedRels, allPrimaryKeys),
+  ]);
+
+  // Convention fallback only when nothing else produced a relationship.
   if (relationships.length === 0) {
     relationships = inferConventionRelationships(tables);
   }
 
+  // Computed relationships are embedded by function name, so they cannot
+  // collide with the key-based relationships above and are appended rather
+  // than deduplicated against them. Which of the two wins when the names do
+  // collide is decided at resolution time, where upstream decides it.
+  if (!capabilities || capabilities.supportsRpc) {
+    const cRelResult = await pool.query(COMPUTED_RELS_SQL);
+    relationships = [
+      ...relationships,
+      ...buildComputedRelationships(cRelResult.rows, tables),
+    ];
+  }
+
   let functions = {};
+  // Every candidate of every overloaded name, keyed by name. `functions` above
+  // keeps one entry per name for the OpenAPI spec and the policy entities;
+  // `routines` is what a request resolves against (src/rest/routines.mjs).
+  let routines = {};
   if (!capabilities || capabilities.supportsRpc) {
     const fnResult = await pool.query(FUNCTIONS_SQL);
     functions = await buildFunctionsMap(fnResult.rows, pool);
+    const routineResult = await pool.query(
+      ROUTINES_SQL, [options.schema || 'public']);
+    routines = buildRoutineMap(routineResult.rows);
   }
 
-  return { tables, relationships, functions };
+  return { tables, relationships, representations, functions, routines };
 }
 
 export function createSchemaCache(config) {
   const ttl = config.schemaCacheTtl || 30000;
   const capabilities = config.capabilities || null;
+  // A declared-relationship manifest: an inline object/array, or a path
+  // read from config or PGREST_RELATIONSHIPS_PATH.
+  const relationships = config.relationships
+    ?? process.env.PGREST_RELATIONSHIPS_PATH
+    ?? null;
+  // A declared data-representation manifest, read the same two ways. Empty
+  // unless configured, and an empty map turns every transform below off.
+  const representations = config.representations
+    ?? process.env.PGREST_REPRESENTATIONS_PATH
+    ?? null;
+  // Which exposed schema this cache holds (`db-schemas`, project rule 9). The
+  // schema-scoped introspection SQL takes it as a bind parameter; it is never
+  // interpolated into the query text.
+  const schema = config.schema || 'public';
   const introspect = config.introspect
-    || ((pool) => pgIntrospect(pool, capabilities));
+    || ((pool) => pgIntrospect(
+      pool, capabilities, { relationships, representations, schema }));
   let cache = null;
   let lastRefreshAt = 0;
 

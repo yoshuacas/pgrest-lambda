@@ -41,10 +41,19 @@ Parameters:
   SesFromAddress:
     Type: String
     Default: ''
+  # Text search configuration used by `fts`/`plfts`/`phfts` filters that name
+  # none. Empty leaves the choice to the server's default_text_search_config,
+  # which is what upstream PostgREST does. Aurora DSQL has only the `simple`
+  # config while still reporting `pg_catalog.english` as the default, so a DSQL
+  # deployment must set this to `simple` for text search to work at all.
+  DefaultTextSearchConfig:
+    Type: String
+    Default: ''
 
 Conditions:
   IsDsql: !Equals [!Ref DatabaseMode, dsql]
   IsStandard: !Equals [!Ref DatabaseMode, standard]
+  HasTsConfig: !Not [!Equals [!Ref DefaultTextSearchConfig, '']]
   IsCognito: !Equals [!Ref AuthProvider, cognito]
   IsBetterAuth: !Equals [!Ref AuthProvider, better-auth]
 
@@ -150,6 +159,8 @@ Resources:
              !Sub 'https://${Api}.execute-api.${AWS::Region}.amazonaws.com/v1/auth/v1/jwks',
              !Ref 'AWS::NoValue']
           POLICIES_PATH: ./policies
+          PGREST_DEFAULT_TS_CONFIG: !If
+            [HasTsConfig, !Ref DefaultTextSearchConfig, !Ref 'AWS::NoValue']
       Policies:
         - !If
           - IsDsql

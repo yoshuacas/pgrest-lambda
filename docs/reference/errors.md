@@ -69,9 +69,9 @@ Returned when no more specific code applies.
 
 | HTTP | Message |
 |------|---------|
-| 413 | `Request body exceeds maximum size of 1048576 bytes` |
+| 413 | `Request body exceeds maximum size of {limit} bytes` |
 
-The default body-size limit is **1 MB**. This fires before any parsing occurs.
+The limit is **1 MB** (1048576 bytes), from `MAX_BODY_BYTES` in `src/shared/body-size.mjs`. This fires before any parsing occurs.
 
 ---
 
@@ -81,29 +81,37 @@ The most common client-facing code. Returned for any malformed query-string para
 
 | HTTP | Message pattern | Cause |
 |------|----------------|-------|
-| 400 | `Missing or invalid request body` | POST/PATCH/PUT with empty or unparseable body. |
+| 400 | `"failed to parse {what} ({raw})" (line 1, column {n})` | The scanner could not parse a `select`, `columns`, `order`, filter or logic-tree value. `details` names what it found and what it expected, as upstream prints it: `unexpected "x" expecting …`. |
 | 400 | `Empty column name before '::'` | Cast syntax `::type` without a column name. |
 | 400 | `Empty cast type after '::'` | Column `col::` without a type. |
 | 400 | `Unsupported cast type '{type}'` | Cast to a type not in the allowlist. |
 | 400 | `Unbalanced parentheses in select parameter` | Mismatched `(` / `)` in `?select=`. |
 | 400 | `'{alias}' is not a valid identifier for an alias` | Alias contains invalid characters. |
 | 400 | `Empty column name after alias '{alias}'` | Alias present but column name missing. |
-| 400 | `Empty select list in embed '{embed}'` | `embed()` with nothing inside the parens. |
 | 400 | `Duplicate select key '{key}'` | Same column or embed alias selected twice. |
-| 400 | `Filter nesting deeper than one level is not supported` | `a.b.c=eq.1` — only one level of embed filtering. |
-| 400 | `Cannot filter on '{key}' -- no embed named '{prefix}' in select` | Filter references an embed not in `?select=`. |
-| 400 | `"{raw}" is not a valid filter for column "{column}"` | Unparseable filter expression. |
-| 400 | `"{operator}" is not a valid filter operator` | Operator not in allowlist (eq, gt, lt, gte, lte, neq, like, ilike, in, is, cs, cd, ov, sl, sr, nxl, nxr, adj, not, fts, plfts, phfts, wfts). |
-| 400 | `"{value}" is not a valid value for is operator` | `is` only accepts `null`, `true`, `false`, `unknown`. |
-| 400 | `Unbalanced parentheses in logical operator value` | Mismatched parens in `and(...)` / `or(...)`. |
-| 400 | `Empty condition list in '{op}' operator` | `and()` or `or()` with no conditions. |
-| 400 | `"{str}" is not a valid filter condition` | Condition inside `and()` / `or()` can't be parsed. |
-| 400 | `Logical operator nesting exceeds maximum depth` | Too many nested `and(or(and(...)))` levels. |
-| 400 | `Invalid order direction: "{dir}". Expected asc or desc` | `?order=col.upward` — only `asc` and `desc`. |
-| 400 | `Invalid nulls option: "{opt}". Expected nullsfirst or nullslast` | Only `nullsfirst` and `nullslast` are accepted. |
+| 400 | `Embedding depth exceeds maximum of {n}` | More nested embeds than `max-embed-depth` allows. |
+| 400 | `Unknown operator '{operator}'` | Operator not in the allowlist (eq, gte, gt, lte, lt, like, ilike, match, imatch, neq, cs, cd, ov, sl, sr, nxr, nxl, adj, in, is, isdistinct, fts, plfts, phfts, wfts — each optionally prefixed `not.`). |
+| 400 | `IS operator only supports null, not_null, true, false, unknown (got '{value}')` | `?col=is.maybe`. |
+| 400 | `Unknown aggregate function '{name}'` | `?select=x.median()` — not one of count, sum, avg, min, max. |
+| 400 | `Logical operator nesting exceeds maximum depth of {n}` | Too many nested `and(or(and(...)))` levels. |
+| 400 | `Cannot filter on the embedded resource '{embed}' here` | A filter names an embed where only a column belongs. |
 | 400 | `'{name}' is not a valid function name` | RPC name contains characters outside `[a-z0-9_]`. |
+| 400 | `'{raw}' is not a valid percent-encoded path segment` | Malformed `%` escape in the path. |
 
-**Client handling:** inspect the `message` — it identifies the exact field or parameter. Fix the query string or request body and retry.
+**Client handling:** inspect the `message` and `details` — together they identify the exact field or parameter and the position in it. Fix the query string or request body and retry.
+
+Filters that name an embed missing from `?select=` are **PGRST108**, not PGRST100, and nested embed filters are not limited in depth: `?children.gChildren.id=eq.1` walks the whole dotted path down the read plan, as upstream does.
+
+---
+
+### PGRST102 — Request body could not be read
+
+| HTTP | Message | Cause |
+|------|---------|-------|
+| 400 | `Empty or invalid json` | POST/PATCH/PUT with an empty or unparseable JSON body. |
+| 400 | `All object keys must match` | An array body whose objects do not share one key set. |
+| 400 | `All lines must have same number of fields` | Ragged `text/csv` body. |
+| 400 | `Content-Type not acceptable: {type}` | A body `Content-Type` the engine does not parse. |
 
 ---
 
@@ -111,18 +119,78 @@ The most common client-facing code. Returned for any malformed query-string para
 
 | HTTP | Message |
 |------|---------|
-| 405 | `Only GET, POST, and HEAD are allowed for RPC` |
+| 405 | `Cannot use the {method} method on RPC` |
+
+Only GET, POST and HEAD reach a function.
 
 ---
 
-### PGRST106 — Bulk change protection
+### PGRST103 — Range not satisfiable
+
+| HTTP | Message | Details |
+|------|---------|---------|
+| 416 | `Requested range not satisfiable` | `An offset of {lower} was requested, but there are only {total} rows.` |
+
+`Range` or `?offset=` asks to start past the end of the result. Sent only when the request also asks for a count, since the total has to be known to say so.
+
+---
+
+### PGRST105 — PUT filter mismatch
 
 | HTTP | Message |
 |------|---------|
-| 400 | `UPDATE requires filters to prevent bulk change` |
-| 400 | `DELETE requires filters to prevent bulk change` |
+| 405 | `Filters must include all and only primary key columns with 'eq' operators` |
 
-Fires when an UPDATE or DELETE has **no `?` filters** and the request is not an RPC. Add at least one filter parameter to proceed.
+A `PUT` addresses exactly one row, so its filters must name every primary key column with `eq` and nothing else.
+
+---
+
+### PGRST106 — Bulk change protection, and unknown schema
+
+| HTTP | Message | When |
+|------|---------|------|
+| 400 | `UPDATE requires filters to prevent bulk change` | An UPDATE with **no `?` filters**, and the request is not an RPC. |
+| 400 | `DELETE requires filters to prevent bulk change` | The same, for DELETE. |
+| 406 | `Invalid schema: {profile}` | `Accept-Profile` / `Content-Profile` names a schema that `db-schemas` does not expose. |
+
+For the first two, add at least one filter parameter to proceed. For the third, see [`db-schemas`](configuration.md).
+
+---
+
+### PGRST107 — No acceptable media type
+
+| HTTP | Message |
+|------|---------|
+| 406 | `None of these media types are available: {accept}` |
+
+The `Accept` header lists nothing the engine produces for this request. It recognises `application/json`, `application/vnd.pgrst.array+json`, `application/vnd.pgrst.object+json`, `application/openapi+json`, `application/x-www-form-urlencoded`, `text/csv`, `text/plain`, `text/xml` and `application/geo+json` — geo+json is recognised but not producible, since that needs PostGIS.
+
+---
+
+### PGRST108 — Filter or order on a resource that is not embedded
+
+| HTTP | Message | Hint |
+|------|---------|------|
+| 400 | `'{resource}' is not an embedded resource in this request` | `Verify that '{resource}' is included in the 'select' query parameter.` |
+| 400 | `'{resource}' is not an embedded resource in this request`, `details`: `Target names are not allowed in filters if they have an alias` | `Change '{resource}' to '{alias}' in filters, orders or limits.` |
+
+`?orders.amount=gt.100` or `?order=orders(amount)` when `orders` is not in `?select=`, or is there under an alias — filter and order by the alias in that case.
+
+---
+
+### PGRST114 — limit/offset on PUT
+
+| HTTP | Message |
+|------|---------|
+| 400 | `limit/offset querystring parameters are not allowed for PUT` |
+
+---
+
+### PGRST115 — PUT payload disagrees with the URL
+
+| HTTP | Message |
+|------|---------|
+| 400 | `Payload values do not match URL in primary key column(s)` |
 
 ---
 
@@ -130,12 +198,91 @@ Fires when an UPDATE or DELETE has **no `?` filters** and the request is not an 
 
 Returned when the client requests a singular JSON object via `Accept: application/vnd.pgrst.object+json` but the row count doesn't match.
 
-| HTTP | Message | When |
-|------|---------|------|
-| 406 | `JSON object requested but 0 rows returned` | No rows match. |
-| 406 | `Singular response expected but more rows found` | More than one row matches. |
+| HTTP | Message | Details | When |
+|------|---------|---------|------|
+| 406 | `Cannot coerce the result to a single JSON object` | `The result contains 0 rows` | No rows match. |
+| 406 | `Cannot coerce the result to a single JSON object` | `The result contains {n} rows` | More than one row matches. |
 
 **Client handling:** relax the `Accept` header to `application/json` to receive an array, or tighten your filters.
+
+---
+
+### PGRST118 — Related order is not possible
+
+| HTTP | Message | Details |
+|------|---------|---------|
+| 400 | `A related order on '{embed}' is not possible` | `'{table}' and '{embed}' do not form a many-to-one or one-to-one relationship` |
+
+`?order=embed(column)` sorts the parent by a single related row, so the relationship has to produce one.
+
+---
+
+### PGRST122 — Invalid preference under handling=strict
+
+| HTTP | Message | Details |
+|------|---------|---------|
+| 400 | `Invalid preferences given with handling=strict` | `Invalid preferences: {list}` |
+
+With `Prefer: handling=strict`, any preference the engine does not recognise is an error instead of being ignored.
+
+---
+
+### PGRST123 — Aggregates disabled
+
+| HTTP | Message |
+|------|---------|
+| 400 | `Use of aggregate functions is not allowed` |
+
+`?select=amount.sum()` while `db-aggregates-enabled` is off. This engine defaults
+it to `true`, unlike upstream, so the error only appears once you set
+`PGREST_DB_AGGREGATES_ENABLED=false` (`src/index.mjs`).
+
+An aggregate inside a one-to-many or many-to-many spread (`...orders(amount.sum())`)
+is a different error — `PGRST127`, which upstream also refuses.
+
+---
+
+### PGRST124 — max-affected exceeded
+
+| HTTP | Message | Details |
+|------|---------|---------|
+| 400 | `Query result exceeds max-affected preference constraint` | `The query affects {n} rows` |
+
+`Prefer: max-affected={n}` with `handling=strict`, and the mutation touched more rows than that. The transaction is rolled back.
+
+---
+
+### PGRST125 — Invalid path
+
+| HTTP | Message |
+|------|---------|
+| 404 | `Invalid path specified in request URL` |
+
+---
+
+### PGRST126 — Root endpoint disabled
+
+| HTTP | Message |
+|------|---------|
+| 404 | `Root endpoint metadata is disabled` |
+
+`GET /` with `db-root-spec` set to serve nothing.
+
+---
+
+### PGRST127 — Feature not implemented
+
+| HTTP | Message | Details |
+|------|---------|---------|
+| 400 | `Feature not implemented` | `Aggregates are not implemented for one-to-many or many-to-many spreads.` |
+
+---
+
+### PGRST128 — max-affected needs a set-returning function
+
+| HTTP | Message |
+|------|---------|
+| 400 | `Function must return SETOF or TABLE when max-affected preference is used with handling=strict` |
 
 ---
 
@@ -193,7 +340,7 @@ Multiple function overloads match the supplied arguments.
 | HTTP | Message pattern |
 |------|----------------|
 | 400 | `'{name}' is not a valid identifier` |
-| 400 | `Column '{column}' does not exist in '{table}'` |
+| 400 | `Could not find the '{column}' column of '{table}' in the schema cache` |
 | 400 | `Column '{col}' does not exist in function result` |
 | 400 | `'{col}' is not a valid column name` |
 
@@ -203,7 +350,7 @@ Multiple function overloads match the supplied arguments.
 
 | HTTP | Message | Hint |
 |------|---------|------|
-| 404 | `Relation '{table}' does not exist` | `Check the spelling of the table name.` |
+| 404 | `Could not find the table '{schema}.{table}' in the schema cache` | `Perhaps you meant the table '{schema}.{closest}'`, when a near-match exists. |
 | 404 | `Docs are disabled` | Returned when requesting `/` with OpenAPI disabled. |
 
 ---
@@ -220,7 +367,7 @@ Multiple function overloads match the supplied arguments.
 
 | HTTP | Message |
 |------|---------|
-| 400 | `Argument '{name}' of function '{fn}' expects type '{type}' but received '{value}'` |
+| 400 | `Argument '{name}' of function '{fn}' expects type '{type}' but received a value that could not be coerced` |
 
 The RPC argument value cannot be cast to the declared PostgreSQL type.
 
@@ -232,27 +379,69 @@ The RPC argument value cannot be cast to the declared PostgreSQL type.
 |------|---------|
 | 400 | `Function '{name}' requires argument '{arg}' which was not provided` |
 
+The function has a parameter with no default and the request supplied no value for it.
+
 ---
 
-### PGRST301 — Authentication required
+### PGRST300 — Server misconfigured
 
 | HTTP | Message |
 |------|---------|
-| 401 | `Refresh requires service_role` |
+| 500 | `Server lacks JWT secret` |
 
-The `/_refresh` endpoint requires a JWT with `role=service_role`.
+A request carried a JWT but no `jwt-secret` is configured, so nothing can verify it. An operator problem, not a client one.
+
+---
+
+### PGRST301 — Authentication required, or JWT rejected
+
+| HTTP | Message | When |
+|------|---------|------|
+| 401 | `Refresh requires service_role` | `/_refresh` without a `role=service_role` JWT. |
+| 401 | `Empty JWT is sent in Authorization header` | `Authorization: Bearer ` with nothing after it. |
+| 401 | `Expected 3 parts in JWT; got {n}` | The token is not a three-part JWS. |
+| 401 | `No suitable key or wrong key type` | Structurally a JWS, signed by a key this deployment does not hold. `details`: `None of the keys was able to decode the JWT`. |
+| 401 | `Wrong or unsupported encoding algorithm` | `alg` is not one this deployment accepts. |
+| 401 | `JWT cryptographic operation failed` | Three parts that are not a JWS at all. |
+
+Every one of these carries `WWW-Authenticate: Bearer error="invalid_token", error_description="{message}"`. The messages are upstream PostgREST's decode vocabulary, kept string-for-string because its auth specs assert them.
+
+These only appear when the engine verifies JWTs itself (`jwt-secret` configured). The usual deployment verifies in the API Gateway authorizer, which answers before the engine sees the request.
+
+---
+
+### PGRST302 — Anonymous access disabled
+
+| HTTP | Message |
+|------|---------|
+| 401 | `Anonymous access is disabled` |
+
+No `Authorization` header, and the deployment does not serve the `anon` role.
+
+---
+
+### PGRST303 — Claims could not be parsed
+
+| HTTP | Message |
+|------|---------|
+| 401 | `Parsing claims failed` |
+
+The JWT verified but its payload is not a JSON object of claims.
 
 ---
 
 ### PGRST403 — Cedar authorization denied
 
-| HTTP | Message |
-|------|---------|
-| 403 | `Permission denied` |
+| HTTP | When | Message |
+|------|------|---------|
+| 401 + `WWW-Authenticate: Bearer` | the caller is anonymous (`role=anon`) | `Permission denied` |
+| 403 | the caller is authenticated | `Permission denied` |
 
 Cedar evaluated the request and either found no matching `permit` policy or found a `forbid` that overrides. The `details` field carries the evaluated principal, action, and resource for debugging.
 
-**Client handling:** check your Cedar policies and the JWT's `role` / `sub` claims.
+The status depends on the caller, not on the policy: an anonymous caller might succeed if it authenticated, so it gets `401` and a challenge; an authenticated one will not, so it gets `403`. This is the same split a PostgreSQL privilege error (SQLSTATE `42501`) gets in `src/rest/errors.mjs`, and the same one PostgREST uses, which matters because `@supabase/supabase-js` treats `401` as "refresh the token and retry".
+
+**Client handling:** on `401`, sign in or refresh the token and retry once. On `403`, check your Cedar policies and the JWT's `role` / `sub` claims — retrying will not help.
 
 ---
 
@@ -261,6 +450,8 @@ Cedar evaluated the request and either found no matching `permit` policy or foun
 | HTTP | Message | Hint |
 |------|---------|------|
 | 501 | `RPC is not supported on this database` | `Deploy on a database that supports CREATE FUNCTION` |
+
+Returned when the database provider reports `supportsRpc: false`. Neither shipped provider does — Aurora DSQL runs RPC for `LANGUAGE sql` functions and reports `true`.
 
 ---
 
@@ -344,7 +535,7 @@ The `/auth/v1/token` endpoint requires `grant_type=password` or `grant_type=refr
 
 | HTTP | Description | Extra fields |
 |------|-------------|--------------|
-| 422 | `Password must be at least 8 characters…` | `weak_password.reasons` — array of strings. |
+| 422 | `Password must be at least 8 characters and include uppercase, lowercase, and numbers` | `weak_password.reasons` — array of strings. |
 
 Example response:
 ```json
@@ -382,7 +573,7 @@ Unknown path under `/auth/v1/`.
 
 | HTTP | Description |
 |------|-------------|
-| 413 | `Request body exceeds maximum size of 1048576 bytes` |
+| 413 | `Request body exceeds maximum size of {limit} bytes` |
 
 ### unexpected_failure
 
@@ -425,6 +616,8 @@ async function pgrestFetch(path, options = {}) {
     case 'PGRST200':
       throw new BadRequestError(`Missing relationship: ${err.message}`);
     case 'PGRST403':
+      // 401 means the caller was anonymous: authenticating may grant it.
+      if (res.status === 401) throw new AuthError('Sign in and retry');
       throw new ForbiddenError('Permission denied by policy');
     case 'invalid_grant':
       throw new AuthError(err.error_description);
@@ -440,7 +633,8 @@ async function pgrestFetch(path, options = {}) {
 |------|-----------|-------|
 | PGRST000 (500) | ✓ | Transient server error — retry with backoff. |
 | PGRST100 (400) | ✗ | Fix the request before retrying. |
-| PGRST403 (403) | ✗ | Policy decision — retrying won't help. |
+| PGRST403 (401) | Conditional | Anonymous caller. Sign in or refresh the token, then retry once. |
+| PGRST403 (403) | ✗ | Policy decision on an authenticated caller — retrying won't help. |
 | 23505 (409) | Conditional | Retry with a different key, or upsert with `Prefer: resolution=merge-duplicates`. |
 | invalid_grant (401) | ✗ | Re-authenticate; refresh token is expired. |
 | 413 | ✗ | Reduce payload size. |

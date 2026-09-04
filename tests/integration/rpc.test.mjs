@@ -25,6 +25,15 @@ RETURNS TABLE(id uuid, name text) LANGUAGE sql AS $$
    WHERE user_id = p_user_id;
 $$;
 
+-- STABLE on purpose: an exact count of a set-returning function calls it a
+-- second time, which the engine only does for an IMMUTABLE or STABLE routine
+-- (countRpcRows).
+CREATE FUNCTION list_items(p_user_id uuid)
+RETURNS TABLE(id uuid, name text) LANGUAGE sql STABLE AS $$
+  SELECT id, name FROM items
+   WHERE user_id = p_user_id;
+$$;
+
 CREATE FUNCTION do_nothing()
 RETURNS void LANGUAGE sql AS $$
 $$;
@@ -179,6 +188,33 @@ describe('RPC integration tests', () => {
     }
   });
 
+  // RangeSpec.hs:37/52: an offset past the last row of a set-returning
+  // function is 416 with PGRST103 and `Content-Range: */<total>`. This path
+  // builds its error response directly instead of throwing, so it is the one
+  // RPC error that does not go through the handler's catch block — it regressed
+  // to a 500 once because the response options were not in scope here.
+  it('set-returning function with an offset past the end is 416', async () => {
+    const res = await handler(event({
+      method: 'POST',
+      path: '/rest/v1/rpc/list_items',
+      headers: {
+        apikey: service,
+        'Content-Type': 'application/json',
+        Prefer: 'count=exact',
+      },
+      body: { p_user_id: testUserId },
+      query: { offset: '100' },
+      authorizer: { role: 'service_role' },
+    }));
+    assert.equal(res.statusCode, 416);
+    const body = JSON.parse(res.body);
+    assert.equal(body.code, 'PGRST103');
+    assert.equal(body.message, 'Requested range not satisfiable');
+    assert.match(body.details, /^An offset of 100 was requested, but there are only \d+ rows\.$/);
+    const cr = res.headers['Content-Range'] || res.headers['content-range'];
+    assert.match(cr, /^\*\/\d+$/);
+  });
+
   it('RETURNS TABLE with invalid column filter returns PGRST204', async () => {
     const res = await handler(event({
       method: 'POST',
@@ -193,7 +229,13 @@ describe('RPC integration tests', () => {
     assert.equal(body.code, 'PGRST204');
   });
 
-  it('void function returns 200 with empty body', async () => {
+  // Upstream PostgREST asserts 204 with no Content-Type and no Content-Length
+  // for a function returning void (test/spec/Feature/Query/RpcSpec.hs:470,
+  // "returns 204, no Content-Type header and no content for void"). This test
+  // previously asserted 200; that was the engine's own behaviour, not
+  // PostgREST's, and it was corrected when the RPC result modes were aligned
+  // with the upstream spec.
+  it('void function returns 204 with no body and no Content-Type', async () => {
     const res = await handler(event({
       method: 'POST',
       path: '/rest/v1/rpc/do_nothing',
@@ -201,9 +243,13 @@ describe('RPC integration tests', () => {
       body: {},
       authorizer: { role: 'service_role' },
     }));
-    assert.equal(res.statusCode, 200);
-    assert.ok(!res.body || res.body === '' || res.body === 'null',
+    assert.equal(res.statusCode, 204);
+    assert.ok(!res.body || res.body === '',
       'void function should return empty body');
+    assert.equal(res.headers['Content-Type'], undefined,
+      'void function must not send Content-Type');
+    assert.equal(res.headers['Content-Length'], undefined,
+      'void function must not send Content-Length');
   });
 
   it('default arguments: omitted arg uses default value', async () => {
@@ -219,7 +265,12 @@ describe('RPC integration tests', () => {
     assert.equal(body, 15, '5 + default 10 = 15');
   });
 
-  it('missing required argument returns PGRST209', async () => {
+  // Argument names are what select the function, so a call whose argument
+  // names do not fit any overload has not found a function at all: upstream
+  // answers 404 PGRST202 for both a missing and an extra argument (Plan.hs
+  // `findProc` returns `NoRpc`), and hints the closest parameter list. The
+  // earlier pgrest-lambda-only PGRST207/PGRST209 400s were not upstream codes.
+  it('missing required argument returns 404 PGRST202', async () => {
     const res = await handler(event({
       method: 'POST',
       path: '/rest/v1/rpc/add_numbers',
@@ -227,14 +278,22 @@ describe('RPC integration tests', () => {
       body: { a: 3 },
       authorizer: { role: 'service_role' },
     }));
-    assert.equal(res.statusCode, 400);
+    assert.equal(res.statusCode, 404);
     const body = JSON.parse(res.body);
-    assert.equal(body.code, 'PGRST209');
-    assert.ok(body.message.includes('b'),
-      'error should mention missing arg "b"');
+    assert.equal(body.code, 'PGRST202');
+    assert.equal(body.message,
+      'Could not find the function public.add_numbers(a) in the schema cache');
+    assert.equal(body.details,
+      'Searched for the function public.add_numbers with parameter a or with '
+      + 'a single unnamed json/jsonb parameter, but no matches were found in '
+      + 'the schema cache.');
+    // No hint: "a" is too far from "a, b" for upstream's 0.33 similarity
+    // threshold on the parameter list. Dropping an argument gets no
+    // suggestion; adding a stray one does (see RpcSpec:239).
+    assert.equal(body.hint, null);
   });
 
-  it('unknown argument returns PGRST207', async () => {
+  it('unknown argument returns 404 PGRST202', async () => {
     const res = await handler(event({
       method: 'POST',
       path: '/rest/v1/rpc/add_numbers',
@@ -242,11 +301,16 @@ describe('RPC integration tests', () => {
       body: { a: 3, b: 4, c: 5 },
       authorizer: { role: 'service_role' },
     }));
-    assert.equal(res.statusCode, 400);
+    assert.equal(res.statusCode, 404);
     const body = JSON.parse(res.body);
-    assert.equal(body.code, 'PGRST207');
-    assert.ok(body.message.includes('c'),
-      'error should mention unknown arg "c"');
+    assert.equal(body.code, 'PGRST202');
+    assert.equal(body.message,
+      'Could not find the function public.add_numbers(a, b, c) '
+      + 'in the schema cache');
+    assert.equal(body.details,
+      'Searched for the function public.add_numbers with parameters a, b, c '
+      + 'or with a single unnamed json/jsonb parameter, but no matches were '
+      + 'found in the schema cache.');
   });
 
   it('function not found returns PGRST202', async () => {
@@ -410,10 +474,31 @@ describe('RPC integration tests', () => {
     assert.equal(body.code, 'PGRST101');
   });
 
-  it('invalid function name returns PGRST100', async () => {
+  // A PostgreSQL function name is an arbitrary identifier, so upstream's router
+  // takes the path segment verbatim (`["rpc", pName] -> TargetProc`) and lets
+  // routine resolution decide whether it exists. `my-func!` is a legal name for
+  // a function that simply is not there, so the answer is 404 PGRST202, not 400
+  // from a router character class. (That class also made real upstream cases
+  // unreachable: CustomMediaSpec:75 GET /rpc/welcome.html, :110 /rpc/welcome.xml.)
+  it('unknown function name returns PGRST202, whatever characters it uses', async () => {
     const res = await handler(event({
       method: 'POST',
       path: '/rest/v1/rpc/my-func!',
+      headers: { apikey: service, 'Content-Type': 'application/json' },
+      body: {},
+      authorizer: { role: 'service_role' },
+    }));
+    assert.equal(res.statusCode, 404);
+    const body = JSON.parse(res.body);
+    assert.equal(body.code, 'PGRST202');
+  });
+
+  // The router still refuses a path it cannot decode, because there is no
+  // identifier to look up at all.
+  it('malformed percent escape in the function name returns PGRST100', async () => {
+    const res = await handler(event({
+      method: 'POST',
+      path: '/rest/v1/rpc/%zz',
       headers: { apikey: service, 'Content-Type': 'application/json' },
       body: {},
       authorizer: { role: 'service_role' },
@@ -423,18 +508,21 @@ describe('RPC integration tests', () => {
     assert.equal(body.code, 'PGRST100');
   });
 
-  it('HEAD on void function returns 200 with empty body', async () => {
+  // Same upstream rule as the POST case above: void means 204 and no
+  // Content-Type. HEAD behaves as GET with the body dropped, so it inherits
+  // the void status rather than forcing a 200.
+  it('HEAD on void function returns 204 with empty body', async () => {
     const res = await handler(event({
       method: 'HEAD',
       path: '/rest/v1/rpc/do_nothing',
       headers: { apikey: service },
       authorizer: { role: 'service_role' },
     }));
-    assert.equal(res.statusCode, 200);
+    assert.equal(res.statusCode, 204);
     assert.ok(!res.body || res.body === '',
       'HEAD on void should return empty body');
-    assert.ok(res.headers['Content-Type'],
-      'Content-Type header should be present');
+    assert.equal(res.headers['Content-Type'], undefined,
+      'void function must not send Content-Type');
   });
 
   it('single object mode on non-set composite function', async () => {
@@ -514,7 +602,10 @@ describe('RPC integration tests', () => {
         body: {},
         authorizer: { role: 'service_role' },
       }));
-      assert.equal(res.statusCode, 200);
+      // 204 is the authorized outcome for a void function (see the void test
+      // above and upstream RpcSpec.hs:470); the point of this case is that the
+      // call is permitted, i.e. not 401/403.
+      assert.equal(res.statusCode, 204);
     });
   });
 });

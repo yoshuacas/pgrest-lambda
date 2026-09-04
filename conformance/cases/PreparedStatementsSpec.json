@@ -1,0 +1,89 @@
+{
+  "source": "Feature/Query/PreparedStatementsSpec.hs",
+  "extractedCases": 0,
+  "skippedSites": 3,
+  "needsConfigCases": 3,
+  "cases": [
+    {
+      "id": "PreparedStatementsSpec:17",
+      "source": "Feature/Query/PreparedStatementsSpec.hs",
+      "line": 17,
+      "category": "select",
+      "description": "should use prepared statements when the setting is enabled",
+      "example": "PreparedStatementsSpec:it:16",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/uses_prepared_statements",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": "true",
+        "bodyFormat": "text",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbPreparedStatements)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "PreparedStatementsSpec:25",
+      "source": "Feature/Query/PreparedStatementsSpec.hs",
+      "line": 25,
+      "category": "select",
+      "description": "should not use any prepared statements when the setting is disabled",
+      "example": "PreparedStatementsSpec:it:24",
+      "request": {
+        "method": "GET",
+        "path": "/never_prepared",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": null,
+        "bodyFormat": "ignore",
+        "headers": {}
+      },
+      "bodyMatch": "ignore",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbPreparedStatements)",
+      "skipClass": "needs-engine-config"
+    },
+    {
+      "id": "PreparedStatementsSpec:29",
+      "source": "Feature/Query/PreparedStatementsSpec.hs",
+      "line": 29,
+      "category": "select",
+      "description": "should not use any prepared statements when the setting is disabled",
+      "example": "PreparedStatementsSpec:it:24",
+      "request": {
+        "method": "POST",
+        "path": "/rpc/never_uses_prepared_statements",
+        "query": "",
+        "headers": {},
+        "body": null,
+        "bodyFormat": "none"
+      },
+      "expected": {
+        "status": 200,
+        "body": "true",
+        "bodyFormat": "text",
+        "headers": {}
+      },
+      "bodyMatch": "exact",
+      "transforms": [],
+      "skip": true,
+      "skipReason": "requires non-default PostgREST config (configDbPreparedStatements)",
+      "skipClass": "needs-engine-config"
+    }
+  ]
+}

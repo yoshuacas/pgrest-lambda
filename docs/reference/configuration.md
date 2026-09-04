@@ -17,6 +17,29 @@ For production secret management patterns (SSM, Secrets Manager, rotation), see 
 | `database.dsqlEndpoint` | `DSQL_ENDPOINT` | no | — | Switch to Aurora DSQL with IAM auth. |
 | `jwtSecret` | `JWT_SECRET` | yes | generated on first `dev` run | HS256 secret for apikey JWTs. Must be ≥ 32 chars. |
 | `production` | — | no | `false` (for `dev`), `true` (when embedded) | When `true`, suppresses verbose error detail and disallows `cors.allowedOrigins: '*'`. |
+| `maxEmbedDepth` | `PGREST_MAX_EMBED_DEPTH` | no | `5` | Maximum embed nesting depth in select parameters. |
+
+## PostgREST engine options
+
+Named after upstream PostgREST's configuration keys. Defaults keep the
+behaviour the engine had before the option existed. See the
+[configuration guide](../configuration.md#postgrest-engine-options) for the
+long form.
+
+| Config key | Env var | PostgREST option | Default | Purpose |
+|---|---|---|---|---|
+| `dbSchemas` | `PGREST_DB_SCHEMAS` | `db-schemas` | `public` | Exposed schemas, comma-separated. First is the default; `Accept-Profile` / `Content-Profile` select another. An unexposed one is `406` `PGRST106`. |
+| `dbExtraSearchPath` | `PGREST_DB_EXTRA_SEARCH_PATH` | `db-extra-search-path` | `public` | Schemas appended to each request's `search_path`. |
+| `dbMaxRows` | `PGREST_DB_MAX_ROWS` | `db-max-rows` | unset | Row cap per resource, embeds included. A smaller client `limit` wins. |
+| `dbPreRequest` | `PGREST_DB_PRE_REQUEST` | `db-pre-request` | unset | Function run as `SELECT <fn>()` before every request. Bare or schema-qualified name; validated at boot. |
+| `dbAggregatesEnabled` | `PGREST_DB_AGGREGATES_ENABLED` | `db-aggregates-enabled` | `true` | `false` refuses aggregate selects with `PGRST123`. Upstream defaults to `false`. |
+| `dbPlanEnabled` | `PGREST_DB_PLAN_ENABLED` | `db-plan-enabled` | `false` | Allow `Accept: application/vnd.pgrst.plan`. |
+| `bulkMutationGuard` | `PGREST_DB_BULK_MUTATION_GUARD` | — (`pg_safeupdate` upstream) | `on` | Filterless `PATCH`/`DELETE`: `on` refuses, `off` allows, `safeupdate` refuses with SQLSTATE `21000`. |
+| `restJwt.secret` | `PGREST_JWT_SECRET` | `jwt-secret` | unset | HMAC secret or JSON JWK/JWK Set. Turns on in-engine JWT verification. |
+| `restJwt.secretIsBase64` | `PGREST_JWT_SECRET_IS_BASE64` | `jwt-secret-is-base64` | `false` | Decode the secret as base64. |
+| `restJwt.audience` | `PGREST_JWT_AUD` | `jwt-aud` | unset | Required `aud`. Mismatch is `401` `PGRST303`. |
+| `restJwt.anonRole` | `PGREST_DB_ANON_ROLE` | `db-anon-role` | `anon` | Role for a tokenless request. Empty disables anonymous access (`PGRST302`). |
+| `restJwt.verify` | `PGREST_JWT_VERIFY` | — | on when a secret is set | Force in-engine verification on/off. |
 
 ## Auth
 
@@ -49,7 +72,7 @@ For production secret management patterns (SSM, Secrets Manager, rotation), see 
 
 | Config key | Env var | Required | Default | Purpose |
 |---|---|---|---|---|
-| `cors.allowedOrigins` | — | no | `'*'` in dev; required in prod | Comma-separated origin list or `'*'`. `'*'` is rejected when `production=true`. |
+| `cors.allowedOrigins` | `PGREST_SERVER_CORS_ALLOWED_ORIGINS` | no | `'*'` in dev; required in prod | Comma-separated origin list or `'*'`. `'*'` is rejected when `production=true`. A list echoes a matching `Origin` and adds `Access-Control-Allow-Credentials: true`; a non-matching one gets no CORS headers (upstream `server-cors-allowed-origins`). |
 | `cors.allowedHeaders` | — | no | `apikey, authorization, content-type, prefer, range` | Exposed `Access-Control-Allow-Headers`. |
 
 ## Email and OAuth

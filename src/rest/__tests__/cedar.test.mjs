@@ -1050,6 +1050,187 @@ describe('buildAuthzFilter (row-level)', () => {
       'values should include "archived"');
   });
 
+  it('keeps the forbid when a permit grants the table unconditionally', () => {
+    // A permit scoped only by `context.table` leaves a residual that is
+    // unconditional once the context is known. buildAuthzFilter used to return
+    // no conditions at that point, discarding forbids collected and uncollected
+    // alike. Asserted in both policy orders because the old code leaked in
+    // both: the early return dropped the forbids it had already put aside.
+    const PUBLIC = `
+      permit(
+        principal, action == PgrestLambda::Action::"select",
+        resource is PgrestLambda::Row
+      ) when { context.table == "todos" };
+    `;
+    const FORBID = `
+      forbid(
+        principal, action == PgrestLambda::Action::"select",
+        resource is PgrestLambda::Row
+      ) when { resource has status && resource.status == "archived" };
+    `;
+    for (const [label, text] of [
+      ['permit first', PUBLIC + FORBID],
+      ['forbid first', FORBID + PUBLIC],
+    ]) {
+      cedar._setPolicies({ staticPolicies: text });
+      const result = cedar.buildAuthzFilter({
+        principal: { role: 'authenticated', userId: 'alice', email: '' },
+        action: 'select',
+        context: { table: 'todos' },
+        schema,
+        startParam: 1,
+      });
+      assert.match(result.conditions.join(' '), /NOT \(/,
+        `${label}: a forbid must survive an unconditional permit`);
+      assert.deepEqual(result.values, ['archived'], label);
+    }
+  });
+
+  it('does not restrict rows when only the unconditional permit applies', () => {
+    // The other half of the same change: dropping the early return must not
+    // start narrowing a read that no forbid touches.
+    cedar._setPolicies({
+      staticPolicies: `
+        permit(
+          principal, action == PgrestLambda::Action::"select",
+          resource is PgrestLambda::Row
+        ) when { context.table == "todos" };
+      `,
+    });
+    const result = cedar.buildAuthzFilter({
+      principal: { role: 'authenticated', userId: 'alice', email: '' },
+      action: 'select',
+      context: { table: 'todos' },
+      schema,
+      startParam: 1,
+    });
+    assert.deepEqual(result.conditions, []);
+    assert.deepEqual(result.values, []);
+  });
+
+  it('authorizes a principal whose subject claim is a number', () => {
+    // `{"id": 1}` is a JWT upstream's AuthSpec actually sends. A Cedar entity
+    // id must be a string, so the number made every call return an unparseable
+    // -principal failure, which reads as a denial no matter what the policies
+    // say.
+    cedar._setPolicies({
+      staticPolicies: `
+        permit(
+          principal is PgrestLambda::User,
+          action == PgrestLambda::Action::"select",
+          resource
+        ) when { context.table == "todos" };
+      `,
+    });
+    const result = cedar.buildAuthzFilter({
+      principal: { role: 'authenticated', userId: 1, email: '' },
+      action: 'select',
+      context: { table: 'todos' },
+      schema,
+      startParam: 1,
+    });
+    assert.deepEqual(result.conditions, []);
+  });
+
+  it('honours a satisfied permit alongside a residual that is FALSE', () => {
+    // A permit whose conditions name only the principal and the context is
+    // decided before the resource is known, so Cedar reports it in `satisfied`
+    // and leaves it out of `nontrivialResiduals`. The residual loops therefore
+    // never see it, and the early return above only fires when *no* residual
+    // survives. Pair such a permit with a row-level permit that translates to
+    // FALSE — `resource has user_id` on a table with no `user_id` column — and
+    // the old code reached the "no permit granted access" branch and threw 403
+    // on a request Cedar had already decided to allow.
+    cedar._setPolicies({
+      staticPolicies: `
+        permit(
+          principal is PgrestLambda::User,
+          action == PgrestLambda::Action::"select",
+          resource
+        ) when {
+          principal.role == "author" && context.table == "categories"
+        };
+        permit(
+          principal is PgrestLambda::User,
+          action == PgrestLambda::Action::"select",
+          resource is PgrestLambda::Row
+        ) when { resource has user_id && resource.user_id == principal };
+      `,
+    });
+    const result = cedar.buildAuthzFilter({
+      principal: { role: 'author', userId: 'alice', email: '' },
+      action: 'select',
+      // `categories` has no user_id column, so the second permit's residual
+      // translates to FALSE and contributes nothing.
+      context: { table: 'categories' },
+      schema,
+      startParam: 1,
+    });
+    assert.deepEqual(result.conditions, []);
+    assert.deepEqual(result.values, []);
+  });
+
+  it('still scopes a satisfied permit to the table it names', () => {
+    // The fix must not turn a table-scoped grant into a blanket one: the same
+    // policy set on a different table has nothing satisfied, and the row-level
+    // permit is the only thing left.
+    cedar._setPolicies({
+      staticPolicies: `
+        permit(
+          principal is PgrestLambda::User,
+          action == PgrestLambda::Action::"select",
+          resource
+        ) when {
+          principal.role == "author" && context.table == "categories"
+        };
+        permit(
+          principal is PgrestLambda::User,
+          action == PgrestLambda::Action::"select",
+          resource is PgrestLambda::Row
+        ) when { resource has user_id && resource.user_id == principal };
+      `,
+    });
+    const result = cedar.buildAuthzFilter({
+      principal: { role: 'author', userId: 'alice', email: '' },
+      action: 'select',
+      context: { table: 'todos' },
+      schema,
+      startParam: 1,
+    });
+    assert.equal(result.conditions.length, 1);
+    assert.match(result.conditions[0], /user_id/);
+    assert.deepEqual(result.values, ['alice']);
+  });
+
+  it('keeps a forbid over a satisfied permit', () => {
+    // `satisfied` means allow-so-far, not allow-regardless: a row-level forbid
+    // is still unknown at that point and must survive as a NOT condition.
+    cedar._setPolicies({
+      staticPolicies: `
+        permit(
+          principal is PgrestLambda::User,
+          action == PgrestLambda::Action::"select",
+          resource
+        ) when {
+          principal.role == "author" && context.table == "todos"
+        };
+        forbid(
+          principal, action == PgrestLambda::Action::"select",
+          resource is PgrestLambda::Row
+        ) when { resource has status && resource.status == "archived" };
+      `,
+    });
+    const result = cedar.buildAuthzFilter({
+      principal: { role: 'author', userId: 'alice', email: '' },
+      action: 'select',
+      context: { table: 'todos' },
+      schema,
+      startParam: 1,
+    });
+    assert.match(result.conditions.join(' '), /NOT \(/);
+    assert.deepEqual(result.values, ['archived']);
+  });
+
   it('multiple permit policies combine with OR', () => {
     cedar._setPolicies({ staticPolicies: TEAM_ACCESS_POLICY });
     const result = cedar.buildAuthzFilter({

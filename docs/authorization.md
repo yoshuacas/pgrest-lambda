@@ -283,7 +283,12 @@ from a shell.
 
 ### `PGRST403: Not authorized to <action> on '<table>'`
 
-The policy model says no. In development mode (`production=false`) the
+The policy model says no. The status is `401` with
+`WWW-Authenticate: Bearer` when the caller is anonymous — authenticating
+might grant the request — and `403` when it is already authenticated.
+Both carry `PGRST403`, so match on the code, not the status.
+
+In development mode (`production=false`) the
 message is expanded to include the role, action, table, and where the
 policies were loaded from:
 

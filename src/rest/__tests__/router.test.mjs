@@ -78,3 +78,35 @@ describe('router', () => {
     );
   });
 });
+
+describe('router: openapi-mode', () => {
+  it('serves the root spec under follow-privileges and ignore-privileges', () => {
+    for (const mode of ['follow-privileges', 'ignore-privileges']) {
+      assert.deepStrictEqual(
+        route('/rest/v1/', mockSchema, 'public', { openApiMode: mode }),
+        { type: 'openapi' }, mode);
+    }
+  });
+
+  it('answers the root with 404 PGRST126 when disabled', () => {
+    for (const path of ['/rest/v1', '/rest/v1/', '/', '']) {
+      assert.throws(
+        () => route(path, mockSchema, 'public', { openApiMode: 'disabled' }),
+        (err) => err.statusCode === 404 && err.code === 'PGRST126'
+          && err.message === 'Root endpoint metadata is disabled',
+        path);
+    }
+  });
+
+  it('leaves every other route alone when disabled', () => {
+    const opts = { openApiMode: 'disabled' };
+    assert.deepStrictEqual(route('/rest/v1/todos', mockSchema, 'public', opts),
+      { type: 'table', table: 'todos' });
+    assert.deepStrictEqual(
+      route('/rest/v1/rpc/add', mockSchema, 'public', opts),
+      { type: 'rpc', functionName: 'add' });
+    assert.deepStrictEqual(
+      route('/rest/v1/_refresh', mockSchema, 'public', opts),
+      { type: 'refresh' });
+  });
+});

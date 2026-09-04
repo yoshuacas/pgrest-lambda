@@ -486,3 +486,49 @@ describe('schema cache: function introspection', () => {
     });
   });
 });
+
+// `db-schemas`: a cache built for a non-public exposed schema has to introspect
+// that schema. Every schema-scoped query but one carries a literal `public`
+// predicate that src/index.mjs rewrites in the pool wrapper; ROUTINES_SQL is
+// the exception — it already takes the schema as $1, so the cache has to bind
+// it, or RPC resolution reads `public` whatever profile the request selected
+// (MultipleSchemaSpec:177/186/197/208/220/227).
+describe('createSchemaCache: db-schemas binds the routine schema', () => {
+  function recordingPool() {
+    const calls = [];
+    return {
+      calls,
+      query: async (sql, values) => {
+        calls.push({ sql, values });
+        return { rows: [] };
+      },
+    };
+  }
+
+  it('binds public when no schema is configured', async () => {
+    const pool = recordingPool();
+    await createSchemaCache({ capabilities: { supportsRpc: true } })
+      .getSchema(pool);
+    const routines = pool.calls.find(c => c.values);
+    assert.deepEqual(routines.values, ['public']);
+  });
+
+  it('binds the configured schema', async () => {
+    const pool = recordingPool();
+    await createSchemaCache({
+      schema: 'v2', capabilities: { supportsRpc: true },
+    }).getSchema(pool);
+    const routines = pool.calls.find(c => c.values);
+    assert.deepEqual(routines.values, ['v2']);
+  });
+
+  it('never interpolates the schema name into the SQL', async () => {
+    const pool = recordingPool();
+    await createSchemaCache({
+      schema: "x'; drop table y --", capabilities: { supportsRpc: true },
+    }).getSchema(pool);
+    for (const call of pool.calls) {
+      assert.ok(!call.sql.includes('drop table'), call.sql.slice(0, 60));
+    }
+  });
+});
