@@ -388,7 +388,7 @@ presigned-URL pattern (file goes to S3 directly, not through the API).
 Commit:
 
 - `.env.example` — template with no values.
-- The SAM template (or your deploy manifest) with `{{resolve:...}}`
+- The SAM template (or your deploy manifest) with <code v-pre>{{resolve:...}}</code>
   references to secret stores, not the secrets themselves.
 - Your code.
 

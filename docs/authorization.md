@@ -390,10 +390,10 @@ Cedar is declarative — order of rules doesn't matter. `permit` and
 
 - [configuration.md](configuration.md) — `POLICIES_PATH` (filesystem
   vs. S3).
-- [`policies/default.cedar`](../policies/default.cedar) — the starter
-  policy bundle. Read it as a working example.
+- [`policies/default.cedar`](https://github.com/yoshuacas/pgrest-lambda/blob/main/policies/default.cedar)
+  — the starter policy bundle. Read it as a working example.
 - [Cedar language docs](https://docs.cedarpolicy.com/) — full syntax
   reference.
-- [`src/rest/__tests__/cedar.test.mjs`](../src/rest/__tests__/cedar.test.mjs)
+- [`src/rest/__tests__/cedar.test.mjs`](https://github.com/yoshuacas/pgrest-lambda/blob/main/src/rest/__tests__/cedar.test.mjs)
   — every pattern in this guide has a matching passing test in that
   file. When in doubt, crib from there.

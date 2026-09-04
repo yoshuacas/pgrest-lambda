@@ -1,8 +1,10 @@
 import { defineConfig } from 'vitepress'
 import llmstxt from 'vitepress-plugin-llms'
 
-// TODO: confirm the final hostname before going live.
-const HOSTNAME = 'https://pgrest-lambda.example.com' // <!-- TODO: confirm -->
+// Where the site actually publishes, from .github/workflows/deploy-docs.yml
+// (GitHub Pages) and the `base` below. The sitemap and llms.txt embed this, so a
+// placeholder here ships absolute URLs that resolve nowhere.
+const HOSTNAME = 'https://yoshuacas.github.io/pgrest-lambda/'
 
 export default defineConfig({
   title: 'pgrest-lambda',
@@ -12,8 +14,12 @@ export default defineConfig({
   cleanUrls: true,
   lastUpdated: true,
   sitemap: { hostname: HOSTNAME },
-  ignoreDeadLinks: true,
+  ignoreDeadLinks: false,
 
+  // The repo-rooted guides (authorization.md, configuration.md, rpc.md) are
+  // built. They used to be excluded, which left 31 links across the site
+  // pointing at 404s — every `../rpc.md` and `../authorization.md` reference in
+  // reference/, guide/ and explanation/. `ignoreDeadLinks` hid that.
   srcExclude: [
     'code-review/**',
     'design/**',
@@ -21,9 +27,6 @@ export default defineConfig({
     'research/**',
     'security/**',
     'tasks/**',
-    'authorization.md',
-    'configuration.md',
-    'rpc.md',
   ],
 
   head: [
@@ -128,6 +131,15 @@ export default defineConfig({
               text: 'Cedar equivalence',
               link: '/reference/cedar-equivalence',
             },
+          ],
+        },
+        {
+          text: 'In-depth guides',
+          collapsed: false,
+          items: [
+            { text: 'RPC', link: '/rpc' },
+            { text: 'Authorization (Cedar)', link: '/authorization' },
+            { text: 'Configuration', link: '/configuration' },
           ],
         },
       ],
