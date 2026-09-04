@@ -269,7 +269,7 @@ Policies are evaluated via Cedar partial evaluation and translated to SQL WHERE 
 - Primary keys recommended (used for upsert conflict resolution)
 - Column named `user_id` enables automatic per-user row filtering via default Cedar policy
 - Standard PostgreSQL types (text, integer, boolean, uuid, timestamp, json/jsonb, etc.)
-- **For resource embedding on DSQL:** since DSQL does not support foreign key constraints, pgrest-lambda infers relationships from column naming. Name your foreign key columns as `{table_name_singular}_id` — for example, `customer_id` to reference the `customers` table, `category_id` for `categories`, `address_id` for `addresses`. The convention handles common English plurals (add `s`, add `es`, `y` → `ies`). On standard PostgreSQL with real foreign keys, this naming convention is not required but still recommended for clarity.
+- **Foreign keys for resource embedding** — declare them. Both standard PostgreSQL and Aurora DSQL (since 2026-08-27) report them in `pg_constraint`, and that is what embedding reads. If a schema declares no keys at all, pgrest-lambda falls back to inferring relationships from `{table_name_singular}_id` column names, so name key columns that way anyway: `customer_id` → `customers`, `category_id` → `categories`, `address_id` → `addresses`.
 
 pgrest-lambda discovers the schema automatically. No migration files, no schema definitions, no code generation. Add a table to your database and it appears as an API endpoint within 5 minutes (or immediately via `POST /rest/v1/_refresh` with a `service_role` apikey — anon/authenticated requests get 401 PGRST301).
 
@@ -424,7 +424,7 @@ Body: {"id": 5, "title": "Updated", "done": true}
 
 ### Resource embedding (fetching related data)
 
-Embed related tables by nesting table names with parentheses inside the `select` parameter. pgrest-lambda detects relationships from foreign keys (standard PostgreSQL) or column naming convention (DSQL).
+Embed related tables by nesting table names with parentheses inside the `select` parameter. pgrest-lambda detects relationships from foreign keys, on both standard PostgreSQL and Aurora DSQL.
 
 ```bash
 # Many-to-one: each order embeds its customer as an object
@@ -476,14 +476,19 @@ const { data } = await supabase.from('customers').select('id, name, orders!inner
 
 **How relationships are detected:**
 
-1. **Foreign key constraints** (standard PostgreSQL, Aurora, RDS, Neon): pgrest-lambda queries `pg_constraint` for FK relationships in the `public` schema. This is automatic and requires no configuration.
+1. **Foreign key constraints** — every database pgrest-lambda supports, Aurora DSQL included. It reads `pg_constraint` and needs no configuration. This is the path to design for.
 
-2. **Convention-based fallback** (DSQL or databases without FKs): when no FK constraints are found, pgrest-lambda infers relationships from column names. A column named `customer_id` on the `orders` table links to the `customers` table if that table exists and has a matching primary key. Handles common English plurals:
-   - `customer_id` → `customers` (add s)
-   - `address_id` → `addresses` (add es)
-   - `category_id` → `categories` (y → ies)
+2. **Many-to-many through a junction table** — two foreign keys out of one table, each to a different parent, gives you `customers?select=*,products(*)` across the join table without naming it.
 
-The convention fallback only runs when the FK query returns zero relationships. Both mechanisms produce the same result format in the schema cache.
+3. **Views inherit their base table's relationships** — read from the view's rewrite rule (`pg_rewrite`), which maps each output column back to the base column it came from.
+
+4. **Computed relationships** — a one-argument SQL function whose argument is the row type of a table. Embed it by function name.
+
+5. **A declared manifest** (`PGREST_RELATIONSHIPS_PATH`) — for a relationship the catalog cannot express. Not needed for foreign keys on any supported database.
+
+6. **Column-name convention, as a last resort** — when *none* of the above produced a single relationship, a column named `customer_id` on `orders` links to `customers` if that table exists with a matching primary key. Handles common English plurals: `customer_id` → `customers` (add s), `address_id` → `addresses` (add es), `category_id` → `categories` (y → ies). Declaring a real key is better in every case.
+
+All of them produce the same record shape in the schema cache.
 
 **Embed errors:**
 
@@ -492,10 +497,12 @@ The convention fallback only runs when the FK query returns zero relationships. 
 | PGRST200 | No relationship found between the two tables |
 | PGRST201 | Multiple relationships found — use `!hint` to disambiguate |
 
-**Limitations:**
-- Many-to-many joins are not supported (use an explicit join table with two embeds)
-- Computed relationships (PostgREST function-based joins) are not supported
-- Embed filtering (`&orders.amount=gt.100`) is not yet supported
+**Also supported, and easy to miss:**
+- Filtering on an embed: `?select=*,orders(*)&orders.amount=gt.100`, at any nesting depth. The embed has to be in `?select=`, or you get `PGRST108`
+- `!inner` for an inner join, `!left` for the default
+- Spread embeds: `?select=*,...customers(name)` merges the related columns into the parent row instead of nesting them
+- Ordering by an embed: `?order=customers(name)`, where the relationship is many-to-one or one-to-one (otherwise `PGRST118`)
+- Aggregates (`amount.sum()`, `count()`), including inside an embed. On by default here, unlike upstream, and turned off with `db-aggregates-enabled=false` (then `PGRST123`). Not implemented inside a one-to-many or many-to-many **spread** — that's `PGRST127`
 
 ## End-to-end integration checklist
 

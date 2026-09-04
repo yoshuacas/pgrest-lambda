@@ -13,8 +13,8 @@ const { data, error } = await supabase.rpc('orders_for_customer', {
 This page covers what that means end-to-end: the functions you
 define in Postgres, the requests pgrest-lambda accepts, and the
 responses you get back. There's a section at the bottom for
-running on Aurora DSQL, which does **not** support RPC — you'll
-do the same work a different way there.
+running on Aurora DSQL, where RPC works for `LANGUAGE sql`
+functions and PL/pgSQL has to be replaced.
 
 ## The example schema
 
@@ -536,72 +536,53 @@ scalar and composite functions it's a no-op.
 
 ## Running on Aurora DSQL
 
-Aurora DSQL **does not support RPC** in pgrest-lambda's current
-release. Any call to `/rest/v1/rpc/…` against a pgrest-lambda
-instance configured for DSQL returns:
+**RPC works on Aurora DSQL.** `POST /rest/v1/rpc/…` and
+`GET /rest/v1/rpc/…` behave as described above: DSQL populates
+`pg_proc` the same way, so argument names, types and return
+shapes are discovered by the same introspection, and
+`supportsRpc` is `true` on both the DSQL and the standard
+PostgreSQL provider (`src/rest/db/dsql.mjs`,
+`src/rest/db/postgres.mjs`).
 
-```json
-{
-  "code": "PGRST501",
-  "message": "RPC is not supported on this database"
-}
-```
+Measured, not assumed: in the published conformance run
+(2026-08-28, on a live DSQL cluster) 137 of the 144 in-scope
+upstream `RpcSpec` assertions pass — see
+[the compatibility report](reference/postgrest-compatibility.md).
 
-This is deliberate. DSQL's function support differs from standard
-PostgreSQL in ways that affect RPC end-to-end:
+What DSQL constrains is the **function body**, not the endpoint:
 
-- DSQL supports `LANGUAGE sql` functions only. PL/pgSQL is not
-  available, which rules out stored procedures with loops,
-  conditionals, RAISE statements, or temp tables. A large slice
-  of "business logic in the database" patterns don't work.
-- DSQL does not expose the same `pg_proc` introspection that
-  pgrest-lambda uses to discover argument names, types, and
-  return shapes. The capability flag is set to `false` to avoid
-  misleading users.
+- **`LANGUAGE sql` only.** `CREATE FUNCTION … LANGUAGE plpgsql`
+  is rejected, which rules out loops, conditionals, `RAISE`,
+  exception blocks and temp tables. 9 of the blocked `RpcSpec`
+  cases are PL/pgSQL functions that cannot be created at all.
+- **No enum, composite or domain-backed custom types** in
+  arguments or return values; 6 more blocked cases need one.
+- Everything else about the RPC surface — named arguments,
+  scalar, composite and set-returning functions, `VARIADIC`,
+  defaults, `Prefer: params=single-object`, `GET` on
+  `IMMUTABLE`/`STABLE` functions, Cedar's `call` action — is the
+  same on both databases.
 
-The `supportsRpc` flag on the database capabilities interface
-(see [configuration.md](configuration.md)) gates this. The flag
-is `true` on standard PostgreSQL and `false` on DSQL.
+`PGRST501` (`RPC is not supported on this database`) is still the
+response when a provider reports `supportsRpc: false`. No
+provider that ships today does.
 
-### The pattern to use instead: regular table endpoints with views
+### Replacing PL/pgSQL: views and table endpoints
 
-On DSQL, replace RPC with **views and computed columns**. The
-REST surface is already there (`/rest/v1/:table`) and it
-introspects views the same way it introspects tables.
+Logic that needed PL/pgSQL has to move. Two substitutes cover
+most of it — a view for anything query-shaped, a plain insert for
+anything that only records something. The REST surface is already
+there (`/rest/v1/:table`) and it introspects views the same way it
+introspects tables.
 
-Take the `monthly_revenue` function from above. On standard
-Postgres, it's an RPC call. On DSQL, create a view:
+Every function on this page is `LANGUAGE sql`, so every example
+above runs on DSQL unchanged, RPC call included. What follows is
+for the functions that don't fit in a single SQL statement.
 
-```sql
-CREATE VIEW public.monthly_revenue AS
-  SELECT COALESCE(SUM(total), 0) AS revenue
-    FROM public.orders
-   WHERE status = 'paid'
-     AND placed_at >= date_trunc('month', now());
-```
-
-Now the client calls it as a table:
-
-```bash
-curl -s "http://localhost:3000/rest/v1/monthly_revenue?select=revenue" \
-  -H "apikey: $SERVICE_KEY"
-```
-
-```json
-[{"revenue": "365.50"}]
-```
-
-The trade-off: no arguments. A view is a fixed query. If your
-function takes parameters, encode them as filter values instead.
-
-### Function with a parameter → parameterized query on a view
-
-`orders_for_customer(customer_id uuid)` becomes a view over the
-orders table, and the client filters:
+A query-shaped function becomes a view. There is no argument
+list, so parameters move into the URL as filters:
 
 ```sql
--- On DSQL, no function needed — query the table directly.
--- Or, if you want to hide columns or do joins, a view:
 CREATE VIEW public.visible_orders AS
   SELECT id AS order_id, customer_id, total, status, placed_at
     FROM public.orders;
@@ -626,14 +607,15 @@ Filter, order, limit, offset, select, and Cedar policies all
 work on the view just like any other table. The customer_id is a
 filter value in the URL, not a function argument in the body.
 
-### Function with side effects → regular INSERT
+### A procedure that only records something → regular INSERT
 
-`log_event(event_type, payload)` has no query-shaped substitute
-— inserting into an events table does:
+A `log_event(event_type, payload)` written in PL/pgSQL has no
+query-shaped substitute — inserting into an events table does:
 
 ```sql
 CREATE TABLE public.events (
-  id          BIGSERIAL PRIMARY KEY,
+  id          BIGINT GENERATED BY DEFAULT AS IDENTITY (CACHE 1)
+                PRIMARY KEY,
   event_type  TEXT NOT NULL,
   payload     JSONB,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -649,10 +631,11 @@ curl -s -X POST http://localhost:3000/rest/v1/events \
 
 Use Cedar to restrict who can insert.
 
-### When you genuinely need RPC on DSQL
+### When you genuinely need PL/pgSQL on DSQL
 
-If you have a logic-heavy codebase that depends on stored
-functions and you want to run on DSQL, two approaches work:
+If you have a logic-heavy codebase that depends on procedural
+stored functions and you want to run on DSQL, two approaches
+work:
 
 1. **Move the logic out of the database.** A Lambda function or
    application-layer service that reads via pgrest-lambda,
@@ -676,7 +659,9 @@ typically replaces what stored functions were doing.
 
 - [authorization.md](authorization.md) — Cedar policies for
   `call` action and `PgrestLambda::Function` resource.
-- [configuration.md](configuration.md) — database capabilities
-  and the `supportsRpc` flag.
+- [configuration.md](configuration.md) — every config key and
+  environment variable.
+- `src/rest/db/dsql.mjs` and `src/rest/db/postgres.mjs` — the
+  capability tables, including `supportsRpc`.
 - [PostgREST RPC docs](https://postgrest.org/en/v12/references/api/functions.html)
   — pgrest-lambda aims for wire compatibility with PostgREST v12.

@@ -58,6 +58,7 @@
     "test:e2e": "node --test --test-concurrency=1 'tests/e2e/**/*.test.mjs'",
     "test:all": "npm test && npm run test:integration && npm run test:e2e",
     "test:bump-better-auth": "echo 'Usage: npm i better-auth@<version> && npm run test:all' && exit 1",
+    "docs:check-errors": "node scripts/check-error-docs.mjs",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs"

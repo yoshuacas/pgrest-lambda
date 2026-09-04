@@ -116,8 +116,18 @@ export default defineConfig({
             { text: 'CLI', link: '/reference/cli' },
             { text: 'Configuration', link: '/reference/configuration' },
             { text: 'HTTP API', link: '/reference/http-api' },
+            { text: 'Resource embedding', link: '/reference/embedding' },
             { text: 'Authorization', link: '/reference/authorization' },
+            { text: 'Error codes', link: '/reference/errors' },
             { text: 'Lint rules', link: '/reference/lint-rules' },
+            {
+              text: 'PostgREST compatibility',
+              link: '/reference/postgrest-compatibility',
+            },
+            {
+              text: 'Cedar equivalence',
+              link: '/reference/cedar-equivalence',
+            },
           ],
         },
       ],

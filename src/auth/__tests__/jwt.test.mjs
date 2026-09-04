@@ -152,7 +152,7 @@ describe('jwt.mjs', () => {
           email: 'expired@example.com',
           role: 'authenticated',
           aud: 'authenticated',
-          iss: 'boa',
+          iss: 'pgrest-lambda',
           iat: 1000000000,
           exp: 1000000001,
         })).toString('base64url') +

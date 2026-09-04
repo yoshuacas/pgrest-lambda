@@ -1,5 +1,12 @@
 # PostgREST-Compatible Data API Layer
 
+> Historical design record, from before resource embedding was built. Two claims
+> in it are now false: "Foreign keys are not introspected" and "Resource
+> embedding … is deferred". Embedding shipped, and AWS shipped foreign key
+> constraints on Aurora DSQL on 2026-08-27, so `supportsForeignKeys` is `true` on
+> both providers as of 2026-08-28. For current behaviour read
+> `docs/reference/embedding.md`.
+
 ## Overview
 
 Replace the hardcoded CRUD handler in

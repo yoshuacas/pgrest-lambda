@@ -204,7 +204,7 @@ HTTP status is `500` because the request was authorized at the policy level — 
 |---|---|---|
 | `PGRST401` | 401 | `apikey` header missing, invalid JWT, or expired. No principal could be built. |
 | `PGRST202` | 404 | RPC function not in the schema cache. Authorization never runs. |
-| `PGRST501` | 501 | RPC called on Aurora DSQL, which doesn't support stored procedures. |
+| `PGRST501` | 501 | RPC called on a database whose provider reports `supportsRpc: false`. Neither shipped provider does; DSQL runs RPC for `LANGUAGE sql` functions. |
 
 ## Decision reference
 

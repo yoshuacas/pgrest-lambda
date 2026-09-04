@@ -3,6 +3,27 @@
 Developer helper scripts for working on pgrest-lambda. Nothing here ships in the
 npm package or gets deployed — these are local workflow tools.
 
+## check-error-docs.mjs — does the error reference still match the engine?
+
+```bash
+npm run docs:check-errors
+```
+
+Reads `docs/reference/errors.md` and the engine's sources, then fails if either
+half has drifted:
+
+- a message documented in a `| 4xx | \`text\` |` row that no longer appears in
+  `src/` — the wording changed and the page still shows the old one
+- a `PGRST*` code the engine constructs with no `###` section on the page
+
+`{placeholders}` in a documented message stand for interpolations, so
+`Could not find the table '{schema}.{table}' in the schema cache` matches the
+template literal that builds it. Exit code is 1 on any mismatch, so this can run
+in CI.
+
+It checks strings and codes, not prose. A row can pass here and still describe
+the wrong cause.
+
 ## dev-session.sh — persistent tmux session
 
 Keeps Claude Code (and anything else you started) running on this machine after
