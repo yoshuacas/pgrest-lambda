@@ -22,12 +22,17 @@
 #
 # Windows created: 0:claude  1:shell  2:git
 # Detach with the tmux prefix (Ctrl-b by default) then d.
+#
+# Window 0 runs `claude --dangerously-skip-permissions`: Claude Code executes
+# tools without prompting, so a long run doesn't stall on a permission dialog
+# while you're detached. Override with PGREST_CLAUDE_CMD to get the prompts back
+# (PGREST_CLAUDE_CMD=claude), or use --no-claude and start it yourself.
 
 set -euo pipefail
 
 REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 SESSION="${PGREST_TMUX_SESSION:-pgrest}"
-CLAUDE_CMD="${PGREST_CLAUDE_CMD:-claude}"
+CLAUDE_CMD="${PGREST_CLAUDE_CMD:-claude --dangerously-skip-permissions}"
 SCROLLBACK="${PGREST_TMUX_SCROLLBACK:-50000}"
 TAKEOVER=0
 START_CLAUDE=1

@@ -78,7 +78,7 @@ Next time you SSH in, run `scripts/dev-session.sh` again to reattach.
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `PGREST_TMUX_SESSION` | `pgrest` | Session name, same as `--name` |
-| `PGREST_CLAUDE_CMD` | `claude` | Command run in window 0. May include arguments, e.g. `PGREST_CLAUDE_CMD='claude --resume'` |
+| `PGREST_CLAUDE_CMD` | `claude --dangerously-skip-permissions` | Command run in window 0. May include arguments, e.g. `PGREST_CLAUDE_CMD='claude --resume'`. Set it to plain `claude` to get permission prompts back |
 | `PGREST_TMUX_SCROLLBACK` | `50000` | Lines of scrollback per pane |
 
 ### What the session looks like
@@ -86,10 +86,16 @@ Next time you SSH in, run `scripts/dev-session.sh` again to reattach.
 Three windows, each starting in the repo root:
 
 ```
-0:claude   runs `claude`
+0:claude   runs `claude --dangerously-skip-permissions`
 1:shell    tests, npm scripts, rring commands
 2:git      status, diffs, commits
 ```
+
+Window 0 skips permission prompts so a long run doesn't stall waiting for a
+dialog while you're detached. That means Claude runs every tool it decides to
+run — file edits, shell commands, AWS calls — without asking, using this host's
+credentials. If you'd rather be asked, start the session with
+`PGREST_CLAUDE_CMD=claude scripts/dev-session.sh`.
 
 Move between them with `Ctrl-b 0` / `Ctrl-b 1` / `Ctrl-b 2`, or `Ctrl-b n` and
 `Ctrl-b p`.
